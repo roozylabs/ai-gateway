@@ -1,0 +1,26 @@
+# Binaries & Compiled Executables
+bin/
+server
+server.exe
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+*.test
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs & Temporary
+*.log
+tmp/
+scratch/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

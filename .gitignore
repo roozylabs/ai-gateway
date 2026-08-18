@@ -2,6 +2,7 @@
 api/bin/
 api/vendor/
 *.exe
+api/server.exe
 *.exe~
 *.dll
 *.so

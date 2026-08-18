@@ -1,0 +1,32 @@
+# Version Control & CI/CD
+.git
+.gitignore
+.github
+
+# Documentation & IDE
+*.md
+docs/
+.vscode/
+.idea/
+
+# Binaries & Compiled Executables
+bin/
+server
+server.exe
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+*.test
+
+# Environment & Secrets
+.env
+.env.local
+*.log
+
+# OS & Temporary
+tmp/
+scratch/
+.DS_Store
+Thumbs.db
