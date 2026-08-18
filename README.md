@@ -43,7 +43,7 @@ Dengan **AI Gateway**, AI coding tools Anda (seperti **OpenCode**, **Claude Code
 ## ✨ Fitur Utama
 
 - **🔑 Centralized Credential Management**: Simpan dan kelola banyak API key provider dari berbagai akun secara terpusat dengan enkripsi **AES-256-GCM** (*encrypted at rest*).
-- **🔄 Automatic Credential Rotation**: Rotasi otomatis credential (Round-Robin / Health-aware) saat menangani request.
+- **🔄 Flexible Routing & Credential Rotation**: Mendukung strategi alokasi **Round Robin (Equal)**, **Least Recently Used (LRU)**, dan **Fallback Cascade** untuk mengoptimalkan penggunaan API key dan menghindari rate limit.
 - **⚡ Automatic Rate Limit Failover (HTTP 429)**: Jika provider mengembalikan `429 Too Many Requests`, Gateway secara otomatis memasukkan credential tersebut ke masa *cooldown* di Redis dan memicu *retry* ke credential berikutnya tanpa mengembalikan error ke pengguna.
 - **🌊 Pass-Through Real-Time Streaming**: Mendukung streaming respons Server-Sent Events (SSE) secara real-time tanpa buffering penuh.
 - **🎯 Unified OpenAI-Compatible API**: Menyediakan endpoint kompatibel OpenAI (`/v1/chat/completions`, `/v1/models`) sehingga kompatibel secara instan dengan mayoritas AI client.

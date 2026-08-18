@@ -270,20 +270,53 @@ Record usage
 
 ---
 
-## 12. Credential Rotation
+## 12. Credential Rotation & Routing Strategies
 
-Misalnya terdapat pool credential untuk Anthropic:
-- Credential A → `ACTIVE`
-- Credential B → `ACTIVE`
-- Credential C → `ACTIVE`
+AI Gateway mendukung tiga jenis **Routing & Credential Allocation Strategies** untuk memilih API Key aktif dari pool provider:
 
-**Alur Request:**
-- Request #1 → A
-- Request #2 → B
-- Request #3 → C
-- Request #4 → A
+### 12.1 Supported Strategies
 
-*Strategy Default:* **Round Robin / Health-aware Round Robin**
+1. **Round Robin (Equal)** — *Default Rotation*
+   - Request dibagi secara bergiliran (*rotation*) secara merata ke seluruh credential aktif.
+   - *Alur Request:* Request #1 ➔ Key A, Request #2 ➔ Key B, Request #3 ➔ Key C, Request #4 ➔ Key A.
+   - *Best For:* Membagi beban kerja secara seimbang jika semua API Key memiliki rate limit/kuota yang serupa.
+
+2. **Least Recently Used (LRU)** — *Rate Limit Minimization*
+   - Gateway selalu memilih API Key yang memiliki timestamp pemakaian paling lama (`last_used_at` tertua).
+   - *Best For:* Menghindari HTTP 429 Rate Limit dari provider (seperti OpenAI/Anthropic RPM Limit) dengan memberikan waktu istirahat (*cooldown gap*) maksimal bagi tiap key.
+
+3. **Fallback Cascade** — *Primary & Backup Failover*
+   - Selalu menggunakan API Key Utama (*Primary Credential*). Key Cadangan (*Secondary/Backup*) hanya akan dipakai jika Key Utama mengalami error, kuota habis, atau terkena rate limit (HTTP 429).
+   - *Best For:* Menjaga keandalan (*high availability*) dengan memprioritaskan API Key berkapasitas besar / berbiaya lebih murah.
+
+---
+
+### 12.2 Strategy Hierarchy & Scope
+
+Strategi alokasi credential bekerja secara **per-Provider** dengan hirarki berikut:
+
+```
+Global Strategy Setting (Default)
+       │
+       ├── Provider Anthropic  ──➔ [Override: LRU Strategy]
+       ├── Provider OpenAI     ──➔ [Inherit: Global Round-Robin]
+       └── Provider Google     ──➔ [Override: Fallback Cascade]
+```
+
+1. **Global Default Strategy**:
+   Dikelola pada halaman *Models & Routing Strategy*, berlaku sebagai strategi acuan umum untuk seluruh provider jika provider tidak menentukan strategi khusus.
+2. **Per-Provider Override**:
+   Dapat dikustomisasi secara independen pada masing-masing Provider (misal: Anthropic disesuaikan ke `LRU` karena rate limit ketat, sedangkan OpenAI menggunakan `Round Robin`).
+
+---
+
+### 12.3 Implementation & Roadmap Status
+
+| Layer | Status | Keterangan |
+|---|---|---|
+| **Frontend UI (V1)** | ✅ Implemented | UI Selector di `ModelsPage()` dengan opsi Round-Robin, LRU, dan Fallback Cascade. |
+| **Backend Core (V1)** | 🟡 Default Priority | Backend saat ini memproses request menggunakan query `ORDER BY priority ASC LIMIT 1` (Priority Fallback). |
+| **Backend Core (V2)** | 📋 Planned Roadmap | Penambahan kolom `routing_strategy` pada tabel `providers` / DB dan handler dinamis per-provider (Redis Atomic Round-Robin & LRU Timestamp Ordering). |
 
 ---
 
