@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/username/ai-gateway/internal/models"
-	"github.com/username/ai-gateway/internal/repository"
-	"github.com/username/ai-gateway/internal/utils"
+	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
 var (

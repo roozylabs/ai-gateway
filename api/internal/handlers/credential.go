@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/username/ai-gateway/internal/models"
-	"github.com/username/ai-gateway/internal/repository"
-	"github.com/username/ai-gateway/internal/utils"
+	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
 type CredentialHandler struct {

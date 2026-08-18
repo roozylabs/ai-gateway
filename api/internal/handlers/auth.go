@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/username/ai-gateway/internal/service"
+	"github.com/roozylabs/ai-gateway/internal/service"
 )
 
 type AuthHandler struct {

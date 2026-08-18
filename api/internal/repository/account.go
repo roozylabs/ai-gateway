@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/username/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/models"
 )
 
 type AccountRepository struct {

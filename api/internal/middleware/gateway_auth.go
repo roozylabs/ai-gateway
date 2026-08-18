@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/username/ai-gateway/internal/repository"
-	"github.com/username/ai-gateway/internal/utils"
+	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
 func GatewayAuthMiddleware(keys *repository.GatewayKeyRepository) gin.HandlerFunc {

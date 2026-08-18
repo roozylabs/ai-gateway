@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/username/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/models"
 )
 
 type ProviderRepository struct {

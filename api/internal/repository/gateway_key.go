@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/username/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/models"
 )
 
 type GatewayKeyRepository struct {

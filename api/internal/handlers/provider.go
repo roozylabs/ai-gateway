@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/username/ai-gateway/internal/models"
-	"github.com/username/ai-gateway/internal/repository"
+	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/repository"
 )
 
 type ProviderHandler struct {

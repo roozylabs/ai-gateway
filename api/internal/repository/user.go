@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/username/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/models"
 )
 
 type UserRepository struct {

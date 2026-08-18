@@ -1,4 +1,4 @@
-module github.com/username/ai-gateway
+module github.com/roozylabs/ai-gateway
 
 go 1.24.0
 

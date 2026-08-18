@@ -4,12 +4,12 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/username/ai-gateway/internal/config"
-	"github.com/username/ai-gateway/internal/database"
-	"github.com/username/ai-gateway/internal/handlers"
-	"github.com/username/ai-gateway/internal/middleware"
-	"github.com/username/ai-gateway/internal/repository"
-	"github.com/username/ai-gateway/internal/service"
+	"github.com/roozylabs/ai-gateway/internal/config"
+	"github.com/roozylabs/ai-gateway/internal/database"
+	"github.com/roozylabs/ai-gateway/internal/handlers"
+	"github.com/roozylabs/ai-gateway/internal/middleware"
+	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/ai-gateway/internal/service"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )

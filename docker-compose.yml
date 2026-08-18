@@ -1,7 +1,7 @@
 services:
   # Go API Gateway
   api:
-    image: ghcr.io/roozycapital/ai-gateway-api:latest
+    image: ghcr.io/roozylabs/ai-gateway-api:latest
     build:
       context: ./api
       dockerfile: Dockerfile
