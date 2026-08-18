@@ -1,0 +1,40 @@
+# Go
+api/bin/
+api/vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Node.js/Next.js
+app/node_modules/
+app/.next/
+app/out/
+app/.env.local
+
+# Environment files (secrets)
+.env
+api/.env
+
+# Docker
+docker-compose.override.yml
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Build artifacts
+*.log
+*.tmp

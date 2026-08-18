@@ -1,0 +1,786 @@
+# Infrastructure & Deployment Guide — AI Gateway
+
+| Metadata | Detail |
+| :--- | :--- |
+| **Version** | 1.0 |
+| **Status** | Draft |
+| **Date** | 18 August 2026 |
+| **VPS Provider** | Sumopod |
+| **VPS Specs** | 4GB RAM, 2 vCPU |
+| **Reverse Proxy** | Traefik |
+| **SSL** | Let's Encrypt |
+
+---
+
+## 1. Prerequisites
+
+### VPS Requirements
+
+| Requirement | Specification |
+| :--- | :--- |
+| **Provider** | Sumopod (or any VPS with Docker support) |
+| **RAM** | 4GB minimum |
+| **CPU** | 2 vCPU minimum |
+| **Storage** | 40GB+ SSD |
+| **OS** | Ubuntu 22.04 LTS |
+| **Docker** | 24.0+ |
+| **Docker Compose** | v2.20+ |
+
+### Domain Requirements
+
+You need two domains pointed to your VPS IP:
+
+```
+app.yourdomain.com  → Dashboard (Next.js)
+api.yourdomain.com  → API Gateway (Go)
+```
+
+### Ports Required
+
+| Port | Purpose |
+| :--- | :--- |
+| 80 | HTTP (redirects to HTTPS) |
+| 443 | HTTPS (Traefik) |
+| 22 | SSH (admin access) |
+
+---
+
+## 2. Server Setup
+
+### 2.1 Initial Server Setup
+
+```bash
+# SSH into your VPS
+ssh root@your-vps-ip
+
+# Update system
+apt update && apt upgrade -y
+
+# Install Docker
+curl -fsSL https://get.docker.com | sh
+
+# Add user to docker group (optional, for non-root usage)
+usermod -aG docker $USER
+
+# Verify Docker installation
+docker --version
+docker compose version
+```
+
+### 2.2 Create Project Directory
+
+```bash
+# Create directory structure
+mkdir -p /opt/ai-gateway
+cd /opt/ai-gateway
+
+# Create subdirectories
+mkdir -p {api,app,postgres/backup,redis,traefik}
+```
+
+---
+
+## 3. Docker Compose Configuration
+
+### 3.1 Main Docker Compose File
+
+Create `/opt/ai-gateway/docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-gateway-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_gateway}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/backup:/backup
+    networks:
+      - ai-gateway
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ai-gateway-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-gateway
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Go API Gateway
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: ai-gateway-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_gateway}?sslmode=disable
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-gateway
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js Dashboard
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: ai-gateway-app
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: https://app.${DOMAIN}
+      NEXT_PUBLIC_BETTER_AUTH_URL: https://app.${DOMAIN}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - ai-gateway
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`app.${DOMAIN}`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
+
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v3.0
+    container_name: ai-gateway-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_data:/letsencrypt
+    networks:
+      - ai-gateway
+
+volumes:
+  postgres_data:
+  redis_data:
+  traefik_data:
+
+networks:
+  ai-gateway:
+    driver: bridge
+```
+
+---
+
+## 4. Environment Configuration
+
+### 4.1 Create Environment File
+
+Create `/opt/ai-gateway/.env`:
+
+```bash
+# ===========================================
+# AI Gateway Environment Configuration
+# ===========================================
+
+# Domain Configuration
+DOMAIN=yourdomain.com
+ACME_EMAIL=admin@yourdomain.com
+
+# PostgreSQL
+POSTGRES_DB=ai_gateway
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your-secure-postgres-password
+
+# Redis
+REDIS_PASSWORD=your-secure-redis-password
+
+# JWT Secret (generate with: openssl rand -hex 32)
+JWT_SECRET=your-jwt-secret-here
+
+# Encryption Key (generate with: openssl rand -hex 32)
+ENCRYPTION_KEY=your-encryption-key-here
+
+# Better Auth Configuration
+BETTER_AUTH_SECRET=your-better-auth-secret-here
+BETTER_AUTH_URL=https://app.yourdomain.com
+NEXT_PUBLIC_BETTER_AUTH_URL=https://app.yourdomain.com
+```
+
+### 4.2 Generate Secure Secrets
+
+```bash
+# Generate JWT Secret
+openssl rand -hex 32
+
+# Generate Encryption Key
+openssl rand -hex 32
+
+# Generate Better Auth Secret
+openssl rand -hex 32
+
+# Generate PostgreSQL Password
+openssl rand -base64 32
+
+# Generate Redis Password
+openssl rand -base64 32
+```
+
+---
+
+## 5. Application Dockerfiles
+
+### 5.1 Go API Gateway Dockerfile
+
+Create `/opt/ai-gateway/api/Dockerfile`:
+
+```dockerfile
+# Build stage
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server
+
+# Runtime stage
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates curl
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /app/server .
+COPY --from=builder /app/migrations ./migrations
+
+EXPOSE 8080
+
+CMD ["./server"]
+```
+
+### 5.2 Next.js Dashboard Dockerfile
+
+Create `/opt/ai-gateway/app/Dockerfile`:
+
+```dockerfile
+# Dependencies
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Build stage
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+# Runtime stage
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
+```
+
+---
+
+## 6. Deployment Steps
+
+### 6.1 Upload Project Files
+
+```bash
+# From your local machine
+scp -r ./api root@your-vps-ip:/opt/ai-gateway/api
+scp -r ./app root@your-vps-ip:/opt/ai-gateway/app
+scp docker-compose.yml root@your-vps-ip:/opt/ai-gateway/
+scp .env root@your-vps-ip:/opt/ai-gateway/
+```
+
+### 6.2 Build and Start Services
+
+```bash
+# SSH into VPS
+ssh root@your-vps-ip
+
+# Navigate to project directory
+cd /opt/ai-gateway
+
+# Build and start all services
+docker compose up -d --build
+
+# Check service status
+docker compose ps
+
+# View logs
+docker compose logs -f
+```
+
+### 6.3 Run Database Migrations
+
+```bash
+# Run migrations using golang-migrate
+docker compose exec api ./server migrate up
+
+# Or if you have migrate CLI installed locally
+migrate -path ./migrations -database "postgres://postgres:${POSTGRES_PASSWORD}@localhost:5432/ai_gateway?sslmode=disable" up
+```
+
+### 6.4 Seed Admin User
+
+Better Auth requires the password hash to be stored in the `account` table. Run this SQL to seed the admin user:
+
+```bash
+# Connect to PostgreSQL
+docker compose exec postgres psql -U postgres -d ai_gateway
+
+# Run the seed SQL (replace <password_hash> with actual bcrypt hash)
+INSERT INTO "user" (id, name, email, "emailVerified", created_at, updated_at)
+VALUES (
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'Admin',
+    'admin@aigateway.dev',
+    true,
+    NOW(),
+    NOW()
+);
+
+INSERT INTO account (id, "accountId", "providerId", "userId", password, created_at, updated_at)
+VALUES (
+    'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'admin@aigateway.dev',
+    'credential',
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    '$2a$10$YourBcryptHashHere',
+    NOW(),
+    NOW()
+);
+
+-- Exit psql
+\q
+```
+
+**Note:** Generate a bcrypt hash for your password using:
+```bash
+# Install htpasswd (if not available)
+apt install apache2-utils -y
+
+# Generate bcrypt hash
+htpasswd -bnBC 10 "" 'your-password' | tr -d ':\n' | sed 's/$2y/$2a/'
+```
+
+### 6.5 Verify Deployment
+
+```bash
+# Check API health
+curl https://api.yourdomain.com/health
+
+# Check Dashboard
+curl -I https://app.yourdomain.com
+
+# Check Traefik dashboard (optional)
+curl -I https://traefik.yourdomain.com
+```
+
+---
+
+## 7. Service Management
+
+### 7.1 Common Commands
+
+```bash
+# Start all services
+docker compose up -d
+
+# Stop all services
+docker compose down
+
+# Restart a specific service
+docker compose restart api
+
+# View logs for a service
+docker compose logs -f api
+
+# Scale a service (if needed)
+docker compose up -d --scale api=2
+
+# Rebuild a service
+docker compose build api
+docker compose up -d api
+```
+
+### 7.2 Database Operations
+
+```bash
+# Access PostgreSQL shell
+docker compose exec postgres psql -U postgres -d ai_gateway
+
+# Backup database
+docker compose exec postgres pg_dump -U postgres ai_gateway > backup_$(date +%Y%m%d).sql
+
+# Restore database
+docker compose exec postgres psql -U postgres -d ai_gateway < backup_20260818.sql
+
+# Automated backup script
+cat > /opt/ai-gateway/backup.sh << 'EOF'
+#!/bin/bash
+BACKUP_DIR="/opt/ai-gateway/postgres/backup"
+DATE=$(date +%Y%m%d_%H%M%S)
+docker compose exec -T postgres pg_dump -U postgres ai_gateway | gzip > "$BACKUP_DIR/backup_$DATE.sql.gz"
+find $BACKUP_DIR -name "*.sql.gz" -mtime +7 -delete
+EOF
+chmod +x /opt/ai-gateway/backup.sh
+```
+
+### 7.3 Redis Operations
+
+```bash
+# Access Redis CLI
+docker compose exec redis redis-cli -a ${REDIS_PASSWORD}
+
+# Monitor Redis
+docker compose exec redis redis-cli -a ${REDIS_PASSWORD} MONITOR
+
+# Clear all cached data (use with caution)
+docker compose exec redis redis-cli -a ${REDIS_PASSWORD} FLUSHDB
+```
+
+---
+
+## 8. Monitoring & Logs
+
+### 8.1 View Logs
+
+```bash
+# All services
+docker compose logs -f
+
+# Specific service
+docker compose logs -f api
+
+# Last 100 lines
+docker compose logs --tail 100 api
+
+# Since specific time
+docker compose logs --since "2026-08-18T10:00:00" api
+```
+
+### 8.2 Health Checks
+
+```bash
+# Check all container health
+docker compose ps
+
+# Manual health check
+curl http://localhost:8080/health
+
+# Check PostgreSQL
+docker compose exec postgres pg_isready
+
+# Check Redis
+docker compose exec redis redis-cli -a ${REDIS_PASSWORD} ping
+```
+
+### 8.3 Resource Usage
+
+```bash
+# View container resource usage
+docker stats
+
+# View disk usage
+docker system df
+
+# Clean up unused resources
+docker system prune -a
+```
+
+---
+
+## 9. Security Hardening
+
+### 9.1 Firewall Configuration
+
+```bash
+# Install UFW
+apt install ufw -y
+
+# Allow SSH
+ufw allow 22/tcp
+
+# Allow HTTP/HTTPS
+ufw allow 80/tcp
+ufw allow 443/tcp
+
+# Enable firewall
+ufw enable
+```
+
+### 9.2 SSH Hardening
+
+```bash
+# Edit SSH config
+nano /etc/ssh/sshd_config
+
+# Recommended settings:
+# PermitRootLogin no
+# PasswordAuthentication no
+# PubkeyAuthentication yes
+
+# Restart SSH
+systemctl restart sshd
+```
+
+### 9.3 Docker Security
+
+```bash
+# Disable Docker socket exposure (if not needed)
+# Remove - /var/run/docker.sock:/var/run/docker.sock:ro from Traefik
+
+# Use Docker secrets for sensitive data (optional)
+# Convert environment variables to Docker secrets
+```
+
+---
+
+## 10. Backup Strategy
+
+### 10.1 Automated Database Backup
+
+```bash
+# Create backup script
+cat > /opt/ai-gateway/backup.sh << 'EOF'
+#!/bin/bash
+set -e
+
+BACKUP_DIR="/opt/ai-gateway/postgres/backup"
+DATE=$(date +%Y%m%d_%H%M%S)
+RETENTION_DAYS=7
+
+# Create backup
+echo "Creating backup..."
+docker compose exec -T postgres pg_dump -U postgres ai_gateway | gzip > "$BACKUP_DIR/backup_$DATE.sql.gz"
+
+# Remove old backups
+echo "Cleaning old backups..."
+find $BACKUP_DIR -name "*.sql.gz" -mtime +$RETENTION_DAYS -delete
+
+echo "Backup completed: backup_$DATE.sql.gz"
+EOF
+
+chmod +x /opt/ai-gateway/backup.sh
+
+# Add to crontab (daily at 2 AM)
+(crontab -l 2>/dev/null; echo "0 2 * * * /opt/ai-gateway/backup.sh >> /var/log/backup.log 2>&1") | crontab -
+```
+
+### 10.2 Manual Backup
+
+```bash
+# Full backup (database + configs)
+cd /opt/ai-gateway
+tar -czf backup_$(date +%Y%m%d).tar.gz .env docker-compose.yml postgres/backup/
+```
+
+### 10.3 Restore Procedure
+
+```bash
+# Stop services
+docker compose down
+
+# Restore database
+zcat postgres/backup/backup_20260818.sql.gz | docker compose exec -T postgres psql -U postgres -d ai_gateway
+
+# Start services
+docker compose up -d
+```
+
+---
+
+## 11. Troubleshooting
+
+### Common Issues
+
+| Issue | Solution |
+| :--- | :--- |
+| Container won't start | Check logs: `docker compose logs <service>` |
+| Database connection refused | Verify PostgreSQL is healthy: `docker compose ps` |
+| SSL not working | Check Traefik logs, verify domain DNS points to VPS |
+| 502 Bad Gateway | API service might be down, check health endpoint |
+| Permission denied | Check file permissions: `chmod -R 755 /opt/ai-gateway` |
+
+### Debug Commands
+
+```bash
+# Check container status
+docker compose ps
+
+# View detailed container info
+docker inspect ai-gateway-api
+
+# Check network connectivity
+docker compose exec api ping postgres
+
+# Test database connection
+docker compose exec api ./server db:test
+```
+
+---
+
+## 12. Performance Tuning
+
+### 12.1 VPS Optimization
+
+```bash
+# Increase file descriptor limits
+echo "* soft nofile 65535" >> /etc/security/limits.conf
+echo "* hard nofile 65535" >> /etc/security/limits.conf
+
+# Optimize kernel parameters
+cat >> /etc/sysctl.conf << EOF
+net.core.somaxconn = 65535
+net.ipv4.tcp_max_syn_backlog = 65535
+net.ipv4.ip_local_port_range = 1024 65535
+vm.swappiness = 10
+EOF
+
+sysctl -p
+```
+
+### 12.2 Docker Optimization
+
+```bash
+# Limit container resources in docker-compose.yml
+services:
+  api:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+```
+
+---
+
+## 13. Scaling Considerations
+
+### Horizontal Scaling
+
+For higher traffic, you can scale the API service:
+
+```bash
+# Scale API to 2 instances
+docker compose up -d --scale api=2
+
+# Update Traefik to load balance
+# (automatic with Docker provider)
+```
+
+### Database Scaling
+
+For production with high traffic:
+1. Move to a managed PostgreSQL service (e.g., Supabase, Neon)
+2. Use connection pooling (PgBouncer)
+3. Implement read replicas
+
+---
+
+## 14. Quick Reference
+
+### Essential Commands
+
+```bash
+# Start
+docker compose up -d
+
+# Stop
+docker compose down
+
+# Restart
+docker compose restart
+
+# Logs
+docker compose logs -f
+
+# Backup
+./backup.sh
+
+# Status
+docker compose ps
+```
+
+### File Locations
+
+| File | Location |
+| :--- | :--- |
+| Docker Compose | `/opt/ai-gateway/docker-compose.yml` |
+| Environment | `/opt/ai-gateway/.env` |
+| API Code | `/opt/ai-gateway/api/` |
+| App Code | `/opt/ai-gateway/app/` |
+| Database Backups | `/opt/ai-gateway/postgres/backup/` |
+| Traefik Config | Docker labels in docker-compose.yml |
