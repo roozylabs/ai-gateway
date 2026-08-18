@@ -13,6 +13,7 @@ type Config struct {
 	RedisURL      string
 	JWTSecret     string
 	EncryptionKey string
+	HashKey       string
 }
 
 func Load() (*Config, error) {
@@ -25,6 +26,7 @@ func Load() (*Config, error) {
 		RedisURL:      getEnv("REDIS_URL", "redis://localhost:6379"),
 		JWTSecret:     getEnv("JWT_SECRET", ""),
 		EncryptionKey: getEnv("ENCRYPTION_KEY", ""),
+		HashKey:       getEnv("HASH_KEY", ""),
 	}, nil
 }
 

@@ -9,6 +9,18 @@ VALUES (
     NOW()
 );
 
+-- Admin credential account (password: admin123)
+INSERT INTO account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+VALUES (
+    'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'admin@aigateway.dev',
+    'credential',
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    '$2a$10$B4tTaU1XK2DVIoKX2.hE/uKyVtjyV83kJPVZSm/NQTrziUIStM776',
+    NOW(),
+    NOW()
+);
+
 -- Default providers
 INSERT INTO providers (id, user_id, name, slug, base_url, type) VALUES
     ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'OpenAI', 'openai', 'https://api.openai.com', 'openai'),

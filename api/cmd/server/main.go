@@ -8,6 +8,8 @@ import (
 	"github.com/username/ai-gateway/internal/database"
 	"github.com/username/ai-gateway/internal/handlers"
 	"github.com/username/ai-gateway/internal/middleware"
+	"github.com/username/ai-gateway/internal/repository"
+	"github.com/username/ai-gateway/internal/service"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -43,6 +45,25 @@ func main() {
 	}
 	defer rdb.Close()
 
+	// Repositories (use underlying sql.DB from sqlx)
+	sqlDB := db.DB
+	userRepo := repository.NewUserRepository(sqlDB)
+	sessionRepo := repository.NewSessionRepository(sqlDB)
+	accountRepo := repository.NewAccountRepository(sqlDB)
+	providerRepo := repository.NewProviderRepository(sqlDB)
+	credentialRepo := repository.NewCredentialRepository(sqlDB)
+	modelRepo := repository.NewModelRepository(sqlDB)
+
+	// Services
+	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
+
+	// Handlers
+	healthHandler := handlers.NewHealthHandler(db, rdb)
+	authHandler := handlers.NewAuthHandler(authService)
+	providerHandler := handlers.NewProviderHandler(providerRepo)
+	credentialHandler := handlers.NewCredentialHandler(credentialRepo, providerRepo, cfg.EncryptionKey)
+	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo)
+
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -52,18 +73,40 @@ func main() {
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware())
 
-	// Health handler
-	healthHandler := handlers.NewHealthHandler(db, rdb)
-
-	// Health check
+	// Health check (public)
 	r.GET("/health", healthHandler.Check)
 
-	// API v1 routes
-	v1 := r.Group("/api/v1")
+	// Auth routes (public)
+	r.POST("/api/auth/login", authHandler.Login)
+
+	// Protected routes
+	api := r.Group("/api")
+	api.Use(middleware.AuthMiddleware(sessionRepo))
 	{
-		v1.GET("/ping", func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "pong"})
-		})
+		// Auth
+		api.POST("/auth/logout", authHandler.Logout)
+		api.GET("/auth/me", authHandler.Me)
+
+		// Providers
+		api.GET("/providers", providerHandler.List)
+		api.POST("/providers", providerHandler.Create)
+		api.GET("/providers/:id", providerHandler.Get)
+		api.PUT("/providers/:id", providerHandler.Update)
+		api.DELETE("/providers/:id", providerHandler.Delete)
+
+		// Credentials (nested under provider)
+		api.GET("/providers/:id/credentials", credentialHandler.List)
+		api.POST("/providers/:id/credentials", credentialHandler.Create)
+		api.GET("/providers/:id/credentials/:credId", credentialHandler.Get)
+		api.PUT("/providers/:id/credentials/:credId", credentialHandler.Update)
+		api.DELETE("/providers/:id/credentials/:credId", credentialHandler.Delete)
+
+		// Models (nested under provider)
+		api.GET("/providers/:id/models", modelHandler.List)
+		api.POST("/providers/:id/models", modelHandler.Create)
+		api.GET("/providers/:id/models/:modelId", modelHandler.Get)
+		api.PUT("/providers/:id/models/:modelId", modelHandler.Update)
+		api.DELETE("/providers/:id/models/:modelId", modelHandler.Delete)
 	}
 
 	// Swagger endpoint (dev only)
