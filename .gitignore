@@ -39,3 +39,5 @@ coverage.html
 # Build artifacts
 *.log
 *.tmp
+
+app/next-env.d.ts

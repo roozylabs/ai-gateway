@@ -30,6 +30,29 @@ services:
       timeout: 10s
       retries: 3
 
+  # Next.js Frontend Dashboard
+  app:
+    image: ghcr.io/roozylabs/ai-gateway-app:latest
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: ai-gateway-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      - api
+    networks:
+      - ai-gateway
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine

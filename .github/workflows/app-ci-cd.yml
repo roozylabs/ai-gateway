@@ -1,91 +1,54 @@
-name: CI/CD Pipeline
+name: App (Frontend) CI/CD Pipeline
 
 on:
   push:
     branches: [ main, master, develop ]
     tags: [ 'v*.*.*' ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-ci-cd.yml'
+      - 'docker-compose.yml'
   pull_request:
     branches: [ main, master, develop ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-ci-cd.yml'
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  lint:
-    name: Lint Go Code
+  lint-and-build-check:
+    name: Lint & Build Next.js App
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          go-version-file: 'api/go.mod'
-          cache-dependency-path: 'api/go.sum'
+          version: 9
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          working-directory: api
-          args: --timeout=5m
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: 'app/pnpm-lock.yaml'
 
-  test:
-    name: Run Unit & Integration Tests
-    runs-on: ubuntu-latest
+      - name: Install dependencies
+        working-directory: app
+        run: pnpm install --no-frozen-lockfile
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: ai_gateway_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgrespassword
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: 'api/go.mod'
-          cache-dependency-path: 'api/go.sum'
-
-      - name: Run Tests
-        working-directory: api
-        env:
-          APP_ENV: test
-          SERVER_PORT: "8080"
-          DATABASE_URL: "postgres://postgres:postgrespassword@localhost:5432/ai_gateway_test?sslmode=disable"
-          REDIS_URL: "redis://localhost:6379"
-          JWT_SECRET: "test-jwt-secret-key-minimum-32-bytes!"
-          ENCRYPTION_KEY: "test-encryption-key-32-bytes!!"
-          HASH_KEY: "test-hash-key-here"
-        run: |
-          go test ./... -v -race -coverprofile=coverage.out
+      - name: Build Next.js
+        working-directory: app
+        run: pnpm build
 
   build-and-push:
-    name: Build & Push Docker Image to GHCR
-    needs: [lint, test]
+    name: Build & Push App Docker Image to GHCR
+    needs: [lint-and-build-check]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
 
@@ -107,7 +70,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/ai-gateway-api
+          images: ghcr.io/${{ github.repository_owner }}/ai-gateway-app
           tags: |
             type=raw,value=latest
             type=sha,prefix=sha-
@@ -116,8 +79,8 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
-          context: ./api
-          file: ./api/Dockerfile
+          context: ./app
+          file: ./app/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -125,7 +88,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-vps:
-    name: Deploy to VPS via SSH
+    name: Deploy App to VPS via SSH
     needs: [build-and-push]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
@@ -144,14 +107,14 @@ jobs:
             mkdir -p ${{ secrets.VPS_WORK_DIR }}
             cd ${{ secrets.VPS_WORK_DIR }}
             if [ ! -d ".git" ]; then
-              echo "Repository not initialized in VPS_WORK_DIR. Cloning private repository..."
+              echo "Cloning private repository..."
               git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
             else
-              echo "Pulling latest changes from GitHub..."
+              echo "Pulling latest changes..."
               git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
               git pull origin main || git pull origin master || true
             fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose pull
-            docker compose up -d
+            docker compose pull app
+            docker compose up -d app
             docker image prune -f
