@@ -3,16 +3,15 @@ name: App (Frontend) CI/CD Pipeline
 on:
   push:
     branches: [ main, master, develop ]
-    tags: [ 'v*.*.*' ]
     paths:
       - 'app/**'
       - '.github/workflows/app-ci-cd.yml'
-      - 'docker-compose.yml'
   pull_request:
     branches: [ main, master, develop ]
     paths:
       - 'app/**'
       - '.github/workflows/app-ci-cd.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read

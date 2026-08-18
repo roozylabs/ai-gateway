@@ -3,16 +3,15 @@ name: API CI/CD Pipeline
 on:
   push:
     branches: [ main, master, develop ]
-    tags: [ 'v*.*.*' ]
     paths:
       - 'api/**'
       - '.github/workflows/api-ci-cd.yml'
-      - 'docker-compose.yml'
   pull_request:
     branches: [ main, master, develop ]
     paths:
       - 'api/**'
       - '.github/workflows/api-ci-cd.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
