@@ -196,7 +196,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               />
             </Tooltip>
 
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomLeft" trigger={['click']}>
               <Space style={{ cursor: 'pointer' }}>
                 <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
                 <Text strong>{user?.name || user?.email || 'Admin User'}</Text>
