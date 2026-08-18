@@ -219,6 +219,21 @@ Anthropic
 
 ---
 
+### 8.1 Multi-Auth Type & Enterprise OAuth Plan (V2 Roadmap)
+
+Fokus utama **V1** adalah mengamankan dan merotasi **API Key standar** (`api_key`) untuk OpenAI, Anthropic, Google AI Studio, OpenRouter, Groq, dan DeepSeek.
+
+Pada **V2 Roadmap**, Gateway akan mendukung **Multi-Auth Type System** untuk mengakomodasi Enterprise Cloud Provider Credentials:
+
+| Auth Type | Provider Target | Format Credential Payload | Mekanisme Gateway |
+|---|---|---|---|
+| `api_key` **(V1 - Current)** | OpenAI, Anthropic, Google AI Studio, OpenRouter | Encrypted Plaintext API Key (`sk-...`, `AIzaSy...`) | Inject via Header (`Authorization: Bearer` / `x-goog-api-key`). |
+| `gcp_service_account` **(V2 Plan)** | Google Cloud Vertex AI | Encrypted JSON Service Account Key | Auto-generate & refresh GCP OAuth 2.0 Bearer Access Token via background worker. |
+| `azure_oauth` **(V2 Plan)** | Azure OpenAI Service | Encrypted JSON (`client_id`, `client_secret`, `tenant_id`) | Auto-fetch Azure AD (Entra ID) OAuth 2.0 Bearer Token ke Redis Cache. |
+| `aws_iam` **(V2 Plan)** | AWS Bedrock (Anthropic/Llama via AWS) | Encrypted JSON (`access_key_id`, `secret_access_key`, `region`) | AWS SigV4 Request Signing / STS Temporary Token AssumeRole. |
+
+---
+
 ## 9. Gateway API Key
 
 Provider credential tidak digunakan langsung oleh client. User membuat **Gateway API Key** khusus.
