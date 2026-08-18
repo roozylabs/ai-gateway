@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   Layout,
   Menu,
@@ -38,9 +39,10 @@ const { Text, Title } = Typography;
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { mode, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const { token } = theme.useToken();
-  const { mode, toggleTheme } = useTheme();
 
   // If on login page, don't show sidebar layout
   if (pathname === '/login') {
@@ -99,7 +101,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       icon: <LogoutOutlined />,
       danger: true,
       label: 'Logout',
-      onClick: () => router.push('/login'),
+      onClick: () => logout(),
     },
   ];
 
@@ -197,7 +199,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <Space style={{ cursor: 'pointer' }}>
                 <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
-                <Text strong>Admin User</Text>
+                <Text strong>{user?.name || user?.email || 'Admin User'}</Text>
               </Space>
             </Dropdown>
           </Space>
