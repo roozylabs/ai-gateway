@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_API_URL = process.env.API_URL || 'http://localhost:8080';
+function getBackendApiUrl(): string {
+  const url = process.env.API_URL || 'http://localhost:8080';
+  return url.replace(/\/+$/, '');
+}
 
 async function proxyHandler(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const targetPath = path ? path.join('/') : '';
   const searchParams = request.nextUrl.search;
 
-  const targetUrl = `${BACKEND_API_URL}/api/${targetPath}${searchParams}`;
+  const backendApiUrl = getBackendApiUrl();
+  const targetUrl = `${backendApiUrl}/api/${targetPath}${searchParams}`;
 
   const headers = new Headers(request.headers);
 
@@ -50,8 +54,9 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
       headers: responseHeaders,
     });
   } catch (error: any) {
+    console.error('[API Proxy Error] Failed to proxy to:', targetUrl, error);
     return NextResponse.json(
-      { error: 'Failed to connect to API backend', details: error.message },
+      { error: 'Failed to connect to API backend', details: error.message, targetUrl },
       { status: 502 }
     );
   }
