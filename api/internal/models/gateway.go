@@ -42,3 +42,35 @@ type Model struct {
 	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
 }
+
+type GatewayAPIKey struct {
+	ID            string     `json:"id" db:"id"`
+	UserID        string     `json:"userId" db:"user_id"`
+	Name          string     `json:"name" db:"name"`
+	KeyHash       string     `json:"-" db:"key_hash"`
+	KeyPrefix     string     `json:"keyPrefix" db:"key_prefix"`
+	Enabled       bool       `json:"enabled" db:"enabled"`
+	RateLimit     int        `json:"rateLimit" db:"rate_limit"`
+	AllowedModels []string   `json:"allowedModels" db:"allowed_models"`
+	ExpiresAt     *time.Time `json:"expiresAt,omitempty" db:"expires_at"`
+	LastUsedAt    *time.Time `json:"lastUsedAt,omitempty" db:"last_used_at"`
+	RequestCount  int64      `json:"requestCount" db:"request_count"`
+	CreatedAt     time.Time  `json:"createdAt" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updatedAt" db:"updated_at"`
+}
+
+type RequestLog struct {
+	ID              string     `json:"id" db:"id"`
+	GatewayAPIKeyID *string    `json:"gatewayApiKeyId,omitempty" db:"gateway_api_key_id"`
+	ProviderID      *string    `json:"providerId,omitempty" db:"provider_id"`
+	CredentialID    *string    `json:"credentialId,omitempty" db:"credential_id"`
+	Model           string     `json:"model" db:"model"`
+	StatusCode      int        `json:"statusCode" db:"status_code"`
+	LatencyMs       int        `json:"latencyMs" db:"latency_ms"`
+	InputTokens     int        `json:"inputTokens" db:"input_tokens"`
+	OutputTokens    int        `json:"outputTokens" db:"output_tokens"`
+	TotalTokens     int        `json:"totalTokens" db:"total_tokens"`
+	ErrorMessage    string     `json:"errorMessage,omitempty" db:"error_message"`
+	RetryCount      int        `json:"retryCount" db:"retry_count"`
+	CreatedAt       time.Time  `json:"createdAt" db:"created_at"`
+}
