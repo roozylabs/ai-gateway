@@ -172,13 +172,19 @@ Dashboard ──→ Providers ──→ Add Provider
 
 **Input Data:**
 - Provider Name
-- Base URL
+- Base URL Endpoint
+- Credential Allocation Strategy (*Round Robin*, *LRU*, atau *Fallback Cascade*)
 - Enabled (Toggle)
 
 *Contoh:*
 - **Provider:** Anthropic
 - **Name:** Anthropic Production
 - **Base URL:** `https://api.anthropic.com`
+- **Routing Strategy:** `Least Recently Used (LRU)`
+
+*Perilaku Safe Guarding:*
+- Menekan toggle ke *Disabled* saat provider memiliki credential aktif (`credentialsCount > 0`) akan memicu **Modal Konfirmasi** untuk mencegah terhentinya alur request secara tidak sengaja.
+- Jika provider belum memiliki credential (`credentialsCount === 0`), status langsung berubah tanpa popup.
 
 ---
 
