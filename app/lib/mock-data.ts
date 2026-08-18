@@ -1,3 +1,4 @@
+export type RoutingStrategy = 'round-robin' | 'lru' | 'fallback';
 export interface Provider {
   id: string;
   name: string;
@@ -6,6 +7,7 @@ export interface Provider {
   enabled: boolean;
   credentialsCount: number;
   health: 'healthy' | 'degraded' | 'down';
+  routingStrategy: RoutingStrategy;
 }
 
 export interface Credential {
@@ -64,6 +66,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     enabled: true,
     credentialsCount: 3,
     health: 'healthy',
+    routingStrategy: 'lru',
   },
   {
     id: 'prov-2',
@@ -73,6 +76,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     enabled: true,
     credentialsCount: 2,
     health: 'healthy',
+    routingStrategy: 'round-robin',
   },
   {
     id: 'prov-3',
@@ -82,6 +86,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     enabled: true,
     credentialsCount: 2,
     health: 'healthy',
+    routingStrategy: 'fallback',
   },
   {
     id: 'prov-4',
@@ -91,6 +96,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     enabled: false,
     credentialsCount: 1,
     health: 'degraded',
+    routingStrategy: 'round-robin',
   },
 ];
 

@@ -1,21 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Table, Tag, Typography, Card, Radio, Space, Button, App } from 'antd';
-import { AppstoreOutlined, ArrowRightOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Table, Tag, Typography, Card, Space, App } from 'antd';
+import { ArrowRightOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { MOCK_MODELS, ModelRoute } from '@/lib/mock-data';
 
 const { Title, Text } = Typography;
 
 export default function ModelsPage() {
-  const { message } = App.useApp();
-  const [strategy, setStrategy] = useState<string>('round-robin');
   const [models] = useState<ModelRoute[]>(MOCK_MODELS);
-
-  const handleStrategyChange = (e: any) => {
-    setStrategy(e.target.value);
-    message.success(`Routing Strategy updated to ${e.target.value.toUpperCase()}`);
-  };
 
   const columns = [
     {
@@ -54,29 +47,10 @@ export default function ModelsPage() {
     <div>
       <div style={{ marginBottom: 24 }}>
         <Title level={3} style={{ margin: 0 }}>
-          Models & Routing Strategy
+          Models & Routing
         </Title>
         <Text type="secondary">Map client request model aliases to upstream AI Provider models</Text>
       </div>
-
-      <Card size="small" style={{ marginBottom: 24, borderRadius: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <Text strong style={{ display: 'block' }}>
-              Credential Allocation Strategy:
-            </Text>
-            <Text type="secondary" style={{ fontSize: 13 }}>
-              Determines how active provider credentials are selected for incoming API requests.
-            </Text>
-          </div>
-
-          <Radio.Group value={strategy} onChange={handleStrategyChange} optionType="button" buttonStyle="solid">
-            <Radio.Button value="round-robin">Round Robin (Equal)</Radio.Button>
-            <Radio.Button value="lru">Least Recently Used (LRU)</Radio.Button>
-            <Radio.Button value="fallback">Fallback Cascade</Radio.Button>
-          </Radio.Group>
-        </div>
-      </Card>
 
       <Card size="small" variant="borderless" style={{ borderRadius: 8 }}>
         <Table dataSource={models} columns={columns} rowKey="id" pagination={false} />
