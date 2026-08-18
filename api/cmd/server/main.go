@@ -53,6 +53,7 @@ func main() {
 	providerRepo := repository.NewProviderRepository(sqlDB)
 	credentialRepo := repository.NewCredentialRepository(sqlDB)
 	modelRepo := repository.NewModelRepository(sqlDB)
+	gatewayKeyRepo := repository.NewGatewayKeyRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -63,6 +64,7 @@ func main() {
 	providerHandler := handlers.NewProviderHandler(providerRepo)
 	credentialHandler := handlers.NewCredentialHandler(credentialRepo, providerRepo, cfg.EncryptionKey)
 	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo)
+	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -107,6 +109,11 @@ func main() {
 		api.GET("/providers/:id/models/:modelId", modelHandler.Get)
 		api.PUT("/providers/:id/models/:modelId", modelHandler.Update)
 		api.DELETE("/providers/:id/models/:modelId", modelHandler.Delete)
+
+		// Gateway API Keys
+		api.GET("/gateway-keys", gatewayKeyHandler.List)
+		api.POST("/gateway-keys", gatewayKeyHandler.Create)
+		api.DELETE("/gateway-keys/:id", gatewayKeyHandler.Delete)
 	}
 
 	// Swagger endpoint (dev only)
