@@ -203,31 +203,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Space>
         </Header>
 
-        <div
+        <Content
           style={{
             flex: 1,
             overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
+            padding: '24px 24px 0',
           }}
         >
-          <Content
+          <div
             style={{
-              margin: '24px 24px 0',
               padding: 24,
-              minHeight: 280,
+              minHeight: 'calc(100vh - 160px)',
               background: token.colorBgContainer,
               borderRadius: token.borderRadiusLG,
-              flex: 1,
+              marginBottom: 24,
             }}
           >
             {children}
-          </Content>
+          </div>
 
-          <Footer style={{ textAlign: 'center', color: token.colorTextDescription, padding: '16px 24px', background: token.colorBgLayout, flexShrink: 0 }}>
+          <Footer style={{ textAlign: 'center', color: token.colorTextDescription, padding: '0 0 24px', background: 'transparent' }}>
             AI Gateway ©{new Date().getFullYear()} RoozyLabs. Centralized Model API key Management System.
           </Footer>
-        </div>
+        </Content>
+
       </Layout>
     </Layout>
   );
