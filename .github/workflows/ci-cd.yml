@@ -140,8 +140,16 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
+            set -e
+            mkdir -p ${{ secrets.VPS_WORK_DIR }}
             cd ${{ secrets.VPS_WORK_DIR }}
-            git pull origin main || git pull origin master || true
+            if [ ! -d ".git" ]; then
+              echo "Repository not initialized in VPS_WORK_DIR. Cloning repository..."
+              git clone https://github.com/${{ github.repository }}.git .
+            else
+              echo "Pulling latest changes from GitHub..."
+              git pull origin main || git pull origin master || true
+            fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             docker compose up -d
