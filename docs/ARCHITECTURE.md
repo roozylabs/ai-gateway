@@ -515,13 +515,64 @@ Every request is logged with:
 | `PATCH` | `/api/providers/:id` | Update provider |
 | `DELETE` | `/api/providers/:id` | Delete provider |
 
-#### Credential Management
+#### Real-Time SSE Stream (Dashboard-facing)
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/credentials` | List credentials |
-| `POST` | `/api/credentials` | Create credential |
-| `GET` | `/api/credentials/:id` | Get credential |
-| `PATCH` | `/api/credentials/:id` | Update credential |
-| `DELETE` | `/api/credentials/:id` | Delete credential |
-| `POST` | `/api/credentials/:id/test` | Test credential |
+| `GET` | `/api/v1/sse` | Real-time Server-Sent Events stream for live status updates, request logs, cooldown timers, & provider health |
+
+---
+
+## 14. Real-Time Data Streaming Architecture
+
+AI Gateway menggunakan **Server-Sent Events (SSE)** yang dipadukan dengan **Redis Pub/Sub** untuk menyajikan data secara *real-time* ke Next.js Dashboard.
+
+### 14.1 Architecture Flow
+
+```text
+               ┌─────────────────────────────────────────┐
+               │         Backend Go (Gin Engine)         │
+               │                                         │
+  Gateway ────►│ 1. Process Request                      │
+  Events       │ 2. Detect 429 / Provider Health Event   │
+               │ 3. Publish to Redis Pub/Sub Channel     │
+               └────────────────────┬────────────────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │    Redis Pub/Sub    │
+                         │ (channel: "events") │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+               ┌─────────────────────────────────────────┐
+               │    Gin SSE Stream Handler GET /api/sse  │
+               │  c.Stream(func(w io.Writer) bool { ... })│
+               └────────────────────┬────────────────────┘
+                                    │ (EventSource HTTP Stream)
+                                    ▼
+               ┌─────────────────────────────────────────┐
+               │    Frontend Next.js (Dashboard App)     │
+               │  - ProvidersPage (Live Health Status)   │
+               │  - CredentialsPage (Live Cooldown)      │
+               │  - DashboardPage (Live Usage Chart)     │
+               │  - LogsPage (Live Request Feed)         │
+               └─────────────────────────────────────────┘
+```
+
+### 14.2 Page-by-Page Real-Time Needs
+
+| Dashboard Page | Real-Time Elements | Refresh Strategy |
+| :--- | :--- | :--- |
+| `ProvidersPage` | Health Status (`Healthy`/`Degraded`/`Down`), latency, active keys count | SSE Event (`PROVIDER_HEALTH_CHANGED`) / Health probe ticker |
+| `CredentialsPage` | Status (`ACTIVE`/`RATE_LIMITED`), Cooldown countdown timer (`cooldownEndsAt`), error counts | SSE Event (`CREDENTIAL_RATE_LIMITED`, `COOLDOWN_EXPIRED`) |
+| `DashboardPage` | Real-time Request & Token Counter, Model Usage Line Chart, Live Activity Table | SSE Event (`REQUEST_COMPLETED`) |
+| `LogsPage` | Live request audit log stream (`tail -f` experience) | SSE Stream (`NEW_REQUEST_LOG`) |
+| `GatewayKeysPage` | `requestCount` & `lastUsed` timestamp | SSE Event (`KEY_USED`) |
+
+### 14.3 Technology Rationale: SSE vs WebSockets
+
+1. **Unidirectional Efficiency**: Dashboard hanya membutuhkan push data 1 arah dari Go Server ke Browser.
+2. **Gin Framework Native Support**: Menggunakan `c.Stream(...)` & `c.SSEvent(...)` dari Gin tanpa butuh dependency external yang berat.
+3. **Automatic Reconnection**: Native `EventSource` browser menangani auto-reconnect dengan `Last-Event-ID`.
+4. **Proxy & Firewall Compatibility**: Berjalan di port standar HTTP/HTTPS (80/443), aman dari pemblokiran corporate proxy dibanding WebSockets.

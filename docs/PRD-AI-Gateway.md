@@ -941,3 +941,24 @@ Client ─────────→│  AI Gateway     │──────�
                  └─────────────────┘
 ```
 Go Gateway dapat di-scale secara horizontal secara independen di kemudian hari tanpa mengubah sisi dashboard maupun integrasi client.
+
+---
+
+## 17. Real-Time Dashboard Data Streaming
+
+AI Gateway menyediakan endpoint **Server-Sent Events (SSE)** terpusat (`GET /api/v1/sse`) yang memancar data secara real-time dari Go Backend ke Next.js Dashboard.
+
+### 17.1 Real-Time Coverage Matrix
+
+- **`ProvidersPage`**:
+  - Live Provider Health Status (`Healthy`, `Degraded`, `Down`)
+  - Real-time Provider Ping Latency & Active Credentials count.
+- **`CredentialsPage`**:
+  - Live Credential Status (`ACTIVE`, `RATE_LIMITED`, `DISABLED`).
+  - Automatic Cooldown Countdown Timer (`cooldownEndsAt`).
+- **`DashboardPage`**:
+  - Live Request Count & Token Processed Counter.
+  - Dynamic Model Usage Line Chart Data Feed.
+  - Live Gateway Activity Feed.
+- **`LogsPage`**:
+  - Real-Time Request Audit Logs Stream (pengalaman layaknya `tail -f` pada terminal).
