@@ -1,6 +1,6 @@
 module github.com/username/ai-gateway
 
-go 1.26.5
+go 1.23.0
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
