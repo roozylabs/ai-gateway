@@ -104,7 +104,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
       <Sider
         trigger={null}
         collapsible
@@ -112,6 +112,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         theme={mode}
         width={250}
         style={{
+          height: '100vh',
+          position: 'sticky',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          zIndex: 10,
           boxShadow: '2px 0 8px 0 rgba(29,35,41,.05)',
           background: mode === 'dark' ? '#141414' : '#ffffff',
           borderRight: mode === 'light' ? `1px solid ${token.colorBorderSecondary}` : 'none',
@@ -146,7 +152,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         />
       </Sider>
 
-      <Layout style={{ background: token.colorBgLayout }}>
+      <Layout style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: token.colorBgLayout }}>
         <Header
           style={{
             padding: '0 24px',
@@ -156,6 +162,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             justifyContent: 'space-between',
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
             boxShadow: '0 1px 4px rgba(0,21,41,.08)',
+            flexShrink: 0,
+            height: 64,
+            position: 'sticky',
+            top: 0,
+            zIndex: 9,
           }}
         >
           <Space size="middle">
@@ -192,22 +203,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Space>
         </Header>
 
-        <Content
+        <div
           style={{
-            margin: '24px 24px 0',
-            padding: 24,
-            minHeight: 280,
-            background: token.colorBgContainer,
-            borderRadius: token.borderRadiusLG,
+            flex: 1,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          {children}
-        </Content>
+          <Content
+            style={{
+              margin: '24px 24px 0',
+              padding: 24,
+              minHeight: 280,
+              background: token.colorBgContainer,
+              borderRadius: token.borderRadiusLG,
+              flex: 1,
+            }}
+          >
+            {children}
+          </Content>
 
-        <Footer style={{ textAlign: 'center', color: token.colorTextDescription, padding: '16px 24px', background: token.colorBgLayout }}>
-          AI Gateway ©{new Date().getFullYear()} RoozyLabs. Centralized Model API key Management System.
-        </Footer>
+          <Footer style={{ textAlign: 'center', color: token.colorTextDescription, padding: '16px 24px', background: token.colorBgLayout, flexShrink: 0 }}>
+            AI Gateway ©{new Date().getFullYear()} RoozyLabs. Centralized Model API key Management System.
+          </Footer>
+        </div>
       </Layout>
     </Layout>
   );
+
 }
