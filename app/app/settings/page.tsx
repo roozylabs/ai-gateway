@@ -1,15 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Typography, Card, Descriptions, Tag, Row, Col, Form, InputNumber, Button, Switch, Space, Radio, App } from 'antd';
-import { SafetyCertificateOutlined, HddOutlined, SettingOutlined, CheckCircleOutlined, BgColorsOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
-import { useTheme } from '@/context/ThemeContext';
+import { Typography, Card, Descriptions, Tag, Row, Col, Form, InputNumber, Button, Switch, Space, App } from 'antd';
+import { SafetyCertificateOutlined, HddOutlined, SettingOutlined, CheckCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
 export default function SettingsPage() {
   const { message } = App.useApp();
-  const { mode, setMode } = useTheme();
 
   const onSaveSettings = () => {
     message.success('System settings saved successfully');
@@ -21,34 +19,8 @@ export default function SettingsPage() {
         <Title level={3} style={{ margin: 0 }}>
           Settings & Security
         </Title>
-        <Text type="secondary">System parameters, appearance theme mode, encryption keys state, and rate-limit cooldown settings</Text>
+        <Text type="secondary">System parameters, encryption keys state, and rate-limit cooldown settings</Text>
       </div>
-
-      <Card title={<Space><BgColorsOutlined style={{ color: '#1677ff' }} /> Appearance Theme Mode</Space>} variant="borderless" style={{ marginBottom: 20, borderRadius: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <Text strong style={{ display: 'block' }}>Dashboard Theme Mode:</Text>
-            <Text type="secondary" style={{ fontSize: 13 }}>Switch between Dark Mode and Light Mode seamlessly across all pages</Text>
-          </div>
-
-          <Radio.Group
-            value={mode}
-            onChange={(e) => {
-              setMode(e.target.value);
-              message.success(`Theme mode switched to ${e.target.value.toUpperCase()}`);
-            }}
-            optionType="button"
-            buttonStyle="solid"
-          >
-            <Radio.Button value="dark">
-              <Space><MoonOutlined /> Dark Mode</Space>
-            </Radio.Button>
-            <Radio.Button value="light">
-              <Space><SunOutlined /> Light Mode</Space>
-            </Radio.Button>
-          </Radio.Group>
-        </div>
-      </Card>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
