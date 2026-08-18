@@ -3,20 +3,20 @@ INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
 VALUES (
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     'Admin',
-    'admin@aigateway.dev',
+    'admin@roozylabs.com',
     true,
     NOW(),
     NOW()
 );
 
--- Admin credential account (password: admin123)
+-- Admin credential account (password: Z4s#171[G1.5)
 INSERT INTO account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
 VALUES (
     'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    'admin@aigateway.dev',
+    'admin@roozylabs.com',
     'credential',
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    '$2a$10$B4tTaU1XK2DVIoKX2.hE/uKyVtjyV83kJPVZSm/NQTrziUIStM776',
+    '$2b$10$/OtX5REQdPx7SYXIj6vdFOAvAik5SBcXwmSr1iUs3OVWeBLWej1Ge',
     NOW(),
     NOW()
 );

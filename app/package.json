@@ -22,10 +22,12 @@
     "react-hook-form": "^7.85.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "bcryptjs": "^3.0.3",
     "typescript": "^5.7.3"
   }
 }

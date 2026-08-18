@@ -25,7 +25,7 @@ export default function LoginPage() {
   } = useForm<LoginRequest>({
     defaultValues: {
       email: 'admin@roozylabs.com',
-      password: 'password123',
+      password: 'Z4s#171[G1.5',
     },
   });
 

@@ -42,6 +42,9 @@ importers:
         specifier: ^7.85.0
         version: 7.85.0(react@19.2.8)
     devDependencies:
+      '@types/bcryptjs':
+        specifier: ^3.0.0
+        version: 3.0.0
       '@types/js-cookie':
         specifier: ^3.0.6
         version: 3.0.6
@@ -54,6 +57,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.4
         version: 19.2.4(@types/react@19.2.18)
+      bcryptjs:
+        specifier: ^3.0.3
+        version: 3.0.3
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -378,6 +384,10 @@ packages:
     peerDependencies:
       react: ^18 || ^19
 
+  '@types/bcryptjs@3.0.0':
+    resolution: {integrity: sha512-WRZOuCuaz8UcZZE4R5HXTco2goQSI2XxjGY3hbM/xDvwmqFWd4ivooImsMx65OKM6CtNKbnZ5YL+YwAwK7c1dg==}
+    deprecated: This is a stub types definition. bcryptjs provides its own type definitions, so you do not need this installed.
+
   '@types/js-cookie@3.0.6':
     resolution: {integrity: sha512-wkw9yd1kEXOPnvEeEV1Go1MmxtBJL0RR79aOTAApecWFVu7w0NNXNqhcWgvw2YgZDYadliXkl14pa3WXw5jlCQ==}
 
@@ -407,6 +417,10 @@ packages:
 
   axios@1.19.0:
     resolution: {integrity: sha512-ht/iuYZXEjFxLH/Hkezgd7m6JKlHHXEUSneaDz8uZe1Gj5QZtCnpyDsckvAiEnT89OEbCLmnte4R4sn7P0EKFw==}
+
+  bcryptjs@3.0.3:
+    resolution: {integrity: sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==}
+    hasBin: true
 
   call-bind-apply-helpers@1.0.2:
     resolution: {integrity: sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==}
@@ -1158,6 +1172,10 @@ snapshots:
       '@tanstack/query-core': 5.101.4
       react: 19.2.8
 
+  '@types/bcryptjs@3.0.0':
+    dependencies:
+      bcryptjs: 3.0.3
+
   '@types/js-cookie@3.0.6': {}
 
   '@types/node@22.20.1':
@@ -1247,6 +1265,8 @@ snapshots:
     transitivePeerDependencies:
       - debug
       - supports-color
+
+  bcryptjs@3.0.3: {}
 
   call-bind-apply-helpers@1.0.2:
     dependencies:
