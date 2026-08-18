@@ -17,7 +17,7 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	godotenv.Load()
+	_ = godotenv.Load()
 
 	return &Config{
 		AppEnv:        getEnv("APP_ENV", "development"),
