@@ -144,10 +144,11 @@ jobs:
             mkdir -p ${{ secrets.VPS_WORK_DIR }}
             cd ${{ secrets.VPS_WORK_DIR }}
             if [ ! -d ".git" ]; then
-              echo "Repository not initialized in VPS_WORK_DIR. Cloning repository..."
-              git clone https://github.com/${{ github.repository }}.git .
+              echo "Repository not initialized in VPS_WORK_DIR. Cloning private repository..."
+              git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
             else
               echo "Pulling latest changes from GitHub..."
+              git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
               git pull origin main || git pull origin master || true
             fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
