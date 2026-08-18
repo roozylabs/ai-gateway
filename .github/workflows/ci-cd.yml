@@ -141,7 +141,8 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             cd ${{ secrets.VPS_WORK_DIR }}
+            git pull origin main || git pull origin master || true
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose pull api
-            docker compose up -d api
+            docker compose pull
+            docker compose up -d
             docker image prune -f
