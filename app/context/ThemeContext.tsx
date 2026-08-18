@@ -42,8 +42,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setMode(newMode);
   };
 
-  // Guarantee 100% SSR vs Client hydration HTML match on initial pass.
-  // After mount, use active stored mode.
+  // Keep SSR and initial client hydration pass identical ('dark') to avoid React Hydration Error.
+  // After hydration completes (mounted = true), sync to active stored mode with smooth fade-in.
   const activeMode = mounted ? mode : 'dark';
   const currentAlgorithm = activeMode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm;
 
@@ -71,7 +71,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             },
           }}
         >
-          {children}
+          <div
+            style={{
+              opacity: mounted ? 1 : 0,
+              transition: 'opacity 0.2s ease-in-out',
+              minHeight: '100vh',
+            }}
+          >
+            {children}
+          </div>
         </ConfigProvider>
       </AntdRegistry>
     </ThemeContext.Provider>
