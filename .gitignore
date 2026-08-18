@@ -41,3 +41,6 @@ coverage.html
 *.tmp
 
 app/next-env.d.ts
+
+
+.agents/plugins/antd/
