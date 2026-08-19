@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Typography, Space, Button, Modal, Form, Input, Select, App } from 'antd';
+import { Typography, Space, Button, Modal, Form, Input, Select, Tag, App } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
@@ -16,11 +16,16 @@ import {
 
 const { Text } = Typography;
 
+export interface CombinedModel extends ApiModel {
+  providerName?: string;
+}
+
 export default function ModelsPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
 
-  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  // Default to 'all' providers
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
@@ -30,13 +35,44 @@ export default function ModelsPage() {
     queryFn: apiGetProviders,
   });
 
-  const activeProviderId = selectedProviderId || (providers[0]?.id ?? '');
+  // Fetch Models for all or selected provider
+  const {
+    data: models = [],
+    isLoading: modelsLoading,
+    refetch,
+    isRefetching,
+  } = useQuery({
+    queryKey: ['models', selectedProviderId, providers.map((p) => p.id).join(',')],
+    queryFn: async () => {
+      if (!providers || providers.length === 0) return [];
 
-  // Fetch Models for selected provider
-  const { data: models = [], isLoading: modelsLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['models', activeProviderId],
-    queryFn: () => (activeProviderId ? apiGetModels(activeProviderId) : Promise.resolve([])),
-    enabled: !!activeProviderId,
+      if (selectedProviderId === 'all') {
+        const results = await Promise.all(
+          providers.map(async (provider) => {
+            try {
+              const list = await apiGetModels(provider.id);
+              return list.map((m) => ({
+                ...m,
+                providerId: provider.id,
+                providerName: provider.name,
+              }));
+            } catch {
+              return [];
+            }
+          })
+        );
+        return results.flat();
+      } else {
+        const targetProvider = providers.find((p) => p.id === selectedProviderId);
+        const list = await apiGetModels(selectedProviderId);
+        return list.map((m) => ({
+          ...m,
+          providerId: selectedProviderId,
+          providerName: targetProvider?.name || 'Unknown',
+        }));
+      }
+    },
+    enabled: providers.length > 0,
   });
 
   // Mutations
@@ -44,7 +80,7 @@ export default function ModelsPage() {
     mutationFn: ({ providerId, data }: { providerId: string; data: Partial<ApiModel> }) =>
       apiCreateModel(providerId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['models', activeProviderId] });
+      queryClient.invalidateQueries({ queryKey: ['models'] });
       message.success('Model alias created');
       setIsModalOpen(false);
       form.resetFields();
@@ -56,14 +92,14 @@ export default function ModelsPage() {
     mutationFn: ({ providerId, modelId }: { providerId: string; modelId: string }) =>
       apiDeleteModel(providerId, modelId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['models', activeProviderId] });
+      queryClient.invalidateQueries({ queryKey: ['models'] });
       message.success('Model alias deleted');
     },
     onError: (err: Error) => message.error(err.message),
   });
 
   const handleCreateModel = (values: any) => {
-    const targetProviderId = values.providerId || activeProviderId;
+    const targetProviderId = values.providerId;
     if (!targetProviderId) {
       message.error('Please select a target provider');
       return;
@@ -79,62 +115,81 @@ export default function ModelsPage() {
     });
   };
 
-  const columns = React.useMemo(() => [
-    {
-      title: 'Model Slug / Alias',
-      dataIndex: 'slug',
-      key: 'slug',
-      sorter: true,
-      render: (text: string) => <Text code strong>{text}</Text>,
-    },
-    {
-      title: 'Display Name',
-      dataIndex: 'displayName',
-      key: 'displayName',
-      sorter: true,
-      render: (text: string) => text || '-',
-    },
-    {
-      title: 'Upstream Model Name',
-      dataIndex: 'name',
-      key: 'name',
-      sorter: true,
-      render: (model: string) => <Text style={{ fontFamily: 'monospace' }}>{model}</Text>,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'enabled',
-      key: 'enabled',
-      sorter: (a: ApiModel, b: ApiModel) => Number(a.enabled) - Number(b.enabled),
-      render: (enabled: boolean) => <StatusTag status={enabled ? 'active' : 'disabled'} />,
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_: any, record: ApiModel) => (
-        <ConfirmButton
-          confirmTitle="Delete Model Alias?"
-          onConfirm={() => deleteMutation.mutate({ providerId: activeProviderId, modelId: record.id })}
-          icon={<DeleteOutlined />}
-        >
-          Delete
-        </ConfirmButton>
-      ),
-    },
-  ], [activeProviderId, deleteMutation]);
+  const columns = React.useMemo(
+    () => [
+      {
+        title: 'Model Slug / Alias',
+        dataIndex: 'slug',
+        key: 'slug',
+        sorter: (a: CombinedModel, b: CombinedModel) => a.slug.localeCompare(b.slug),
+        render: (text: string) => (
+          <Text code strong>
+            {text}
+          </Text>
+        ),
+      },
+      {
+        title: 'Provider',
+        dataIndex: 'providerName',
+        key: 'providerName',
+        sorter: (a: CombinedModel, b: CombinedModel) =>
+          (a.providerName || '').localeCompare(b.providerName || ''),
+        render: (name: string) => <Tag color="blue">{name || 'Provider'}</Tag>,
+      },
+      {
+        title: 'Display Name',
+        dataIndex: 'displayName',
+        key: 'displayName',
+        sorter: (a: CombinedModel, b: CombinedModel) =>
+          (a.displayName || '').localeCompare(b.displayName || ''),
+        render: (text: string) => text || '-',
+      },
+      {
+        title: 'Upstream Model Name',
+        dataIndex: 'name',
+        key: 'name',
+        sorter: true,
+        render: (model: string) => <Text style={{ fontFamily: 'monospace' }}>{model}</Text>,
+      },
+      {
+        title: 'Status',
+        dataIndex: 'enabled',
+        key: 'enabled',
+        sorter: (a: CombinedModel, b: CombinedModel) => Number(a.enabled) - Number(b.enabled),
+        render: (enabled: boolean) => <StatusTag status={enabled ? 'active' : 'disabled'} />,
+      },
+      {
+        title: 'Actions',
+        key: 'actions',
+        render: (_: any, record: CombinedModel) => (
+          <ConfirmButton
+            confirmTitle="Delete Model Alias?"
+            onConfirm={() => deleteMutation.mutate({ providerId: record.providerId, modelId: record.id })}
+            icon={<DeleteOutlined />}
+          >
+            Delete
+          </ConfirmButton>
+        ),
+      },
+    ],
+    [deleteMutation]
+  );
 
   const extraActions = (
     <Space>
       <Select
-        placeholder="Select Provider"
+        placeholder="Filter by Provider"
         style={{ width: 220 }}
-        value={activeProviderId}
+        value={selectedProviderId}
         onChange={(val) => setSelectedProviderId(val)}
         loading={providersLoading}
-        options={providers.map((p: ApiProvider) => ({
-          label: p.name,
-          value: p.id,
-        }))}
+        options={[
+          { label: 'All Providers', value: 'all' },
+          ...providers.map((p: ApiProvider) => ({
+            label: p.name,
+            value: p.id,
+          })),
+        ]}
       />
     </Space>
   );
@@ -157,8 +212,8 @@ export default function ModelsPage() {
         loading={modelsLoading || providersLoading}
         rowKey="id"
         pagination={false}
-        searchPlaceholder="Search model alias or vendor ID..."
-        searchFields={['slug', 'displayName', 'name']}
+        searchPlaceholder="Search model alias, display name, or provider..."
+        searchFields={['slug', 'displayName', 'name', 'providerName']}
         extraActions={extraActions}
         onRefresh={() => refetch()}
         refreshing={isRefetching}
@@ -170,11 +225,18 @@ export default function ModelsPage() {
         onCancel={() => setIsModalOpen(false)}
         footer={null}
       >
-        <Form form={form} layout="vertical" onFinish={handleCreateModel} style={{ marginTop: 16 }}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleCreateModel}
+          initialValues={{
+            providerId: selectedProviderId !== 'all' ? selectedProviderId : providers[0]?.id,
+          }}
+          style={{ marginTop: 16 }}
+        >
           <Form.Item
             name="providerId"
             label="Target Provider"
-            initialValue={activeProviderId}
             rules={[{ required: true, message: 'Please select provider' }]}
           >
             <Select placeholder="Select Provider">
@@ -187,33 +249,30 @@ export default function ModelsPage() {
           </Form.Item>
 
           <Form.Item
-            name="slug"
-            label="Model Alias / Slug (Used by Clients)"
-            rules={[{ required: true, message: 'Please enter model slug' }]}
-          >
-            <Input placeholder="e.g. gpt-4o or claude-sonnet" />
-          </Form.Item>
-
-          <Form.Item
             name="name"
-            label="Upstream Vendor Model ID"
-            rules={[{ required: true, message: 'Please enter vendor model ID' }]}
+            label="Upstream Model Name"
+            rules={[{ required: true, message: 'Please enter upstream model name' }]}
           >
-            <Input placeholder="e.g. gpt-4o-2024-08-06 or claude-3-7-sonnet-20250219" />
+            <Input placeholder="e.g. gpt-4o / claude-3-5-sonnet-20241022" />
           </Form.Item>
 
           <Form.Item
-            name="displayName"
-            label="Display Name"
+            name="slug"
+            label="Client Model Alias (Slug)"
+            tooltip="The model name client applications will use in API requests (e.g. /v1/chat/completions)"
           >
-            <Input placeholder="e.g. GPT-4o (August 2024)" />
+            <Input placeholder="e.g. gpt-4o (defaults to lowercased upstream name)" />
+          </Form.Item>
+
+          <Form.Item name="displayName" label="Display Name">
+            <Input placeholder="e.g. GPT-4o Omni" />
           </Form.Item>
 
           <Form.Item style={{ marginTop: 24, textAlign: 'right' }}>
             <Space>
               <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
               <Button type="primary" htmlType="submit" loading={createMutation.isPending}>
-                Save Model Mapping
+                Create Model Alias
               </Button>
             </Space>
           </Form.Item>
