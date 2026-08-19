@@ -154,14 +154,16 @@ func main() {
 		}
 	}
 
-	// Gateway routes (authenticated with gw_sk_* keys)
-	v1 := r.Group("/v1")
-	v1.Use(middleware.GatewayAuthMiddleware(gatewayKeyRepo))
-	v1.Use(middleware.GatewayRateLimitMiddleware(rdb, cfg.RateLimitPerKey))
-	{
-		v1.POST("/chat/completions", gatewayHandler.ChatCompletions)
-		v1.GET("/models", gatewayHandler.Models)
+	// Gateway routes (authenticated with gw_sk_* keys) - accessible at /v1 and /api/v1
+	registerGatewayRoutes := func(rg *gin.RouterGroup) {
+		rg.Use(middleware.GatewayAuthMiddleware(gatewayKeyRepo))
+		rg.Use(middleware.GatewayRateLimitMiddleware(rdb, cfg.RateLimitPerKey))
+		rg.POST("/chat/completions", gatewayHandler.ChatCompletions)
+		rg.GET("/models", gatewayHandler.Models)
 	}
+
+	registerGatewayRoutes(r.Group("/v1"))
+	registerGatewayRoutes(api.Group("/v1"))
 
 	// Swagger endpoint (dev only)
 	if cfg.AppEnv != "production" {

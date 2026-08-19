@@ -15,7 +15,7 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
 
   const backendApiUrl = getBackendApiUrl();
   
-  // Special health check handling to support both /health and /api/health upstream targets
+  // Clean proxy: map /api/* directly to backendApiUrl/api/*
   const targetUrl = subPath === 'health'
     ? `${backendApiUrl}/health${searchParams}`
     : `${backendApiUrl}/api/${subPath}${searchParams}`;
