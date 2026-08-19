@@ -21,17 +21,20 @@ type Router struct {
 	models    *repository.ModelRepository
 	providers *repository.ProviderRepository
 	creds     *repository.CredentialRepository
+	settings  *repository.SettingRepository
 }
 
 func NewRouter(
 	models *repository.ModelRepository,
 	providers *repository.ProviderRepository,
 	creds *repository.CredentialRepository,
+	settings *repository.SettingRepository,
 ) *Router {
 	return &Router{
 		models:    models,
 		providers: providers,
 		creds:     creds,
+		settings:  settings,
 	}
 }
 
@@ -40,6 +43,17 @@ type Route struct {
 	Provider   *models.Provider
 	Credential *models.Credential
 	Adapter    ProviderAdapter
+}
+
+func (r *Router) getAdapter(providerType string) ProviderAdapter {
+	switch providerType {
+	case "openai":
+		return NewOpenAIAdapter()
+	case "anthropic":
+		return NewAnthropicAdapter()
+	default:
+		return NewOpenAIAdapter()
+	}
 }
 
 func (r *Router) Resolve(ctx context.Context, modelSlug string, allowedModels []string) (*Route, error) {
@@ -77,12 +91,15 @@ func (r *Router) Resolve(ctx context.Context, modelSlug string, allowedModels []
 		return nil, ErrModelNotFound
 	}
 
-	cred, err := r.creds.FindActiveByProviderID(ctx, provider.ID)
+	strategy := r.resolveStrategy(provider)
+
+	creds, err := r.selectByStrategy(ctx, provider.ID, strategy)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNoCredentials
-		}
-		return nil, fmt.Errorf("find credential: %w", err)
+		return nil, err
+	}
+
+	if len(creds) == 0 {
+		return nil, ErrNoCredentials
 	}
 
 	adapter := r.getAdapter(provider.Type)
@@ -90,20 +107,9 @@ func (r *Router) Resolve(ctx context.Context, modelSlug string, allowedModels []
 	return &Route{
 		Model:      model,
 		Provider:   provider,
-		Credential: cred,
+		Credential: &creds[0],
 		Adapter:    adapter,
 	}, nil
-}
-
-func (r *Router) getAdapter(providerType string) ProviderAdapter {
-	switch providerType {
-	case "openai":
-		return NewOpenAIAdapter()
-	case "anthropic":
-		return NewAnthropicAdapter()
-	default:
-		return NewOpenAIAdapter()
-	}
 }
 
 func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, allowedModels []string, cooldown *goredis.CooldownStore) ([]*Route, error) {
@@ -141,9 +147,11 @@ func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, allo
 		return nil, ErrModelNotFound
 	}
 
-	allCreds, err := r.creds.FindAllActiveByProviderID(ctx, provider.ID)
+	strategy := r.resolveStrategy(provider)
+
+	allCreds, err := r.selectByStrategy(ctx, provider.ID, strategy)
 	if err != nil {
-		return nil, fmt.Errorf("find credentials: %w", err)
+		return nil, fmt.Errorf("select credentials: %w", err)
 	}
 
 	var routes []*Route
@@ -166,4 +174,26 @@ func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, allo
 		return nil, ErrNoCredentials
 	}
 	return routes, nil
+}
+
+func (r *Router) resolveStrategy(provider *models.Provider) string {
+	if provider.RoutingStrategy != "" {
+		return provider.RoutingStrategy
+	}
+	defaultStrategy, _ := r.settings.Get(context.Background(), "default_routing_strategy")
+	if defaultStrategy != "" {
+		return defaultStrategy
+	}
+	return "round_robin"
+}
+
+func (r *Router) selectByStrategy(ctx context.Context, providerID, strategy string) ([]models.Credential, error) {
+	switch strategy {
+	case "lru":
+		return r.creds.FindLRU(ctx, providerID)
+	case "fallback_cascade":
+		return r.creds.FindAllActiveByProviderID(ctx, providerID)
+	default:
+		return r.creds.FindRoundRobin(ctx, providerID)
+	}
 }

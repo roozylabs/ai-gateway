@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 function getBackendApiUrl(): string {
   const url = process.env.API_URL || 'http://localhost:8080';
   return url.replace(/\/+$/, '');
@@ -46,8 +48,34 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('content-length');
 
-    const responseData = await backendResponse.arrayBuffer();
+    const contentType = responseHeaders.get('content-type') || '';
+    const isEventStream = contentType.includes('text/event-stream');
+    const isNoBodyStatus = backendResponse.status === 204 || backendResponse.status === 304;
 
+    // Handle SSE (Server-Sent Events) and chunked streaming responses properly
+    if (isEventStream) {
+      responseHeaders.set('Cache-Control', 'no-cache, no-transform');
+      responseHeaders.set('Connection', 'keep-alive');
+      responseHeaders.set('X-Accel-Buffering', 'no'); // Disable Nginx buffering for SSE
+
+      return new NextResponse(backendResponse.body, {
+        status: backendResponse.status,
+        statusText: backendResponse.statusText,
+        headers: responseHeaders,
+      });
+    }
+
+    // Handle No Content status codes (204, 304)
+    if (isNoBodyStatus) {
+      return new NextResponse(null, {
+        status: backendResponse.status,
+        statusText: backendResponse.statusText,
+        headers: responseHeaders,
+      });
+    }
+
+    // Handle standard REST API buffered responses
+    const responseData = await backendResponse.arrayBuffer();
     return new NextResponse(responseData, {
       status: backendResponse.status,
       statusText: backendResponse.statusText,

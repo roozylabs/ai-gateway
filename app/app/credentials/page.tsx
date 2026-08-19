@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Select, InputNumber, Card, App, Popconfirm, Spin } from 'antd';
-import { PlusOutlined, ExperimentOutlined, CheckCircleOutlined, SyncOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Button, Tag, Space, Typography, Modal, Form, Input, Select, InputNumber, App } from 'antd';
+import { PlusOutlined, ExperimentOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
   apiGetProviders,
   apiGetCredentials,
@@ -14,7 +15,7 @@ import {
   ApiCredential,
 } from '@/lib/api';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function CredentialsPage() {
   const { message } = App.useApp();
@@ -35,7 +36,7 @@ export default function CredentialsPage() {
   const activeProviderId = selectedProviderId || (providers[0]?.id ?? '');
 
   // Fetch Credentials for selected provider
-  const { data: credentials = [], isLoading: credentialsLoading } = useQuery({
+  const { data: credentials = [], isLoading: credentialsLoading, refetch, isRefetching } = useQuery({
     queryKey: ['credentials', activeProviderId],
     queryFn: () => (activeProviderId ? apiGetCredentials(activeProviderId) : Promise.resolve([])),
     enabled: !!activeProviderId,
@@ -101,42 +102,42 @@ export default function CredentialsPage() {
       title: 'Credential Name',
       dataIndex: 'name',
       key: 'name',
+      sorter: true,
       render: (text: string) => <Text strong>{text}</Text>,
     },
     {
       title: 'Masked Key Prefix',
       dataIndex: 'keyPrefix',
       key: 'keyPrefix',
+      sorter: true,
       render: (prefix: string) => <Text code>{prefix || 'sk-••••'}</Text>,
     },
     {
       title: 'Priority',
       dataIndex: 'priority',
       key: 'priority',
+      sorter: true,
       render: (p: number) => <Tag color="geekblue">Priority {p}</Tag>,
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => {
-        const s = (status || 'active').toUpperCase();
-        if (s === 'ACTIVE') return <Tag color="success" icon={<CheckCircleOutlined />}>ACTIVE</Tag>;
-        if (s === 'RATE_LIMITED') return <Tag color="warning" icon={<SyncOutlined spin />}>RATE LIMITED</Tag>;
-        if (s === 'DISABLED') return <Tag color="default">DISABLED</Tag>;
-        return <Tag color="error">INVALID</Tag>;
-      },
+      sorter: true,
+      render: (status: string) => <StatusTag status={status || 'active'} />,
     },
     {
       title: 'Requests Served',
       dataIndex: 'requestCount',
       key: 'requestCount',
+      sorter: true,
       render: (count: number) => (count || 0).toLocaleString(),
     },
     {
       title: 'Last Used',
       dataIndex: 'lastUsedAt',
       key: 'lastUsedAt',
+      sorter: (a: ApiCredential, b: ApiCredential) => new Date(a.lastUsedAt || 0).getTime() - new Date(b.lastUsedAt || 0).getTime(),
       render: (val: string) => (val ? new Date(val).toLocaleString() : 'Never'),
     },
     {
@@ -152,58 +153,57 @@ export default function CredentialsPage() {
           >
             Test
           </Button>
-          <Popconfirm
-            title="Delete Credential?"
+          <ConfirmButton
+            confirmTitle="Delete Credential?"
             onConfirm={() => deleteMutation.mutate({ providerId: activeProviderId, credId: record.id })}
-            okText="Yes"
-            cancelText="No"
+            icon={<DeleteOutlined />}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              Delete
-            </Button>
-          </Popconfirm>
+            Delete
+          </ConfirmButton>
         </Space>
       ),
     },
   ];
 
+  const extraActions = (
+    <Space>
+      <Select
+        placeholder="Select Provider"
+        style={{ width: 220 }}
+        value={activeProviderId}
+        onChange={(val) => setSelectedProviderId(val)}
+        loading={providersLoading}
+        options={providers.map((p: ApiProvider) => ({
+          label: p.name,
+          value: p.id,
+        }))}
+      />
+    </Space>
+  );
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <Title level={3} style={{ margin: 0 }}>
-            Credentials Pool
-          </Title>
-          <Text type="secondary">API Key pools, rotation priority, and rate-limit cooldown states</Text>
-        </div>
-
-        <Space>
-          <Select
-            placeholder="Select Provider"
-            style={{ width: 220 }}
-            value={activeProviderId}
-            onChange={(val) => setSelectedProviderId(val)}
-            loading={providersLoading}
-            options={providers.map((p: ApiProvider) => ({
-              label: p.name,
-              value: p.id,
-            }))}
-          />
+      <PageHeader
+        title="Credentials Pool"
+        description="API Key pools, rotation priority, and rate-limit cooldown states"
+        extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
             Add Credential
           </Button>
-        </Space>
-      </div>
+        }
+      />
 
-      <Card size="small" variant="borderless" style={{ borderRadius: 8 }}>
-        <Table
-          dataSource={credentials}
-          columns={columns}
-          loading={credentialsLoading || providersLoading}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-        />
-      </Card>
+      <DataTable
+        dataSource={credentials}
+        columns={columns}
+        loading={credentialsLoading || providersLoading}
+        rowKey="id"
+        searchPlaceholder="Search credential label or key prefix..."
+        searchFields={['name', 'keyPrefix']}
+        extraActions={extraActions}
+        onRefresh={() => refetch()}
+        refreshing={isRefetching}
+      />
 
       <Modal
         title="Add Provider Credential"

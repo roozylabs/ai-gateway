@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Table, Tag, Typography, Card, Select, Input, Space, Drawer, Descriptions, Button, Spin } from 'antd';
-import { SearchOutlined, EyeOutlined } from '@ant-design/icons';
+import { Tag, Typography, Select, Space, Drawer, Descriptions, Button } from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
+import { DataTable, PageHeader, StatusTag } from '@/components/atoms';
 import { apiGetLogs, apiGetProviders, ApiRequestLog, ApiProvider } from '@/lib/api';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function LogsPage() {
   const [selectedLog, setSelectedLog] = useState<ApiRequestLog | null>(null);
@@ -22,7 +23,7 @@ export default function LogsPage() {
   });
 
   // Fetch Request Logs
-  const { data: logsData, isLoading } = useQuery({
+  const { data: logsData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['logs', selectedProvider, searchQuery, page],
     queryFn: () =>
       apiGetLogs({
@@ -39,40 +40,42 @@ export default function LogsPage() {
       title: 'Request ID',
       dataIndex: 'id',
       key: 'id',
+      sorter: true,
       render: (id: string) => <Text code>{id ? id.substring(0, 8) : '-'}</Text>,
     },
     {
       title: 'Timestamp',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      sorter: (a: ApiRequestLog, b: ApiRequestLog) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
       render: (val: string) => (val ? new Date(val).toLocaleString() : '-'),
     },
     {
       title: 'Model',
       dataIndex: 'model',
       key: 'model',
+      sorter: true,
       render: (m: string) => <Tag color="blue">{m || 'default'}</Tag>,
     },
     {
       title: 'Latency',
       dataIndex: 'latencyMs',
       key: 'latencyMs',
+      sorter: true,
       render: (val: number) => `${val || 0} ms`,
     },
     {
       title: 'Tokens (In / Out)',
       key: 'tokens',
+      sorter: (a: ApiRequestLog, b: ApiRequestLog) => (a.totalTokens || 0) - (b.totalTokens || 0),
       render: (_: any, record: ApiRequestLog) => `${record.inputTokens} / ${record.outputTokens}`,
     },
     {
       title: 'Status Code',
       dataIndex: 'statusCode',
       key: 'statusCode',
-      render: (code: number, record: ApiRequestLog) => {
-        if (code >= 200 && code < 300) return <Tag color="success">{code} OK</Tag>;
-        if (code === 429) return <Tag color="warning">429 Rate Limit (Retry {record.retryCount})</Tag>;
-        return <Tag color="error">{code || 500}</Tag>;
-      },
+      sorter: true,
+      render: (code: number) => <StatusTag status={code} />,
     },
     {
       title: 'Details',
@@ -85,56 +88,49 @@ export default function LogsPage() {
     },
   ];
 
+  const extraActions = (
+    <Space>
+      <Text strong style={{ fontSize: 13 }}>Provider Filter:</Text>
+      <Select
+        defaultValue=""
+        style={{ width: 180 }}
+        onChange={(val) => { setSelectedProvider(val); setPage(1); }}
+      >
+        <Select.Option value="">All Providers</Select.Option>
+        {providers.map((p: ApiProvider) => (
+          <Select.Option key={p.id} value={p.slug}>
+            {p.name}
+          </Select.Option>
+        ))}
+      </Select>
+    </Space>
+  );
+
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Request Logs & Observability
-        </Title>
-        <Text type="secondary">Audit trail of API requests, token consumption, latencies, and failover retries</Text>
-      </div>
+      <PageHeader
+        title="Request Logs & Observability"
+        description="Audit trail of API requests, token consumption, latencies, and failover retries"
+      />
 
-      <Card size="small" style={{ marginBottom: 20, borderRadius: 8 }}>
-        <Space size="middle" wrap>
-          <Text strong>Filter Provider:</Text>
-          <Select
-            defaultValue=""
-            style={{ width: 180 }}
-            onChange={(val) => { setSelectedProvider(val); setPage(1); }}
-          >
-            <Select.Option value="">All Providers</Select.Option>
-            {providers.map((p: ApiProvider) => (
-              <Select.Option key={p.id} value={p.slug}>
-                {p.name}
-              </Select.Option>
-            ))}
-          </Select>
-
-          <Input
-            prefix={<SearchOutlined />}
-            placeholder="Search model / error..."
-            style={{ width: 240 }}
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-            allowClear
-          />
-        </Space>
-      </Card>
-
-      <Card size="small" variant="borderless" style={{ borderRadius: 8 }}>
-        <Table
-          dataSource={logsData?.value || []}
-          columns={columns}
-          loading={isLoading}
-          rowKey="id"
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: logsData?.count || 0,
-            onChange: (p) => setPage(p),
-          }}
-        />
-      </Card>
+      <DataTable
+        dataSource={logsData?.value || []}
+        columns={columns}
+        loading={isLoading}
+        rowKey="id"
+        searchPlaceholder="Search model or error..."
+        searchValue={searchQuery}
+        onSearchChange={(val) => { setSearchQuery(val); setPage(1); }}
+        extraActions={extraActions}
+        onRefresh={() => refetch()}
+        refreshing={isRefetching}
+        pagination={{
+          current: page,
+          pageSize: pageSize,
+          total: logsData?.count || 0,
+          onChange: (p) => setPage(p),
+        }}
+      />
 
       <Drawer
         title="Request Details"
@@ -152,11 +148,7 @@ export default function LogsPage() {
             <Descriptions.Item label="Target Model">{selectedLog.model}</Descriptions.Item>
             <Descriptions.Item label="Credential ID">{selectedLog.credentialId || '-'}</Descriptions.Item>
             <Descriptions.Item label="Status Code">
-              {selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? (
-                <Tag color="success">{selectedLog.statusCode} OK</Tag>
-              ) : (
-                <Tag color="error">{selectedLog.statusCode}</Tag>
-              )}
+              <StatusTag status={selectedLog.statusCode} />
             </Descriptions.Item>
             <Descriptions.Item label="Latency">{selectedLog.latencyMs} ms</Descriptions.Item>
             <Descriptions.Item label="Input Tokens">{selectedLog.inputTokens}</Descriptions.Item>

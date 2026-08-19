@@ -125,6 +125,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		}
 
 		// Success
+		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
+
 		resp, err := route.Adapter.ParseResponse(bytes.NewReader(body))
 		if err != nil {
 			lastErr = fmt.Errorf("parse response: %w", err)
@@ -229,6 +231,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		}
 
 		// Success → start streaming
+		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
 		defer httpResp.Body.Close()
 
 		c.Header("Content-Type", "text/event-stream")

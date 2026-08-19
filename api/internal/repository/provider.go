@@ -19,7 +19,7 @@ func NewProviderRepository(db *sql.DB) *ProviderRepository {
 
 func (r *ProviderRepository) ListByUserID(ctx context.Context, userID string) ([]models.Provider, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, user_id, name, slug, base_url, type, enabled, created_at, updated_at
+		`SELECT id, user_id, name, slug, base_url, type, enabled, routing_strategy, created_at, updated_at
 		 FROM providers WHERE user_id = $1 ORDER BY created_at DESC`, userID,
 	)
 	if err != nil {
@@ -31,7 +31,7 @@ func (r *ProviderRepository) ListByUserID(ctx context.Context, userID string) ([
 	for rows.Next() {
 		var p models.Provider
 		if err := rows.Scan(&p.ID, &p.UserID, &p.Name, &p.Slug, &p.BaseURL,
-			&p.Type, &p.Enabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			&p.Type, &p.Enabled, &p.RoutingStrategy, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		providers = append(providers, p)
@@ -42,10 +42,10 @@ func (r *ProviderRepository) ListByUserID(ctx context.Context, userID string) ([
 func (r *ProviderRepository) FindByID(ctx context.Context, id string) (*models.Provider, error) {
 	p := &models.Provider{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, name, slug, base_url, type, enabled, created_at, updated_at
+		`SELECT id, user_id, name, slug, base_url, type, enabled, routing_strategy, created_at, updated_at
 		 FROM providers WHERE id = $1`, id,
 	).Scan(&p.ID, &p.UserID, &p.Name, &p.Slug, &p.BaseURL,
-		&p.Type, &p.Enabled, &p.CreatedAt, &p.UpdatedAt)
+		&p.Type, &p.Enabled, &p.RoutingStrategy, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -56,23 +56,29 @@ func (r *ProviderRepository) Create(ctx context.Context, p *models.Provider) err
 	if p.ID == "" {
 		p.ID = uuid.New().String()
 	}
+	if p.RoutingStrategy == "" {
+		p.RoutingStrategy = "round_robin"
+	}
 	p.CreatedAt = time.Now()
 	p.UpdatedAt = time.Now()
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO providers (id, user_id, name, slug, base_url, type, enabled, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		`INSERT INTO providers (id, user_id, name, slug, base_url, type, enabled, routing_strategy, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		p.ID, p.UserID, p.Name, p.Slug, p.BaseURL,
-		p.Type, p.Enabled, p.CreatedAt, p.UpdatedAt,
+		p.Type, p.Enabled, p.RoutingStrategy, p.CreatedAt, p.UpdatedAt,
 	)
 	return err
 }
 
 func (r *ProviderRepository) Update(ctx context.Context, p *models.Provider) error {
+	if p.RoutingStrategy == "" {
+		p.RoutingStrategy = "round_robin"
+	}
 	p.UpdatedAt = time.Now()
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE providers SET name=$1, slug=$2, base_url=$3, type=$4, enabled=$5, updated_at=$6
-		 WHERE id=$7`,
-		p.Name, p.Slug, p.BaseURL, p.Type, p.Enabled, p.UpdatedAt, p.ID,
+		`UPDATE providers SET name=$1, slug=$2, base_url=$3, type=$4, enabled=$5, routing_strategy=$6, updated_at=$7
+		 WHERE id=$8`,
+		p.Name, p.Slug, p.BaseURL, p.Type, p.Enabled, p.RoutingStrategy, p.UpdatedAt, p.ID,
 	)
 	return err
 }

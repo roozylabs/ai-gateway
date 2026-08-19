@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Table, Tag, Typography, Card, Space, Button, Modal, Form, Input, Select, App, Popconfirm } from 'antd';
-import { ArrowRightOutlined, CheckCircleOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Typography, Space, Button, Modal, Form, Input, Select, App } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
   apiGetProviders,
   apiGetModels,
@@ -13,7 +14,7 @@ import {
   ApiModel,
 } from '@/lib/api';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function ModelsPage() {
   const { message } = App.useApp();
@@ -32,7 +33,7 @@ export default function ModelsPage() {
   const activeProviderId = selectedProviderId || (providers[0]?.id ?? '');
 
   // Fetch Models for selected provider
-  const { data: models = [], isLoading: modelsLoading } = useQuery({
+  const { data: models = [], isLoading: modelsLoading, refetch, isRefetching } = useQuery({
     queryKey: ['models', activeProviderId],
     queryFn: () => (activeProviderId ? apiGetModels(activeProviderId) : Promise.resolve([])),
     enabled: !!activeProviderId,
@@ -83,86 +84,85 @@ export default function ModelsPage() {
       title: 'Model Slug / Alias',
       dataIndex: 'slug',
       key: 'slug',
+      sorter: true,
       render: (text: string) => <Text code strong>{text}</Text>,
     },
     {
       title: 'Display Name',
       dataIndex: 'displayName',
       key: 'displayName',
+      sorter: true,
       render: (text: string) => text || '-',
     },
     {
       title: 'Upstream Model Name',
       dataIndex: 'name',
       key: 'name',
+      sorter: true,
       render: (model: string) => <Text style={{ fontFamily: 'monospace' }}>{model}</Text>,
     },
     {
       title: 'Status',
       dataIndex: 'enabled',
       key: 'enabled',
-      render: (enabled: boolean) =>
-        enabled ? (
-          <Tag color="success" icon={<CheckCircleOutlined />}>ACTIVE</Tag>
-        ) : (
-          <Tag color="default">DISABLED</Tag>
-        ),
+      sorter: (a: ApiModel, b: ApiModel) => Number(a.enabled) - Number(b.enabled),
+      render: (enabled: boolean) => <StatusTag status={enabled ? 'active' : 'disabled'} />,
     },
     {
       title: 'Actions',
       key: 'actions',
       render: (_: any, record: ApiModel) => (
-        <Popconfirm
-          title="Delete Model Alias?"
+        <ConfirmButton
+          confirmTitle="Delete Model Alias?"
           onConfirm={() => deleteMutation.mutate({ providerId: activeProviderId, modelId: record.id })}
-          okText="Yes"
-          cancelText="No"
+          icon={<DeleteOutlined />}
         >
-          <Button type="link" danger icon={<DeleteOutlined />}>
-            Delete
-          </Button>
-        </Popconfirm>
+          Delete
+        </ConfirmButton>
       ),
     },
   ];
 
+  const extraActions = (
+    <Space>
+      <Select
+        placeholder="Select Provider"
+        style={{ width: 220 }}
+        value={activeProviderId}
+        onChange={(val) => setSelectedProviderId(val)}
+        loading={providersLoading}
+        options={providers.map((p: ApiProvider) => ({
+          label: p.name,
+          value: p.id,
+        }))}
+      />
+    </Space>
+  );
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <Title level={3} style={{ margin: 0 }}>
-            Models & Routing
-          </Title>
-          <Text type="secondary">Map client request model aliases to upstream AI Provider models</Text>
-        </div>
-
-        <Space>
-          <Select
-            placeholder="Select Provider"
-            style={{ width: 220 }}
-            value={activeProviderId}
-            onChange={(val) => setSelectedProviderId(val)}
-            loading={providersLoading}
-            options={providers.map((p: ApiProvider) => ({
-              label: p.name,
-              value: p.id,
-            }))}
-          />
+      <PageHeader
+        title="Models & Routing"
+        description="Map client request model aliases to upstream AI Provider models"
+        extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
             Add Model Alias
           </Button>
-        </Space>
-      </div>
+        }
+      />
 
-      <Card size="small" variant="borderless" style={{ borderRadius: 8 }}>
-        <Table
-          dataSource={models}
-          columns={columns}
-          loading={modelsLoading || providersLoading}
-          rowKey="id"
-          pagination={false}
-        />
-      </Card>
+      <DataTable
+        dataSource={models}
+        columns={columns}
+        loading={modelsLoading || providersLoading}
+        rowKey="id"
+        pagination={false}
+        searchPlaceholder="Search model alias or vendor ID..."
+        searchFields={['slug', 'displayName', 'name']}
+        extraActions={extraActions}
+        onRefresh={() => refetch()}
+        refreshing={isRefetching}
+      />
 
       <Modal
         title="Add Model Alias"

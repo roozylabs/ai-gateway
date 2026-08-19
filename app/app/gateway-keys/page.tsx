@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Card, Popconfirm, App } from 'antd';
-import { PlusOutlined, CopyOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Button, Space, Typography, Modal, Form, Input, App } from 'antd';
+import { PlusOutlined, CopyOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
+import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
   apiGetGatewayKeys,
   apiCreateGatewayKey,
@@ -12,7 +13,7 @@ import {
   ApiGatewayKey,
 } from '@/lib/api';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function GatewayKeysPage() {
   const { message } = App.useApp();
@@ -25,7 +26,7 @@ export default function GatewayKeysPage() {
   const [form] = Form.useForm();
 
   // Fetch Gateway Keys
-  const { data: keys = [], isLoading } = useQuery({
+  const { data: keys = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['gateway-keys'],
     queryFn: apiGetGatewayKeys,
   });
@@ -86,41 +87,42 @@ export default function GatewayKeysPage() {
       title: 'Key Name / Application',
       dataIndex: 'name',
       key: 'name',
+      sorter: true,
       render: (text: string) => <Text strong>{text}</Text>,
     },
     {
       title: 'Key Identifier',
       dataIndex: 'keyPrefix',
       key: 'keyPrefix',
+      sorter: true,
       render: (prefix: string) => <Text code>{prefix || 'gw_sk_••••'}</Text>,
     },
     {
       title: 'Status',
       dataIndex: 'enabled',
       key: 'enabled',
-      render: (enabled: boolean) =>
-        enabled ? (
-          <Tag color="success" icon={<CheckCircleOutlined />}>ACTIVE</Tag>
-        ) : (
-          <Tag color="error">REVOKED</Tag>
-        ),
+      sorter: (a: ApiGatewayKey, b: ApiGatewayKey) => Number(a.enabled) - Number(b.enabled),
+      render: (enabled: boolean) => <StatusTag status={enabled ? 'active' : 'revoked'} />,
     },
     {
       title: 'Created At',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      sorter: (a: ApiGatewayKey, b: ApiGatewayKey) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
       render: (val: string) => (val ? new Date(val).toLocaleDateString() : '-'),
     },
     {
       title: 'Last Used',
       dataIndex: 'lastUsedAt',
       key: 'lastUsedAt',
+      sorter: (a: ApiGatewayKey, b: ApiGatewayKey) => new Date(a.lastUsedAt || 0).getTime() - new Date(b.lastUsedAt || 0).getTime(),
       render: (val: string) => (val ? new Date(val).toLocaleString() : 'Never'),
     },
     {
       title: 'Requests Served',
       dataIndex: 'requestCount',
       key: 'requestCount',
+      sorter: true,
       render: (count: number) => (count || 0).toLocaleString(),
     },
     {
@@ -136,17 +138,16 @@ export default function GatewayKeysPage() {
             Copy Prefix
           </Button>
           {record.enabled && (
-            <Popconfirm
-              title="Revoke Gateway Key"
-              description="Are you sure you want to revoke this API Key? Clients using it will be blocked."
+            <ConfirmButton
+              confirmTitle="Revoke Gateway Key"
+              confirmDescription="Are you sure you want to revoke this API Key? Clients using it will be blocked."
               onConfirm={() => deleteMutation.mutate(record.id)}
               okText="Yes, Revoke"
               cancelText="Cancel"
+              icon={<DeleteOutlined />}
             >
-              <Button type="text" danger icon={<DeleteOutlined />}>
-                Revoke
-              </Button>
-            </Popconfirm>
+              Revoke
+            </ConfirmButton>
           )}
         </Space>
       ),
@@ -155,22 +156,26 @@ export default function GatewayKeysPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <Title level={3} style={{ margin: 0 }}>
-            Gateway API Keys
-          </Title>
-          <Text type="secondary">Client authentication keys used by OpenCode, Claude Code, and Antigravity</Text>
-        </div>
+      <PageHeader
+        title="Gateway API Keys"
+        description="Client authentication keys used by Providers"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+            Create Gateway API Key
+          </Button>
+        }
+      />
 
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-          Create Gateway API Key
-        </Button>
-      </div>
-
-      <Card size="small" variant="borderless" style={{ borderRadius: 8 }}>
-        <Table dataSource={keys} columns={columns} loading={isLoading} rowKey="id" pagination={{ pageSize: 10 }} />
-      </Card>
+      <DataTable
+        dataSource={keys}
+        columns={columns}
+        loading={isLoading}
+        rowKey="id"
+        searchPlaceholder="Search key name or prefix..."
+        searchFields={['name', 'keyPrefix']}
+        onRefresh={() => refetch()}
+        refreshing={isRefetching}
+      />
 
       <Modal
         title={newGeneratedKey ? "Gateway API Key Created Successfully" : "Generate Gateway API Key"}
