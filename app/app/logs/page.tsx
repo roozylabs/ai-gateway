@@ -177,11 +177,17 @@ export default function LogsPage() {
             <Descriptions.Item label="Retry Count">
               {selectedLog.retryCount || 0}
             </Descriptions.Item>
-            {selectedLog.errorMessage && (
-              <Descriptions.Item label="Error Details">
-                <Text type="danger">{selectedLog.errorMessage}</Text>
-              </Descriptions.Item>
-            )}
+            {(() => {
+              const errMsg = (selectedLog.errorMessage && typeof selectedLog.errorMessage === 'object') 
+                ? ((selectedLog.errorMessage as any).Valid ? (selectedLog.errorMessage as any).String : '') 
+                : selectedLog.errorMessage;
+              if (!errMsg) return null;
+              return (
+                <Descriptions.Item label="Error Details">
+                  <Text type="danger">{errMsg}</Text>
+                </Descriptions.Item>
+              );
+            })()}
           </Descriptions>
         )}
       </Drawer>

@@ -232,8 +232,27 @@ export default function SandboxPage() {
 
   const handleCopyResponse = () => {
     if (!streamedText) return;
-    navigator.clipboard.writeText(streamedText);
-    message.success('Copied response to clipboard!');
+    
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(streamedText)
+        .then(() => message.success('Copied response to clipboard!'))
+        .catch(() => message.error('Failed to copy.'));
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = streamedText;
+      textArea.style.position = "absolute";
+      textArea.style.left = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        message.success('Copied response to clipboard!');
+      } catch (err) {
+        message.error('Failed to copy. HTTPS is required.');
+      }
+      textArea.remove();
+    }
   };
 
   const isDropdownLoading = keysLoading || credsLoading;

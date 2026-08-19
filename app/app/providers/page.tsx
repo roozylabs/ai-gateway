@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Row, Col, Card, Typography, Switch, Button, Tag, Modal, Form, Input, Select, Space, App, Spin, Popconfirm } from 'antd';
+import { Row, Col, Card, Typography, Switch, Button, Tag, Modal, Form, Input, Select, Space, App, Spin, Popconfirm, theme } from 'antd';
 import { PlusOutlined, ApiOutlined, EditOutlined, DeleteOutlined, SyncOutlined, HistoryOutlined, NodeIndexOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -69,6 +69,7 @@ export default function ProvidersPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const { isConnected } = useSSE();
+  const { token } = theme.useToken();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<ApiProvider | null>(null);
@@ -326,9 +327,9 @@ export default function ProvidersPage() {
               }
               style={{ 
                 cursor: isSlugEditable ? 'text' : 'pointer', 
-                backgroundColor: isSlugEditable ? undefined : '#fafafa',
-                borderColor: isSlugEditable ? undefined : '#d9d9d9',
-                color: isSlugEditable ? undefined : '#888'
+                backgroundColor: isSlugEditable ? token.colorBgContainer : token.colorFillAlter,
+                borderColor: isSlugEditable ? token.colorBorder : 'transparent',
+                color: isSlugEditable ? token.colorText : token.colorTextDisabled
               }}
             />
           </Form.Item>
