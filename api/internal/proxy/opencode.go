@@ -42,7 +42,12 @@ func (a *OpenCodeAdapter) detectAdapter(model, baseURL string) ProviderAdapter {
 func (a *OpenCodeAdapter) BuildRequest(baseURL, apiKey string, req *ProviderRequest) (*http.Request, error) {
 	a.baseURL = baseURL
 	a.subAdapter = a.detectAdapter(req.Model, baseURL)
-	return a.subAdapter.BuildRequest(baseURL, apiKey, req)
+	httpReq, err := a.subAdapter.BuildRequest(baseURL, apiKey, req)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("User-Agent", "opencode-cli/1.0")
+	return httpReq, nil
 }
 
 func (a *OpenCodeAdapter) ParseResponse(body io.Reader) (*ProviderResponse, error) {
