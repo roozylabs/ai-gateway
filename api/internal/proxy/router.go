@@ -51,6 +51,8 @@ func (r *Router) getAdapter(providerType string) ProviderAdapter {
 		return NewOpenAIAdapter()
 	case "anthropic":
 		return NewAnthropicAdapter()
+	case "opencode":
+		return NewOpenCodeAdapter()
 	default:
 		return NewOpenAIAdapter()
 	}
