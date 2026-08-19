@@ -111,6 +111,7 @@ func main() {
 		api.GET("/providers/:id/credentials/:credId", credentialHandler.Get)
 		api.PUT("/providers/:id/credentials/:credId", credentialHandler.Update)
 		api.DELETE("/providers/:id/credentials/:credId", credentialHandler.Delete)
+		api.POST("/providers/:id/credentials/:credId/test", credentialHandler.Test)
 
 		// Models (nested under provider)
 		api.GET("/providers/:id/models", modelHandler.List)

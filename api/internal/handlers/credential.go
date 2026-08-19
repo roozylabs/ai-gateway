@@ -2,6 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/models"
@@ -167,4 +171,97 @@ func (h *CredentialHandler) Delete(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *CredentialHandler) Test(c *gin.Context) {
+	credID := c.Param("credId")
+	cred, err := h.credentials.FindByID(c.Request.Context(), credID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
+		return
+	}
+
+	provider, err := h.providers.FindByID(c.Request.Context(), cred.ProviderID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
+		return
+	}
+
+	apiKey, err := utils.DecryptAES256GCM(cred.EncryptedKey, h.encKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to decrypt key"})
+		return
+	}
+
+	start := time.Now()
+	var statusCode int
+	var errMsg string
+
+	switch provider.Type {
+	case "anthropic":
+		statusCode, errMsg = h.testAnthropic(provider.BaseURL, apiKey)
+	default:
+		statusCode, errMsg = h.testOpenAI(provider.BaseURL, apiKey)
+	}
+
+	latency := int(time.Since(start).Milliseconds())
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    statusCode >= 200 && statusCode < 300,
+		"latencyMs":  latency,
+		"httpStatus": statusCode,
+		"error":      errMsg,
+	})
+}
+
+func (h *CredentialHandler) testOpenAI(baseURL, apiKey string) (int, string) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return 0, "invalid base URL"
+	}
+	u.Path = path.Join(u.Path, "v1", "models")
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return 0, "failed to create request"
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err.Error()
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return resp.StatusCode, "authentication failed"
+	}
+	return resp.StatusCode, ""
+}
+
+func (h *CredentialHandler) testAnthropic(baseURL, apiKey string) (int, string) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return 0, "invalid base URL"
+	}
+	u.Path = path.Join(u.Path, "v1", "messages")
+
+	req, err := http.NewRequest("POST", u.String(), strings.NewReader(`{"model":"claude-3-haiku-20240307","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`))
+	if err != nil {
+		return 0, "failed to create request"
+	}
+	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err.Error()
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return resp.StatusCode, "authentication failed"
+	}
+	return resp.StatusCode, ""
 }
