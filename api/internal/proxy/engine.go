@@ -70,8 +70,13 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			continue
 		}
 
+		targetModel := req.Model
+		if route.Model != nil && route.Model.Name != "" {
+			targetModel = route.Model.Name
+		}
+
 		providerReq := &ProviderRequest{
-			Model:       req.Model,
+			Model:       targetModel,
 			Messages:    req.Messages,
 			Stream:      req.Stream,
 			MaxTokens:   req.MaxTokens,
@@ -180,8 +185,13 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			continue
 		}
 
+		targetModel := req.Model
+		if route.Model != nil && route.Model.Name != "" {
+			targetModel = route.Model.Name
+		}
+
 		providerReq := &ProviderRequest{
-			Model:       req.Model,
+			Model:       targetModel,
 			Messages:    req.Messages,
 			Stream:      true,
 			MaxTokens:   req.MaxTokens,
