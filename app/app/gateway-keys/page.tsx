@@ -43,10 +43,14 @@ export default function GatewayKeysPage() {
     return map;
   }, [providers]);
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Fetch Gateway Keys
-  const { data: keys = [], isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['gateway-keys'],
-    queryFn: apiGetGatewayKeys,
+  const { data: keysData, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ['gateway-keys', page, pageSize, searchQuery],
+    queryFn: () => apiGetGatewayKeys({ page, limit: pageSize, search: searchQuery || undefined }),
   });
 
   // Create Mutation
@@ -282,14 +286,26 @@ export default function GatewayKeysPage() {
       />
 
       <DataTable
-        dataSource={keys}
+        dataSource={keysData?.data || []}
         columns={columns}
         loading={isLoading || providersLoading}
         rowKey="id"
         searchPlaceholder="Search key name or prefix..."
-        searchFields={['name', 'keyPrefix']}
+        searchValue={searchQuery}
+        onSearchChange={(val) => { setSearchQuery(val); setPage(1); }}
         onRefresh={() => refetch()}
         refreshing={isRefetching}
+        pagination={{
+          current: page,
+          pageSize: pageSize,
+          total: keysData?.total || 0,
+          onChange: (p, ps) => {
+            setPage(p);
+            if (ps && ps !== pageSize) {
+              setPageSize(ps);
+            }
+          },
+        }}
       />
 
       <Modal

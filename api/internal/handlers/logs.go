@@ -29,16 +29,30 @@ func (h *LogsHandler) List(c *gin.Context) {
 		status, _ = strconv.Atoi(s)
 	}
 
-	limit := 50
+	limit := 10
 	if l := c.Query("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	} else if l := c.Query("pageSize"); l != "" {
 		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
 			limit = n
 		}
 	}
 
-	offset := 0
+	page := 1
+	if p := c.Query("page"); p != "" {
+		if n, err := strconv.Atoi(p); err == nil && n > 0 {
+			page = n
+		}
+	}
+
+	offset := (page - 1) * limit
 	if o := c.Query("offset"); o != "" {
-		offset, _ = strconv.Atoi(o)
+		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+			offset = n
+			page = (offset / limit) + 1
+		}
 	}
 
 	logs, total, err := h.logs.ListWithFilter(c.Request.Context(), repository.LogFilter{
@@ -60,7 +74,9 @@ func (h *LogsHandler) List(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"value": logs,
-		"count": total,
+		"data":     logs,
+		"total":    total,
+		"page":     page,
+		"pageSize": limit,
 	})
 }

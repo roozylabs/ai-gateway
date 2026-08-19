@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -92,6 +93,60 @@ func (r *GatewayKeyRepository) ListByUserID(ctx context.Context, userID string) 
 		keys = append(keys, k)
 	}
 	return keys, nil
+}
+
+func (r *GatewayKeyRepository) ListByUserIDWithFilter(ctx context.Context, userID, search string, limit, offset int) ([]models.GatewayAPIKey, int64, error) {
+	query := `SELECT id, user_id, provider_id, name, key_hash, key_prefix, enabled, rate_limit, allowed_models,
+		        expires_at, last_used_at, request_count, created_at, updated_at
+		 FROM gateway_api_keys WHERE user_id = $1`
+	countQuery := `SELECT COUNT(*) FROM gateway_api_keys WHERE user_id = $1`
+
+	args := []interface{}{userID}
+	countArgs := []interface{}{userID}
+
+	if search != "" {
+		args = append(args, "%"+search+"%")
+		countArgs = append(countArgs, "%"+search+"%")
+		filter := fmt.Sprintf(" AND (name ILIKE $%d OR key_prefix ILIKE $%d)", len(args), len(args))
+		query += filter
+		countQuery += filter
+	}
+
+	var total int64
+	if err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query += " ORDER BY created_at DESC"
+
+	if limit > 0 {
+		args = append(args, limit)
+		query += fmt.Sprintf(" LIMIT $%d", len(args))
+	}
+	if offset > 0 {
+		args = append(args, offset)
+		query += fmt.Sprintf(" OFFSET $%d", len(args))
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var keys []models.GatewayAPIKey
+	for rows.Next() {
+		var k models.GatewayAPIKey
+		var allowedModels []string
+		if err := rows.Scan(&k.ID, &k.UserID, &k.ProviderID, &k.Name, &k.KeyHash, &k.KeyPrefix,
+			&k.Enabled, &k.RateLimit, pq.Array(&allowedModels),
+			&k.ExpiresAt, &k.LastUsedAt, &k.RequestCount, &k.CreatedAt, &k.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		k.AllowedModels = allowedModels
+		keys = append(keys, k)
+	}
+	return keys, total, nil
 }
 
 func (r *GatewayKeyRepository) Update(ctx context.Context, k *models.GatewayAPIKey) error {

@@ -21,6 +21,13 @@ export interface LoginResponse {
   user: User;
 }
 
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 // API Models matching Backend structs
 
 export interface ApiProvider {
@@ -204,8 +211,11 @@ export async function apiDeleteProvider(id: string): Promise<void> {
 }
 
 // Credentials API
-export async function apiGetCredentials(providerId: string): Promise<ApiCredential[]> {
-  const response = await api.get<ApiCredential[]>(`/providers/${providerId}/credentials`);
+export async function apiGetCredentials(
+  providerId: string,
+  params?: { page?: number; limit?: number; search?: string }
+): Promise<PaginatedResult<ApiCredential>> {
+  const response = await api.get<PaginatedResult<ApiCredential>>(`/providers/${providerId}/credentials`, { params });
   return response.data;
 }
 
@@ -240,8 +250,11 @@ export async function apiTestCredential(
 }
 
 // Models API
-export async function apiGetModels(providerId: string): Promise<ApiModel[]> {
-  const response = await api.get<ApiModel[]>(`/providers/${providerId}/models`);
+export async function apiGetModels(
+  providerId: string,
+  params?: { page?: number; limit?: number; search?: string }
+): Promise<PaginatedResult<ApiModel>> {
+  const response = await api.get<PaginatedResult<ApiModel>>(`/providers/${providerId}/models`, { params });
   return response.data;
 }
 
@@ -260,8 +273,10 @@ export async function apiDeleteModel(providerId: string, modelId: string): Promi
 }
 
 // Gateway API Keys
-export async function apiGetGatewayKeys(): Promise<ApiGatewayKey[]> {
-  const response = await api.get<ApiGatewayKey[]>('/gateway-keys');
+export async function apiGetGatewayKeys(
+  params?: { page?: number; limit?: number; search?: string }
+): Promise<PaginatedResult<ApiGatewayKey>> {
+  const response = await api.get<PaginatedResult<ApiGatewayKey>>('/gateway-keys', { params });
   return response.data;
 }
 
@@ -288,8 +303,9 @@ export async function apiGetLogs(params?: {
   search?: string;
   limit?: number;
   offset?: number;
-}): Promise<{ value: ApiRequestLog[]; count: number }> {
-  const response = await api.get<{ value: ApiRequestLog[]; count: number }>('/logs', { params });
+  page?: number;
+}): Promise<PaginatedResult<ApiRequestLog>> {
+  const response = await api.get<PaginatedResult<ApiRequestLog>>('/logs', { params });
   return response.data;
 }
 

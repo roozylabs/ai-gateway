@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,7 +48,29 @@ type CreateCredentialRequest struct {
 // @Router       /api/providers/{id}/credentials [get]
 func (h *CredentialHandler) List(c *gin.Context) {
 	providerID := c.Param("id")
-	credentials, err := h.credentials.ListByProviderID(c.Request.Context(), providerID)
+	search := c.Query("search")
+
+	limit := 10
+	if l := c.Query("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	} else if l := c.Query("pageSize"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+
+	page := 1
+	if p := c.Query("page"); p != "" {
+		if n, err := strconv.Atoi(p); err == nil && n > 0 {
+			page = n
+		}
+	}
+
+	offset := (page - 1) * limit
+
+	credentials, total, err := h.credentials.ListWithFilter(c.Request.Context(), providerID, search, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list credentials"})
 		return
@@ -64,7 +87,12 @@ func (h *CredentialHandler) List(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, credentials)
+	c.JSON(http.StatusOK, gin.H{
+		"data":     credentials,
+		"total":    total,
+		"page":     page,
+		"pageSize": limit,
+	})
 }
 
 // Get godoc

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -87,7 +88,29 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 
 func (h *GatewayKeyHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
-	keys, err := h.keys.ListByUserID(c.Request.Context(), userID)
+	search := c.Query("search")
+
+	limit := 10
+	if l := c.Query("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	} else if l := c.Query("pageSize"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+
+	page := 1
+	if p := c.Query("page"); p != "" {
+		if n, err := strconv.Atoi(p); err == nil && n > 0 {
+			page = n
+		}
+	}
+
+	offset := (page - 1) * limit
+
+	keys, total, err := h.keys.ListByUserIDWithFilter(c.Request.Context(), userID, search, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list keys"})
 		return
@@ -95,7 +118,12 @@ func (h *GatewayKeyHandler) List(c *gin.Context) {
 	if keys == nil {
 		keys = []models.GatewayAPIKey{}
 	}
-	c.JSON(http.StatusOK, keys)
+	c.JSON(http.StatusOK, gin.H{
+		"data":     keys,
+		"total":    total,
+		"page":     page,
+		"pageSize": limit,
+	})
 }
 
 func (h *GatewayKeyHandler) Delete(c *gin.Context) {

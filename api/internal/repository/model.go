@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,6 +38,63 @@ func (r *ModelRepository) ListByProviderID(ctx context.Context, providerID strin
 		modelList = append(modelList, m)
 	}
 	return modelList, nil
+}
+
+func (r *ModelRepository) ListWithFilter(ctx context.Context, providerID, search string, limit, offset int) ([]models.Model, int64, error) {
+	query := `SELECT id, provider_id, name, slug, display_name, enabled, created_at, updated_at FROM models WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM models WHERE 1=1`
+
+	var args []interface{}
+	var countArgs []interface{}
+
+	if providerID != "" {
+		args = append(args, providerID)
+		countArgs = append(countArgs, providerID)
+		filter := fmt.Sprintf(" AND provider_id = $%d", len(args))
+		query += filter
+		countQuery += filter
+	}
+
+	if search != "" {
+		args = append(args, "%"+search+"%")
+		countArgs = append(countArgs, "%"+search+"%")
+		filter := fmt.Sprintf(" AND (name ILIKE $%d OR slug ILIKE $%d OR display_name ILIKE $%d)", len(args), len(args), len(args))
+		query += filter
+		countQuery += filter
+	}
+
+	var total int64
+	if err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query += " ORDER BY created_at DESC"
+
+	if limit > 0 {
+		args = append(args, limit)
+		query += fmt.Sprintf(" LIMIT $%d", len(args))
+	}
+	if offset > 0 {
+		args = append(args, offset)
+		query += fmt.Sprintf(" OFFSET $%d", len(args))
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var modelList []models.Model
+	for rows.Next() {
+		var m models.Model
+		if err := rows.Scan(&m.ID, &m.ProviderID, &m.Name, &m.Slug, &m.DisplayName,
+			&m.Enabled, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		modelList = append(modelList, m)
+	}
+	return modelList, total, nil
 }
 
 func (r *ModelRepository) FindByID(ctx context.Context, id string) (*models.Model, error) {

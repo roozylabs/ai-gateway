@@ -37,12 +37,25 @@ export function DataTable<T extends object>({
   onRefresh,
   refreshing = false,
   extraActions,
-  pagination = { pageSize: 10 },
+  pagination = {},
   scroll = { x: 'max-content' },
   style,
   ...tableProps
 }: DataTableProps<T>) {
   const [internalSearch, setInternalSearch] = useState('');
+
+  const mergedPagination = useMemo(() => {
+    if (pagination === false) return false;
+
+    return {
+      pageSize: 10,
+      showSizeChanger: true,
+      pageSizeOptions: ['10', '20', '50', '100'],
+      showTotal: (total: number, range: [number, number]) =>
+        `Showing ${range[0]}-${range[1]} of ${total} items`,
+      ...pagination,
+    };
+  }, [pagination]);
 
   const searchVal = externalSearchValue !== undefined ? externalSearchValue : internalSearch;
 
@@ -161,7 +174,7 @@ export function DataTable<T extends object>({
           dataSource={filteredData}
           loading={loading}
           rowKey={rowKey}
-          pagination={pagination}
+          pagination={mergedPagination}
           scroll={scroll}
           size="middle"
           {...tableProps}

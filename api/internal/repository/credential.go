@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,6 +42,66 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 		credentials = append(credentials, c)
 	}
 	return credentials, nil
+}
+
+func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, search string, limit, offset int) ([]models.Credential, int64, error) {
+	query := `SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, priority, enabled, status,
+		        last_used_at, request_count, error_count, last_error, last_error_at,
+		        created_at, updated_at FROM credentials WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM credentials WHERE 1=1`
+
+	var args []interface{}
+	var countArgs []interface{}
+
+	if providerID != "" {
+		args = append(args, providerID)
+		countArgs = append(countArgs, providerID)
+		filter := fmt.Sprintf(" AND provider_id = $%d", len(args))
+		query += filter
+		countQuery += filter
+	}
+
+	if search != "" {
+		args = append(args, "%"+search+"%")
+		countArgs = append(countArgs, "%"+search+"%")
+		filter := fmt.Sprintf(" AND (name ILIKE $%d OR key_prefix ILIKE $%d)", len(args), len(args))
+		query += filter
+		countQuery += filter
+	}
+
+	var total int64
+	if err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query += " ORDER BY priority ASC, created_at DESC"
+
+	if limit > 0 {
+		args = append(args, limit)
+		query += fmt.Sprintf(" LIMIT $%d", len(args))
+	}
+	if offset > 0 {
+		args = append(args, offset)
+		query += fmt.Sprintf(" OFFSET $%d", len(args))
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var credentials []models.Credential
+	for rows.Next() {
+		var c models.Credential
+		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
+			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		credentials = append(credentials, c)
+	}
+	return credentials, total, nil
 }
 
 func (r *CredentialRepository) FindByID(ctx context.Context, id string) (*models.Credential, error) {

@@ -15,9 +15,9 @@ export default function LogsPage() {
   const [selectedLog, setSelectedLog] = useState<ApiRequestLog | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [page, setPage] = useState<number>(1);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [isLiveStream, setIsLiveStream] = useState<boolean>(true);
-  const pageSize = 10;
 
   // Fetch Providers list for filter dropdown
   const { data: providers = [] } = useQuery({
@@ -27,13 +27,13 @@ export default function LogsPage() {
 
   // Fetch Request Logs
   const { data: logsData, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['logs', selectedProvider, searchQuery, page],
+    queryKey: ['logs', selectedProvider, searchQuery, page, pageSize],
     queryFn: () =>
       apiGetLogs({
         provider: selectedProvider || undefined,
         search: searchQuery || undefined,
         limit: pageSize,
-        offset: (page - 1) * pageSize,
+        page: page,
       }),
   });
 
@@ -125,7 +125,7 @@ export default function LogsPage() {
       />
 
       <DataTable
-        dataSource={logsData?.value || []}
+        dataSource={logsData?.data || []}
         columns={columns}
         loading={isLoading}
         rowKey="id"
@@ -138,8 +138,13 @@ export default function LogsPage() {
         pagination={{
           current: page,
           pageSize: pageSize,
-          total: logsData?.count || 0,
-          onChange: (p) => setPage(p),
+          total: logsData?.total || 0,
+          onChange: (p, ps) => {
+            setPage(p);
+            if (ps && ps !== pageSize) {
+              setPageSize(ps);
+            }
+          },
         }}
       />
 

@@ -26,6 +26,9 @@ export default function ModelsPage() {
 
   // Default to 'all' providers
   const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
@@ -37,39 +40,47 @@ export default function ModelsPage() {
 
   // Fetch Models for all or selected provider
   const {
-    data: models = [],
+    data: modelsData,
     isLoading: modelsLoading,
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['models', selectedProviderId, providers.map((p) => p.id).join(',')],
+    queryKey: ['models', selectedProviderId, providers.map((p) => p.id).join(','), page, pageSize, searchQuery],
     queryFn: async () => {
-      if (!providers || providers.length === 0) return [];
+      if (!providers || providers.length === 0) return { data: [], total: 0 };
 
       if (selectedProviderId === 'all') {
         const results = await Promise.all(
           providers.map(async (provider) => {
             try {
-              const list = await apiGetModels(provider.id);
-              return list.map((m) => ({
-                ...m,
-                providerId: provider.id,
-                providerName: provider.name,
-              }));
+              const res = await apiGetModels(provider.id, { page, limit: pageSize, search: searchQuery || undefined });
+              return {
+                data: res.data.map((m) => ({
+                  ...m,
+                  providerId: provider.id,
+                  providerName: provider.name,
+                })),
+                total: res.total,
+              };
             } catch {
-              return [];
+              return { data: [], total: 0 };
             }
           })
         );
-        return results.flat();
+        const allModels = results.flatMap((r) => r.data);
+        const maxTotal = results.reduce((acc, curr) => acc + curr.total, 0);
+        return { data: allModels, total: maxTotal };
       } else {
         const targetProvider = providers.find((p) => p.id === selectedProviderId);
-        const list = await apiGetModels(selectedProviderId);
-        return list.map((m) => ({
-          ...m,
-          providerId: selectedProviderId,
-          providerName: targetProvider?.name || 'Unknown',
-        }));
+        const res = await apiGetModels(selectedProviderId, { page, limit: pageSize, search: searchQuery || undefined });
+        return {
+          data: res.data.map((m) => ({
+            ...m,
+            providerId: selectedProviderId,
+            providerName: targetProvider?.name || 'Unknown',
+          })),
+          total: res.total,
+        };
       }
     },
     enabled: providers.length > 0,
@@ -207,16 +218,27 @@ export default function ModelsPage() {
       />
 
       <DataTable
-        dataSource={models}
+        dataSource={modelsData?.data || []}
         columns={columns}
         loading={modelsLoading || providersLoading}
         rowKey="id"
-        pagination={false}
         searchPlaceholder="Search model alias, display name, or provider..."
-        searchFields={['slug', 'displayName', 'name', 'providerName']}
+        searchValue={searchQuery}
+        onSearchChange={(val) => { setSearchQuery(val); setPage(1); }}
         extraActions={extraActions}
         onRefresh={() => refetch()}
         refreshing={isRefetching}
+        pagination={{
+          current: page,
+          pageSize: pageSize,
+          total: modelsData?.total || 0,
+          onChange: (p, ps) => {
+            setPage(p);
+            if (ps && ps !== pageSize) {
+              setPageSize(ps);
+            }
+          },
+        }}
       />
 
       <Modal

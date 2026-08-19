@@ -28,6 +28,9 @@ export default function CredentialsPage() {
 
   // 'all' represents all providers
   const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
   const [modalTargetProviderId, setModalTargetProviderId] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -46,39 +49,47 @@ export default function CredentialsPage() {
 
   // Fetch Credentials (All or by specific Provider)
   const {
-    data: credentials = [],
+    data: credentialsData,
     isLoading: credentialsLoading,
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['credentials', selectedProviderId, providers.length],
+    queryKey: ['credentials', selectedProviderId, providers.length, page, pageSize, searchQuery],
     queryFn: async () => {
-      if (!providers || providers.length === 0) return [];
+      if (!providers || providers.length === 0) return { data: [], total: 0 };
 
       if (selectedProviderId === 'all') {
         const results = await Promise.all(
           providers.map(async (provider) => {
             try {
-              const list = await apiGetCredentials(provider.id);
-              return list.map((cred) => ({
-                ...cred,
-                providerId: provider.id,
-                providerName: provider.name,
-              }));
+              const res = await apiGetCredentials(provider.id, { page, limit: pageSize, search: searchQuery || undefined });
+              return {
+                data: res.data.map((cred) => ({
+                  ...cred,
+                  providerId: provider.id,
+                  providerName: provider.name,
+                })),
+                total: res.total,
+              };
             } catch {
-              return [];
+              return { data: [], total: 0 };
             }
           })
         );
-        return results.flat();
+        const allCreds = results.flatMap((r) => r.data);
+        const maxTotal = results.reduce((acc, curr) => acc + curr.total, 0);
+        return { data: allCreds, total: maxTotal };
       } else {
         const targetProvider = providers.find((p) => p.id === selectedProviderId);
-        const list = await apiGetCredentials(selectedProviderId);
-        return list.map((cred) => ({
-          ...cred,
-          providerId: selectedProviderId,
-          providerName: targetProvider?.name || 'Unknown',
-        }));
+        const res = await apiGetCredentials(selectedProviderId, { page, limit: pageSize, search: searchQuery || undefined });
+        return {
+          data: res.data.map((cred) => ({
+            ...cred,
+            providerId: selectedProviderId,
+            providerName: targetProvider?.name || 'Unknown',
+          })),
+          total: res.total,
+        };
       }
     },
     enabled: providers.length > 0,
@@ -286,15 +297,27 @@ export default function CredentialsPage() {
       />
 
       <DataTable
-        dataSource={credentials}
+        dataSource={credentialsData?.data || []}
         columns={columns}
         loading={credentialsLoading || providersLoading}
         rowKey="id"
         searchPlaceholder="Search credential label, provider, or key prefix..."
-        searchFields={['name', 'keyPrefix', 'providerName']}
+        searchValue={searchQuery}
+        onSearchChange={(val) => { setSearchQuery(val); setPage(1); }}
         extraActions={extraActions}
         onRefresh={() => refetch()}
         refreshing={isRefetching}
+        pagination={{
+          current: page,
+          pageSize: pageSize,
+          total: credentialsData?.total || 0,
+          onChange: (p, ps) => {
+            setPage(p);
+            if (ps && ps !== pageSize) {
+              setPageSize(ps);
+            }
+          },
+        }}
       />
 
       {/* Add Credential Modal */}

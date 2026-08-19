@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/models"
@@ -28,7 +29,29 @@ func NewModelHandler(models *repository.ModelRepository, providers *repository.P
 // @Router       /api/providers/{id}/models [get]
 func (h *ModelHandler) List(c *gin.Context) {
 	providerID := c.Param("id")
-	modelList, err := h.models.ListByProviderID(c.Request.Context(), providerID)
+	search := c.Query("search")
+
+	limit := 10
+	if l := c.Query("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	} else if l := c.Query("pageSize"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+
+	page := 1
+	if p := c.Query("page"); p != "" {
+		if n, err := strconv.Atoi(p); err == nil && n > 0 {
+			page = n
+		}
+	}
+
+	offset := (page - 1) * limit
+
+	modelList, total, err := h.models.ListWithFilter(c.Request.Context(), providerID, search, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list models"})
 		return
@@ -36,7 +59,12 @@ func (h *ModelHandler) List(c *gin.Context) {
 	if modelList == nil {
 		modelList = []models.Model{}
 	}
-	c.JSON(http.StatusOK, modelList)
+	c.JSON(http.StatusOK, gin.H{
+		"data":     modelList,
+		"total":    total,
+		"page":     page,
+		"pageSize": limit,
+	})
 }
 
 // Get godoc
