@@ -8,6 +8,7 @@ import (
 	"github.com/roozylabs/ai-gateway/internal/database"
 	"github.com/roozylabs/ai-gateway/internal/handlers"
 	"github.com/roozylabs/ai-gateway/internal/middleware"
+	"github.com/roozylabs/ai-gateway/internal/proxy"
 	"github.com/roozylabs/ai-gateway/internal/repository"
 	"github.com/roozylabs/ai-gateway/internal/service"
 	swaggerFiles "github.com/swaggo/files"
@@ -54,9 +55,14 @@ func main() {
 	credentialRepo := repository.NewCredentialRepository(sqlDB)
 	modelRepo := repository.NewModelRepository(sqlDB)
 	gatewayKeyRepo := repository.NewGatewayKeyRepository(sqlDB)
+	requestLogRepo := repository.NewRequestLogRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
+
+	// Proxy
+	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo)
+	engine := proxy.NewEngine(router, credentialRepo, cfg.EncryptionKey)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -65,6 +71,7 @@ func main() {
 	credentialHandler := handlers.NewCredentialHandler(credentialRepo, providerRepo, cfg.EncryptionKey)
 	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo)
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo)
+	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -114,6 +121,14 @@ func main() {
 		api.GET("/gateway-keys", gatewayKeyHandler.List)
 		api.POST("/gateway-keys", gatewayKeyHandler.Create)
 		api.DELETE("/gateway-keys/:id", gatewayKeyHandler.Delete)
+	}
+
+	// Gateway routes (authenticated with gw_sk_* keys)
+	v1 := r.Group("/v1")
+	v1.Use(middleware.GatewayAuthMiddleware(gatewayKeyRepo))
+	{
+		v1.POST("/chat/completions", gatewayHandler.ChatCompletions)
+		v1.GET("/models", gatewayHandler.Models)
 	}
 
 	// Swagger endpoint (dev only)

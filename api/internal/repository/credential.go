@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
 type CredentialRepository struct {
@@ -105,4 +106,12 @@ func (r *CredentialRepository) FindActiveByProviderID(ctx context.Context, provi
 		return nil, err
 	}
 	return c, nil
+}
+
+func (r *CredentialRepository) DecryptKey(ctx context.Context, credentialID, encryptionKey string) (string, error) {
+	c, err := r.FindByID(ctx, credentialID)
+	if err != nil {
+		return "", err
+	}
+	return utils.DecryptAES256GCM(c.EncryptedKey, encryptionKey)
 }
