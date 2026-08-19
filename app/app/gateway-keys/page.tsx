@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button, Space, Typography, Modal, Form, Input, Select, InputNumber, Alert, Tooltip, Tag, App } from 'antd';
-import { PlusOutlined, CopyOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, CopyOutlined, DeleteOutlined, InfoCircleOutlined, SyncOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
@@ -70,6 +70,44 @@ export default function GatewayKeysPage() {
     },
     onError: (err: Error) => message.error(err.message),
   });
+
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleRegenerate = async (record: ApiGatewayKey) => {
+    try {
+      setIsRegenerating(true);
+      
+      let expiresInDays = 0;
+      if (record.expiresAt) {
+        const days = Math.ceil((new Date(record.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        expiresInDays = days > 0 ? days : 1;
+      }
+
+      // 1. Create new key
+      const res = await apiCreateGatewayKey({
+        name: record.name,
+        providerId: record.providerId || '',
+        rateLimit: 100, // default
+        expiresInDays,
+      });
+      const rawRes = res as any;
+      const newKey = rawRes.key || rawRes.rawKey || rawRes.keyPrefix;
+      
+      // 2. Revoke old key
+      await apiDeleteGatewayKey(record.id);
+      
+      // 3. Update UI
+      queryClient.invalidateQueries({ queryKey: ['gateway-keys'] });
+      message.success('Gateway API Key regenerated successfully!');
+      
+      setNewGeneratedKey(newKey);
+      setIsModalOpen(true);
+    } catch (err: any) {
+      message.error(`Failed to regenerate key: ${err.message}`);
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   const handleCreateKey = (values: any) => {
     createMutation.mutate({
@@ -191,22 +229,36 @@ export default function GatewayKeysPage() {
               Copy Prefix
             </Button>
             {record.enabled && (
-              <ConfirmButton
-                confirmTitle="Revoke Gateway Key"
-                confirmDescription="Are you sure you want to revoke this API Key? Clients using it will be blocked."
-                onConfirm={() => deleteMutation.mutate(record.id)}
-                okText="Yes, Revoke"
-                cancelText="Cancel"
-                icon={<DeleteOutlined />}
-              >
-                Revoke
-              </ConfirmButton>
+              <>
+                <ConfirmButton
+                  confirmTitle="Regenerate Gateway Key"
+                  confirmDescription="Are you sure you want to regenerate this API Key? The current key will be revoked immediately, and a new key will be provided."
+                  onConfirm={() => handleRegenerate(record)}
+                  okText="Yes, Regenerate"
+                  cancelText="Cancel"
+                  icon={<SyncOutlined />}
+                  loading={isRegenerating}
+                >
+                  Regenerate
+                </ConfirmButton>
+                <ConfirmButton
+                  confirmTitle="Revoke Gateway Key"
+                  confirmDescription="Are you sure you want to revoke this API Key? Clients using it will be blocked."
+                  onConfirm={() => deleteMutation.mutate(record.id)}
+                  okText="Yes, Revoke"
+                  cancelText="Cancel"
+                  icon={<DeleteOutlined />}
+                  danger
+                >
+                  Revoke
+                </ConfirmButton>
+              </>
             )}
           </Space>
         ),
       },
     ],
-    [deleteMutation, providerMap]
+    [deleteMutation, providerMap, isRegenerating]
   );
 
   return (
