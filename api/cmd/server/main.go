@@ -75,6 +75,7 @@ func main() {
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo)
 	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
+	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -128,6 +129,11 @@ func main() {
 
 		// Request Logs
 		api.GET("/logs", logsHandler.List)
+
+		// Dashboard
+		api.GET("/dashboard/stats", dashboardHandler.GetStats)
+		api.GET("/dashboard/usage", dashboardHandler.GetUsageChart)
+		api.GET("/dashboard/health", dashboardHandler.GetProviderHealth)
 	}
 
 	// Gateway routes (authenticated with gw_sk_* keys)

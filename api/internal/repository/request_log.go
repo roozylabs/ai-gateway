@@ -153,3 +153,128 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 	}
 	return logs, total, nil
 }
+
+type DashboardStats struct {
+	TotalRequests     int64   `json:"totalRequests"`
+	TotalTokens       int64   `json:"totalTokens"`
+	AvgLatency        float64 `json:"avgLatency"`
+	ErrorRate         float64 `json:"errorRate"`
+	ActiveProviders   int     `json:"activeProviders"`
+	ActiveCredentials int     `json:"activeCredentials"`
+	ActiveKeys        int     `json:"activeKeys"`
+}
+
+type UsagePoint struct {
+	Date     string `json:"date"`
+	Requests int64  `json:"requests"`
+	Tokens   int64  `json:"tokens"`
+}
+
+func (r *RequestLogRepository) GetStats(ctx context.Context, userID string) (*DashboardStats, error) {
+	s := &DashboardStats{}
+
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COALESCE(COUNT(*), 0),
+		        COALESCE(SUM(total_tokens), 0),
+		        COALESCE(AVG(latency_ms), 0),
+		        COALESCE(CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE status_code >= 400))::float / COUNT(*) * 100 ELSE 0 END, 0)
+		 FROM request_logs rl
+		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE gak.user_id = $1`, userID,
+	).Scan(&s.TotalRequests, &s.TotalTokens, &s.AvgLatency, &s.ErrorRate)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM providers WHERE user_id = $1 AND enabled = true`, userID,
+	).Scan(&s.ActiveProviders)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM credentials c
+		 INNER JOIN providers p ON c.provider_id = p.id
+		 WHERE p.user_id = $1 AND c.enabled = true AND c.status = 'active'`, userID,
+	).Scan(&s.ActiveCredentials)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM gateway_api_keys WHERE user_id = $1 AND enabled = true`, userID,
+	).Scan(&s.ActiveKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string, days int) ([]UsagePoint, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT TO_CHAR(rl.created_at, 'YYYY-MM-DD') as date,
+		        COUNT(*) as requests,
+		        COALESCE(SUM(total_tokens), 0) as tokens
+		 FROM request_logs rl
+		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE gak.user_id = $1
+		   AND rl.created_at >= NOW() - ($2 || ' days')::INTERVAL
+		 GROUP BY TO_CHAR(rl.created_at, 'YYYY-MM-DD')
+		 ORDER BY date ASC`, userID, days,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var points []UsagePoint
+	for rows.Next() {
+		var p UsagePoint
+		if err := rows.Scan(&p.Date, &p.Requests, &p.Tokens); err != nil {
+			return nil, err
+		}
+		points = append(points, p)
+	}
+	return points, nil
+}
+
+type ProviderHealth struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Status    string `json:"status"`
+	CredCount int    `json:"credCount"`
+}
+
+func (r *RequestLogRepository) GetProviderHealth(ctx context.Context, userID string) ([]ProviderHealth, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT p.name, p.type, p.enabled,
+		        (SELECT COUNT(*) FROM credentials c WHERE c.provider_id = p.id AND c.enabled = true AND c.status = 'active') as cred_count
+		 FROM providers p
+		 WHERE p.user_id = $1
+		 ORDER BY p.name`, userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var providers []ProviderHealth
+	for rows.Next() {
+		var ph ProviderHealth
+		var enabled bool
+		if err := rows.Scan(&ph.Name, &ph.Type, &enabled, &ph.CredCount); err != nil {
+			return nil, err
+		}
+		if enabled && ph.CredCount > 0 {
+			ph.Status = "healthy"
+		} else if enabled {
+			ph.Status = "degraded"
+		} else {
+			ph.Status = "down"
+		}
+		providers = append(providers, ph)
+	}
+	return providers, nil
+}
