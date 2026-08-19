@@ -74,6 +74,7 @@ func main() {
 	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo)
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo)
 	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo)
+	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -124,6 +125,9 @@ func main() {
 		api.GET("/gateway-keys", gatewayKeyHandler.List)
 		api.POST("/gateway-keys", gatewayKeyHandler.Create)
 		api.DELETE("/gateway-keys/:id", gatewayKeyHandler.Delete)
+
+		// Request Logs
+		api.GET("/logs", logsHandler.List)
 	}
 
 	// Gateway routes (authenticated with gw_sk_* keys)
