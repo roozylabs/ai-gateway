@@ -143,6 +143,23 @@ func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models
 	c.JSON(status, gin.H{"error": gin.H{"message": err.Error(), "type": errType}})
 }
 
+func (h *GatewayHandler) SandboxChatCompletions(c *gin.Context) {
+	keyPrefix := c.GetHeader("X-Sandbox-Key-Prefix")
+	if keyPrefix == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"message": "Missing X-Sandbox-Key-Prefix header", "type": "invalid_request_error"}})
+		return
+	}
+
+	gatewayKey, err := h.gatewayKeys.FindByKeyPrefix(c.Request.Context(), keyPrefix)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"message": "Invalid API key prefix", "type": "invalid_request_error"}})
+		return
+	}
+
+	c.Set("gatewayKey", gatewayKey)
+	h.ChatCompletions(c)
+}
+
 func (h *GatewayHandler) Models(c *gin.Context) {
 	models := []map[string]interface{}{
 		{"id": "gpt-4o", "object": "model", "owned_by": "openai"},

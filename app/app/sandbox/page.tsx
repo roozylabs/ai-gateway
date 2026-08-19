@@ -151,11 +151,11 @@ export default function SandboxPage() {
 
     try {
       // Send request to Gateway proxy endpoint /api/v1/chat/completions
-      const response = await fetch('/api/v1/chat/completions', {
+      const response = await fetch('/api/sandbox/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: activeKeyPrefix ? `Bearer ${activeKeyPrefix}` : '',
+          'X-Sandbox-Key-Prefix': activeKeyPrefix || '',
         },
         body: JSON.stringify({
           model: selectedModel,

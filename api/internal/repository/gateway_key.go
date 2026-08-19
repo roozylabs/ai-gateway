@@ -51,6 +51,23 @@ func (r *GatewayKeyRepository) FindByKeyHash(ctx context.Context, keyHash string
 	return k, nil
 }
 
+func (r *GatewayKeyRepository) FindByKeyPrefix(ctx context.Context, keyPrefix string) (*models.GatewayAPIKey, error) {
+	k := &models.GatewayAPIKey{}
+	var allowedModels []string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, user_id, provider_id, name, key_hash, key_prefix, enabled, rate_limit, allowed_models,
+		        expires_at, last_used_at, request_count, created_at, updated_at
+		 FROM gateway_api_keys WHERE key_prefix = $1 AND enabled = true`, keyPrefix,
+	).Scan(&k.ID, &k.UserID, &k.ProviderID, &k.Name, &k.KeyHash, &k.KeyPrefix,
+		&k.Enabled, &k.RateLimit, pq.Array(&allowedModels),
+		&k.ExpiresAt, &k.LastUsedAt, &k.RequestCount, &k.CreatedAt, &k.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	k.AllowedModels = allowedModels
+	return k, nil
+}
+
 func (r *GatewayKeyRepository) ListByUserID(ctx context.Context, userID string) ([]models.GatewayAPIKey, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, user_id, provider_id, name, key_hash, key_prefix, enabled, rate_limit, allowed_models,

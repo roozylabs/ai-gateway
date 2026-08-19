@@ -151,6 +151,9 @@ func main() {
 
 			// SSE
 			protected.GET("/sse", sseHandler.Stream)
+			
+			// Sandbox
+			protected.POST("/sandbox/chat/completions", gatewayHandler.SandboxChatCompletions)
 		}
 	}
 
