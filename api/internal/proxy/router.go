@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	ErrModelNotAllowed = errors.New("model not allowed")
-	ErrModelNotFound   = errors.New("model not found")
-	ErrNoCredentials   = errors.New("no credentials available for provider")
+	ErrModelNotAllowed          = errors.New("model not allowed")
+	ErrModelNotFound            = errors.New("model not found")
+	ErrNoCredentials            = errors.New("no credentials available for provider")
+	ErrAllCredentialsInCooldown = errors.New("all credentials are in cooldown due to upstream rate limit or errors")
 )
 
 type Router struct {
@@ -194,10 +195,12 @@ func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, gate
 	}
 
 	var routes []*Route
+	var coolingCount int
 	for _, cred := range allCreds {
 		c := cred
 		cooling, _ := cooldown.IsCoolingDown(ctx, c.ID)
 		if cooling {
+			coolingCount++
 			continue
 		}
 		adapter := r.getAdapter(provider.Type)
@@ -210,6 +213,9 @@ func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, gate
 	}
 
 	if len(routes) == 0 {
+		if coolingCount > 0 {
+			return nil, ErrAllCredentialsInCooldown
+		}
 		return nil, ErrNoCredentials
 	}
 	return routes, nil

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Typography, Space, Button, Modal, Form, Input, InputNumber, Select, Tag, Table, Alert, App } from 'antd';
-import { PlusOutlined, DeleteOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
@@ -201,7 +201,16 @@ export default function CredentialsPage() {
         dataIndex: 'status',
         key: 'status',
         sorter: true,
-        render: (status: string) => <StatusTag status={status || 'active'} />,
+        render: (status: string, record: CombinedCredential) => {
+          if (record.isCoolingDown) {
+            return (
+              <Tag color="warning" icon={<ClockCircleOutlined />}>
+                Cooldown ({record.cooldownTtl}s)
+              </Tag>
+            );
+          }
+          return <StatusTag status={status || 'active'} />;
+        },
       },
       {
         title: 'Requests Served',

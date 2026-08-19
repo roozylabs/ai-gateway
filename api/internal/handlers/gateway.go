@@ -138,6 +138,10 @@ func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models
 	case errors.Is(err, proxy.ErrNoCredentials):
 		status = http.StatusServiceUnavailable
 		errType = "api_error"
+	case errors.Is(err, proxy.ErrAllCredentialsInCooldown):
+		status = http.StatusTooManyRequests
+		errType = "rate_limit_error"
+		err = errors.New("All credentials for this provider are currently in cooldown due to upstream rate limits or errors. Please try again later.")
 	}
 
 	c.JSON(status, gin.H{"error": gin.H{"message": err.Error(), "type": errType}})

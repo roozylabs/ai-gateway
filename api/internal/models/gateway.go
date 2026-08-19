@@ -35,6 +35,8 @@ type Credential struct {
 	LastErrorAt    *time.Time `json:"lastErrorAt,omitempty" db:"last_error_at"`
 	CreatedAt      time.Time  `json:"createdAt" db:"created_at"`
 	UpdatedAt      time.Time  `json:"updatedAt" db:"updated_at"`
+	IsCoolingDown  bool       `json:"isCoolingDown,omitempty" db:"-"`
+	CooldownTTL    int        `json:"cooldownTtl,omitempty" db:"-"`
 }
 
 type Model struct {

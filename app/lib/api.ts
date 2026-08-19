@@ -51,8 +51,10 @@ export interface ApiCredential {
   errorCount: number;
   lastError?: string;
   lastErrorAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  isCoolingDown?: boolean;
+  cooldownTtl?: number;
 }
 
 export interface ApiModel {

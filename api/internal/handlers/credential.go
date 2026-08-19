@@ -9,21 +9,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/models"
+	goredis "github.com/roozylabs/ai-gateway/internal/redis"
 	"github.com/roozylabs/ai-gateway/internal/repository"
 	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
 type CredentialHandler struct {
-	credentials *repository.CredentialRepository
-	providers   *repository.ProviderRepository
-	encKey      string
+	credentials   *repository.CredentialRepository
+	providers     *repository.ProviderRepository
+	cooldownStore *goredis.CooldownStore
+	encKey        string
 }
 
-func NewCredentialHandler(credentials *repository.CredentialRepository, providers *repository.ProviderRepository, encKey string) *CredentialHandler {
+func NewCredentialHandler(credentials *repository.CredentialRepository, providers *repository.ProviderRepository, cooldownStore *goredis.CooldownStore, encKey string) *CredentialHandler {
 	return &CredentialHandler{
-		credentials: credentials,
-		providers:   providers,
-		encKey:      encKey,
+		credentials:   credentials,
+		providers:     providers,
+		cooldownStore: cooldownStore,
+		encKey:        encKey,
 	}
 }
 
@@ -52,6 +55,15 @@ func (h *CredentialHandler) List(c *gin.Context) {
 	if credentials == nil {
 		credentials = []models.Credential{}
 	}
+
+	for i := range credentials {
+		ttl, _ := h.cooldownStore.GetCooldownTTL(c.Request.Context(), credentials[i].ID)
+		if ttl > 0 {
+			credentials[i].IsCoolingDown = true
+			credentials[i].CooldownTTL = int(ttl.Seconds())
+		}
+	}
+
 	c.JSON(http.StatusOK, credentials)
 }
 
@@ -72,6 +84,12 @@ func (h *CredentialHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
 		return
 	}
+	ttl, _ := h.cooldownStore.GetCooldownTTL(c.Request.Context(), cred.ID)
+	if ttl > 0 {
+		cred.IsCoolingDown = true
+		cred.CooldownTTL = int(ttl.Seconds())
+	}
+
 	c.JSON(http.StatusOK, cred)
 }
 

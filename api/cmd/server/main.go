@@ -74,7 +74,7 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(db, rdb)
 	authHandler := handlers.NewAuthHandler(authService)
 	providerHandler := handlers.NewProviderHandler(providerRepo)
-	credentialHandler := handlers.NewCredentialHandler(credentialRepo, providerRepo, cfg.EncryptionKey)
+	credentialHandler := handlers.NewCredentialHandler(credentialRepo, providerRepo, cooldown, cfg.EncryptionKey)
 	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo)
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo)
 	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher)
