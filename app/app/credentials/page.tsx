@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Tag, Space, Typography, Modal, Form, Input, Select, InputNumber, Alert, Descriptions, App } from 'antd';
-import { PlusOutlined, ExperimentOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Typography, Space, Button, Modal, Form, Input, InputNumber, Select, Tag, Table, Alert, App } from 'antd';
+import { PlusOutlined, DeleteOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSSE } from '@/hooks/useSSE';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
   apiGetProviders,
@@ -26,10 +25,10 @@ export interface CombinedCredential extends ApiCredential {
 export default function CredentialsPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
-  const { isConnected } = useSSE();
 
   // 'all' represents all providers
   const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
+  const [modalTargetProviderId, setModalTargetProviderId] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testModalResult, setTestModalResult] = useState<{
@@ -129,6 +128,27 @@ export default function CredentialsPage() {
     } finally {
       setTestingId(null);
     }
+  };
+
+  const openAddModal = () => {
+    const initialProvId = selectedProviderId !== 'all' ? selectedProviderId : providers[0]?.id || '';
+    setModalTargetProviderId(initialProvId);
+    const provCreds = credentials.filter((c) => c.providerId === initialProvId);
+    const nextPriority = provCreds.length > 0 ? Math.max(...provCreds.map((c) => c.priority)) + 1 : 1;
+    form.resetFields();
+    form.setFieldsValue({
+      providerId: initialProvId,
+      priority: nextPriority,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleTargetProviderChange = (provId: string) => {
+    setModalTargetProviderId(provId);
+    const provCreds = credentials.filter((c) => c.providerId === provId);
+    const nextPriority = provCreds.length > 0 ? Math.max(...provCreds.map((c) => c.priority)) + 1 : 1;
+    form.setFieldsValue({ priority: nextPriority });
+    form.validateFields(['priority']);
   };
 
   const handleAddCredential = (values: any) => {
@@ -250,7 +270,7 @@ export default function CredentialsPage() {
         title="Credentials Pool"
         description="API Key pools, rotation priority, and rate-limit cooldown states"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openAddModal}>
             Add Credential
           </Button>
         }
@@ -279,10 +299,6 @@ export default function CredentialsPage() {
           form={form}
           layout="vertical"
           onFinish={handleAddCredential}
-          initialValues={{
-            providerId: selectedProviderId !== 'all' ? selectedProviderId : providers[0]?.id,
-            priority: 1,
-          }}
           style={{ marginTop: 16 }}
         >
           <Form.Item
@@ -290,7 +306,7 @@ export default function CredentialsPage() {
             label="Target Provider"
             rules={[{ required: true, message: 'Please select provider' }]}
           >
-            <Select placeholder="Select Provider">
+            <Select placeholder="Select Provider" onChange={handleTargetProviderChange}>
               {providers.map((p: ApiProvider) => (
                 <Select.Option key={p.id} value={p.id}>
                   {p.name}
@@ -315,8 +331,30 @@ export default function CredentialsPage() {
             <Input.Password placeholder="AIzaSy... / AQ.Ab8..." />
           </Form.Item>
 
-          <Form.Item name="priority" label="Rotation Priority (1 = Highest)">
-            <InputNumber min={1} max={10} style={{ width: '10%' }} />
+          <Form.Item
+            name="priority"
+            label="Rotation Priority (1 = Highest)"
+            tooltip="Priority number for this credential. Smaller numbers are rotated first. Must be unique for the selected provider."
+            rules={[
+              { required: true, message: 'Please enter priority' },
+              {
+                validator: (_, value) => {
+                  if (!value) return Promise.resolve();
+                  const activeProvId = modalTargetProviderId || form.getFieldValue('providerId');
+                  const usedPriorities = credentials
+                    .filter((c) => c.providerId === activeProvId)
+                    .map((c) => c.priority);
+                  if (usedPriorities.includes(value)) {
+                    return Promise.reject(
+                      new Error(`Priority ${value} is already assigned to another key for this provider. Suggested next priority: ${Math.max(0, ...usedPriorities) + 1}`)
+                    );
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <InputNumber min={1} max={100} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item style={{ marginTop: 24, textAlign: 'right' }}>
@@ -343,43 +381,74 @@ export default function CredentialsPage() {
       >
         {testModalResult && (
           <div style={{ marginTop: 16 }}>
-            <Alert
-              type={testModalResult.res.success ? 'success' : 'error'}
-              showIcon
-              icon={testModalResult.res.success ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
-              message={
-                testModalResult.res.success
-                  ? 'Connection Test Passed'
-                  : `Connection Test Failed (HTTP ${testModalResult.res.httpStatus || 401})`
-              }
-              description={
-                testModalResult.res.success
-                  ? `Successfully authenticated and reached upstream provider endpoint in ${testModalResult.res.latencyMs}ms.`
-                  : testModalResult.res.error || 'Authentication failed. Please verify that your API secret key is valid and active.'
-              }
-              style={{ marginBottom: 20 }}
-            />
+            {testModalResult.res.success ? (
+              <Alert
+                type="success"
+                showIcon
+                icon={<CheckCircleOutlined style={{ fontSize: 24 }} />}
+                message="Connection Test Passed"
+                description={`Successfully authenticated and reached upstream provider endpoint in ${testModalResult.res.latencyMs}ms.`}
+                style={{ marginBottom: 20 }}
+              />
+            ) : (
+              <Alert
+                type="error"
+                showIcon
+                icon={<CloseCircleOutlined style={{ fontSize: 24 }} />}
+                message="Connection Test Failed"
+                description={testModalResult.res.error || 'Failed to authenticate with upstream provider API.'}
+                style={{ marginBottom: 20 }}
+              />
+            )}
 
-            <Descriptions title="Diagnostic Details" bordered column={1} size="small">
-              <Descriptions.Item label="Status">
-                <Tag color={testModalResult.res.success ? 'success' : 'error'}>
-                  {testModalResult.res.success ? 'SUCCESS' : 'FAILED'}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="HTTP Status Code">
-                <Text code>{testModalResult.res.httpStatus || 401}</Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Upstream Latency">
-                <Text code>{testModalResult.res.latencyMs} ms</Text>
-              </Descriptions.Item>
-              {testModalResult.res.error && (
-                <Descriptions.Item label="Error Message">
-                  <Text type="danger" code style={{ wordBreak: 'break-all' }}>
-                    {testModalResult.res.error}
-                  </Text>
-                </Descriptions.Item>
-              )}
-            </Descriptions>
+            <Typography.Title level={5} style={{ marginBottom: 12 }}>
+              Diagnostic Details
+            </Typography.Title>
+
+            <Table
+              bordered
+              pagination={false}
+              size="small"
+              dataSource={[
+                {
+                  key: 'status',
+                  metric: 'Status',
+                  value: testModalResult.res.success ? (
+                    <Tag color="success">SUCCESS</Tag>
+                  ) : (
+                    <Tag color="error">FAILED</Tag>
+                  ),
+                },
+                {
+                  key: 'httpStatus',
+                  metric: 'HTTP Status Code',
+                  value: testModalResult.res.httpStatus || '-',
+                },
+                {
+                  key: 'latency',
+                  metric: 'Upstream Latency',
+                  value: `${testModalResult.res.latencyMs} ms`,
+                },
+                ...(testModalResult.res.error
+                  ? [
+                      {
+                        key: 'error',
+                        metric: 'Error Message',
+                        value: (
+                          <Text type="danger" code style={{ wordBreak: 'break-word' }}>
+                            {testModalResult.res.error}
+                          </Text>
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+              columns={[
+                { title: '', dataIndex: 'metric', key: 'metric', width: '40%' },
+                { title: '', dataIndex: 'value', key: 'value' },
+              ]}
+              showHeader={false}
+            />
           </div>
         )}
       </Modal>
