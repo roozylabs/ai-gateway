@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -117,13 +118,19 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		// 429 → cooldown and retry
 		if httpResp.StatusCode == http.StatusTooManyRequests {
+			bodyStr := string(body)
 			retryAfter := e.cooldownSecs
 			if h := httpResp.Header.Get("Retry-After"); h != "" {
 				if sec, err := strconv.Atoi(h); err == nil && sec > 0 {
 					retryAfter = sec
 				}
+			} else if strings.Contains(bodyStr, "FreeUsageLimitError") || strings.Contains(bodyStr, "quota") || strings.Contains(bodyStr, "Quota") || strings.Contains(bodyStr, "exceeded") {
+				retryAfter = 86400 // 24 Hours for daily quota limits
+			} else {
+				retryAfter = 300 // 5 Minutes default
 			}
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "rate_limited")
 			lastErr = fmt.Errorf("rate limited (429) on credential %s", route.Credential.ID)
 			continue
 		}
@@ -225,14 +232,22 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		// 429 → cooldown and retry (before streaming starts)
 		if httpResp.StatusCode == http.StatusTooManyRequests {
+			bodyBytes, _ := io.ReadAll(httpResp.Body)
 			httpResp.Body.Close()
+			bodyStr := string(bodyBytes)
+
 			retryAfter := e.cooldownSecs
 			if h := httpResp.Header.Get("Retry-After"); h != "" {
 				if sec, err := strconv.Atoi(h); err == nil && sec > 0 {
 					retryAfter = sec
 				}
+			} else if strings.Contains(bodyStr, "FreeUsageLimitError") || strings.Contains(bodyStr, "quota") || strings.Contains(bodyStr, "Quota") || strings.Contains(bodyStr, "exceeded") {
+				retryAfter = 86400 // 24 Hours for daily quota limits
+			} else {
+				retryAfter = 300 // 5 Minutes default
 			}
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "rate_limited")
 			lastErr = fmt.Errorf("rate limited (429) on credential %s", route.Credential.ID)
 			continue
 		}

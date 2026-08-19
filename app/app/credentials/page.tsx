@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Typography, Space, Button, Modal, Form, Input, InputNumber, Select, Tag, Table, Alert, App } from 'antd';
 import { PlusOutlined, DeleteOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,6 +20,39 @@ const { Text } = Typography;
 
 export interface CombinedCredential extends ApiCredential {
   providerName?: string;
+}
+
+function CooldownCountdownTag({ initialTtl, status, onExpire }: { initialTtl: number; status: string; onExpire?: () => void }) {
+  const [seconds, setSeconds] = useState(initialTtl);
+
+  useEffect(() => {
+    setSeconds(initialTtl);
+  }, [initialTtl]);
+
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const interval = setInterval(() => {
+      setSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          onExpire?.();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [seconds, onExpire]);
+
+  if (seconds > 0) {
+    return (
+      <Tag color="warning" icon={<ClockCircleOutlined />}>
+        Cooldown ({seconds}s)
+      </Tag>
+    );
+  }
+
+  return <StatusTag status={status || 'active'} />;
 }
 
 export default function CredentialsPage() {
@@ -56,7 +89,8 @@ export default function CredentialsPage() {
   } = useQuery({
     queryKey: ['credentials', selectedProviderId, page, pageSize, searchQuery],
     queryFn: () => apiGetCredentials(selectedProviderId, { page, limit: pageSize, search: searchQuery || undefined }),
-    staleTime: 30000,
+    staleTime: 5000,
+    refetchInterval: 5000,
   });
 
   const credentials = credentialsData?.data || [];
@@ -177,16 +211,13 @@ export default function CredentialsPage() {
         dataIndex: 'status',
         key: 'status',
         sorter: true,
-        render: (status: string, record: CombinedCredential) => {
-          if (record.isCoolingDown) {
-            return (
-              <Tag color="warning" icon={<ClockCircleOutlined />}>
-                Cooldown ({record.cooldownTtl}s)
-              </Tag>
-            );
-          }
-          return <StatusTag status={status || 'active'} />;
-        },
+        render: (status: string, record: CombinedCredential) => (
+          <CooldownCountdownTag
+            initialTtl={record.cooldownTtl || 0}
+            status={status || 'active'}
+            onExpire={() => refetch()}
+          />
+        ),
       },
       {
         title: 'Requests Served',
