@@ -57,6 +57,7 @@ func main() {
 	modelRepo := repository.NewModelRepository(sqlDB)
 	gatewayKeyRepo := repository.NewGatewayKeyRepository(sqlDB)
 	requestLogRepo := repository.NewRequestLogRepository(sqlDB)
+	settingRepo := repository.NewSettingRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -76,6 +77,7 @@ func main() {
 	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo)
+	settingsHandler := handlers.NewSettingsHandler(settingRepo)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -134,6 +136,10 @@ func main() {
 		api.GET("/dashboard/stats", dashboardHandler.GetStats)
 		api.GET("/dashboard/usage", dashboardHandler.GetUsageChart)
 		api.GET("/dashboard/health", dashboardHandler.GetProviderHealth)
+
+		// Settings
+		api.GET("/settings", settingsHandler.List)
+		api.PUT("/settings", settingsHandler.Update)
 	}
 
 	// Gateway routes (authenticated with gw_sk_* keys)
