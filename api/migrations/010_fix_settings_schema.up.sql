@@ -1,0 +1,7 @@
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS id VARCHAR(36) DEFAULT gen_random_uuid();
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'general';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+UPDATE settings SET created_at = updated_at WHERE created_at IS NULL;

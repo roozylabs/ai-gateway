@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 type Provider struct {
 	ID        string    `json:"id" db:"id"`
@@ -26,7 +29,7 @@ type Credential struct {
 	LastUsedAt     *time.Time `json:"lastUsedAt,omitempty" db:"last_used_at"`
 	RequestCount   int64      `json:"requestCount" db:"request_count"`
 	ErrorCount     int64      `json:"errorCount" db:"error_count"`
-	LastError      string     `json:"lastError,omitempty" db:"last_error"`
+	LastError      sql.NullString `json:"lastError,omitempty" db:"last_error"`
 	LastErrorAt    *time.Time `json:"lastErrorAt,omitempty" db:"last_error_at"`
 	CreatedAt      time.Time  `json:"createdAt" db:"created_at"`
 	UpdatedAt      time.Time  `json:"updatedAt" db:"updated_at"`
@@ -70,7 +73,7 @@ type RequestLog struct {
 	InputTokens     int        `json:"inputTokens" db:"input_tokens"`
 	OutputTokens    int        `json:"outputTokens" db:"output_tokens"`
 	TotalTokens     int        `json:"totalTokens" db:"total_tokens"`
-	ErrorMessage    string     `json:"errorMessage,omitempty" db:"error_message"`
+	ErrorMessage    sql.NullString `json:"errorMessage,omitempty" db:"error_message"`
 	RetryCount      int        `json:"retryCount" db:"retry_count"`
 	CreatedAt       time.Time  `json:"createdAt" db:"created_at"`
 }

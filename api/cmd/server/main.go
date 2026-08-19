@@ -145,6 +145,7 @@ func main() {
 	// Gateway routes (authenticated with gw_sk_* keys)
 	v1 := r.Group("/v1")
 	v1.Use(middleware.GatewayAuthMiddleware(gatewayKeyRepo))
+	v1.Use(middleware.GatewayRateLimitMiddleware(rdb, cfg.RateLimitPerKey))
 	{
 		v1.POST("/chat/completions", gatewayHandler.ChatCompletions)
 		v1.GET("/models", gatewayHandler.Models)

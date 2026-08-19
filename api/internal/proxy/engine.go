@@ -3,6 +3,7 @@ package proxy
 import (
 	"bufio"
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -146,7 +147,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		}
 
 		if resp.Error != nil {
-			log.ErrorMessage = resp.Error.Message
+			log.ErrorMessage = sql.NullString{String: resp.Error.Message, Valid: true}
 		}
 
 		return resp, log, nil
