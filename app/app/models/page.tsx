@@ -79,7 +79,7 @@ export default function ModelsPage() {
     });
   };
 
-  const columns = [
+  const columns = React.useMemo(() => [
     {
       title: 'Model Slug / Alias',
       dataIndex: 'slug',
@@ -121,7 +121,7 @@ export default function ModelsPage() {
         </ConfirmButton>
       ),
     },
-  ];
+  ], [activeProviderId, deleteMutation]);
 
   const extraActions = (
     <Space>

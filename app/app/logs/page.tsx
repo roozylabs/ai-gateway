@@ -35,7 +35,7 @@ export default function LogsPage() {
     refetchInterval: 10000,
   });
 
-  const columns = [
+  const columns = React.useMemo(() => [
     {
       title: 'Request ID',
       dataIndex: 'id',
@@ -86,7 +86,7 @@ export default function LogsPage() {
         </Button>
       ),
     },
-  ];
+  ], []);
 
   const extraActions = (
     <Space>

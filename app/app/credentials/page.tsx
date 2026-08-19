@@ -97,7 +97,7 @@ export default function CredentialsPage() {
     });
   };
 
-  const columns = [
+  const columns = React.useMemo(() => [
     {
       title: 'Credential Name',
       dataIndex: 'name',
@@ -163,7 +163,7 @@ export default function CredentialsPage() {
         </Space>
       ),
     },
-  ];
+  ], [activeProviderId, testingId, deleteMutation]);
 
   const extraActions = (
     <Space>

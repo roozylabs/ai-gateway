@@ -1,5 +1,6 @@
 import '@ant-design/v5-patch-for-react-19';
 import React from 'react';
+import { AntdRegistry } from '@ant-design/nextjs-registry';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { QueryProvider } from '@/context/QueryProvider';
@@ -18,15 +19,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning style={{ margin: 0, padding: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-        <QueryProvider>
-          <AuthProvider>
-            <ThemeProvider>
-              <AntdApp>
-                <AppLayout>{children}</AppLayout>
-              </AntdApp>
-            </ThemeProvider>
-          </AuthProvider>
-        </QueryProvider>
+        <AntdRegistry>
+          <QueryProvider>
+            <AuthProvider>
+              <ThemeProvider>
+                <AntdApp>
+                  <AppLayout>{children}</AppLayout>
+                </AntdApp>
+              </ThemeProvider>
+            </AuthProvider>
+          </QueryProvider>
+        </AntdRegistry>
       </body>
     </html>
   );

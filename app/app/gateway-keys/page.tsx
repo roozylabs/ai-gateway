@@ -82,7 +82,7 @@ export default function GatewayKeysPage() {
     }
   };
 
-  const columns = [
+  const columns = React.useMemo(() => [
     {
       title: 'Key Name / Application',
       dataIndex: 'name',
@@ -152,7 +152,7 @@ export default function GatewayKeysPage() {
         </Space>
       ),
     },
-  ];
+  ], [deleteMutation]);
 
   return (
     <div>
