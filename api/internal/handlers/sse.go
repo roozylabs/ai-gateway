@@ -42,7 +42,7 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 			if !ok {
 				return
 			}
-			c.Writer.Write([]byte(fmt.Sprintf("event: message\ndata: %s\n\n", msg.Payload)))
+			_, _ = c.Writer.Write([]byte(fmt.Sprintf("event: message\ndata: %s\n\n", msg.Payload)))
 			c.Writer.Flush()
 		}
 	}
