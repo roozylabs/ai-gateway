@@ -40,6 +40,7 @@ export interface ApiCredential {
   providerId: string;
   name: string;
   keyPrefix: string;
+  maskedKey?: string;
   apiKey?: string;
   priority: number;
   enabled: boolean;
@@ -218,8 +219,19 @@ export async function apiDeleteCredential(providerId: string, credId: string): P
   await api.delete(`/providers/${providerId}/credentials/${credId}`);
 }
 
-export async function apiTestCredential(providerId: string, credId: string): Promise<{ message: string }> {
-  const response = await api.post<{ message: string }>(`/providers/${providerId}/credentials/${credId}/test`);
+export interface ApiTestCredentialResult {
+  success: boolean;
+  latencyMs: number;
+  httpStatus: number;
+  error?: string;
+  message?: string;
+}
+
+export async function apiTestCredential(
+  providerId: string,
+  credId: string
+): Promise<ApiTestCredentialResult> {
+  const response = await api.post<ApiTestCredentialResult>(`/providers/${providerId}/credentials/${credId}/test`);
   return response.data;
 }
 
