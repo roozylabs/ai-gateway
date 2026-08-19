@@ -249,7 +249,12 @@ export async function apiGetGatewayKeys(): Promise<ApiGatewayKey[]> {
   return response.data;
 }
 
-export async function apiCreateGatewayKey(data: { name: string; rateLimit?: number; allowedModels?: string[] }): Promise<ApiGatewayKey> {
+export async function apiCreateGatewayKey(data: {
+  name: string;
+  rateLimit?: number;
+  allowedModels?: string[];
+  expiresInDays?: number;
+}): Promise<ApiGatewayKey> {
   const response = await api.post<ApiGatewayKey>('/gateway-keys', data);
   return response.data;
 }

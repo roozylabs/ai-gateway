@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/models"
@@ -23,6 +24,7 @@ type CreateGatewayKeyRequest struct {
 	Name          string   `json:"name" binding:"required"`
 	RateLimit     int      `json:"rateLimit"`
 	AllowedModels []string `json:"allowedModels"`
+	ExpiresInDays int      `json:"expiresInDays"`
 }
 
 type CreateGatewayKeyResponse struct {
@@ -51,6 +53,12 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 		rateLimit = 100
 	}
 
+	var expiresAt *time.Time
+	if req.ExpiresInDays > 0 {
+		t := time.Now().AddDate(0, 0, req.ExpiresInDays)
+		expiresAt = &t
+	}
+
 	key := &models.GatewayAPIKey{
 		UserID:        c.GetString("userId"),
 		Name:          req.Name,
@@ -59,6 +67,7 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 		Enabled:       true,
 		RateLimit:     rateLimit,
 		AllowedModels: req.AllowedModels,
+		ExpiresAt:     expiresAt,
 	}
 
 	if err := h.keys.Create(c.Request.Context(), key); err != nil {
