@@ -21,6 +21,111 @@ export interface LoginResponse {
   user: User;
 }
 
+// API Models matching Backend structs
+
+export interface ApiProvider {
+  id: string;
+  userId?: string;
+  name: string;
+  slug: string;
+  baseUrl: string;
+  type: string;
+  enabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiCredential {
+  id: string;
+  providerId: string;
+  name: string;
+  keyPrefix: string;
+  apiKey?: string;
+  priority: number;
+  enabled: boolean;
+  status: string;
+  lastUsedAt?: string;
+  requestCount: number;
+  errorCount: number;
+  lastError?: string;
+  lastErrorAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiModel {
+  id: string;
+  providerId: string;
+  name: string;
+  slug: string;
+  displayName: string;
+  enabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiGatewayKey {
+  id: string;
+  userId?: string;
+  name: string;
+  keyPrefix: string;
+  rawKey?: string;
+  enabled: boolean;
+  rateLimit: number;
+  allowedModels?: string[];
+  expiresAt?: string;
+  lastUsedAt?: string;
+  requestCount: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiRequestLog {
+  id: string;
+  gatewayApiKeyId?: string;
+  providerId?: string;
+  credentialId?: string;
+  model: string;
+  statusCode: number;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  errorMessage?: string;
+  retryCount: number;
+  createdAt: string;
+}
+
+export interface ApiDashboardStats {
+  totalRequests: number;
+  totalTokens: number;
+  avgLatency: number;
+  errorRate: number;
+  activeProviders: number;
+  activeCredentials: number;
+  activeKeys: number;
+}
+
+export interface ApiUsagePoint {
+  date: string;
+  requests: number;
+  tokens: number;
+}
+
+export interface ApiProviderHealth {
+  name: string;
+  type: string;
+  status: 'healthy' | 'degraded' | 'down';
+  credCount: number;
+}
+
+export interface ApiSetting {
+  id?: string;
+  key: string;
+  value: string;
+  category?: string;
+}
+
 export const api = axios.create({
   baseURL: '/api',
   headers: {
@@ -41,6 +146,7 @@ api.interceptors.response.use(
   }
 );
 
+// Auth API
 export async function apiLogin(credentials: LoginRequest): Promise<LoginResponse> {
   const response = await api.post<LoginResponse>('/auth/login', credentials);
   return response.data;
@@ -53,5 +159,125 @@ export async function apiLogout(): Promise<{ message: string }> {
 
 export async function apiGetMe(): Promise<User> {
   const response = await api.get<User>('/auth/me');
+  return response.data;
+}
+
+// Dashboard API
+export async function apiGetDashboardStats(): Promise<ApiDashboardStats> {
+  const response = await api.get<ApiDashboardStats>('/dashboard/stats');
+  return response.data;
+}
+
+export async function apiGetDashboardUsage(days: number = 30): Promise<ApiUsagePoint[]> {
+  const response = await api.get<ApiUsagePoint[]>(`/dashboard/usage?days=${days}`);
+  return response.data;
+}
+
+export async function apiGetDashboardHealth(): Promise<ApiProviderHealth[]> {
+  const response = await api.get<ApiProviderHealth[]>('/dashboard/health');
+  return response.data;
+}
+
+// Providers API
+export async function apiGetProviders(): Promise<ApiProvider[]> {
+  const response = await api.get<ApiProvider[]>('/providers');
+  return response.data;
+}
+
+export async function apiCreateProvider(data: Partial<ApiProvider>): Promise<ApiProvider> {
+  const response = await api.post<ApiProvider>('/providers', data);
+  return response.data;
+}
+
+export async function apiUpdateProvider(id: string, data: Partial<ApiProvider>): Promise<ApiProvider> {
+  const response = await api.put<ApiProvider>(`/providers/${id}`, data);
+  return response.data;
+}
+
+export async function apiDeleteProvider(id: string): Promise<void> {
+  await api.delete(`/providers/${id}`);
+}
+
+// Credentials API
+export async function apiGetCredentials(providerId: string): Promise<ApiCredential[]> {
+  const response = await api.get<ApiCredential[]>(`/providers/${providerId}/credentials`);
+  return response.data;
+}
+
+export async function apiCreateCredential(providerId: string, data: Partial<ApiCredential> & { apiKey: string }): Promise<ApiCredential> {
+  const response = await api.post<ApiCredential>(`/providers/${providerId}/credentials`, data);
+  return response.data;
+}
+
+export async function apiUpdateCredential(providerId: string, credId: string, data: Partial<ApiCredential>): Promise<ApiCredential> {
+  const response = await api.put<ApiCredential>(`/providers/${providerId}/credentials/${credId}`, data);
+  return response.data;
+}
+
+export async function apiDeleteCredential(providerId: string, credId: string): Promise<void> {
+  await api.delete(`/providers/${providerId}/credentials/${credId}`);
+}
+
+export async function apiTestCredential(providerId: string, credId: string): Promise<{ message: string }> {
+  const response = await api.post<{ message: string }>(`/providers/${providerId}/credentials/${credId}/test`);
+  return response.data;
+}
+
+// Models API
+export async function apiGetModels(providerId: string): Promise<ApiModel[]> {
+  const response = await api.get<ApiModel[]>(`/providers/${providerId}/models`);
+  return response.data;
+}
+
+export async function apiCreateModel(providerId: string, data: Partial<ApiModel>): Promise<ApiModel> {
+  const response = await api.post<ApiModel>(`/providers/${providerId}/models`, data);
+  return response.data;
+}
+
+export async function apiUpdateModel(providerId: string, modelId: string, data: Partial<ApiModel>): Promise<ApiModel> {
+  const response = await api.put<ApiModel>(`/providers/${providerId}/models/${modelId}`, data);
+  return response.data;
+}
+
+export async function apiDeleteModel(providerId: string, modelId: string): Promise<void> {
+  await api.delete(`/providers/${providerId}/models/${modelId}`);
+}
+
+// Gateway API Keys
+export async function apiGetGatewayKeys(): Promise<ApiGatewayKey[]> {
+  const response = await api.get<ApiGatewayKey[]>('/gateway-keys');
+  return response.data;
+}
+
+export async function apiCreateGatewayKey(data: { name: string; rateLimit?: number; allowedModels?: string[] }): Promise<ApiGatewayKey> {
+  const response = await api.post<ApiGatewayKey>('/gateway-keys', data);
+  return response.data;
+}
+
+export async function apiDeleteGatewayKey(id: string): Promise<void> {
+  await api.delete(`/gateway-keys/${id}`);
+}
+
+// Request Logs API
+export async function apiGetLogs(params?: {
+  provider?: string;
+  model?: string;
+  status?: number;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ value: ApiRequestLog[]; count: number }> {
+  const response = await api.get<{ value: ApiRequestLog[]; count: number }>('/logs', { params });
+  return response.data;
+}
+
+// Settings API
+export async function apiGetSettings(): Promise<{ value: ApiSetting[] }> {
+  const response = await api.get<{ value: ApiSetting[] }>('/settings');
+  return response.data;
+}
+
+export async function apiUpdateSettings(settings: Record<string, string>): Promise<{ message: string }> {
+  const response = await api.put<{ message: string }>('/settings', { settings });
   return response.data;
 }

@@ -1,38 +1,57 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Card, Popconfirm, App } from 'antd';
-import { PlusOutlined, KeyOutlined, CopyOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { MOCK_GATEWAY_KEYS, GatewayKey } from '@/lib/mock-data';
+import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Card, Popconfirm, App, Spin } from 'antd';
+import { PlusOutlined, CopyOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  apiGetGatewayKeys,
+  apiCreateGatewayKey,
+  apiDeleteGatewayKey,
+  ApiGatewayKey,
+} from '@/lib/api';
 
 const { Title, Text } = Typography;
 
 export default function GatewayKeysPage() {
   const { message } = App.useApp();
-  const [keys, setKeys] = useState<GatewayKey[]>(MOCK_GATEWAY_KEYS);
+  const queryClient = useQueryClient();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newGeneratedKey, setNewGeneratedKey] = useState<string | null>(null);
   const [form] = Form.useForm();
 
-  const handleRevoke = (id: string) => {
-    setKeys(keys.map((k) => (k.id === id ? { ...k, status: 'REVOKED' } : k)));
-    message.success('Gateway API Key revoked successfully');
-  };
+  // Fetch Gateway Keys
+  const { data: keys = [], isLoading } = useQuery({
+    queryKey: ['gateway-keys'],
+    queryFn: apiGetGatewayKeys,
+  });
+
+  // Create Mutation
+  const createMutation = useMutation({
+    mutationFn: (values: { name: string }) => apiCreateGatewayKey(values),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ['gateway-keys'] });
+      message.success('Gateway API Key created!');
+      // res.key holds the raw secret returned by backend
+      const rawKey = res.key || res.rawKey || res.keyPrefix;
+      setNewGeneratedKey(rawKey);
+    },
+    onError: (err: Error) => message.error(err.message),
+  });
+
+  // Revoke / Delete Mutation
+  const deleteMutation = useMutation({
+    mutationFn: apiDeleteGatewayKey,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gateway-keys'] });
+      message.success('Gateway API Key revoked');
+    },
+    onError: (err: Error) => message.error(err.message),
+  });
 
   const handleCreateKey = (values: any) => {
-    const rawSecret = `gw_sk_live_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
-    const newKey: GatewayKey = {
-      id: `gwk-${Date.now()}`,
-      name: values.name,
-      keyPrefix: `${rawSecret.substring(0, 16)}...`,
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString().split('T')[0],
-      lastUsed: 'Never',
-      requestCount: 0,
-    };
-
-    setKeys([newKey, ...keys]);
-    setNewGeneratedKey(rawSecret);
+    createMutation.mutate({ name: values.name });
   };
 
   const handleCopyKey = (text: string) => {
@@ -51,14 +70,14 @@ export default function GatewayKeysPage() {
       title: 'Key Identifier',
       dataIndex: 'keyPrefix',
       key: 'keyPrefix',
-      render: (prefix: string) => <Text code>{prefix}</Text>,
+      render: (prefix: string) => <Text code>{prefix || 'gw_sk_••••'}</Text>,
     },
     {
       title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) =>
-        status === 'ACTIVE' ? (
+      dataIndex: 'enabled',
+      key: 'enabled',
+      render: (enabled: boolean) =>
+        enabled ? (
           <Tag color="success" icon={<CheckCircleOutlined />}>ACTIVE</Tag>
         ) : (
           <Tag color="error">REVOKED</Tag>
@@ -68,35 +87,37 @@ export default function GatewayKeysPage() {
       title: 'Created At',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      render: (val: string) => (val ? new Date(val).toLocaleDateString() : '-'),
     },
     {
       title: 'Last Used',
-      dataIndex: 'lastUsed',
-      key: 'lastUsed',
+      dataIndex: 'lastUsedAt',
+      key: 'lastUsedAt',
+      render: (val: string) => (val ? new Date(val).toLocaleString() : 'Never'),
     },
     {
       title: 'Requests Served',
       dataIndex: 'requestCount',
       key: 'requestCount',
-      render: (count: number) => count.toLocaleString(),
+      render: (count: number) => (count || 0).toLocaleString(),
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: any, record: GatewayKey) => (
+      render: (_: any, record: ApiGatewayKey) => (
         <Space size="middle">
           <Button
             type="text"
             icon={<CopyOutlined />}
             onClick={() => handleCopyKey(record.keyPrefix)}
           >
-            Copy
+            Copy Prefix
           </Button>
-          {record.status === 'ACTIVE' && (
+          {record.enabled && (
             <Popconfirm
               title="Revoke Gateway Key"
               description="Are you sure you want to revoke this API Key? Clients using it will be blocked."
-              onConfirm={() => handleRevoke(record.id)}
+              onConfirm={() => deleteMutation.mutate(record.id)}
               okText="Yes, Revoke"
               cancelText="Cancel"
             >
@@ -126,7 +147,7 @@ export default function GatewayKeysPage() {
       </div>
 
       <Card size="small" variant="borderless" style={{ borderRadius: 8 }}>
-        <Table dataSource={keys} columns={columns} rowKey="id" pagination={{ pageSize: 10 }} />
+        <Table dataSource={keys} columns={columns} loading={isLoading} rowKey="id" pagination={{ pageSize: 10 }} />
       </Card>
 
       <Modal
@@ -152,7 +173,7 @@ export default function GatewayKeysPage() {
             <Form.Item style={{ marginTop: 24, textAlign: 'right' }}>
               <Space>
                 <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                <Button type="primary" htmlType="submit">
+                <Button type="primary" htmlType="submit" loading={createMutation.isPending}>
                   Generate Key
                 </Button>
               </Space>
@@ -189,6 +210,7 @@ export default function GatewayKeysPage() {
 
             <div style={{ textAlign: 'right' }}>
               <Button
+                type="primary"
                 onClick={() => {
                   setIsModalOpen(false);
                   setNewGeneratedKey(null);
