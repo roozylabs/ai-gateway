@@ -51,7 +51,7 @@ type ProxyRequest struct {
 func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) (*ProviderResponse, *models.RequestLog, error) {
 	start := time.Now()
 
-	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey.AllowedModels, e.cooldown)
+	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -161,7 +161,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) (*models.RequestLog, error) {
 	start := time.Now()
 
-	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey.AllowedModels, e.cooldown)
+	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
 	if err != nil {
 		return nil, err
 	}

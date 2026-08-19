@@ -65,6 +65,19 @@ func (r *ModelRepository) FindBySlug(ctx context.Context, slug string) (*models.
 	return m, nil
 }
 
+func (r *ModelRepository) FindBySlugAndProvider(ctx context.Context, slug, providerID string) (*models.Model, error) {
+	m := &models.Model{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, provider_id, name, slug, display_name, enabled, created_at, updated_at
+		 FROM models WHERE slug = $1 AND provider_id = $2`, slug, providerID,
+	).Scan(&m.ID, &m.ProviderID, &m.Name, &m.Slug, &m.DisplayName,
+		&m.Enabled, &m.CreatedAt, &m.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (r *ModelRepository) Create(ctx context.Context, m *models.Model) error {
 	if m.ID == "" {
 		m.ID = uuid.New().String()

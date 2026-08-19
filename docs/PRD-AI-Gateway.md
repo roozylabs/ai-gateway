@@ -9,6 +9,7 @@
 | 1.2 | 18 August 2026, 22:37 WIB | Added Real-Time Dashboard Data Streaming specs |
 | 1.3 | 18 August 2026, 22:51 WIB | Added Multi-Auth Type & Enterprise OAuth Roadmap plan |
 | 1.4 | 19 August 2026, 11:04 WIB | Implemented Revision History versioning rules |
+| 1.5 | 19 August 2026, 14:55 WIB | Updated Gateway API Key architecture: 1 Gateway Key is bound to 1 Provider |
 
 ---
 
@@ -240,9 +241,9 @@ Pada **V2 Roadmap**, Gateway akan mendukung **Multi-Auth Type System** untuk men
 
 ## 9. Gateway API Key
 
-Provider credential tidak digunakan langsung oleh client. User membuat **Gateway API Key** khusus.
+Provider credential tidak digunakan langsung oleh client. User membuat **Gateway API Key** khusus yang terhubung langsung ke **1 Target Provider** tertentu.
 
-Contoh: `gw_sk_8sdf89sdf...`
+Contoh: `gw_sk_8sdf89sdf...` (Terhubung ke Provider: *Gemini* atau *OpenCode*)
 
 Client menggunakan header standar:
 ```http
@@ -251,6 +252,7 @@ Authorization: Bearer gw_sk_xxxxx
 
 ### Metadata Gateway API Key:
 - Name
+- **Provider ID** (Required — 1 Gateway API Key terikat ke 1 Provider tertentu)
 - Status
 - Created At
 - Last Used

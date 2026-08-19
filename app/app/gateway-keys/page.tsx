@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Space, Typography, Modal, Form, Input, Select, InputNumber, Alert, Tooltip, App } from 'antd';
+import { Button, Space, Typography, Modal, Form, Input, Select, InputNumber, Alert, Tooltip, Tag, App } from 'antd';
 import { PlusOutlined, CopyOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
+  apiGetProviders,
   apiGetGatewayKeys,
   apiCreateGatewayKey,
   apiDeleteGatewayKey,
   ApiGatewayKey,
+  ApiProvider,
 } from '@/lib/api';
 
 const { Text } = Typography;
@@ -25,6 +27,21 @@ export default function GatewayKeysPage() {
   const [newGeneratedKey, setNewGeneratedKey] = useState<string | null>(null);
   const [form] = Form.useForm();
 
+  // Fetch Providers for dropdown
+  const { data: providers = [], isLoading: providersLoading } = useQuery({
+    queryKey: ['providers'],
+    queryFn: apiGetProviders,
+  });
+
+  // Build provider lookup map
+  const providerMap = React.useMemo(() => {
+    const map: Record<string, ApiProvider> = {};
+    providers.forEach((p) => {
+      map[p.id] = p;
+    });
+    return map;
+  }, [providers]);
+
   // Fetch Gateway Keys
   const { data: keys = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['gateway-keys'],
@@ -33,7 +50,7 @@ export default function GatewayKeysPage() {
 
   // Create Mutation
   const createMutation = useMutation({
-    mutationFn: (values: { name: string; rateLimit?: number; expiresInDays?: number }) =>
+    mutationFn: (values: { name: string; providerId: string; rateLimit?: number; expiresInDays?: number }) =>
       apiCreateGatewayKey(values),
     onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ['gateway-keys'] });
@@ -57,6 +74,7 @@ export default function GatewayKeysPage() {
   const handleCreateKey = (values: any) => {
     createMutation.mutate({
       name: values.name,
+      providerId: values.providerId,
       rateLimit: values.rateLimit || 100,
       expiresInDays: values.expiresInDays || 0,
     });
@@ -97,6 +115,21 @@ export default function GatewayKeysPage() {
         render: (text: string) => <Text strong>{text}</Text>,
       },
       {
+        title: 'Provider',
+        dataIndex: 'providerId',
+        key: 'providerId',
+        sorter: (a: ApiGatewayKey, b: ApiGatewayKey) => {
+          const nameA = (a.providerId && providerMap[a.providerId]?.name) || '';
+          const nameB = (b.providerId && providerMap[b.providerId]?.name) || '';
+          return nameA.localeCompare(nameB);
+        },
+        render: (providerId?: string) => {
+          if (!providerId) return <Text type="secondary">All</Text>;
+          const provider = providerMap[providerId];
+          return provider ? <Tag color="blue">{provider.name}</Tag> : <Text type="secondary">{providerId.slice(0, 8)}...</Text>;
+        },
+      },
+      {
         title: (
           <Space>
             <span>Key Identifier</span>
@@ -120,7 +153,7 @@ export default function GatewayKeysPage() {
           val ? (
             <Text>{new Date(val).toLocaleDateString()}</Text>
           ) : (
-            <Text type="secondary">Never (No Expiration)</Text>
+            <Text type="secondary">Never</Text>
           ),
       },
       {
@@ -137,14 +170,6 @@ export default function GatewayKeysPage() {
         sorter: (a: ApiGatewayKey, b: ApiGatewayKey) =>
           new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
         render: (val: string) => (val ? new Date(val).toLocaleDateString() : '-'),
-      },
-      {
-        title: 'Last Used',
-        dataIndex: 'lastUsedAt',
-        key: 'lastUsedAt',
-        sorter: (a: ApiGatewayKey, b: ApiGatewayKey) =>
-          new Date(a.lastUsedAt || 0).getTime() - new Date(b.lastUsedAt || 0).getTime(),
-        render: (val: string) => (val ? new Date(val).toLocaleString() : 'Never'),
       },
       {
         title: 'Requests Served',
@@ -181,14 +206,14 @@ export default function GatewayKeysPage() {
         ),
       },
     ],
-    [deleteMutation]
+    [deleteMutation, providerMap]
   );
 
   return (
     <div>
       <PageHeader
         title="Gateway API Keys"
-        description="Client authentication keys used by OpenCode / external applications to access the Credential Pool"
+        description="Client authentication keys bound to a specific provider's credential pool for use in OpenCode / external applications"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
             Create Gateway API Key
@@ -199,7 +224,7 @@ export default function GatewayKeysPage() {
       <DataTable
         dataSource={keys}
         columns={columns}
-        loading={isLoading}
+        loading={isLoading || providersLoading}
         rowKey="id"
         searchPlaceholder="Search key name or prefix..."
         searchFields={['name', 'keyPrefix']}
@@ -231,6 +256,22 @@ export default function GatewayKeysPage() {
               rules={[{ required: true, message: 'Please enter key name' }]}
             >
               <Input placeholder="e.g. OpenCode Development Environment" />
+            </Form.Item>
+
+            <Form.Item
+              name="providerId"
+              label="Target Provider"
+              tooltip="This Gateway Key will only route requests to the selected provider's credential pool."
+              rules={[{ required: true, message: 'Please select a provider' }]}
+            >
+              <Select
+                placeholder="Select Provider"
+                loading={providersLoading}
+                options={providers.map((p: ApiProvider) => ({
+                  label: p.name,
+                  value: p.id,
+                }))}
+              />
             </Form.Item>
 
             <Form.Item

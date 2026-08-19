@@ -114,7 +114,13 @@ func (r *Router) Resolve(ctx context.Context, modelSlug string, allowedModels []
 	}, nil
 }
 
-func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, allowedModels []string, cooldown *goredis.CooldownStore) ([]*Route, error) {
+// ResolveWithFallback resolves routing for a request.
+// If the gateway key has a ProviderID, it routes directly to that provider
+// and selects credentials from its pool using the provider's routing strategy.
+// Otherwise it falls back to model-based provider resolution.
+func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, gatewayKey *models.GatewayAPIKey, cooldown *goredis.CooldownStore) ([]*Route, error) {
+	allowedModels := gatewayKey.AllowedModels
+
 	if len(allowedModels) > 0 {
 		allowed := false
 		for _, m := range allowedModels {
@@ -128,25 +134,54 @@ func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, allo
 		}
 	}
 
-	model, err := r.models.FindBySlug(ctx, modelSlug)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	var provider *models.Provider
+	var model *models.Model
+
+	// If gateway key is bound to a specific provider, use it directly
+	if gatewayKey.ProviderID != nil && *gatewayKey.ProviderID != "" {
+		var err error
+		provider, err = r.providers.FindByID(ctx, *gatewayKey.ProviderID)
+		if err != nil {
+			return nil, fmt.Errorf("find provider for gateway key: %w", err)
+		}
+		if !provider.Enabled {
 			return nil, ErrModelNotFound
 		}
-		return nil, fmt.Errorf("find model: %w", err)
-	}
 
-	if !model.Enabled {
-		return nil, ErrModelNotFound
-	}
+		// Try to find the model under this provider; if not found, create a virtual model
+		model, err = r.models.FindBySlugAndProvider(ctx, modelSlug, provider.ID)
+		if err != nil {
+			// Model not explicitly registered — create virtual model for pass-through
+			model = &models.Model{
+				Name:       modelSlug,
+				Slug:       modelSlug,
+				ProviderID: provider.ID,
+				Enabled:    true,
+			}
+		}
+	} else {
+		// Legacy behavior: resolve provider from model slug
+		var err error
+		model, err = r.models.FindBySlug(ctx, modelSlug)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, ErrModelNotFound
+			}
+			return nil, fmt.Errorf("find model: %w", err)
+		}
 
-	provider, err := r.providers.FindByID(ctx, model.ProviderID)
-	if err != nil {
-		return nil, fmt.Errorf("find provider: %w", err)
-	}
+		if !model.Enabled {
+			return nil, ErrModelNotFound
+		}
 
-	if !provider.Enabled {
-		return nil, ErrModelNotFound
+		provider, err = r.providers.FindByID(ctx, model.ProviderID)
+		if err != nil {
+			return nil, fmt.Errorf("find provider: %w", err)
+		}
+
+		if !provider.Enabled {
+			return nil, ErrModelNotFound
+		}
 	}
 
 	strategy := r.resolveStrategy(provider)

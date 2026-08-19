@@ -51,6 +51,7 @@ type Model struct {
 type GatewayAPIKey struct {
 	ID            string     `json:"id" db:"id"`
 	UserID        string     `json:"userId" db:"user_id"`
+	ProviderID    *string    `json:"providerId,omitempty" db:"provider_id"`
 	Name          string     `json:"name" db:"name"`
 	KeyHash       string     `json:"-" db:"key_hash"`
 	KeyPrefix     string     `json:"keyPrefix" db:"key_prefix"`

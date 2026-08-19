@@ -68,6 +68,7 @@ export interface ApiModel {
 export interface ApiGatewayKey {
   id: string;
   userId?: string;
+  providerId?: string;
   name: string;
   keyPrefix: string;
   rawKey?: string;
@@ -263,6 +264,7 @@ export async function apiGetGatewayKeys(): Promise<ApiGatewayKey[]> {
 
 export async function apiCreateGatewayKey(data: {
   name: string;
+  providerId: string;
   rateLimit?: number;
   allowedModels?: string[];
   expiresInDays?: number;

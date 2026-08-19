@@ -25,9 +25,9 @@ func (r *GatewayKeyRepository) Create(ctx context.Context, k *models.GatewayAPIK
 	k.CreatedAt = time.Now()
 	k.UpdatedAt = time.Now()
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO gateway_api_keys (id, user_id, name, key_hash, key_prefix, enabled, rate_limit, allowed_models, expires_at, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-		k.ID, k.UserID, k.Name, k.KeyHash, k.KeyPrefix,
+		`INSERT INTO gateway_api_keys (id, user_id, provider_id, name, key_hash, key_prefix, enabled, rate_limit, allowed_models, expires_at, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+		k.ID, k.UserID, k.ProviderID, k.Name, k.KeyHash, k.KeyPrefix,
 		k.Enabled, k.RateLimit, pq.Array(k.AllowedModels),
 		k.ExpiresAt, k.CreatedAt, k.UpdatedAt,
 	)
@@ -38,10 +38,10 @@ func (r *GatewayKeyRepository) FindByKeyHash(ctx context.Context, keyHash string
 	k := &models.GatewayAPIKey{}
 	var allowedModels []string
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, name, key_hash, key_prefix, enabled, rate_limit, allowed_models,
+		`SELECT id, user_id, provider_id, name, key_hash, key_prefix, enabled, rate_limit, allowed_models,
 		        expires_at, last_used_at, request_count, created_at, updated_at
 		 FROM gateway_api_keys WHERE key_hash = $1 AND enabled = true`, keyHash,
-	).Scan(&k.ID, &k.UserID, &k.Name, &k.KeyHash, &k.KeyPrefix,
+	).Scan(&k.ID, &k.UserID, &k.ProviderID, &k.Name, &k.KeyHash, &k.KeyPrefix,
 		&k.Enabled, &k.RateLimit, pq.Array(&allowedModels),
 		&k.ExpiresAt, &k.LastUsedAt, &k.RequestCount, &k.CreatedAt, &k.UpdatedAt)
 	if err != nil {
@@ -53,7 +53,7 @@ func (r *GatewayKeyRepository) FindByKeyHash(ctx context.Context, keyHash string
 
 func (r *GatewayKeyRepository) ListByUserID(ctx context.Context, userID string) ([]models.GatewayAPIKey, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, user_id, name, key_hash, key_prefix, enabled, rate_limit, allowed_models,
+		`SELECT id, user_id, provider_id, name, key_hash, key_prefix, enabled, rate_limit, allowed_models,
 		        expires_at, last_used_at, request_count, created_at, updated_at
 		 FROM gateway_api_keys WHERE user_id = $1 ORDER BY created_at DESC`, userID,
 	)
@@ -66,7 +66,7 @@ func (r *GatewayKeyRepository) ListByUserID(ctx context.Context, userID string) 
 	for rows.Next() {
 		var k models.GatewayAPIKey
 		var allowedModels []string
-		if err := rows.Scan(&k.ID, &k.UserID, &k.Name, &k.KeyHash, &k.KeyPrefix,
+		if err := rows.Scan(&k.ID, &k.UserID, &k.ProviderID, &k.Name, &k.KeyHash, &k.KeyPrefix,
 			&k.Enabled, &k.RateLimit, pq.Array(&allowedModels),
 			&k.ExpiresAt, &k.LastUsedAt, &k.RequestCount, &k.CreatedAt, &k.UpdatedAt); err != nil {
 			return nil, err
@@ -80,10 +80,10 @@ func (r *GatewayKeyRepository) ListByUserID(ctx context.Context, userID string) 
 func (r *GatewayKeyRepository) Update(ctx context.Context, k *models.GatewayAPIKey) error {
 	k.UpdatedAt = time.Now()
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE gateway_api_keys SET name=$1, enabled=$2, rate_limit=$3, allowed_models=$4, expires_at=$5, updated_at=$6
-		 WHERE id=$7`,
+		`UPDATE gateway_api_keys SET name=$1, enabled=$2, rate_limit=$3, allowed_models=$4, expires_at=$5, provider_id=$6, updated_at=$7
+		 WHERE id=$8`,
 		k.Name, k.Enabled, k.RateLimit, pq.Array(k.AllowedModels),
-		k.ExpiresAt, k.UpdatedAt, k.ID,
+		k.ExpiresAt, k.ProviderID, k.UpdatedAt, k.ID,
 	)
 	return err
 }

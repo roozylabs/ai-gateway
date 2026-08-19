@@ -7,6 +7,7 @@
 | 1.0 | 18 August 2026 | Initial Draft |
 | 1.1 | 18 August 2026, 22:37 WIB | Added Real-Time Data Streaming Architecture (SSE + Redis Pub/Sub) |
 | 1.2 | 19 August 2026, 11:03 WIB | Implemented Revision History versioning rules |
+| 1.3 | 19 August 2026, 14:58 WIB | Updated Gateway API Key architecture: 1 Gateway Key is bound to 1 Provider |
 
 ---
 

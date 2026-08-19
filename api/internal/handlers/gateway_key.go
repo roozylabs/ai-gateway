@@ -22,6 +22,7 @@ func NewGatewayKeyHandler(keys *repository.GatewayKeyRepository) *GatewayKeyHand
 
 type CreateGatewayKeyRequest struct {
 	Name          string   `json:"name" binding:"required"`
+	ProviderID    string   `json:"providerId" binding:"required"`
 	RateLimit     int      `json:"rateLimit"`
 	AllowedModels []string `json:"allowedModels"`
 	ExpiresInDays int      `json:"expiresInDays"`
@@ -35,7 +36,7 @@ type CreateGatewayKeyResponse struct {
 func (h *GatewayKeyHandler) Create(c *gin.Context) {
 	var req CreateGatewayKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: name and providerId are required"})
 		return
 	}
 
@@ -59,8 +60,11 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 		expiresAt = &t
 	}
 
+	providerID := req.ProviderID
+
 	key := &models.GatewayAPIKey{
 		UserID:        c.GetString("userId"),
+		ProviderID:    &providerID,
 		Name:          req.Name,
 		KeyHash:       keyHash,
 		KeyPrefix:     keyPrefix,
