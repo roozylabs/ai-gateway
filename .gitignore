@@ -13,6 +13,7 @@ app/node_modules/
 app/.next/
 app/out/
 app/.env.local
+*.tsbuildinfo
 
 # Environment files (secrets)
 .env
