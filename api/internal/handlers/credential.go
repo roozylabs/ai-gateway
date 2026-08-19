@@ -94,6 +94,8 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 		return
 	}
 
+	maskedKey := utils.MaskAPIKey(req.APIKey)
+
 	encrypted, err := utils.EncryptAES256GCM(req.APIKey, h.encKey)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt key"})
@@ -110,6 +112,7 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 		Name:         req.Name,
 		EncryptedKey: encrypted,
 		KeyPrefix:    keyPrefix,
+		MaskedKey:    maskedKey,
 		Priority:     req.Priority,
 		Enabled:      true,
 		Status:       "active",
