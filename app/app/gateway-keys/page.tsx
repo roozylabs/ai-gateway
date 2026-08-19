@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Space, Typography, Modal, Form, Input, Select, InputNumber, Alert, Tooltip, Tag, App, Tabs } from 'antd';
 import { PlusOutlined, CopyOutlined, DeleteOutlined, InfoCircleOutlined, SyncOutlined, CodeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,8 +11,10 @@ import {
   apiGetGatewayKeys,
   apiCreateGatewayKey,
   apiDeleteGatewayKey,
+  apiGetModels,
   ApiGatewayKey,
   ApiProvider,
+  ApiModel,
 } from '@/lib/api';
 
 const { Text } = Typography;
@@ -447,80 +449,215 @@ export default function GatewayKeysPage() {
         open={!!integrationKey}
         onCancel={() => setIntegrationKey(null)}
         footer={null}
-        width={700}
+        width={750}
       >
-        {integrationKey && (() => {
-          const apiBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : 'http://localhost:3000/api/v1';
-          const apiKeyDisplay = '<YOUR_FULL_GATEWAY_KEY>';
-          
-          const providerName = integrationKey.providerId && providerMap[integrationKey.providerId] 
-            ? providerMap[integrationKey.providerId].name.toLowerCase() 
-            : '';
-            
-          let suggestedModel = 'your-model-name';
-          if (providerName.includes('openai')) suggestedModel = 'gpt-4o';
-          else if (providerName.includes('anthropic')) suggestedModel = 'claude-3-5-sonnet-20241022';
-          else if (providerName.includes('gemini') || providerName.includes('google')) suggestedModel = 'gemini-1.5-pro';
-          else if (providerName.includes('opencode')) suggestedModel = 'big-pickle';
+        {integrationKey && (
+          <IntegrationModalContent
+            integrationKey={integrationKey}
+            providerMap={providerMap}
+            isDark={isDark}
+            handleCopyKey={handleCopyKey}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+}
 
-          return (
-            <div>
-              <Alert 
-                message="Replace <YOUR_FULL_GATEWAY_KEY> with the actual Gateway Key generated during creation. Only the prefix is displayed below."
-                type="info" 
-                showIcon 
-                style={{ marginBottom: 16 }}
-              />
-              <Tabs
-                defaultActiveKey="1"
-                items={[
-                  {
-                    key: '1',
-                    label: 'OpenCode CLI',
-                    children: (
-                      <div>
-                        <Typography.Paragraph>
-                          <Text type="secondary">Run OpenCode with the Gateway API configuration:</Text>
-                        </Typography.Paragraph>
-                        <pre style={{ background: isDark ? '#141414' : '#f5f5f5', padding: 12, borderRadius: 6, overflowX: 'auto' }}>
-                          <code>
-{`export OPENAI_API_KEY="${apiKeyDisplay}"
+function IntegrationModalContent({
+  integrationKey,
+  providerMap,
+  isDark,
+  handleCopyKey,
+}: {
+  integrationKey: ApiGatewayKey;
+  providerMap: Record<string, ApiProvider>;
+  isDark: boolean;
+  handleCopyKey: (text: string) => void;
+}) {
+  const providerId = integrationKey.providerId || 'all';
+
+  // Fetch Models for this provider
+  const { data: modelsResult, isLoading: modelsLoading } = useQuery({
+    queryKey: ['models-for-integration', providerId],
+    queryFn: () => apiGetModels(providerId, { limit: 100 }),
+    enabled: !!integrationKey,
+  });
+
+  const availableModels: ApiModel[] = modelsResult?.data || [];
+
+  // Default selected models
+  const [selectedSlugs, setSelectedSlugs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (availableModels.length > 0) {
+      setSelectedSlugs(availableModels.map((m) => m.slug || m.name));
+    }
+  }, [availableModels]);
+
+  const apiBaseUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/api/v1`
+      : 'http://localhost:3000/api/v1';
+  const apiKeyDisplay = '<YOUR_FULL_GATEWAY_KEY>';
+
+  const providerName =
+    integrationKey.providerId && providerMap[integrationKey.providerId]
+      ? providerMap[integrationKey.providerId].name.toLowerCase()
+      : '';
+
+  let defaultModelSlug = 'your-model-name';
+  if (providerName.includes('openai')) defaultModelSlug = 'gpt-4o';
+  else if (providerName.includes('anthropic')) defaultModelSlug = 'claude-3-5-sonnet-20241022';
+  else if (providerName.includes('gemini') || providerName.includes('google')) defaultModelSlug = 'gemini-3.6-flash';
+  else if (providerName.includes('opencode')) defaultModelSlug = 'big-pickle';
+
+  // Build the dynamic "models" map for JSON
+  const modelsJsonMap: Record<string, { name: string }> = {};
+  if (selectedSlugs.length > 0) {
+    selectedSlugs.forEach((slug) => {
+      const found = availableModels.find((m) => m.slug === slug || m.name === slug);
+      modelsJsonMap[slug] = { name: found ? found.name : slug };
+    });
+  } else {
+    modelsJsonMap[defaultModelSlug] = { name: defaultModelSlug };
+  }
+
+  const generatedConfigObj = {
+    $schema: 'https://opencode.ai/config.json',
+    provider: {
+      'ai-gateway': {
+        options: {
+          baseURL: apiBaseUrl,
+          apiKey: apiKeyDisplay,
+        },
+        models: modelsJsonMap,
+      },
+    },
+  };
+
+  const jsonFormattedString = JSON.stringify(generatedConfigObj, null, 2);
+
+  return (
+    <div>
+      <Alert
+        message="Replace <YOUR_FULL_GATEWAY_KEY> with the actual Gateway Key generated during creation. Only the prefix is displayed below."
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+      <Tabs
+        defaultActiveKey="1"
+        items={[
+          {
+            key: '1',
+            label: 'OpenCode CLI',
+            children: (
+              <div>
+                <div style={{ marginBottom: 16 }}>
+                  <Text strong style={{ display: 'block', marginBottom: 6 }}>
+                    Select Models to include in OpenCode Config:
+                  </Text>
+                  <Select
+                    mode="multiple"
+                    style={{ width: '100%' }}
+                    placeholder="Select models..."
+                    loading={modelsLoading}
+                    value={selectedSlugs}
+                    onChange={(values) => setSelectedSlugs(values)}
+                    options={availableModels.map((m) => ({
+                      label: `${m.name} (${m.slug})`,
+                      value: m.slug || m.name,
+                    }))}
+                  />
+                </div>
+
+                <Typography.Paragraph>
+                  <Text type="secondary">
+                    Add to your <Text code>~/.config/opencode/opencode.jsonc</Text> or project{' '}
+                    <Text code>./opencode.jsonc</Text>:
+                  </Text>
+                </Typography.Paragraph>
+
+                <div style={{ position: 'relative' }}>
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<CopyOutlined />}
+                    style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
+                    onClick={() => handleCopyKey(jsonFormattedString)}
+                  >
+                    Copy JSON
+                  </Button>
+                  <pre
+                    style={{
+                      background: isDark ? '#141414' : '#f5f5f5',
+                      padding: '12px 16px',
+                      borderRadius: 6,
+                      overflowX: 'auto',
+                    }}
+                  >
+                    <code>{jsonFormattedString}</code>
+                  </pre>
+                </div>
+
+                <Typography.Paragraph style={{ marginTop: 16 }}>
+                  <Text type="secondary">Or via Environment Variables:</Text>
+                </Typography.Paragraph>
+                <pre
+                  style={{
+                    background: isDark ? '#141414' : '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 6,
+                    overflowX: 'auto',
+                  }}
+                >
+                  <code>{`export OPENAI_API_KEY="${apiKeyDisplay}"
 export OPENAI_API_BASE="${apiBaseUrl}"
 
-# You can specify any model supported by the provider
-opencode --model ${suggestedModel}`}
-                          </code>
-                        </pre>
-                      </div>
-                    )
-                  },
-                  {
-                    key: '2',
-                    label: 'cURL',
-                    children: (
-                      <div>
-                        <pre style={{ background: isDark ? '#141414' : '#f5f5f5', padding: 12, borderRadius: 6, overflowX: 'auto' }}>
-                          <code>
-{`curl ${apiBaseUrl}/chat/completions \\
+opencode --model ${selectedSlugs[0] || defaultModelSlug}`}</code>
+                </pre>
+              </div>
+            ),
+          },
+          {
+            key: '2',
+            label: 'cURL',
+            children: (
+              <div>
+                <pre
+                  style={{
+                    background: isDark ? '#141414' : '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 6,
+                    overflowX: 'auto',
+                  }}
+                >
+                  <code>{`curl ${apiBaseUrl}/chat/completions \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer ${apiKeyDisplay}" \\
   -d '{
-    "model": "${suggestedModel}",
+    "model": "${selectedSlugs[0] || defaultModelSlug}",
     "messages": [{"role": "user", "content": "Hello!"}]
-  }'`}
-                          </code>
-                        </pre>
-                      </div>
-                    )
-                  },
-                  {
-                    key: '3',
-                    label: 'Python (OpenAI SDK)',
-                    children: (
-                      <div>
-                        <pre style={{ background: isDark ? '#141414' : '#f5f5f5', padding: 12, borderRadius: 6, overflowX: 'auto' }}>
-                          <code>
-{`from openai import OpenAI
+  }'`}</code>
+                </pre>
+              </div>
+            ),
+          },
+          {
+            key: '3',
+            label: 'Python (OpenAI SDK)',
+            children: (
+              <div>
+                <pre
+                  style={{
+                    background: isDark ? '#141414' : '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 6,
+                    overflowX: 'auto',
+                  }}
+                >
+                  <code>{`from openai import OpenAI
 
 client = OpenAI(
     api_key="${apiKeyDisplay}",
@@ -528,21 +665,16 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="${suggestedModel}",
+    model="${selectedSlugs[0] || defaultModelSlug}",
     messages=[{"role": "user", "content": "Hello!"}]
 )
-print(response.choices[0].message.content)`}
-                          </code>
-                        </pre>
-                      </div>
-                    )
-                  }
-                ]}
-              />
-            </div>
-          );
-        })()}
-      </Modal>
+print(response.choices[0].message.content)`}</code>
+                </pre>
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

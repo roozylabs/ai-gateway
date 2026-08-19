@@ -10,6 +10,7 @@
 | 1.3 | 18 August 2026, 22:51 WIB | Added Multi-Auth Type & Enterprise OAuth Roadmap plan |
 | 1.4 | 19 August 2026, 11:04 WIB | Implemented Revision History versioning rules |
 | 1.5 | 19 August 2026, 14:55 WIB | Updated Gateway API Key architecture: 1 Gateway Key is bound to 1 Provider |
+| 1.6 | 19 August 2026, 21:12 WIB | Added Google Gemini & Cloud OAuth 2.0 Token Refresh Flow Specs |
 
 ---
 
@@ -228,27 +229,78 @@ Anthropic
 
 Fokus utama **V1** adalah mengamankan dan merotasi **API Key standar** (`api_key`) untuk OpenAI, Anthropic, Google AI Studio, OpenRouter, Groq, dan DeepSeek.
 
-Pada **V2 Roadmap**, Gateway akan mendukung **Multi-Auth Type System** untuk mengakomodasi Enterprise Cloud Provider Credentials:
+Pada **V2 Roadmap**, Gateway akan mendukung **Multi-Auth Type System** untuk mengakomodasi Enterprise Cloud Provider Credentials (OpenAI via Azure, Anthropic via AWS Bedrock, Google Gemini via GCP):
 
 | Auth Type | Provider Target | Format Credential Payload | Mekanisme Gateway |
 |---|---|---|---|
 | `api_key` **(V1 - Current)** | OpenAI, Anthropic, Google AI Studio, OpenRouter | Encrypted Plaintext API Key (`sk-...`, `AIzaSy...`) | Inject via Header (`Authorization: Bearer` / `x-goog-api-key`). |
-| `gcp_service_account` **(V2 Plan)** | Google Cloud Vertex AI | Encrypted JSON Service Account Key | Auto-generate & refresh GCP OAuth 2.0 Bearer Access Token via background worker. |
-| `azure_oauth` **(V2 Plan)** | Azure OpenAI Service | Encrypted JSON (`client_id`, `client_secret`, `tenant_id`) | Auto-fetch Azure AD (Entra ID) OAuth 2.0 Bearer Token ke Redis Cache. |
-| `aws_iam` **(V2 Plan)** | AWS Bedrock (Anthropic/Llama via AWS) | Encrypted JSON (`access_key_id`, `secret_access_key`, `region`) | AWS SigV4 Request Signing / STS Temporary Token AssumeRole. |
+| `gcp_user_oauth` **(V2 Plan)** | Google Gemini / GCP OAuth | Encrypted JSON (`client_id`, `client_secret`, `refresh_token`) | Auto-exchange `refresh_token` ➔ `access_token` via Google OAuth (`oauth2.googleapis.com/token`) & cache di Redis (TTL 55m). |
+| `gcp_service_account` **(V2 Plan)** | Google Cloud Vertex AI | Encrypted Service Account JSON (`private_key`, `client_email`) | Auto-generate JWT & exchange Google OAuth 2.0 Bearer Access Token. |
+| `azure_oauth` **(V2 Plan)** | Azure OpenAI Service (GPT-4o/O1) | Encrypted JSON (`client_id`, `client_secret`, `tenant_id`) | Auto-fetch Microsoft Entra ID (Azure AD) OAuth 2.0 Bearer Token ke Redis Cache. |
+| `aws_iam` **(V2 Plan)** | AWS Bedrock (Claude / Llama) | Encrypted JSON (`access_key_id`, `secret_access_key`, `region`) | Request Signing menggunakan AWS SigV4 Algorithm / STS Temporary Session Token. |
+| `github_oauth` **(V2 Plan)** | GitHub Models / Copilot API | Encrypted GitHub OAuth Access Token / App Installation Token | Auto-refresh GitHub User Access Token & pass `Authorization: Bearer`. |
+
+#### 8.1.1 Alur Kerja Google Gemini OAuth 2.0 Token Refresh
+
+```text
+[Client Request (Authorization: Bearer gw_sk_*)]
+                         │
+                         ▼
+┌────────────────────────────────────────────────────────┐
+│ AI Gateway Proxy Engine                                │
+│ 1. Resolve Credential (auth_type = 'gcp_user_oauth')   │
+│ 2. Cek Redis Key: `credential:{id}:access_token`       │
+│                                                        │
+│ ├── IF Access Token ADA & VALID di Redis:              │
+│ │     Gunakan access_token langsung (0ms overhead)     │
+│ │                                                      │
+│ └── IF Access Token EXPIRED / BELUM ADA di Redis:      │
+│     a. Enkripsi dekrip JSON: client_id, client_secret, │
+│        refresh_token                                   │
+│     b. POST https://oauth2.googleapis.com/token        │
+│     c. Terima token baru { access_token, expires_in }  │
+│     d. Simpan access_token ke Redis (TTL: 3300s)       │
+│                                                        │
+│ 3. Inject Header: Authorization: Bearer <access_token> │
+│ 4. Forward Request ke Gemini / Vertex API              │
+└────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 9. Gateway API Key
+## 10. Client Configuration & Integration Guide Modal
 
-Provider credential tidak digunakan langsung oleh client. User membuat **Gateway API Key** khusus yang terhubung langsung ke **1 Target Provider** tertentu.
+Pada modal **Integration Guide** di halaman Gateway API Keys, sistem menyediakan potongan konfigurasi yang disesuaikan secara otomatis berdasarkan provider target:
 
-Contoh: `gw_sk_8sdf89sdf...` (Terhubung ke Provider: *Gemini* atau *OpenCode*)
+### 10.1 Interactive Model Picker & Format OpenCode CLI (`opencode.jsonc`)
 
-Client menggunakan header standar:
-```http
-Authorization: Bearer gw_sk_xxxxx
+Modal Integrasi dilengkapi dengan **Interactive Model Selector** (Dropdown Multi-Select) yang secara otomatis mengambil daftar model aktif terdaftar untuk provider tersebut. Pengguna dapat memilih model mana saja yang ingin disertakan ke dalam konfigurasi `opencode.jsonc`.
+
+Ketika model dipilih atau dihapus pada dropdown, struktur JSON `opencode.jsonc` dan tombol **Copy JSON** akan ter-update secara *real-time*:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ai-gateway": {
+      "options": {
+        "baseURL": "http://<SERVER_IP>:3000/v1",
+        "apiKey": "gw_sk_xxxxxxxx"
+      },
+      "models": {
+        "big-pickle": {
+          "name": "Big Pickle"
+        },
+        "gemini-3.6-flash": {
+          "name": "Gemini 3.6 Flash"
+        }
+      }
+    }
+  }
+}
 ```
+
+---
 
 ### Metadata Gateway API Key:
 - Name

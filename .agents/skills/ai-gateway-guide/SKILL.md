@@ -72,6 +72,20 @@ AI Gateway is a centralized, high-performance LLM API Gateway and Model Router. 
 - **HTTP Transport**: `NewEngine` configures `http.Transport` with `ResponseHeaderTimeout: 30 * time.Second`, `TLSHandshakeTimeout: 10 * time.Second`, `DialTimeout: 10 * time.Second`, and `MaxIdleConns: 100` for fast connection pooling.
 - **Smart 429 Quota Detection**: When 429 occurs, if response contains `FreeUsageLimitError` or daily quota messages, set Redis Cooldown TTL to 86,400s (24 hours) and update status to `rate_limited`.
 
+### 3.4. Multi-Auth Type Architecture (Enterprise Cloud OAuth & IAM)
+- **Supported Authentication Types (`auth_type`)**:
+  - `api_key` (Default V1): Direct plaintext API Key (`sk-...`, `AIza...`).
+  - `gcp_user_oauth` (V2): Google Gemini OAuth 2.0 (`client_id`, `client_secret`, `refresh_token`).
+  - `gcp_service_account` (V2): Google Cloud Vertex AI Service Account JSON.
+  - `azure_oauth` (V2): Azure OpenAI Service Microsoft Entra ID (Azure AD) OAuth 2.0 (`client_id`, `client_secret`, `tenant_id`).
+  - `aws_iam` (V2): AWS Bedrock Anthropic Claude via AWS SigV4 Request Signing / STS.
+  - `github_oauth` (V2): GitHub Models & Copilot User Access Tokens.
+- **OAuth Token Refresh Flow**:
+  1. Proxy Engine checks Redis cache: `credential:{id}:access_token`.
+  2. If expired or missing, Gateway calls `https://oauth2.googleapis.com/token` with `refresh_token`.
+  3. Receives new `access_token` and caches it in Redis with 55-minute TTL (3,300s).
+  4. Injects `Authorization: Bearer <access_token>` into upstream request payload.
+
 ---
 
 ## 4. API Response & Pagination Standard
