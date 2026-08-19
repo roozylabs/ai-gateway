@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Card, Popconfirm, App, Spin } from 'antd';
+import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Card, Popconfirm, App } from 'antd';
 import { PlusOutlined, CopyOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTheme } from '@/context/ThemeContext';
 import {
   apiGetGatewayKeys,
   apiCreateGatewayKey,
@@ -16,6 +17,8 @@ const { Title, Text } = Typography;
 export default function GatewayKeysPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
+  const { mode } = useTheme();
+  const isDark = mode === 'dark';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newGeneratedKey, setNewGeneratedKey] = useState<string | null>(null);
@@ -33,7 +36,6 @@ export default function GatewayKeysPage() {
     onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ['gateway-keys'] });
       message.success('Gateway API Key created!');
-      // res.key holds the raw secret returned by backend
       const rawKey = res.key || res.rawKey || res.keyPrefix;
       setNewGeneratedKey(rawKey);
     },
@@ -54,9 +56,29 @@ export default function GatewayKeysPage() {
     createMutation.mutate({ name: values.name });
   };
 
-  const handleCopyKey = (text: string) => {
-    navigator.clipboard.writeText(text);
-    message.success('Copied to clipboard!');
+  const handleCopyKey = async (text: string) => {
+    if (!text) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        textArea.remove();
+        if (!successful) throw new Error('execCommand copy failed');
+      }
+      message.success('Copied to clipboard!');
+    } catch (err) {
+      console.error('Copy failed:', err);
+      message.error('Failed to copy to clipboard');
+    }
   };
 
   const columns = [
@@ -187,16 +209,29 @@ export default function GatewayKeysPage() {
 
             <div
               style={{
-                background: '#f5f5f5',
-                padding: 12,
-                borderRadius: 6,
+                background: isDark ? '#141414' : '#f5f5f5',
+                border: `1px solid ${isDark ? '#303030' : '#e8e8e8'}`,
+                padding: '12px 16px',
+                borderRadius: 8,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                gap: 12,
                 marginBottom: 20,
               }}
             >
-              <Text code style={{ fontSize: 13, wordBreak: 'break-all' }}>
+              <Text
+                code
+                style={{
+                  fontSize: 13,
+                  wordBreak: 'break-all',
+                  color: isDark ? '#e6f4ff' : '#1677ff',
+                  background: isDark ? '#1f1f1f' : '#ffffff',
+                  borderColor: isDark ? '#303030' : '#d9d9d9',
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                }}
+              >
                 {newGeneratedKey}
               </Text>
               <Button
