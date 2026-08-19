@@ -28,6 +28,9 @@ type Engine struct {
 }
 
 func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, encKey string, maxRetries, cooldownSecs int) *Engine {
+	tr := &http.Transport{
+		ResponseHeaderTimeout: 10 * time.Second,
+	}
 	return &Engine{
 		router:       router,
 		creds:        creds,
@@ -35,7 +38,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		encKey:       encKey,
 		maxRetries:   maxRetries,
 		cooldownSecs: cooldownSecs,
-		client:       &http.Client{Timeout: 5 * time.Minute},
+		client:       &http.Client{Transport: tr, Timeout: 5 * time.Minute},
 	}
 }
 
