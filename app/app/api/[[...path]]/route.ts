@@ -7,20 +7,22 @@ function getBackendApiUrl(): string {
   return url.replace(/\/+$/, '');
 }
 
-async function proxyHandler(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params;
-  const targetPath = path ? path.join('/') : '';
+async function proxyHandler(request: NextRequest, { params }: { params: Promise<{ path?: string[] }> }) {
+  const resolvedParams = await params;
+  const pathArray = resolvedParams?.path || [];
+  const subPath = pathArray.join('/');
   const searchParams = request.nextUrl.search;
 
   const backendApiUrl = getBackendApiUrl();
-  const targetUrl = `${backendApiUrl}/api/${targetPath}${searchParams}`;
+  
+  // Special health check handling to support both /health and /api/health upstream targets
+  const targetUrl = subPath === 'health'
+    ? `${backendApiUrl}/health${searchParams}`
+    : `${backendApiUrl}/api/${subPath}${searchParams}`;
 
   const headers = new Headers(request.headers);
-
-  // Remove host header to avoid backend host mismatch
   headers.delete('host');
 
-  // Forward cookie auth_token as Bearer Authorization header if present
   const token = request.cookies.get('auth_token')?.value;
   if (token && !headers.has('authorization')) {
     headers.set('authorization', `Bearer ${token}`);
@@ -44,7 +46,6 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
     });
 
     const responseHeaders = new Headers(backendResponse.headers);
-    // Remove encoding headers that fetch handles automatically
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('content-length');
 
@@ -52,11 +53,10 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
     const isEventStream = contentType.includes('text/event-stream');
     const isNoBodyStatus = backendResponse.status === 204 || backendResponse.status === 304;
 
-    // Handle SSE (Server-Sent Events) and chunked streaming responses properly
     if (isEventStream) {
       responseHeaders.set('Cache-Control', 'no-cache, no-transform');
       responseHeaders.set('Connection', 'keep-alive');
-      responseHeaders.set('X-Accel-Buffering', 'no'); // Disable Nginx buffering for SSE
+      responseHeaders.set('X-Accel-Buffering', 'no');
 
       return new NextResponse(backendResponse.body, {
         status: backendResponse.status,
@@ -65,7 +65,6 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
       });
     }
 
-    // Handle No Content status codes (204, 304)
     if (isNoBodyStatus) {
       return new NextResponse(null, {
         status: backendResponse.status,
@@ -74,7 +73,6 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
       });
     }
 
-    // Handle standard REST API buffered responses
     const responseData = await backendResponse.arrayBuffer();
     return new NextResponse(responseData, {
       status: backendResponse.status,

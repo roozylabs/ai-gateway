@@ -94,60 +94,64 @@ func main() {
 
 	// Health check (public)
 	r.GET("/health", healthHandler.Check)
-	r.GET("/api/health", healthHandler.Check)
 
-	// Auth routes (public)
-	r.POST("/api/auth/login", authHandler.Login)
-
-	// Protected routes
+	// API routes group
 	api := r.Group("/api")
-	api.Use(middleware.AuthMiddleware(sessionRepo))
 	{
-		// Auth
-		api.POST("/auth/logout", authHandler.Logout)
-		api.GET("/auth/me", authHandler.Me)
+		// Public API routes
+		api.GET("/health", healthHandler.Check)
+		api.POST("/auth/login", authHandler.Login)
 
-		// Providers
-		api.GET("/providers", providerHandler.List)
-		api.POST("/providers", providerHandler.Create)
-		api.GET("/providers/:id", providerHandler.Get)
-		api.PUT("/providers/:id", providerHandler.Update)
-		api.DELETE("/providers/:id", providerHandler.Delete)
+		// Protected API routes
+		protected := api.Group("")
+		protected.Use(middleware.AuthMiddleware(sessionRepo))
+		{
+			// Auth
+			protected.POST("/auth/logout", authHandler.Logout)
+			protected.GET("/auth/me", authHandler.Me)
 
-		// Credentials (nested under provider)
-		api.GET("/providers/:id/credentials", credentialHandler.List)
-		api.POST("/providers/:id/credentials", credentialHandler.Create)
-		api.GET("/providers/:id/credentials/:credId", credentialHandler.Get)
-		api.PUT("/providers/:id/credentials/:credId", credentialHandler.Update)
-		api.DELETE("/providers/:id/credentials/:credId", credentialHandler.Delete)
-		api.POST("/providers/:id/credentials/:credId/test", credentialHandler.Test)
+			// Providers
+			protected.GET("/providers", providerHandler.List)
+			protected.POST("/providers", providerHandler.Create)
+			protected.GET("/providers/:id", providerHandler.Get)
+			protected.PUT("/providers/:id", providerHandler.Update)
+			protected.DELETE("/providers/:id", providerHandler.Delete)
 
-		// Models (nested under provider)
-		api.GET("/providers/:id/models", modelHandler.List)
-		api.POST("/providers/:id/models", modelHandler.Create)
-		api.GET("/providers/:id/models/:modelId", modelHandler.Get)
-		api.PUT("/providers/:id/models/:modelId", modelHandler.Update)
-		api.DELETE("/providers/:id/models/:modelId", modelHandler.Delete)
+			// Credentials (nested under provider)
+			protected.GET("/providers/:id/credentials", credentialHandler.List)
+			protected.POST("/providers/:id/credentials", credentialHandler.Create)
+			protected.GET("/providers/:id/credentials/:credId", credentialHandler.Get)
+			protected.PUT("/providers/:id/credentials/:credId", credentialHandler.Update)
+			protected.DELETE("/providers/:id/credentials/:credId", credentialHandler.Delete)
+			protected.POST("/providers/:id/credentials/:credId/test", credentialHandler.Test)
 
-		// Gateway API Keys
-		api.GET("/gateway-keys", gatewayKeyHandler.List)
-		api.POST("/gateway-keys", gatewayKeyHandler.Create)
-		api.DELETE("/gateway-keys/:id", gatewayKeyHandler.Delete)
+			// Models (nested under provider)
+			protected.GET("/providers/:id/models", modelHandler.List)
+			protected.POST("/providers/:id/models", modelHandler.Create)
+			protected.GET("/providers/:id/models/:modelId", modelHandler.Get)
+			protected.PUT("/providers/:id/models/:modelId", modelHandler.Update)
+			protected.DELETE("/providers/:id/models/:modelId", modelHandler.Delete)
 
-		// Request Logs
-		api.GET("/logs", logsHandler.List)
+			// Gateway API Keys
+			protected.GET("/gateway-keys", gatewayKeyHandler.List)
+			protected.POST("/gateway-keys", gatewayKeyHandler.Create)
+			protected.DELETE("/gateway-keys/:id", gatewayKeyHandler.Delete)
 
-		// Dashboard
-		api.GET("/dashboard/stats", dashboardHandler.GetStats)
-		api.GET("/dashboard/usage", dashboardHandler.GetUsageChart)
-		api.GET("/dashboard/health", dashboardHandler.GetProviderHealth)
+			// Request Logs
+			protected.GET("/logs", logsHandler.List)
 
-		// Settings
-		api.GET("/settings", settingsHandler.List)
-		api.PUT("/settings", settingsHandler.Update)
+			// Dashboard
+			protected.GET("/dashboard/stats", dashboardHandler.GetStats)
+			protected.GET("/dashboard/usage", dashboardHandler.GetUsageChart)
+			protected.GET("/dashboard/health", dashboardHandler.GetProviderHealth)
 
-		// SSE
-		api.GET("/sse", sseHandler.Stream)
+			// Settings
+			protected.GET("/settings", settingsHandler.List)
+			protected.PUT("/settings", settingsHandler.Update)
+
+			// SSE
+			protected.GET("/sse", sseHandler.Stream)
+		}
 	}
 
 	// Gateway routes (authenticated with gw_sk_* keys)
