@@ -17,7 +17,7 @@ type ProviderRequest struct {
 type ProviderResponse struct {
 	ID      string         `json:"id,omitempty"`
 	Model   string         `json:"model,omitempty"`
-	Choices []Choice       `json:"choices,omitempty"`
+	Choices []Choice       `json:"choices"`
 	Usage   Usage          `json:"usage,omitempty"`
 	Error   *ProviderError `json:"error,omitempty"`
 }

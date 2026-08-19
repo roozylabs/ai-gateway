@@ -305,6 +305,10 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 				totalTokens = chunk.Usage
 			}
 
+			if chunk.Choices == nil {
+				chunk.Choices = []Choice{}
+			}
+
 			jsonChunk, _ := json.Marshal(chunk)
 			_, _ = c.Writer.Write([]byte("data: "))
 			_, _ = c.Writer.Write(jsonChunk)
