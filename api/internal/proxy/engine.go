@@ -230,6 +230,13 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			continue
 		}
 
+		// 4xx (other than 401/403/429) → abort immediately, do not retry
+		if httpResp.StatusCode >= 400 && httpResp.StatusCode < 500 {
+			bodyBytes, _ := io.ReadAll(httpResp.Body)
+			httpResp.Body.Close()
+			return nil, fmt.Errorf("upstream error %d: %s", httpResp.StatusCode, string(bodyBytes))
+		}
+
 		// Success → start streaming
 		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
 		defer httpResp.Body.Close()
