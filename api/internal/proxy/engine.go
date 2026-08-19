@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/models"
@@ -261,6 +262,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		var totalTokens Usage
 		scanner := bufio.NewScanner(httpResp.Body)
+		scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+
 		for scanner.Scan() {
 			line := scanner.Bytes()
 			if len(line) == 0 {
@@ -279,11 +282,15 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 				totalTokens = chunk.Usage
 			}
 
-		jsonChunk, _ := json.Marshal(chunk)
-		_, _ = c.Writer.Write([]byte("data: "))
-		_, _ = c.Writer.Write(jsonChunk)
-		_, _ = c.Writer.Write([]byte("\n\n"))
-		c.Writer.Flush()
+			jsonChunk, _ := json.Marshal(chunk)
+			_, _ = c.Writer.Write([]byte("data: "))
+			_, _ = c.Writer.Write(jsonChunk)
+			_, _ = c.Writer.Write([]byte("\n\n"))
+			c.Writer.Flush()
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Printf("stream scan error: %v", err)
 		}
 
 		_, _ = c.Writer.Write([]byte("data: [DONE]\n\n"))
