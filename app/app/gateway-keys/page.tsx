@@ -486,14 +486,8 @@ function IntegrationModalContent({
 
   const availableModels: ApiModel[] = modelsResult?.data || [];
 
-  // Default selected models
+  // Default selected models: EMPTY by default
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (availableModels.length > 0) {
-      setSelectedSlugs(availableModels.map((m) => m.slug || m.name));
-    }
-  }, [availableModels]);
 
   const apiBaseUrl =
     typeof window !== 'undefined'
@@ -519,8 +513,6 @@ function IntegrationModalContent({
       const found = availableModels.find((m) => m.slug === slug || m.name === slug);
       modelsJsonMap[slug] = { name: found ? found.name : slug };
     });
-  } else {
-    modelsJsonMap[defaultModelSlug] = { name: defaultModelSlug };
   }
 
   const generatedConfigObj = {
@@ -595,6 +587,8 @@ function IntegrationModalContent({
                       padding: '12px 16px',
                       borderRadius: 6,
                       overflowX: 'auto',
+                      maxHeight: '280px',
+                      overflowY: 'auto',
                     }}
                   >
                     <code>{jsonFormattedString}</code>
