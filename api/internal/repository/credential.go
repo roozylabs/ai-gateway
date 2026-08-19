@@ -20,7 +20,7 @@ func NewCredentialRepository(db *sql.DB) *CredentialRepository {
 
 func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
 		 FROM credentials WHERE provider_id = $1 ORDER BY priority ASC`, providerID,
@@ -33,7 +33,7 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 	var credentials []models.Credential
 	for rows.Next() {
 		var c models.Credential
-		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix,
+		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
 			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
@@ -46,11 +46,11 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 func (r *CredentialRepository) FindByID(ctx context.Context, id string) (*models.Credential, error) {
 	c := &models.Credential{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
 		 FROM credentials WHERE id = $1`, id,
-	).Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix,
+	).Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
 		&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
 		&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
@@ -66,9 +66,9 @@ func (r *CredentialRepository) Create(ctx context.Context, c *models.Credential)
 	c.CreatedAt = time.Now()
 	c.UpdatedAt = time.Now()
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO credentials (id, provider_id, name, encrypted_key, key_prefix, priority, enabled, status, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		c.ID, c.ProviderID, c.Name, c.EncryptedKey, c.KeyPrefix,
+		`INSERT INTO credentials (id, provider_id, name, encrypted_key, key_prefix, masked_key, priority, enabled, status, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+		c.ID, c.ProviderID, c.Name, c.EncryptedKey, c.KeyPrefix, c.MaskedKey,
 		c.Priority, c.Enabled, c.Status, c.CreatedAt, c.UpdatedAt,
 	)
 	return err
@@ -94,12 +94,12 @@ func (r *CredentialRepository) Delete(ctx context.Context, id string) error {
 func (r *CredentialRepository) FindActiveByProviderID(ctx context.Context, providerID string) (*models.Credential, error) {
 	c := &models.Credential{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
 		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'
 		 ORDER BY priority ASC LIMIT 1`, providerID,
-	).Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix,
+	).Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
 		&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
 		&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
@@ -110,7 +110,7 @@ func (r *CredentialRepository) FindActiveByProviderID(ctx context.Context, provi
 
 func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, providerID string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
 		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'
@@ -124,7 +124,7 @@ func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, pr
 	var creds []models.Credential
 	for rows.Next() {
 		var c models.Credential
-		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix,
+		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
 			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
@@ -146,5 +146,63 @@ func (r *CredentialRepository) UpdateStatus(ctx context.Context, credentialID, s
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE credentials SET status = $1, updated_at = NOW() WHERE id = $2`,
 		status, credentialID)
+	return err
+}
+
+func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID string) ([]models.Credential, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, priority, enabled, status,
+		        last_used_at, request_count, error_count, last_error, last_error_at,
+		        created_at, updated_at
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'
+		 ORDER BY request_count ASC, priority ASC`, providerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var creds []models.Credential
+	for rows.Next() {
+		var c models.Credential
+		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
+			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, err
+		}
+		creds = append(creds, c)
+	}
+	return creds, nil
+}
+
+func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string) ([]models.Credential, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, priority, enabled, status,
+		        last_used_at, request_count, error_count, last_error, last_error_at,
+		        created_at, updated_at
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'
+		 ORDER BY last_used_at ASC NULLS FIRST, priority ASC`, providerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var creds []models.Credential
+	for rows.Next() {
+		var c models.Credential
+		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
+			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, err
+		}
+		creds = append(creds, c)
+	}
+	return creds, nil
+}
+
+func (r *CredentialRepository) IncrementUsage(ctx context.Context, credentialID string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE credentials SET request_count = request_count + 1, last_used_at = NOW() WHERE id = $1`, credentialID)
 	return err
 }

@@ -27,11 +27,11 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 		log.CreatedAt = time.Now()
 	}
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO request_logs (id, gateway_api_key_id, provider_id, credential_id, model,
+		`INSERT INTO request_logs (id, request_id, gateway_api_key_id, provider_id, credential_id, model,
 		                          status_code, latency_ms, input_tokens, output_tokens, total_tokens,
 		                          error_message, retry_count, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-		log.ID, log.GatewayAPIKeyID, log.ProviderID, log.CredentialID, log.Model,
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+		log.ID, log.RequestID, log.GatewayAPIKeyID, log.ProviderID, log.CredentialID, log.Model,
 		log.StatusCode, log.LatencyMs, log.InputTokens, log.OutputTokens, log.TotalTokens,
 		log.ErrorMessage, log.RetryCount, log.CreatedAt,
 	)
@@ -40,7 +40,7 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 
 func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, limit, offset int) ([]models.RequestLog, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT rl.id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id, rl.model,
+		`SELECT rl.id, rl.request_id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id, rl.model,
 		        rl.status_code, rl.latency_ms, rl.input_tokens, rl.output_tokens, rl.total_tokens,
 		        rl.error_message, rl.retry_count, rl.created_at
 		 FROM request_logs rl
@@ -57,7 +57,7 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 	var logs []models.RequestLog
 	for rows.Next() {
 		var l models.RequestLog
-		if err := rows.Scan(&l.ID, &l.GatewayAPIKeyID, &l.ProviderID, &l.CredentialID,
+		if err := rows.Scan(&l.ID, &l.RequestID, &l.GatewayAPIKeyID, &l.ProviderID, &l.CredentialID,
 			&l.Model, &l.StatusCode, &l.LatencyMs, &l.InputTokens, &l.OutputTokens,
 			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.CreatedAt); err != nil {
 			return nil, err
@@ -123,7 +123,7 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 	offset := f.Offset
 
 	query := fmt.Sprintf(
-		`SELECT rl.id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id, rl.model,
+		`SELECT rl.id, rl.request_id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id, rl.model,
 		        rl.status_code, rl.latency_ms, rl.input_tokens, rl.output_tokens, rl.total_tokens,
 		        rl.error_message, rl.retry_count, rl.created_at
 		 FROM request_logs rl
@@ -144,7 +144,7 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 	var logs []models.RequestLog
 	for rows.Next() {
 		var l models.RequestLog
-		if err := rows.Scan(&l.ID, &l.GatewayAPIKeyID, &l.ProviderID, &l.CredentialID,
+		if err := rows.Scan(&l.ID, &l.RequestID, &l.GatewayAPIKeyID, &l.ProviderID, &l.CredentialID,
 			&l.Model, &l.StatusCode, &l.LatencyMs, &l.InputTokens, &l.OutputTokens,
 			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.CreatedAt); err != nil {
 			return nil, 0, err
