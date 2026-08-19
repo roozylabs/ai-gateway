@@ -96,6 +96,8 @@ export default function CredentialsPage() {
     staleTime: 30000,
   });
 
+  const credentials = credentialsData?.data || [];
+
   // Mutations
   const createMutation = useMutation({
     mutationFn: ({ providerId, data }: { providerId: string; data: Partial<ApiCredential> & { apiKey: string } }) =>

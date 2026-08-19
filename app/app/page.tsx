@@ -283,7 +283,7 @@ export default function DashboardPage() {
         style={{ borderRadius: 8 }}
       >
         <Table
-          dataSource={logsData?.value || []}
+          dataSource={logsData?.data || []}
           columns={columns}
           loading={logsLoading}
           pagination={false}

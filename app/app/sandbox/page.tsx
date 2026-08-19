@@ -57,10 +57,11 @@ export default function SandboxPage() {
   const [ttftMs, setTtftMs] = useState<number | null>(null);
 
   // Fetch available Gateway Keys
-  const { data: gatewayKeys = [], isLoading: keysLoading } = useQuery({
+  const { data: gatewayKeysResult, isLoading: keysLoading } = useQuery({
     queryKey: ['gateway-keys'],
-    queryFn: apiGetGatewayKeys,
+    queryFn: () => apiGetGatewayKeys({ limit: 100 }),
   });
+  const gatewayKeys = gatewayKeysResult?.data || [];
 
   // Fetch Providers list
   const { data: providers = [] } = useQuery({
@@ -77,8 +78,8 @@ export default function SandboxPage() {
       await Promise.all(
         providers.map(async (p) => {
           try {
-            const list = await apiGetCredentials(p.id);
-            map[p.id] = list;
+            const res = await apiGetCredentials(p.id, { limit: 100 });
+            map[p.id] = res.data;
           } catch {
             map[p.id] = [];
           }
@@ -114,11 +115,15 @@ export default function SandboxPage() {
   const activeProvider = providers.find((p) => p.id === activeProviderId);
 
   // Fetch Models for active Key's Provider
-  const { data: availableModels = [], isLoading: modelsLoading } = useQuery({
+  const { data: modelsResult, isLoading: modelsLoading } = useQuery({
     queryKey: ['sandbox-models', activeProviderId],
-    queryFn: () => (activeProviderId ? apiGetModels(activeProviderId) : Promise.resolve([])),
+    queryFn: async () => {
+      if (!activeProviderId) return { data: [], total: 0, page: 1, pageSize: 100 };
+      return apiGetModels(activeProviderId, { limit: 100 });
+    },
     enabled: !!activeProviderId,
   });
+  const availableModels = modelsResult?.data || [];
 
   // Auto-select first model when availableModels change
   useEffect(() => {
