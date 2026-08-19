@@ -198,8 +198,12 @@ export default function SandboxPage() {
                 if (dataStr === '[DONE]') break;
                 try {
                   const json = JSON.parse(dataStr);
-                  const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.text || '';
-                  accumulated += content;
+                  const choices = json.choices || json.Choices;
+                  const delta = choices?.[0]?.delta || choices?.[0]?.Delta;
+                  const content = delta?.content || choices?.[0]?.text || choices?.[0]?.Text || '';
+                  if (content !== undefined && content !== null) {
+                    accumulated += content;
+                  }
                   setStreamedText(accumulated);
                 } catch {
                   // Skip invalid SSE JSON lines
@@ -210,7 +214,9 @@ export default function SandboxPage() {
         }
       } else {
         const json = await response.json();
-        const text = json.choices?.[0]?.message?.content || JSON.stringify(json, null, 2);
+        const choices = json.choices || json.Choices;
+        const message = choices?.[0]?.message || choices?.[0]?.Message;
+        const text = message?.content || choices?.[0]?.text || choices?.[0]?.Text || JSON.stringify(json, null, 2);
         setStreamedText(text);
       }
 

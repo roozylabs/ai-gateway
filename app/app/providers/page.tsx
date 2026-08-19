@@ -53,6 +53,18 @@ function getStrategyDisplay(strategy: string) {
   return { label: opt.label, color: opt.color, icon: icons[normStrategy] || <SyncOutlined /> };
 }
 
+function autoDetectFormatType(input: string): string | null {
+  if (!input) return null;
+  const normalized = input.toLowerCase();
+  if (normalized.includes('anthropic')) return 'anthropic';
+  if (normalized.includes('gemini') || normalized.includes('googleapis') || normalized.includes('google')) return 'google';
+  if (normalized.includes('opencode')) return 'opencode';
+  if (
+    /groq|together|deepseek|openrouter|mistral|openai|xai|perplexity|fireworks/.test(normalized)
+  ) return 'openai';
+  return null;
+}
+
 export default function ProvidersPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
@@ -62,6 +74,7 @@ export default function ProvidersPage() {
   const [editingProvider, setEditingProvider] = useState<ApiProvider | null>(null);
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
   const [isSlugEditable, setIsSlugEditable] = useState(false);
+  const [isTypeManuallySelected, setIsTypeManuallySelected] = useState(false);
   const [form] = Form.useForm();
 
   // Fetch Providers
@@ -114,6 +127,7 @@ export default function ProvidersPage() {
     setEditingProvider(null);
     setIsSlugManuallyEdited(false);
     setIsSlugEditable(false);
+    setIsTypeManuallySelected(false);
     form.resetFields();
     form.setFieldsValue({
       type: 'openai',
@@ -127,6 +141,7 @@ export default function ProvidersPage() {
     setEditingProvider(provider);
     setIsSlugManuallyEdited(true);
     setIsSlugEditable(false);
+    setIsTypeManuallySelected(true);
     form.setFieldsValue({
       name: provider.name,
       slug: provider.slug,
@@ -272,12 +287,17 @@ export default function ProvidersPage() {
             <Input 
               placeholder="e.g. Anthropic Production" 
               onChange={(e) => {
+                const val = e.target.value;
                 if (!isSlugManuallyEdited) {
-                  const slugified = e.target.value
+                  const slugified = val
                     .toLowerCase()
                     .replace(/[^a-z0-9]+/g, '-')
                     .replace(/(^-|-$)+/g, '');
                   form.setFieldsValue({ slug: slugified });
+                }
+                if (!isTypeManuallySelected) {
+                  const detected = autoDetectFormatType(val);
+                  if (detected) form.setFieldsValue({ type: detected });
                 }
               }}
             />
@@ -318,7 +338,15 @@ export default function ProvidersPage() {
             label="Base URL Endpoint"
             rules={[{ required: true, message: 'Please enter base URL' }]}
           >
-            <Input placeholder="e.g. https://api.anthropic.com" />
+            <Input 
+              placeholder="e.g. https://api.anthropic.com" 
+              onChange={(e) => {
+                if (!isTypeManuallySelected) {
+                  const detected = autoDetectFormatType(e.target.value);
+                  if (detected) form.setFieldsValue({ type: detected });
+                }
+              }}
+            />
           </Form.Item>
 
           <Form.Item
@@ -328,6 +356,7 @@ export default function ProvidersPage() {
             rules={[{ required: true, message: 'Please select provider type' }]}
           >
             <Select
+              onChange={() => setIsTypeManuallySelected(true)}
               options={[
                 { label: 'OpenAI Format (/v1/chat/completions)', value: 'openai' },
                 { label: 'Anthropic Format (/v1/messages)', value: 'anthropic' },
