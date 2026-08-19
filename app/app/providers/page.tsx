@@ -11,14 +11,16 @@ import {
   apiDeleteProvider,
   ApiProvider,
 } from '@/lib/api';
+import { useSSE } from '@/hooks/useSSE';
+import { PageHeader } from '@/components/atoms';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
-export type RoutingStrategy = 'round-robin' | 'lru' | 'fallback';
+export type RoutingStrategy = 'round_robin' | 'lru' | 'fallback_cascade';
 
-const STRATEGY_OPTIONS: { value: RoutingStrategy; label: string; description: string; color: string }[] = [
+const STRATEGY_OPTIONS: { value: string; label: string; description: string; color: string }[] = [
   {
-    value: 'round-robin',
+    value: 'round_robin',
     label: 'Round Robin (Equal)',
     description: 'Distribute requests evenly across all active credentials',
     color: 'blue',
@@ -30,7 +32,7 @@ const STRATEGY_OPTIONS: { value: RoutingStrategy; label: string; description: st
     color: 'purple',
   },
   {
-    value: 'fallback',
+    value: 'fallback_cascade',
     label: 'Fallback Cascade',
     description: 'Always use primary credential, failover to backup on error',
     color: 'orange',
@@ -38,23 +40,21 @@ const STRATEGY_OPTIONS: { value: RoutingStrategy; label: string; description: st
 ];
 
 function getStrategyDisplay(strategy: string) {
-  const opt = STRATEGY_OPTIONS.find((s) => s.value === strategy);
+  const normStrategy = strategy === 'round-robin' ? 'round_robin' : strategy === 'fallback' ? 'fallback_cascade' : strategy;
+  const opt = STRATEGY_OPTIONS.find((s) => s.value === normStrategy);
   if (!opt) return { label: strategy || 'Round Robin', color: 'blue', icon: <SyncOutlined /> };
 
   const icons: Record<string, React.ReactNode> = {
-    'round-robin': <SyncOutlined />,
+    'round_robin': <SyncOutlined />,
     'lru': <HistoryOutlined />,
-    'fallback': <NodeIndexOutlined />,
+    'fallback_cascade': <NodeIndexOutlined />,
   };
 
-  return { label: opt.label, color: opt.color, icon: icons[strategy] || <SyncOutlined /> };
+  return { label: opt.label, color: opt.color, icon: icons[normStrategy] || <SyncOutlined /> };
 }
 
-import { useSSE } from '@/hooks/useSSE';
-import { PageHeader, StatusTag } from '@/components/atoms';
-
 export default function ProvidersPage() {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
   const queryClient = useQueryClient();
   const { isConnected } = useSSE();
 
@@ -101,48 +101,55 @@ export default function ProvidersPage() {
     onError: (err: Error) => message.error(err.message),
   });
 
-  const handleToggle = (prov: ApiProvider, checked: boolean) => {
-    if (!checked) {
-      modal.confirm({
-        title: `Disable Provider "${prov.name}"?`,
-        content: `Disabling this provider will temporarily suspend request routing for all associated credentials.`,
-        okText: 'Disable Provider',
-        okButtonProps: { danger: true },
-        cancelText: 'Cancel',
-        onOk: () => {
-          updateMutation.mutate({ id: prov.id, data: { ...prov, enabled: false } });
-        },
-      });
-    } else {
-      updateMutation.mutate({ id: prov.id, data: { ...prov, enabled: true } });
-    }
+  const handleToggle = (provider: ApiProvider, enabled: boolean) => {
+    updateMutation.mutate({
+      id: provider.id,
+      data: { enabled },
+    });
   };
 
   const openAddModal = () => {
     setEditingProvider(null);
     form.resetFields();
-    form.setFieldsValue({ type: 'openai' });
+    form.setFieldsValue({
+      type: 'openai',
+      routingStrategy: 'round_robin',
+      enabled: true,
+    });
     setIsModalOpen(true);
   };
 
-  const openEditModal = (prov: ApiProvider) => {
-    setEditingProvider(prov);
+  const openEditModal = (provider: ApiProvider) => {
+    setEditingProvider(provider);
     form.setFieldsValue({
-      name: prov.name,
-      slug: prov.slug,
-      baseUrl: prov.baseUrl,
-      type: prov.type,
+      name: provider.name,
+      slug: provider.slug,
+      baseUrl: provider.baseUrl,
+      type: provider.type,
+      routingStrategy: provider.routingStrategy || 'round_robin',
     });
     setIsModalOpen(true);
   };
 
   const handleSubmit = (values: any) => {
     if (editingProvider) {
-      updateMutation.mutate({ id: editingProvider.id, data: values });
+      updateMutation.mutate({
+        id: editingProvider.id,
+        data: {
+          name: values.name,
+          slug: values.slug,
+          baseUrl: values.baseUrl,
+          type: values.type,
+          routingStrategy: values.routingStrategy,
+        },
+      });
     } else {
       createMutation.mutate({
-        ...values,
-        slug: values.slug || values.name.toLowerCase().replace(/\s+/g, '-'),
+        name: values.name,
+        slug: values.slug,
+        baseUrl: values.baseUrl,
+        type: values.type,
+        routingStrategy: values.routingStrategy || 'round_robin',
         enabled: true,
       });
     }
@@ -152,7 +159,7 @@ export default function ProvidersPage() {
     <div>
       <PageHeader
         title="AI Providers"
-        description="Manage AI Vendor targets and base API endpoints"
+        description="Manage AI Vendor targets, base API endpoints, and credential rotation strategies"
         extra={
           <Space wrap>
             <Button
@@ -178,7 +185,7 @@ export default function ProvidersPage() {
             </Col>
           ) : (
             providers.map((prov) => {
-              const strategyInfo = getStrategyDisplay('round-robin');
+              const strategyInfo = getStrategyDisplay(prov.routingStrategy || 'round_robin');
               return (
                 <Col xs={24} sm={12} lg={8} key={prov.id}>
                   <Card
@@ -278,14 +285,31 @@ export default function ProvidersPage() {
           <Form.Item
             name="type"
             label="API Format Type"
+            tooltip="Select the HTTP protocol adapter format expected by upstream (OpenAI spec, Anthropic spec, Gemini spec, or Custom)."
             rules={[{ required: true, message: 'Please select provider type' }]}
           >
             <Select
               options={[
-                { label: 'OpenAI Format', value: 'openai' },
-                { label: 'Anthropic Format', value: 'anthropic' },
-                { label: 'Google Gemini Format', value: 'google' },
+                { label: 'OpenAI Format (/v1/chat/completions)', value: 'openai' },
+                { label: 'Anthropic Format (/v1/messages)', value: 'anthropic' },
+                { label: 'Google Gemini Format (/v1beta)', value: 'google' },
+                { label: 'OpenCode Zen Format', value: 'opencode' },
                 { label: 'Custom / OpenRouter', value: 'custom' },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="routingStrategy"
+            label="Credential Rotation Strategy"
+            tooltip="Algorithm used to select and rotate active API secret keys from this provider's credential pool."
+            rules={[{ required: true, message: 'Please select routing strategy' }]}
+          >
+            <Select
+              options={[
+                { label: 'Round Robin (Equal Rotation)', value: 'round_robin' },
+                { label: 'Least Recently Used (LRU - Minimizes Rate Limits)', value: 'lru' },
+                { label: 'Fallback Cascade (Primary / Backup Failover)', value: 'fallback_cascade' },
               ]}
             />
           </Form.Item>

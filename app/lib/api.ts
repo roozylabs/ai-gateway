@@ -31,6 +31,7 @@ export interface ApiProvider {
   baseUrl: string;
   type: string;
   enabled: boolean;
+  routingStrategy?: string;
   createdAt?: string;
   updatedAt?: string;
 }
