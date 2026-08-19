@@ -141,3 +141,10 @@ func (r *CredentialRepository) DecryptKey(ctx context.Context, credentialID, enc
 	}
 	return utils.DecryptAES256GCM(c.EncryptedKey, encryptionKey)
 }
+
+func (r *CredentialRepository) UpdateStatus(ctx context.Context, credentialID, status string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE credentials SET status = $1, updated_at = NOW() WHERE id = $2`,
+		status, credentialID)
+	return err
+}

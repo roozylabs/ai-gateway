@@ -9,6 +9,7 @@ import (
 	"github.com/roozylabs/ai-gateway/internal/handlers"
 	"github.com/roozylabs/ai-gateway/internal/middleware"
 	"github.com/roozylabs/ai-gateway/internal/proxy"
+	goredis "github.com/roozylabs/ai-gateway/internal/redis"
 	"github.com/roozylabs/ai-gateway/internal/repository"
 	"github.com/roozylabs/ai-gateway/internal/service"
 	swaggerFiles "github.com/swaggo/files"
@@ -61,8 +62,9 @@ func main() {
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
 
 	// Proxy
+	cooldown := goredis.NewCooldownStore(rdb)
 	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo)
-	engine := proxy.NewEngine(router, credentialRepo, cfg.EncryptionKey)
+	engine := proxy.NewEngine(router, credentialRepo, cooldown, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
