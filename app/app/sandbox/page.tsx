@@ -29,9 +29,11 @@ import { PageHeader } from '@/components/atoms';
 import {
   apiGetGatewayKeys,
   apiGetProviders,
+  apiGetCredentials,
   apiGetModels,
   ApiGatewayKey,
   ApiProvider,
+  ApiCredential,
   ApiModel,
 } from '@/lib/api';
 
@@ -66,13 +68,46 @@ export default function SandboxPage() {
     queryFn: apiGetProviders,
   });
 
+  // Fetch Credentials for all providers to filter valid Gateway Keys
+  const { data: credentialsMap = {}, isLoading: credsLoading } = useQuery({
+    queryKey: ['sandbox-creds', providers.map((p) => p.id).join(',')],
+    queryFn: async () => {
+      if (!providers || providers.length === 0) return {};
+      const map: Record<string, ApiCredential[]> = {};
+      await Promise.all(
+        providers.map(async (p) => {
+          try {
+            const list = await apiGetCredentials(p.id);
+            map[p.id] = list;
+          } catch {
+            map[p.id] = [];
+          }
+        })
+      );
+      return map;
+    },
+    enabled: providers.length > 0,
+    staleTime: 30000,
+  });
+
+  // Filter Gateway Auth Keys to ONLY include keys whose Provider has active credentials
+  const validGatewayKeys = React.useMemo(() => {
+    if (!gatewayKeys) return [];
+    return gatewayKeys.filter((k: ApiGatewayKey) => {
+      if (!k.enabled) return false;
+      if (!k.providerId) return true; // If unbounded, keep
+      const providerCreds = credentialsMap[k.providerId] || [];
+      return providerCreds.some((c) => c.enabled && c.status !== 'disabled');
+    });
+  }, [gatewayKeys, credentialsMap]);
+
   // Active key calculation
   const activeKeyObj = React.useMemo(() => {
     if (selectedKeyPrefix) {
-      return gatewayKeys.find((k) => k.keyPrefix === selectedKeyPrefix) || gatewayKeys[0];
+      return validGatewayKeys.find((k) => k.keyPrefix === selectedKeyPrefix) || validGatewayKeys[0];
     }
-    return gatewayKeys.find((k) => k.enabled) || gatewayKeys[0];
-  }, [selectedKeyPrefix, gatewayKeys]);
+    return validGatewayKeys[0];
+  }, [selectedKeyPrefix, validGatewayKeys]);
 
   const activeKeyPrefix = activeKeyObj?.keyPrefix || '';
   const activeProviderId = activeKeyObj?.providerId || '';
@@ -195,6 +230,8 @@ export default function SandboxPage() {
     message.success('Copied response to clipboard!');
   };
 
+  const isDropdownLoading = keysLoading || credsLoading;
+
   return (
     <div>
       <PageHeader
@@ -219,19 +256,28 @@ export default function SandboxPage() {
             <Form layout="vertical" style={{ marginTop: 8 }}>
               <Form.Item label="Gateway Auth Key">
                 <Select
-                  placeholder="Select Gateway Key"
+                  placeholder={isDropdownLoading ? 'Loading Gateway Keys...' : 'Select Gateway Key'}
                   value={activeKeyPrefix}
                   onChange={(val) => setSelectedKeyPrefix(val)}
-                  loading={keysLoading}
-                  options={gatewayKeys.map((k: ApiGatewayKey) => {
-                    const providerName = k.providerId
-                      ? providers.find((p) => p.id === k.providerId)?.name
-                      : null;
-                    return {
-                      label: `${k.name} (${providerName ? `${providerName} • ` : ''}${k.keyPrefix || 'gw_sk_...'})`,
-                      value: k.keyPrefix,
-                    };
-                  })}
+                  loading={isDropdownLoading}
+                  options={
+                    validGatewayKeys.length > 0
+                      ? validGatewayKeys.map((k: ApiGatewayKey) => {
+                          const providerName = k.providerId
+                            ? providers.find((p) => p.id === k.providerId)?.name
+                            : null;
+                          return {
+                            label: `${k.name} (${providerName ? `${providerName} • ` : ''}${k.keyPrefix || 'gw_sk_...'})`,
+                            value: k.keyPrefix,
+                          };
+                        })
+                      : [
+                          {
+                            label: 'No Gateway Keys with active credentials available',
+                            value: '',
+                          },
+                        ]
+                  }
                 />
               </Form.Item>
 
@@ -298,7 +344,8 @@ export default function SandboxPage() {
               <Button
                 type="primary"
                 icon={isGenerating ? <SyncOutlined spin /> : <SendOutlined />}
-                loading={isGenerating}
+                loading={isGenerating || validGatewayKeys.length === 0}
+                disabled={validGatewayKeys.length === 0}
                 onClick={handleSendRequest}
                 block
                 size="large"

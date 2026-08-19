@@ -45,14 +45,13 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               timestamp: new Date().toISOString(),
             });
 
-            // Live update React Query caches on gateway activity
-            queryClient.invalidateQueries({ queryKey: ['health'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboard-usage'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboard-health'] });
-            queryClient.invalidateQueries({ queryKey: ['logs'] });
-            queryClient.invalidateQueries({ queryKey: ['providers'] });
-            queryClient.invalidateQueries({ queryKey: ['credentials'] });
+            // Live update React Query caches on actual gateway activity messages
+            if (eventType === 'message') {
+              queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+              queryClient.invalidateQueries({ queryKey: ['dashboard-usage'] });
+              queryClient.invalidateQueries({ queryKey: ['dashboard-health'] });
+              queryClient.invalidateQueries({ queryKey: ['logs'] });
+            }
           } catch (err) {
             console.error('[SSE Parse Error]', err);
           }
@@ -62,14 +61,12 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           handleData(event.data, 'message');
         };
 
-        eventSource.addEventListener('ping', (event) => {
+        eventSource.addEventListener('ping', () => {
           setIsConnected(true);
-          handleData(event.data, 'ping');
         });
 
-        eventSource.addEventListener('connected', (event) => {
+        eventSource.addEventListener('connected', () => {
           setIsConnected(true);
-          handleData(event.data, 'connected');
         });
 
         eventSource.onerror = (err) => {

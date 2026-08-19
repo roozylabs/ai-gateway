@@ -52,7 +52,7 @@ export default function CredentialsPage() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['credentials', selectedProviderId, providers.map((p) => p.id).join(',')],
+    queryKey: ['credentials', selectedProviderId, providers.length],
     queryFn: async () => {
       if (!providers || providers.length === 0) return [];
 
@@ -83,6 +83,7 @@ export default function CredentialsPage() {
       }
     },
     enabled: providers.length > 0,
+    staleTime: 30000,
   });
 
   // Mutations
