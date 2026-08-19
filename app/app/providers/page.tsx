@@ -60,6 +60,8 @@ export default function ProvidersPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<ApiProvider | null>(null);
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+  const [isSlugEditable, setIsSlugEditable] = useState(false);
   const [form] = Form.useForm();
 
   // Fetch Providers
@@ -110,6 +112,8 @@ export default function ProvidersPage() {
 
   const openAddModal = () => {
     setEditingProvider(null);
+    setIsSlugManuallyEdited(false);
+    setIsSlugEditable(false);
     form.resetFields();
     form.setFieldsValue({
       type: 'openai',
@@ -121,6 +125,8 @@ export default function ProvidersPage() {
 
   const openEditModal = (provider: ApiProvider) => {
     setEditingProvider(provider);
+    setIsSlugManuallyEdited(true);
+    setIsSlugEditable(false);
     form.setFieldsValue({
       name: provider.name,
       slug: provider.slug,
@@ -263,7 +269,18 @@ export default function ProvidersPage() {
             label="Provider Name"
             rules={[{ required: true, message: 'Please enter provider name' }]}
           >
-            <Input placeholder="e.g. Anthropic Production" />
+            <Input 
+              placeholder="e.g. Anthropic Production" 
+              onChange={(e) => {
+                if (!isSlugManuallyEdited) {
+                  const slugified = e.target.value
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)+/g, '');
+                  form.setFieldsValue({ slug: slugified });
+                }
+              }}
+            />
           </Form.Item>
 
           <Form.Item
@@ -271,7 +288,29 @@ export default function ProvidersPage() {
             label="Provider Slug / Identifier"
             rules={[{ required: true, message: 'Please enter provider slug' }]}
           >
-            <Input placeholder="e.g. anthropic" />
+            <Input 
+              placeholder="e.g. anthropic" 
+              readOnly={!isSlugEditable}
+              onClick={() => setIsSlugEditable(true)}
+              onChange={() => setIsSlugManuallyEdited(true)}
+              suffix={
+                !isSlugEditable ? (
+                  <EditOutlined 
+                    style={{ color: '#1677ff', cursor: 'pointer' }} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsSlugEditable(true);
+                    }} 
+                  />
+                ) : null
+              }
+              style={{ 
+                cursor: isSlugEditable ? 'text' : 'pointer', 
+                backgroundColor: isSlugEditable ? undefined : '#fafafa',
+                borderColor: isSlugEditable ? undefined : '#d9d9d9',
+                color: isSlugEditable ? undefined : '#888'
+              }}
+            />
           </Form.Item>
 
           <Form.Item
@@ -305,13 +344,16 @@ export default function ProvidersPage() {
             tooltip="Algorithm used to select and rotate active API secret keys from this provider's credential pool."
             rules={[{ required: true, message: 'Please select routing strategy' }]}
           >
-            <Select
-              options={[
-                { label: 'Round Robin (Equal Rotation)', value: 'round_robin' },
-                { label: 'Least Recently Used (LRU - Minimizes Rate Limits)', value: 'lru' },
-                { label: 'Fallback Cascade (Primary / Backup Failover)', value: 'fallback_cascade' },
-              ]}
-            />
+            <Select optionLabelProp="label">
+              {STRATEGY_OPTIONS.map((opt) => (
+                <Select.Option key={opt.value} value={opt.value} label={opt.label}>
+                  <div style={{ display: 'flex', flexDirection: 'column', padding: '4px 0' }}>
+                    <Text strong style={{ fontSize: 14 }}>{opt.label}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{opt.description}</Text>
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item style={{ marginTop: 24, textAlign: 'right' }}>
