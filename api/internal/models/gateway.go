@@ -35,19 +35,21 @@ type Credential struct {
 	LastErrorAt    *time.Time `json:"lastErrorAt,omitempty" db:"last_error_at"`
 	CreatedAt      time.Time  `json:"createdAt" db:"created_at"`
 	UpdatedAt      time.Time  `json:"updatedAt" db:"updated_at"`
+	ProviderName   string     `json:"providerName,omitempty" db:"-"`
 	IsCoolingDown  bool       `json:"isCoolingDown,omitempty" db:"-"`
 	CooldownTTL    int        `json:"cooldownTtl,omitempty" db:"-"`
 }
 
 type Model struct {
-	ID          string    `json:"id" db:"id"`
-	ProviderID  string    `json:"providerId" db:"provider_id"`
-	Name        string    `json:"name" db:"name"`
-	Slug        string    `json:"slug" db:"slug"`
-	DisplayName string    `json:"displayName" db:"display_name"`
-	Enabled     bool      `json:"enabled" db:"enabled"`
-	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
-	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
+	ID           string    `json:"id" db:"id"`
+	ProviderID   string    `json:"providerId" db:"provider_id"`
+	ProviderName string    `json:"providerName,omitempty" db:"-"`
+	Name         string    `json:"name" db:"name"`
+	Slug         string    `json:"slug" db:"slug"`
+	DisplayName  string    `json:"displayName" db:"display_name"`
+	Enabled      bool      `json:"enabled" db:"enabled"`
+	CreatedAt    time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt    time.Time `json:"updatedAt" db:"updated_at"`
 }
 
 type GatewayAPIKey struct {

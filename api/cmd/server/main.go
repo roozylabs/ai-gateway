@@ -117,7 +117,8 @@ func main() {
 			protected.PUT("/providers/:id", providerHandler.Update)
 			protected.DELETE("/providers/:id", providerHandler.Delete)
 
-			// Credentials (nested under provider)
+			// Credentials (nested under provider & top-level)
+			protected.GET("/credentials", credentialHandler.List)
 			protected.GET("/providers/:id/credentials", credentialHandler.List)
 			protected.POST("/providers/:id/credentials", credentialHandler.Create)
 			protected.GET("/providers/:id/credentials/:credId", credentialHandler.Get)
@@ -125,7 +126,8 @@ func main() {
 			protected.DELETE("/providers/:id/credentials/:credId", credentialHandler.Delete)
 			protected.POST("/providers/:id/credentials/:credId/test", credentialHandler.Test)
 
-			// Models (nested under provider)
+			// Models (nested under provider & top-level)
+			protected.GET("/models", modelHandler.List)
 			protected.GET("/providers/:id/models", modelHandler.List)
 			protected.POST("/providers/:id/models", modelHandler.Create)
 			protected.GET("/providers/:id/models/:modelId", modelHandler.Get)

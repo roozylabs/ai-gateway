@@ -54,45 +54,8 @@ export default function CredentialsPage() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['credentials', selectedProviderId, providers.length, page, pageSize, searchQuery],
-    queryFn: async () => {
-      if (!providers || providers.length === 0) return { data: [], total: 0 };
-
-      if (selectedProviderId === 'all') {
-        const results = await Promise.all(
-          providers.map(async (provider) => {
-            try {
-              const res = await apiGetCredentials(provider.id, { page, limit: pageSize, search: searchQuery || undefined });
-              return {
-                data: res.data.map((cred) => ({
-                  ...cred,
-                  providerId: provider.id,
-                  providerName: provider.name,
-                })),
-                total: res.total,
-              };
-            } catch {
-              return { data: [], total: 0 };
-            }
-          })
-        );
-        const allCreds = results.flatMap((r) => r.data);
-        const maxTotal = results.reduce((acc, curr) => acc + curr.total, 0);
-        return { data: allCreds, total: maxTotal };
-      } else {
-        const targetProvider = providers.find((p) => p.id === selectedProviderId);
-        const res = await apiGetCredentials(selectedProviderId, { page, limit: pageSize, search: searchQuery || undefined });
-        return {
-          data: res.data.map((cred) => ({
-            ...cred,
-            providerId: selectedProviderId,
-            providerName: targetProvider?.name || 'Unknown',
-          })),
-          total: res.total,
-        };
-      }
-    },
-    enabled: providers.length > 0,
+    queryKey: ['credentials', selectedProviderId, page, pageSize, searchQuery],
+    queryFn: () => apiGetCredentials(selectedProviderId, { page, limit: pageSize, search: searchQuery || undefined }),
     staleTime: 30000,
   });
 

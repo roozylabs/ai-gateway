@@ -41,16 +41,17 @@ func (r *ModelRepository) ListByProviderID(ctx context.Context, providerID strin
 }
 
 func (r *ModelRepository) ListWithFilter(ctx context.Context, providerID, search string, limit, offset int) ([]models.Model, int64, error) {
-	query := `SELECT id, provider_id, name, slug, display_name, enabled, created_at, updated_at FROM models WHERE 1=1`
-	countQuery := `SELECT COUNT(*) FROM models WHERE 1=1`
+	query := `SELECT m.id, m.provider_id, COALESCE(p.name, ''), m.name, m.slug, m.display_name, m.enabled, m.created_at, m.updated_at
+		 FROM models m LEFT JOIN providers p ON p.id = m.provider_id WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM models m LEFT JOIN providers p ON p.id = m.provider_id WHERE 1=1`
 
 	var args []interface{}
 	var countArgs []interface{}
 
-	if providerID != "" {
+	if providerID != "" && providerID != "all" {
 		args = append(args, providerID)
 		countArgs = append(countArgs, providerID)
-		filter := fmt.Sprintf(" AND provider_id = $%d", len(args))
+		filter := fmt.Sprintf(" AND m.provider_id = $%d", len(args))
 		query += filter
 		countQuery += filter
 	}
@@ -58,7 +59,7 @@ func (r *ModelRepository) ListWithFilter(ctx context.Context, providerID, search
 	if search != "" {
 		args = append(args, "%"+search+"%")
 		countArgs = append(countArgs, "%"+search+"%")
-		filter := fmt.Sprintf(" AND (name ILIKE $%d OR slug ILIKE $%d OR display_name ILIKE $%d)", len(args), len(args), len(args))
+		filter := fmt.Sprintf(" AND (m.name ILIKE $%d OR m.slug ILIKE $%d OR m.display_name ILIKE $%d OR p.name ILIKE $%d)", len(args), len(args), len(args), len(args))
 		query += filter
 		countQuery += filter
 	}
@@ -68,7 +69,7 @@ func (r *ModelRepository) ListWithFilter(ctx context.Context, providerID, search
 		return nil, 0, err
 	}
 
-	query += " ORDER BY created_at DESC"
+	query += " ORDER BY m.created_at DESC"
 
 	if limit > 0 {
 		args = append(args, limit)
@@ -88,7 +89,7 @@ func (r *ModelRepository) ListWithFilter(ctx context.Context, providerID, search
 	var modelList []models.Model
 	for rows.Next() {
 		var m models.Model
-		if err := rows.Scan(&m.ID, &m.ProviderID, &m.Name, &m.Slug, &m.DisplayName,
+		if err := rows.Scan(&m.ID, &m.ProviderID, &m.ProviderName, &m.Name, &m.Slug, &m.DisplayName,
 			&m.Enabled, &m.CreatedAt, &m.UpdatedAt); err != nil {
 			return nil, 0, err
 		}

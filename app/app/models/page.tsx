@@ -45,45 +45,8 @@ export default function ModelsPage() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['models', selectedProviderId, providers.map((p) => p.id).join(','), page, pageSize, searchQuery],
-    queryFn: async () => {
-      if (!providers || providers.length === 0) return { data: [], total: 0 };
-
-      if (selectedProviderId === 'all') {
-        const results = await Promise.all(
-          providers.map(async (provider) => {
-            try {
-              const res = await apiGetModels(provider.id, { page, limit: pageSize, search: searchQuery || undefined });
-              return {
-                data: res.data.map((m) => ({
-                  ...m,
-                  providerId: provider.id,
-                  providerName: provider.name,
-                })),
-                total: res.total,
-              };
-            } catch {
-              return { data: [], total: 0 };
-            }
-          })
-        );
-        const allModels = results.flatMap((r) => r.data);
-        const maxTotal = results.reduce((acc, curr) => acc + curr.total, 0);
-        return { data: allModels, total: maxTotal };
-      } else {
-        const targetProvider = providers.find((p) => p.id === selectedProviderId);
-        const res = await apiGetModels(selectedProviderId, { page, limit: pageSize, search: searchQuery || undefined });
-        return {
-          data: res.data.map((m) => ({
-            ...m,
-            providerId: selectedProviderId,
-            providerName: targetProvider?.name || 'Unknown',
-          })),
-          total: res.total,
-        };
-      }
-    },
-    enabled: providers.length > 0,
+    queryKey: ['models', selectedProviderId, page, pageSize, searchQuery],
+    queryFn: () => apiGetModels(selectedProviderId, { page, limit: pageSize, search: searchQuery || undefined }),
   });
 
   // Mutations

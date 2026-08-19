@@ -45,18 +45,19 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 }
 
 func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, search string, limit, offset int) ([]models.Credential, int64, error) {
-	query := `SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, priority, enabled, status,
-		        last_used_at, request_count, error_count, last_error, last_error_at,
-		        created_at, updated_at FROM credentials WHERE 1=1`
-	countQuery := `SELECT COUNT(*) FROM credentials WHERE 1=1`
+	query := `SELECT c.id, c.provider_id, COALESCE(p.name, ''), c.name, c.encrypted_key, c.key_prefix, c.masked_key, c.priority, c.enabled, c.status,
+		        c.last_used_at, c.request_count, c.error_count, c.last_error, c.last_error_at,
+		        c.created_at, c.updated_at
+		 FROM credentials c LEFT JOIN providers p ON p.id = c.provider_id WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM credentials c LEFT JOIN providers p ON p.id = c.provider_id WHERE 1=1`
 
 	var args []interface{}
 	var countArgs []interface{}
 
-	if providerID != "" {
+	if providerID != "" && providerID != "all" {
 		args = append(args, providerID)
 		countArgs = append(countArgs, providerID)
-		filter := fmt.Sprintf(" AND provider_id = $%d", len(args))
+		filter := fmt.Sprintf(" AND c.provider_id = $%d", len(args))
 		query += filter
 		countQuery += filter
 	}
@@ -64,7 +65,7 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 	if search != "" {
 		args = append(args, "%"+search+"%")
 		countArgs = append(countArgs, "%"+search+"%")
-		filter := fmt.Sprintf(" AND (name ILIKE $%d OR key_prefix ILIKE $%d)", len(args), len(args))
+		filter := fmt.Sprintf(" AND (c.name ILIKE $%d OR c.key_prefix ILIKE $%d OR p.name ILIKE $%d)", len(args), len(args), len(args))
 		query += filter
 		countQuery += filter
 	}
@@ -74,7 +75,7 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 		return nil, 0, err
 	}
 
-	query += " ORDER BY priority ASC, created_at DESC"
+	query += " ORDER BY c.priority ASC, c.created_at DESC"
 
 	if limit > 0 {
 		args = append(args, limit)
@@ -94,7 +95,7 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 	var credentials []models.Credential
 	for rows.Next() {
 		var c models.Credential
-		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
+		if err := rows.Scan(&c.ID, &c.ProviderID, &c.ProviderName, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
 			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, 0, err
