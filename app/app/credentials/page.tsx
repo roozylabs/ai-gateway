@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Button, Tag, Space, Typography, Modal, Form, Input, Select, InputNumber, App } from 'antd';
 import { PlusOutlined, ExperimentOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSSE } from '@/hooks/useSSE';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
   apiGetProviders,
@@ -20,6 +21,7 @@ const { Text } = Typography;
 export default function CredentialsPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
+  const { isConnected } = useSSE();
 
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);

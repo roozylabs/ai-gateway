@@ -94,6 +94,7 @@ func main() {
 
 	// Health check (public)
 	r.GET("/health", healthHandler.Check)
+	r.GET("/api/health", healthHandler.Check)
 
 	// Auth routes (public)
 	r.POST("/api/auth/login", authHandler.Login)

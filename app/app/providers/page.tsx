@@ -50,16 +50,20 @@ function getStrategyDisplay(strategy: string) {
   return { label: opt.label, color: opt.color, icon: icons[strategy] || <SyncOutlined /> };
 }
 
+import { useSSE } from '@/hooks/useSSE';
+import { PageHeader, StatusTag } from '@/components/atoms';
+
 export default function ProvidersPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
+  const { isConnected } = useSSE();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<ApiProvider | null>(null);
   const [form] = Form.useForm();
 
   // Fetch Providers
-  const { data: providers = [], isLoading } = useQuery({
+  const { data: providers = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['providers'],
     queryFn: apiGetProviders,
   });
@@ -146,18 +150,23 @@ export default function ProvidersPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <Title level={3} style={{ margin: 0 }}>
-            AI Providers
-          </Title>
-          <Text type="secondary">Manage AI Vendor targets and base API endpoints</Text>
-        </div>
-
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAddModal}>
-          Add Provider
-        </Button>
-      </div>
+      <PageHeader
+        title="AI Providers"
+        description="Manage AI Vendor targets and base API endpoints"
+        extra={
+          <Space wrap>
+            <Button
+              icon={<SyncOutlined spin={isRefetching} />}
+              onClick={() => refetch()}
+            >
+              Refresh
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openAddModal}>
+              Add Provider
+            </Button>
+          </Space>
+        }
+      />
 
       <Spin spinning={isLoading}>
         <Row gutter={[16, 16]}>

@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useSSE } from '@/hooks/useSSE';
+import { useQuery } from '@tanstack/react-query';
+import { apiGetHealth } from '@/lib/api';
 import {
   Layout,
   Menu,
@@ -31,6 +34,7 @@ import {
   MenuUnfoldOutlined,
   SunOutlined,
   MoonOutlined,
+  CodeOutlined,
 } from '@ant-design/icons';
 
 const { Header, Sider, Content, Footer } = Layout;
@@ -41,8 +45,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { mode, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { isConnected } = useSSE();
   const [collapsed, setCollapsed] = useState(false);
   const { token } = theme.useToken();
+
+  // Query Backend System Health (GET /health)
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: apiGetHealth,
+    refetchInterval: 15000,
+  });
 
   // If on login page, don't show sidebar layout
   if (pathname === '/login') {
@@ -54,6 +66,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       key: '/',
       icon: <DashboardOutlined />,
       label: 'Dashboard',
+    },
+    {
+      key: '/sandbox',
+      icon: <CodeOutlined />,
+      label: 'AI Sandbox',
     },
     {
       key: '/providers',
@@ -104,6 +121,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       onClick: () => logout(),
     },
   ];
+
+  // System Status Status & Color logic
+  let systemStatusText = 'System Status: Operational';
+  let badgeStatus: 'processing' | 'warning' | 'error' = 'processing';
+  let badgeColor = 'green';
+
+  if (!health || health.status !== 'ok') {
+    systemStatusText = 'System Status: Degraded';
+    badgeStatus = 'warning';
+    badgeColor = 'gold';
+  } else if (!isConnected) {
+    systemStatusText = 'System Status: Connecting...';
+    badgeStatus = 'warning';
+    badgeColor = 'gold';
+  }
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -178,7 +210,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               onClick={() => setCollapsed(!collapsed)}
               style={{ fontSize: '16px', width: 40, height: 40 }}
             />
-            <Badge status="processing" color="green" text={<Text type="secondary">System Status: Operational</Text>} />
+            <Badge status={badgeStatus} color={badgeColor} text={<Text type="secondary">{systemStatusText}</Text>} />
           </Space>
 
           <Space size="large">
@@ -232,5 +264,4 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </Layout>
     </Layout>
   );
-
 }

@@ -5,41 +5,45 @@ import {
   Row,
   Col,
   Card,
-  Statistic,
   Typography,
   Table,
-  Tag,
   Space,
   Segmented,
   DatePicker,
   Spin,
+  Badge,
+  Tag,
 } from 'antd';
 import {
   ThunderboltOutlined,
-  DollarOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
   LineChartOutlined,
   KeyOutlined,
+  SyncOutlined,
+  CodeOutlined,
 } from '@ant-design/icons';
 import { Line } from '@ant-design/plots';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
+import { useSSE } from '@/hooks/useSSE';
+import { PageHeader, MetricCard, StatusTag } from '@/components/atoms';
 import {
   apiGetDashboardStats,
   apiGetDashboardUsage,
   apiGetDashboardHealth,
   apiGetLogs,
   ApiRequestLog,
+  ApiProviderHealth,
 } from '@/lib/api';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { RangePicker } = DatePicker;
 
 export default function DashboardPage() {
   const { mode } = useTheme();
   const isDark = mode === 'dark';
+  const { isConnected } = useSSE();
 
   const [timeframe, setTimeframe] = useState<'Daily' | 'Weekly' | 'Custom'>('Daily');
 
@@ -47,7 +51,6 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: apiGetDashboardStats,
-    refetchInterval: 10000,
   });
 
   const daysParam = timeframe === 'Daily' ? 1 : timeframe === 'Weekly' ? 7 : 30;
@@ -59,73 +62,58 @@ export default function DashboardPage() {
   const { data: healthData = [], isLoading: healthLoading } = useQuery({
     queryKey: ['dashboard-health'],
     queryFn: apiGetDashboardHealth,
-    refetchInterval: 15000,
   });
 
   const { data: logsData, isLoading: logsLoading } = useQuery({
     queryKey: ['recent-logs'],
     queryFn: () => apiGetLogs({ limit: 5 }),
-    refetchInterval: 10000,
   });
 
-  // Prepare chart data format for @ant-design/plots
-  const chartData = usageData.length > 0
-    ? usageData.map((pt) => ({
-        time: pt.date,
-        model: 'Total Requests',
-        value: pt.requests,
-      }))
-    : [{ time: 'Today', model: 'Total Requests', value: 0 }];
+  // Ant Design Charts Config
+  const chartData = usageData.map((item) => ({
+    date: item.date,
+    requests: item.requests,
+  }));
 
-  const lineConfig = {
+  const chartConfig = {
     data: chartData,
-    xField: 'time',
-    yField: 'value',
-    colorField: 'model',
-    shapeField: 'smooth',
-    scale: {
-      color: {
-        range: ['#1677ff', '#722ed1', '#fa8c16'],
-      },
-    },
+    xField: 'date',
+    yField: 'requests',
+    smooth: true,
+    height: 280,
+    autoFit: true,
+    color: '#1677ff',
+    areaStyle: () => ({
+      fill: 'l(270) 0:#ffffff 0.5:#e6f4ff 1:#1677ff',
+    }),
     point: {
-      shapeField: 'circle',
-      sizeField: 4,
+      size: 4,
+      shape: 'diamond',
     },
-    axis: {
-      x: {
-        grid: false,
-      },
-      y: {
-        gridLineDash: [4, 4],
-      },
+    tooltip: {
+      showMarkers: true,
     },
     theme: isDark ? 'dark' : 'light',
-    height: 280,
-    style: {
-      lineWidth: 2.5,
-    },
   };
 
-  // Table columns for Recent Gateway Activity
-  const columns = [
+  const columns = React.useMemo(() => [
     {
       title: 'Request ID',
       dataIndex: 'id',
       key: 'id',
-      render: (text: string) => <Text code>{text ? text.substring(0, 8) : '-'}</Text>,
+      render: (id: string) => <Text code>{id ? id.substring(0, 8) : '-'}</Text>,
     },
     {
-      title: 'Created At',
+      title: 'Timestamp',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (val: string) => (val ? new Date(val).toLocaleString() : '-'),
+      render: (val: string) => (val ? new Date(val).toLocaleTimeString() : '-'),
     },
     {
       title: 'Model',
       dataIndex: 'model',
       key: 'model',
-      render: (text: string) => <Tag color="blue">{text || 'default'}</Tag>,
+      render: (m: string) => <Tag color="blue">{m || 'default'}</Tag>,
     },
     {
       title: 'Latency',
@@ -142,186 +130,176 @@ export default function DashboardPage() {
       title: 'Status',
       dataIndex: 'statusCode',
       key: 'statusCode',
-      render: (code: number) => {
-        if (code >= 200 && code < 300) return <Tag color="success">{code} OK</Tag>;
-        if (code === 429) return <Tag color="warning">429 Rate Limit</Tag>;
-        return <Tag color="error">{code || 500}</Tag>;
-      },
+      render: (code: number) => <StatusTag status={code} />,
     },
-  ];
+  ], []);
 
   return (
     <div>
-      {/* Header Title */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Dashboard Overview
-        </Title>
-        <Text type="secondary">
-          Real-time metrics, model usage analytics, provider health, and live gateway activity
-        </Text>
-      </div>
+      <PageHeader
+        title="Dashboard Overview"
+        description="Real-time metrics, model usage analytics, provider health, and live gateway activity"
+        extra={
+          <Tag color={isConnected ? 'processing' : 'default'} icon={isConnected ? <SyncOutlined spin /> : null}>
+            <Badge status={isConnected ? 'success' : 'default'} text={isConnected ? 'Realtime SSE Stream Active' : 'Connecting SSE...'} />
+          </Tag>
+        }
+      />
 
       {/* Top 4 KPI Cards */}
       <Spin spinning={statsLoading}>
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={24} sm={12} lg={6}>
-            <Card size="small" variant="borderless" style={{ boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.08)' }}>
-              <Statistic
-                title="Total Requests"
-                value={stats?.totalRequests || 0}
-                prefix={<ThunderboltOutlined style={{ color: '#1677ff' }} />}
-              />
-            </Card>
+            <MetricCard
+              title="Total Requests"
+              value={stats?.totalRequests || 0}
+              prefix={<ThunderboltOutlined style={{ color: '#1677ff' }} />}
+            />
           </Col>
 
           <Col xs={24} sm={12} lg={6}>
-            <Card size="small" variant="borderless" style={{ boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.08)' }}>
-              <Statistic
-                title="Total Tokens Processed"
-                value={stats?.totalTokens || 0}
-                precision={0}
-                suffix="Tokens"
-              />
-            </Card>
+            <MetricCard
+              title="Total Tokens Processed"
+              value={stats?.totalTokens || 0}
+              prefix={<CodeOutlined style={{ color: '#52c41a' }} />}
+            />
           </Col>
 
           <Col xs={24} sm={12} lg={6}>
-            <Card size="small" variant="borderless" style={{ boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.08)' }}>
-              <Statistic
-                title="Average Latency"
-                value={Math.round(stats?.avgLatency || 0)}
-                suffix="ms"
-                prefix={<ClockCircleOutlined style={{ color: '#52c41a' }} />}
-              />
-            </Card>
+            <MetricCard
+              title="Avg Latency"
+              value={stats?.avgLatency || 0}
+              precision={0}
+              prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
+              suffix="ms"
+            />
           </Col>
 
           <Col xs={24} sm={12} lg={6}>
-            <Card size="small" variant="borderless" style={{ boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.08)' }}>
-              <Statistic
-                title="Active Gateway Keys"
-                value={stats?.activeKeys || 0}
-                prefix={<KeyOutlined style={{ color: '#faad14' }} />}
-              />
-            </Card>
+            <MetricCard
+              title="Active Gateway Keys"
+              value={stats?.activeKeys || 0}
+              prefix={<KeyOutlined style={{ color: '#722ed1' }} />}
+            />
           </Col>
         </Row>
       </Spin>
 
-      {/* Model Usage Overview Line Chart Card */}
-      <Card
-        variant="borderless"
-        style={{
-          marginBottom: 24,
-          borderRadius: 12,
-          boxShadow: isDark ? '0 4px 16px rgba(0,0,0,0.35)' : '0 2px 8px rgba(0,0,0,0.06)',
-          background: isDark ? '#141414' : '#ffffff',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 12,
-            marginBottom: 20,
-          }}
-        >
-          <div>
-            <Space align="center">
-              <LineChartOutlined style={{ color: '#1677ff', fontSize: 20 }} />
-              <Title level={4} style={{ margin: 0 }}>
-                Overview Model Usage
-              </Title>
-            </Space>
-            <div style={{ marginTop: 4 }}>
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                Token and request throughput over time
-              </Text>
-            </div>
-          </div>
+      {/* Analytics Chart & Health Grid */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={16}>
+          <Card
+            title={
+              <Space>
+                <LineChartOutlined style={{ color: '#1677ff' }} />
+                <span>Request Traffic & Volume</span>
+              </Space>
+            }
+            extra={
+              <Space>
+                <Segmented
+                  options={['Daily', 'Weekly', 'Custom']}
+                  value={timeframe}
+                  onChange={(val) => setTimeframe(val as any)}
+                />
+                {timeframe === 'Custom' && <RangePicker size="small" style={{ width: 210 }} />}
+              </Space>
+            }
+            size="small"
+            variant="borderless"
+            style={{ borderRadius: 8 }}
+          >
+            <Spin spinning={usageLoading}>
+              <div style={{ paddingTop: 16 }}>
+                {chartData.length > 0 ? (
+                  <Line {...chartConfig} />
+                ) : (
+                  <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text type="secondary">No usage data recorded for selected period</Text>
+                  </div>
+                )}
+              </div>
+            </Spin>
+          </Card>
+        </Col>
 
-          <Space size="middle" wrap>
-            <Segmented
-              value={timeframe}
-              onChange={(val) => setTimeframe(val as any)}
-              options={[
-                { label: 'Daily', value: 'Daily' },
-                { label: 'Weekly', value: 'Weekly' },
-                { label: 'Custom Range', value: 'Custom' },
-              ]}
-              shape="round"
-            />
-
-            {timeframe === 'Custom' && (
-              <RangePicker
-                size="middle"
-                style={{ borderRadius: 8 }}
-                placeholder={['Start Date', 'End Date']}
-              />
-            )}
-          </Space>
-        </div>
-
-        <Spin spinning={usageLoading}>
-          <div style={{ width: '100%' }}>
-            <Line {...lineConfig} />
-          </div>
-        </Spin>
-      </Card>
-
-      {/* Provider Health Status */}
-      <Title level={4} style={{ marginBottom: 16 }}>
-        Provider Health Status
-      </Title>
-
-      <Spin spinning={healthLoading}>
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          {healthData.length === 0 ? (
-            <Col span={24}>
-              <Text type="secondary">No active providers configured.</Text>
-            </Col>
-          ) : (
-            healthData.map((prov, idx) => (
-              <Col xs={24} sm={12} lg={6} key={idx}>
-                <Card size="small" style={{ borderRadius: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <Text strong style={{ fontSize: 15 }}>
-                        {prov.name}
-                      </Text>
+        <Col xs={24} lg={8}>
+          <Card
+            title={
+              <Space>
+                <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                <span>AI Provider Health</span>
+              </Space>
+            }
+            size="small"
+            variant="borderless"
+            style={{ borderRadius: 8, height: '100%' }}
+          >
+            <Spin spinning={healthLoading}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
+                {healthData.map((provider: ApiProviderHealth) => (
+                  <Card
+                    key={provider.name}
+                    size="small"
+                    style={{
+                      borderRadius: 6,
+                      background: isDark ? '#141414' : '#fafafa',
+                      border: `1px solid ${isDark ? '#303030' : '#f0f0f0'}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
+                        <Text strong style={{ display: 'block' }}>
+                          {provider.name}
+                        </Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                          {prov.credCount} Credentials Pool
+                          {provider.credCount} credential keys configured ({provider.type})
                         </Text>
                       </div>
+
+                      <StatusTag status={provider.status} />
                     </div>
-                    {prov.status === 'healthy' && <Tag icon={<CheckCircleOutlined />} color="success">Healthy</Tag>}
-                    {prov.status === 'degraded' && <Tag icon={<ExclamationCircleOutlined />} color="warning">Degraded</Tag>}
-                    {prov.status === 'down' && <Tag color="error">Down</Tag>}
-                  </div>
-                </Card>
-              </Col>
-            ))
-          )}
-        </Row>
-      </Spin>
+                  </Card>
+                ))}
 
-      {/* Recent Gateway Activity Table */}
-      <Title level={4} style={{ marginBottom: 16 }}>
-        Recent Gateway Activity
-      </Title>
+                {healthData.length === 0 && (
+                  <Text type="secondary" style={{ textAlign: 'center', margin: '24px 0' }}>
+                    No provider status configured
+                  </Text>
+                )}
+              </div>
+            </Spin>
+          </Card>
+        </Col>
+      </Row>
 
-      <Card size="small" variant="borderless" style={{ borderRadius: 8 }}>
+      {/* Live Gateway Request Log Table */}
+      <Card
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Space>
+              <ThunderboltOutlined style={{ color: '#fa8c16' }} />
+              <span>Live Gateway Activity Feed</span>
+            </Space>
+            {isConnected && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                <SyncOutlined spin style={{ color: '#52c41a', marginRight: 6 }} />
+                Auto-updating via SSE
+              </Text>
+            )}
+          </div>
+        }
+        size="small"
+        variant="borderless"
+        style={{ borderRadius: 8 }}
+      >
         <Table
           dataSource={logsData?.value || []}
           columns={columns}
           loading={logsLoading}
-          rowKey="id"
           pagination={false}
-          size="middle"
+          rowKey="id"
+          size="small"
         />
       </Card>
     </div>

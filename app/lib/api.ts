@@ -281,3 +281,15 @@ export async function apiUpdateSettings(settings: Record<string, string>): Promi
   const response = await api.put<{ message: string }>('/settings', { settings });
   return response.data;
 }
+
+// Health Check API
+export interface ApiHealthResponse {
+  status: string;
+  database: string;
+  redis: string;
+}
+
+export async function apiGetHealth(): Promise<ApiHealthResponse> {
+  const response = await api.get<ApiHealthResponse>('/health');
+  return response.data;
+}

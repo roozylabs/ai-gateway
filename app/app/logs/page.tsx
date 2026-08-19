@@ -1,19 +1,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Tag, Typography, Select, Space, Drawer, Descriptions, Button } from 'antd';
-import { EyeOutlined } from '@ant-design/icons';
+import { Tag, Typography, Select, Space, Drawer, Descriptions, Button, Switch, Badge } from 'antd';
+import { EyeOutlined, SyncOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
+import { useSSE } from '@/hooks/useSSE';
 import { DataTable, PageHeader, StatusTag } from '@/components/atoms';
 import { apiGetLogs, apiGetProviders, ApiRequestLog, ApiProvider } from '@/lib/api';
 
 const { Text } = Typography;
 
 export default function LogsPage() {
+  const { isConnected } = useSSE();
   const [selectedLog, setSelectedLog] = useState<ApiRequestLog | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [page, setPage] = useState<number>(1);
+  const [isLiveStream, setIsLiveStream] = useState<boolean>(true);
   const pageSize = 10;
 
   // Fetch Providers list for filter dropdown
@@ -32,7 +35,6 @@ export default function LogsPage() {
         limit: pageSize,
         offset: (page - 1) * pageSize,
       }),
-    refetchInterval: 10000,
   });
 
   const columns = React.useMemo(() => [
@@ -89,11 +91,20 @@ export default function LogsPage() {
   ], []);
 
   const extraActions = (
-    <Space>
-      <Text strong style={{ fontSize: 13 }}>Provider Filter:</Text>
+    <Space wrap>
+      <Tag color={isConnected && isLiveStream ? 'processing' : 'default'} icon={isConnected && isLiveStream ? <SyncOutlined spin /> : null}>
+        <Badge status={isConnected && isLiveStream ? 'success' : 'default'} text={isLiveStream ? 'Live tail -f Stream' : 'Live Stream Paused'} />
+      </Tag>
+
+      <Space>
+        <Text strong style={{ fontSize: 13 }}>Live Mode:</Text>
+        <Switch checked={isLiveStream} onChange={(val) => setIsLiveStream(val)} />
+      </Space>
+
+      <Text strong style={{ fontSize: 13, marginLeft: 8 }}>Provider:</Text>
       <Select
         defaultValue=""
-        style={{ width: 180 }}
+        style={{ width: 160 }}
         onChange={(val) => { setSelectedProvider(val); setPage(1); }}
       >
         <Select.Option value="">All Providers</Select.Option>
@@ -109,8 +120,8 @@ export default function LogsPage() {
   return (
     <div>
       <PageHeader
-        title="Request Logs & Observability"
-        description="Audit trail of API requests, token consumption, latencies, and failover retries"
+        title="Request Logs & Real-time Stream"
+        description="Real-time audit trail of API requests, token consumption, latencies, and failover retries"
       />
 
       <DataTable
@@ -132,31 +143,42 @@ export default function LogsPage() {
         }}
       />
 
+      {/* Log Details Inspection Drawer */}
       <Drawer
-        title="Request Details"
+        title="Request Log Inspector"
         placement="right"
-        width={480}
+        width={540}
         onClose={() => setSelectedLog(null)}
         open={!!selectedLog}
       >
         {selectedLog && (
           <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="Request ID"><Text code>{selectedLog.id}</Text></Descriptions.Item>
-            <Descriptions.Item label="Timestamp">{new Date(selectedLog.createdAt).toLocaleString()}</Descriptions.Item>
-            <Descriptions.Item label="Gateway Key ID">{selectedLog.gatewayApiKeyId || 'System / Direct'}</Descriptions.Item>
-            <Descriptions.Item label="Provider ID">{selectedLog.providerId || '-'}</Descriptions.Item>
-            <Descriptions.Item label="Target Model">{selectedLog.model}</Descriptions.Item>
-            <Descriptions.Item label="Credential ID">{selectedLog.credentialId || '-'}</Descriptions.Item>
+            <Descriptions.Item label="Request ID">
+              <Text code>{selectedLog.id}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Timestamp">
+              {new Date(selectedLog.createdAt).toLocaleString()}
+            </Descriptions.Item>
+            <Descriptions.Item label="Gateway Key ID">
+              <Text code>{selectedLog.gatewayApiKeyId || 'N/A'}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Requested Model">
+              <Tag color="blue">{selectedLog.model}</Tag>
+            </Descriptions.Item>
             <Descriptions.Item label="Status Code">
               <StatusTag status={selectedLog.statusCode} />
             </Descriptions.Item>
-            <Descriptions.Item label="Latency">{selectedLog.latencyMs} ms</Descriptions.Item>
-            <Descriptions.Item label="Input Tokens">{selectedLog.inputTokens}</Descriptions.Item>
-            <Descriptions.Item label="Output Tokens">{selectedLog.outputTokens}</Descriptions.Item>
-            <Descriptions.Item label="Total Tokens">{selectedLog.totalTokens}</Descriptions.Item>
-            <Descriptions.Item label="Retry Attempts">{selectedLog.retryCount}</Descriptions.Item>
+            <Descriptions.Item label="Total Latency">
+              {selectedLog.latencyMs} ms
+            </Descriptions.Item>
+            <Descriptions.Item label="Input / Output Tokens">
+              {selectedLog.inputTokens} / {selectedLog.outputTokens} (Total: {selectedLog.totalTokens})
+            </Descriptions.Item>
+            <Descriptions.Item label="Retry Count">
+              {selectedLog.retryCount || 0}
+            </Descriptions.Item>
             {selectedLog.errorMessage && (
-              <Descriptions.Item label="Error Message">
+              <Descriptions.Item label="Error Details">
                 <Text type="danger">{selectedLog.errorMessage}</Text>
               </Descriptions.Item>
             )}

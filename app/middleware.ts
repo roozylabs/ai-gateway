@@ -9,6 +9,7 @@ export function middleware(request: NextRequest) {
   const isPublicAsset =
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
+    pathname === '/health' ||
     pathname.includes('favicon.ico');
 
   if (isPublicAsset) {
