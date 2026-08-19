@@ -62,9 +62,12 @@ func main() {
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
 
+	// Event system
+	eventPublisher := goredis.NewEventPublisher(rdb)
+
 	// Proxy
 	cooldown := goredis.NewCooldownStore(rdb)
-	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo)
+	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo, settingRepo)
 	engine := proxy.NewEngine(router, credentialRepo, cooldown, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds)
 
 	// Handlers
@@ -74,10 +77,11 @@ func main() {
 	credentialHandler := handlers.NewCredentialHandler(credentialRepo, providerRepo, cfg.EncryptionKey)
 	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo)
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo)
-	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo)
+	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo)
 	settingsHandler := handlers.NewSettingsHandler(settingRepo)
+	sseHandler := handlers.NewSSEHandler(eventPublisher)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -140,6 +144,9 @@ func main() {
 		// Settings
 		api.GET("/settings", settingsHandler.List)
 		api.PUT("/settings", settingsHandler.Update)
+
+		// SSE
+		api.GET("/sse", sseHandler.Stream)
 	}
 
 	// Gateway routes (authenticated with gw_sk_* keys)

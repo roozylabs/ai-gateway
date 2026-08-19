@@ -7,31 +7,37 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/roozylabs/ai-gateway/internal/models"
 	"github.com/roozylabs/ai-gateway/internal/proxy"
 	"github.com/roozylabs/ai-gateway/internal/repository"
+	goredis "github.com/roozylabs/ai-gateway/internal/redis"
 )
 
 type GatewayHandler struct {
-	engine   *proxy.Engine
-	gatewayKeys *repository.GatewayKeyRepository
-	requestLogs *repository.RequestLogRepository
+	engine        *proxy.Engine
+	gatewayKeys   *repository.GatewayKeyRepository
+	requestLogs   *repository.RequestLogRepository
+	eventPublisher *goredis.EventPublisher
 }
 
 func NewGatewayHandler(
 	engine *proxy.Engine,
 	gatewayKeys *repository.GatewayKeyRepository,
 	requestLogs *repository.RequestLogRepository,
+	eventPublisher *goredis.EventPublisher,
 ) *GatewayHandler {
 	return &GatewayHandler{
-		engine:      engine,
-		gatewayKeys: gatewayKeys,
-		requestLogs: requestLogs,
+		engine:        engine,
+		gatewayKeys:   gatewayKeys,
+		requestLogs:   requestLogs,
+		eventPublisher: eventPublisher,
 	}
 }
 
 func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	gatewayKey := c.MustGet("gatewayKey").(*models.GatewayAPIKey)
+	requestID := uuid.New().String()
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -57,9 +63,12 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			return
 		}
 		if log != nil {
+			log.RequestID = requestID
 			_ = h.requestLogs.Create(c.Request.Context(), log)
 			_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
+			h.publishEvents(c, requestID, log, gatewayKey)
 		}
+		c.Header("X-Request-ID", requestID)
 		return
 	}
 
@@ -70,9 +79,13 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 
 	if log != nil {
+		log.RequestID = requestID
 		_ = h.requestLogs.Create(c.Request.Context(), log)
 		_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
+		h.publishEvents(c, requestID, log, gatewayKey)
 	}
+
+	c.Header("X-Request-ID", requestID)
 
 	if resp.Error != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
@@ -86,6 +99,29 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+func (h *GatewayHandler) publishEvents(c *gin.Context, requestID string, log *models.RequestLog, key *models.GatewayAPIKey) {
+	_ = h.eventPublisher.Publish(c.Request.Context(), "REQUEST_COMPLETED", map[string]interface{}{
+		"requestId":  requestID,
+		"model":      log.Model,
+		"statusCode": log.StatusCode,
+		"latencyMs":  log.LatencyMs,
+		"tokens":     log.TotalTokens,
+	})
+
+	_ = h.eventPublisher.Publish(c.Request.Context(), "NEW_REQUEST_LOG", map[string]interface{}{
+		"requestId":  requestID,
+		"model":      log.Model,
+		"statusCode": log.StatusCode,
+		"latencyMs":  log.LatencyMs,
+		"createdAt":  log.CreatedAt,
+	})
+
+	_ = h.eventPublisher.Publish(c.Request.Context(), "KEY_USED", map[string]interface{}{
+		"gatewayKeyId": key.ID,
+		"requestCount": key.RequestCount,
+	})
 }
 
 func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models.GatewayAPIKey, req *proxy.ProxyRequest) {
@@ -108,7 +144,6 @@ func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models
 }
 
 func (h *GatewayHandler) Models(c *gin.Context) {
-	// Return a static list of models for now
 	models := []map[string]interface{}{
 		{"id": "gpt-4o", "object": "model", "owned_by": "openai"},
 		{"id": "gpt-4o-mini", "object": "model", "owned_by": "openai"},
