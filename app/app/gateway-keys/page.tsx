@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Space, Typography, Modal, Form, Input, Select, InputNumber, Alert, Tooltip, Tag, App } from 'antd';
-import { PlusOutlined, CopyOutlined, DeleteOutlined, InfoCircleOutlined, SyncOutlined } from '@ant-design/icons';
+import { Button, Space, Typography, Modal, Form, Input, Select, InputNumber, Alert, Tooltip, Tag, App, Tabs } from 'antd';
+import { PlusOutlined, CopyOutlined, DeleteOutlined, InfoCircleOutlined, SyncOutlined, CodeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
@@ -24,6 +24,7 @@ export default function GatewayKeysPage() {
   const isDark = mode === 'dark';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [integrationKey, setIntegrationKey] = useState<ApiGatewayKey | null>(null);
   const [newGeneratedKey, setNewGeneratedKey] = useState<string | null>(null);
   const [form] = Form.useForm();
 
@@ -223,6 +224,13 @@ export default function GatewayKeysPage() {
           <Space size="middle">
             <Button
               type="text"
+              icon={<CodeOutlined />}
+              onClick={() => setIntegrationKey(record)}
+            >
+              Integration
+            </Button>
+            <Button
+              type="text"
               icon={<CopyOutlined />}
               onClick={() => handleCopyKey(record.keyPrefix)}
             >
@@ -415,6 +423,99 @@ export default function GatewayKeysPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Integration Guide Modal */}
+      <Modal
+        title="CLI & SDK Integration Guide"
+        open={!!integrationKey}
+        onCancel={() => setIntegrationKey(null)}
+        footer={null}
+        width={700}
+      >
+        {integrationKey && (() => {
+          const apiBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : 'http://localhost:3000/api/v1';
+          const apiKeyDisplay = '<YOUR_FULL_GATEWAY_KEY>';
+          
+          return (
+            <div>
+              <Alert 
+                message="Replace <YOUR_FULL_GATEWAY_KEY> with the actual Gateway Key generated during creation. Only the prefix is displayed below."
+                type="info" 
+                showIcon 
+                style={{ marginBottom: 16 }}
+              />
+              <Tabs
+                defaultActiveKey="1"
+                items={[
+                  {
+                    key: '1',
+                    label: 'OpenCode CLI',
+                    children: (
+                      <div>
+                        <Typography.Paragraph>
+                          <Text type="secondary">Run OpenCode with the Gateway API configuration:</Text>
+                        </Typography.Paragraph>
+                        <pre style={{ background: isDark ? '#141414' : '#f5f5f5', padding: 12, borderRadius: 6, overflowX: 'auto' }}>
+                          <code>
+{`export OPENAI_API_KEY="${apiKeyDisplay}"
+export OPENAI_API_BASE="${apiBaseUrl}"
+
+# You can specify any model supported by the provider
+opencode --model big-pickle`}
+                          </code>
+                        </pre>
+                      </div>
+                    )
+                  },
+                  {
+                    key: '2',
+                    label: 'cURL',
+                    children: (
+                      <div>
+                        <pre style={{ background: isDark ? '#141414' : '#f5f5f5', padding: 12, borderRadius: 6, overflowX: 'auto' }}>
+                          <code>
+{`curl ${apiBaseUrl}/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${apiKeyDisplay}" \\
+  -d '{
+    "model": "big-pickle",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'`}
+                          </code>
+                        </pre>
+                      </div>
+                    )
+                  },
+                  {
+                    key: '3',
+                    label: 'Python (OpenAI SDK)',
+                    children: (
+                      <div>
+                        <pre style={{ background: isDark ? '#141414' : '#f5f5f5', padding: 12, borderRadius: 6, overflowX: 'auto' }}>
+                          <code>
+{`from openai import OpenAI
+
+client = OpenAI(
+    api_key="${apiKeyDisplay}",
+    base_url="${apiBaseUrl}"
+)
+
+response = client.chat.completions.create(
+    model="big-pickle",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)`}
+                          </code>
+                        </pre>
+                      </div>
+                    )
+                  }
+                ]}
+              />
+            </div>
+          );
+        })()}
       </Modal>
     </div>
   );
