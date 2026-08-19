@@ -276,12 +276,6 @@ export default function DashboardPage() {
               <ThunderboltOutlined style={{ color: '#fa8c16' }} />
               <span>Live Gateway Activity Feed</span>
             </Space>
-            {isConnected && (
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                <SyncOutlined spin style={{ color: '#52c41a', marginRight: 6 }} />
-                Auto-updating via SSE
-              </Text>
-            )}
           </div>
         }
         size="small"
