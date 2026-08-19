@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/roozylabs/ai-gateway/internal/models"
+	goredis "github.com/roozylabs/ai-gateway/internal/redis"
 	"github.com/roozylabs/ai-gateway/internal/repository"
 )
 
@@ -103,4 +104,66 @@ func (r *Router) getAdapter(providerType string) ProviderAdapter {
 	default:
 		return NewOpenAIAdapter()
 	}
+}
+
+func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, allowedModels []string, cooldown *goredis.CooldownStore) ([]*Route, error) {
+	if len(allowedModels) > 0 {
+		allowed := false
+		for _, m := range allowedModels {
+			if m == modelSlug || m == "*" {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return nil, ErrModelNotAllowed
+		}
+	}
+
+	model, err := r.models.FindBySlug(ctx, modelSlug)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrModelNotFound
+		}
+		return nil, fmt.Errorf("find model: %w", err)
+	}
+
+	if !model.Enabled {
+		return nil, ErrModelNotFound
+	}
+
+	provider, err := r.providers.FindByID(ctx, model.ProviderID)
+	if err != nil {
+		return nil, fmt.Errorf("find provider: %w", err)
+	}
+
+	if !provider.Enabled {
+		return nil, ErrModelNotFound
+	}
+
+	allCreds, err := r.creds.FindAllActiveByProviderID(ctx, provider.ID)
+	if err != nil {
+		return nil, fmt.Errorf("find credentials: %w", err)
+	}
+
+	var routes []*Route
+	for _, cred := range allCreds {
+		c := cred
+		cooling, _ := cooldown.IsCoolingDown(ctx, c.ID)
+		if cooling {
+			continue
+		}
+		adapter := r.getAdapter(provider.Type)
+		routes = append(routes, &Route{
+			Model:      model,
+			Provider:   provider,
+			Credential: &c,
+			Adapter:    adapter,
+		})
+	}
+
+	if len(routes) == 0 {
+		return nil, ErrNoCredentials
+	}
+	return routes, nil
 }

@@ -108,6 +108,32 @@ func (r *CredentialRepository) FindActiveByProviderID(ctx context.Context, provi
 	return c, nil
 }
 
+func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, providerID string) ([]models.Credential, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, priority, enabled, status,
+		        last_used_at, request_count, error_count, last_error, last_error_at,
+		        created_at, updated_at
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'
+		 ORDER BY priority ASC`, providerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var creds []models.Credential
+	for rows.Next() {
+		var c models.Credential
+		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix,
+			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, err
+		}
+		creds = append(creds, c)
+	}
+	return creds, nil
+}
+
 func (r *CredentialRepository) DecryptKey(ctx context.Context, credentialID, encryptionKey string) (string, error) {
 	c, err := r.FindByID(ctx, credentialID)
 	if err != nil {
