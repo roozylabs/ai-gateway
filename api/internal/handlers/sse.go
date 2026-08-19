@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	goredis "github.com/roozylabs/ai-gateway/internal/redis"
@@ -30,14 +31,24 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
 	c.Status(http.StatusOK)
 
 	ch := pubsub.Channel()
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	// Send initial connected event
+	_, _ = c.Writer.Write([]byte("event: connected\ndata: {\"status\":\"ok\"}\n\n"))
+	c.Writer.Flush()
 
 	for {
 		select {
 		case <-c.Request.Context().Done():
 			return
+		case <-ticker.C:
+			_, _ = c.Writer.Write([]byte("event: ping\ndata: {\"status\":\"ok\"}\n\n"))
+			c.Writer.Flush()
 		case msg, ok := <-ch:
 			if !ok {
 				return

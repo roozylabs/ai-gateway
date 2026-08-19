@@ -5,8 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useSSE } from '@/hooks/useSSE';
-import { useQuery } from '@tanstack/react-query';
-import { apiGetHealth } from '@/lib/api';
 import {
   Layout,
   Menu,
@@ -45,16 +43,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { mode, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const { isConnected } = useSSE();
+  const { isConnected, lastEvent } = useSSE();
   const [collapsed, setCollapsed] = useState(false);
   const { token } = theme.useToken();
-
-  // Query Backend System Health (GET /health)
-  const { data: health } = useQuery({
-    queryKey: ['health'],
-    queryFn: apiGetHealth,
-    refetchInterval: 15000,
-  });
 
   // If on login page, don't show sidebar layout
   if (pathname === '/login') {
@@ -122,17 +113,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     },
   ];
 
-  // System Status Status & Color logic
+  // System Status Status & Color logic strictly driven by real-time SSE stream
   let systemStatusText = 'System Status: Operational';
   let badgeStatus: 'processing' | 'warning' | 'error' = 'processing';
   let badgeColor = 'green';
 
-  if (!health || health.status !== 'ok') {
-    systemStatusText = 'System Status: Degraded';
+  if (!isConnected) {
+    systemStatusText = 'System Status: Connecting...';
     badgeStatus = 'warning';
     badgeColor = 'gold';
-  } else if (!isConnected) {
-    systemStatusText = 'System Status: Connecting...';
+  } else if (lastEvent?.payload?.status && lastEvent.payload.status !== 'ok') {
+    systemStatusText = 'System Status: Degraded';
     badgeStatus = 'warning';
     badgeColor = 'gold';
   }

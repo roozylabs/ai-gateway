@@ -15,19 +15,23 @@ export const metadata = {
   description: 'Centralized AI API Gateway & Credential Pool Management',
 };
 
+import { SSEProvider } from '@/context/SSEContext';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning style={{ margin: 0, padding: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
         <AntdRegistry>
           <QueryProvider>
-            <AuthProvider>
-              <ThemeProvider>
-                <AntdApp>
-                  <AppLayout>{children}</AppLayout>
-                </AntdApp>
-              </ThemeProvider>
-            </AuthProvider>
+            <SSEProvider>
+              <AuthProvider>
+                <ThemeProvider>
+                  <AntdApp>
+                    <AppLayout>{children}</AppLayout>
+                  </AntdApp>
+                </ThemeProvider>
+              </AuthProvider>
+            </SSEProvider>
           </QueryProvider>
         </AntdRegistry>
       </body>
