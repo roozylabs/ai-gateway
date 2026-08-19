@@ -437,6 +437,16 @@ export default function GatewayKeysPage() {
           const apiBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : 'http://localhost:3000/api/v1';
           const apiKeyDisplay = '<YOUR_FULL_GATEWAY_KEY>';
           
+          const providerName = integrationKey.providerId && providerMap[integrationKey.providerId] 
+            ? providerMap[integrationKey.providerId].name.toLowerCase() 
+            : '';
+            
+          let suggestedModel = 'your-model-name';
+          if (providerName.includes('openai')) suggestedModel = 'gpt-4o';
+          else if (providerName.includes('anthropic')) suggestedModel = 'claude-3-5-sonnet-20241022';
+          else if (providerName.includes('gemini') || providerName.includes('google')) suggestedModel = 'gemini-1.5-pro';
+          else if (providerName.includes('opencode')) suggestedModel = 'big-pickle';
+
           return (
             <div>
               <Alert 
@@ -462,7 +472,7 @@ export default function GatewayKeysPage() {
 export OPENAI_API_BASE="${apiBaseUrl}"
 
 # You can specify any model supported by the provider
-opencode --model big-pickle`}
+opencode --model ${suggestedModel}`}
                           </code>
                         </pre>
                       </div>
@@ -479,7 +489,7 @@ opencode --model big-pickle`}
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer ${apiKeyDisplay}" \\
   -d '{
-    "model": "big-pickle",
+    "model": "${suggestedModel}",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'`}
                           </code>
@@ -502,7 +512,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="big-pickle",
+    model="${suggestedModel}",
     messages=[{"role": "user", "content": "Hello!"}]
 )
 print(response.choices[0].message.content)`}

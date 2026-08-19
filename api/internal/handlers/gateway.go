@@ -166,6 +166,8 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		{"id": "gpt-4o-mini", "object": "model", "owned_by": "openai"},
 		{"id": "claude-3-5-sonnet-20241022", "object": "model", "owned_by": "anthropic"},
 		{"id": "claude-3-haiku-20240307", "object": "model", "owned_by": "anthropic"},
+		{"id": "gemini-1.5-pro", "object": "model", "owned_by": "google"},
+		{"id": "gemini-1.5-flash", "object": "model", "owned_by": "google"},
 		{"id": "big-pickle", "object": "model", "owned_by": "opencode"},
 	}
 
