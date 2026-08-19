@@ -203,6 +203,10 @@ func (h *CredentialHandler) Test(c *gin.Context) {
 	switch provider.Type {
 	case "anthropic":
 		statusCode, errMsg = h.testAnthropic(provider.BaseURL, apiKey)
+	case "google":
+		statusCode, errMsg = h.testGoogle(provider.BaseURL, apiKey)
+	case "opencode":
+		statusCode, errMsg = h.testOpenCode(provider.BaseURL, apiKey)
 	default:
 		statusCode, errMsg = h.testOpenAI(provider.BaseURL, apiKey)
 	}
@@ -268,3 +272,65 @@ func (h *CredentialHandler) testAnthropic(baseURL, apiKey string) (int, string) 
 	}
 	return resp.StatusCode, ""
 }
+
+func (h *CredentialHandler) testGoogle(baseURL, apiKey string) (int, string) {
+	if baseURL == "" {
+		baseURL = "https://generativelanguage.googleapis.com"
+	}
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return 0, "invalid base URL"
+	}
+	u.Path = path.Join(u.Path, "v1beta", "models")
+	q := u.Query()
+	q.Set("key", apiKey)
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return 0, "failed to create request"
+	}
+	req.Header.Set("x-goog-api-key", apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err.Error()
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return resp.StatusCode, "authentication failed"
+	}
+	return resp.StatusCode, ""
+}
+
+func (h *CredentialHandler) testOpenCode(baseURL, apiKey string) (int, string) {
+	if baseURL == "" {
+		baseURL = "https://opencode.ai/zen"
+	}
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return 0, "invalid base URL"
+	}
+	u.Path = path.Join(u.Path, "v1", "models")
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return 0, "failed to create request"
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("x-api-key", apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err.Error()
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return resp.StatusCode, "authentication failed"
+	}
+	return resp.StatusCode, ""
+}
+
+

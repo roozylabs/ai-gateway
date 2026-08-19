@@ -9,7 +9,7 @@ VALUES (
     'opencode',
     true,
     'round_robin'
-);
+) ON CONFLICT (id) DO NOTHING;
 
 -- OpenCode Go models (open-source only)
 INSERT INTO models (provider_id, name, slug, display_name) VALUES
@@ -27,4 +27,5 @@ INSERT INTO models (provider_id, name, slug, display_name) VALUES
     ('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'grok-4.5',            'grok-4.5',            'Grok 4.5'),
     ('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'mimo-v2.5',           'mimo-v2.5',           'MiMo V2.5'),
     ('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'muse-spark-1.2',      'muse-spark-1.2',      'Muse Spark 1.2'),
-    ('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'hy3',                 'hy3',                 'Hy3');
+    ('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'hy3',                 'hy3',                 'Hy3')
+ON CONFLICT (provider_id, slug) DO NOTHING;

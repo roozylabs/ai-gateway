@@ -9,7 +9,7 @@ VALUES (
     'opencode',
     true,
     'round_robin'
-);
+) ON CONFLICT (id) DO NOTHING;
 
 -- Default OpenCode models
 INSERT INTO models (provider_id, name, slug, display_name) VALUES
@@ -22,4 +22,5 @@ INSERT INTO models (provider_id, name, slug, display_name) VALUES
     ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'minimax-m3',          'minimax-m3',          'MiniMax M3'),
     ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'gpt-5.6-luna',        'gpt-5.6-luna',        'GPT 5.6 Luna'),
     ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'claude-sonnet-5',     'claude-sonnet-5',     'Claude Sonnet 5'),
-    ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'grok-4.5',            'grok-4.5',            'Grok 4.5');
+    ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'grok-4.5',            'grok-4.5',            'Grok 4.5')
+ON CONFLICT (provider_id, slug) DO NOTHING;
