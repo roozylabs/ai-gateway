@@ -139,11 +139,6 @@ export default function DashboardPage() {
       <PageHeader
         title="Dashboard Overview"
         description="Real-time metrics, model usage analytics, provider health, and live gateway activity"
-        extra={
-          <Tag color={isConnected ? 'processing' : 'default'} icon={isConnected ? <SyncOutlined spin /> : null}>
-            <Badge status={isConnected ? 'success' : 'default'} text={isConnected ? 'Realtime SSE Stream Active' : 'Connecting SSE...'} />
-          </Tag>
-        }
       />
 
       {/* Top 4 KPI Cards */}
