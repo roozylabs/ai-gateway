@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
-	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/models"
@@ -30,7 +31,14 @@ type Engine struct {
 
 func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, encKey string, maxRetries, cooldownSecs int) *Engine {
 	tr := &http.Transport{
-		ResponseHeaderTimeout: 10 * time.Second,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 30 * time.Second,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
 	}
 	return &Engine{
 		router:       router,
