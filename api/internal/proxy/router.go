@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/username/ai-gateway/internal/models"
-	"github.com/username/ai-gateway/internal/repository"
+	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/repository"
 )
 
 var (

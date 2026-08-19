@@ -1,10 +1,14 @@
 # PRD — AI Gateway
 
-| Metadata | Detail |
-| :--- | :--- |
-| **Version** | 1.0 |
-| **Status** | Draft |
-| **Date** | 18 August 2026 |
+## Revision History
+
+| Version | Date & Time | Description of Changes |
+| :--- | :--- | :--- |
+| 1.0 | 18 August 2026 | Initial Draft |
+| 1.1 | 18 August 2026, 22:33 WIB | Added Credential Allocation Strategy UI specs & Safe Guarding Rules |
+| 1.2 | 18 August 2026, 22:37 WIB | Added Real-Time Dashboard Data Streaming specs |
+| 1.3 | 18 August 2026, 22:51 WIB | Added Multi-Auth Type & Enterprise OAuth Roadmap plan |
+| 1.4 | 19 August 2026, 11:04 WIB | Implemented Revision History versioning rules |
 
 ---
 

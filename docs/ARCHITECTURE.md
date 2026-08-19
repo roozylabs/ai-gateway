@@ -1,10 +1,12 @@
 # Technical Architecture — AI Gateway
 
-| Metadata | Detail |
-| :--- | :--- |
-| **Version** | 1.0 |
-| **Status** | Draft |
-| **Date** | 18 August 2026 |
+## Revision History
+
+| Version | Date & Time | Description of Changes |
+| :--- | :--- | :--- |
+| 1.0 | 18 August 2026 | Initial Draft |
+| 1.1 | 18 August 2026, 22:37 WIB | Added Real-Time Data Streaming Architecture (SSE + Redis Pub/Sub) |
+| 1.2 | 19 August 2026, 11:03 WIB | Implemented Revision History versioning rules |
 
 ---
 
