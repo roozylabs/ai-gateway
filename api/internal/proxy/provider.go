@@ -15,30 +15,30 @@ type ProviderRequest struct {
 }
 
 type ProviderResponse struct {
-	ID      string
-	Model   string
-	Choices []Choice
-	Usage   Usage
-	Error   *ProviderError
+	ID      string         `json:"id,omitempty"`
+	Model   string         `json:"model,omitempty"`
+	Choices []Choice       `json:"choices,omitempty"`
+	Usage   Usage          `json:"usage,omitempty"`
+	Error   *ProviderError `json:"error,omitempty"`
 }
 
 type Choice struct {
-	Index        int
-	Message      map[string]interface{}
-	Delta        map[string]interface{}
-	FinishReason string
+	Index        int                    `json:"index"`
+	Message      map[string]interface{} `json:"message,omitempty"`
+	Delta        map[string]interface{} `json:"delta,omitempty"`
+	FinishReason string                 `json:"finish_reason,omitempty"`
 }
 
 type Usage struct {
-	PromptTokens     int
-	CompletionTokens int
-	TotalTokens      int
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
 }
 
 type ProviderError struct {
-	Type    string
-	Message string
-	Code    string
+	Type    string `json:"type,omitempty"`
+	Message string `json:"message,omitempty"`
+	Code    string `json:"code,omitempty"`
 }
 
 type ProviderAdapter interface {
