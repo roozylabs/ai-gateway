@@ -256,14 +256,14 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 				totalTokens = chunk.Usage
 			}
 
-			jsonChunk, _ := json.Marshal(chunk)
-			c.Writer.Write([]byte("data: "))
-			c.Writer.Write(jsonChunk)
-			c.Writer.Write([]byte("\n\n"))
-			c.Writer.Flush()
+		jsonChunk, _ := json.Marshal(chunk)
+		_, _ = c.Writer.Write([]byte("data: "))
+		_, _ = c.Writer.Write(jsonChunk)
+		_, _ = c.Writer.Write([]byte("\n\n"))
+		c.Writer.Flush()
 		}
 
-		c.Writer.Write([]byte("data: [DONE]\n\n"))
+		_, _ = c.Writer.Write([]byte("data: [DONE]\n\n"))
 		c.Writer.Flush()
 
 		latency := int(time.Since(start).Milliseconds())

@@ -57,8 +57,8 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			return
 		}
 		if log != nil {
-			h.requestLogs.Create(c.Request.Context(), log)
-			h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
+			_ = h.requestLogs.Create(c.Request.Context(), log)
+			_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 		}
 		return
 	}
@@ -70,8 +70,8 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 
 	if log != nil {
-		h.requestLogs.Create(c.Request.Context(), log)
-		h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
+		_ = h.requestLogs.Create(c.Request.Context(), log)
+		_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 	}
 
 	if resp.Error != nil {
@@ -108,13 +108,6 @@ func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models
 }
 
 func (h *GatewayHandler) Models(c *gin.Context) {
-	gatewayKey := c.MustGet("gatewayKey").(*models.GatewayAPIKey)
-
-	allowedModels := gatewayKey.AllowedModels
-	if len(allowedModels) == 1 && allowedModels[0] == "*" {
-		allowedModels = nil
-	}
-
 	// Return a static list of models for now
 	models := []map[string]interface{}{
 		{"id": "gpt-4o", "object": "model", "owned_by": "openai"},

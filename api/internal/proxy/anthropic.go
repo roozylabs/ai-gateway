@@ -146,7 +146,7 @@ func (a *AnthropicAdapter) ParseStreamChunk(line []byte) (*ProviderResponse, boo
 				InputTokens int `json:"input_tokens"`
 			} `json:"usage"`
 		}
-		json.Unmarshal(event.Delta, &msg)
+		_ = json.Unmarshal(event.Delta, &msg)
 		return &ProviderResponse{
 			Usage: Usage{PromptTokens: msg.Usage.InputTokens},
 		}, false
@@ -156,7 +156,7 @@ func (a *AnthropicAdapter) ParseStreamChunk(line []byte) (*ProviderResponse, boo
 			Type string `json:"type"`
 			Text string `json:"text"`
 		}
-		json.Unmarshal(event.Delta, &delta)
+		_ = json.Unmarshal(event.Delta, &delta)
 		return &ProviderResponse{
 			Choices: []Choice{{
 				Index: 0,
@@ -174,7 +174,7 @@ func (a *AnthropicAdapter) ParseStreamChunk(line []byte) (*ProviderResponse, boo
 				OutputTokens int `json:"output_tokens"`
 			} `json:"usage"`
 		}
-		json.Unmarshal(event.Delta, &delta)
+		_ = json.Unmarshal(event.Delta, &delta)
 		return &ProviderResponse{
 			Choices: []Choice{{
 				Index:        0,

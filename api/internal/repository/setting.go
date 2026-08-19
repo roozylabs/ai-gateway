@@ -78,7 +78,7 @@ func (r *SettingRepository) SetMultiple(ctx context.Context, settings map[string
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for key, value := range settings {
 		now := time.Now()
