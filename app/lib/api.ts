@@ -112,6 +112,7 @@ export interface ApiRequestLog {
 export interface ApiDashboardStats {
   totalRequests: number;
   totalTokens: number;
+  totalEstimatedCost?: number;
   avgLatency: number;
   errorRate: number;
   activeProviders: number;
@@ -124,6 +125,7 @@ export interface ApiUsagePoint {
   model?: string;
   requests: number;
   tokens: number;
+  estimatedCost?: number;
 }
 
 export interface ApiProviderHealth {

@@ -91,7 +91,7 @@ func (r *SettingRepository) SetMultiple(ctx context.Context, settings map[string
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO settings (id, key, value, category, created_at, updated_at)
 			 VALUES ($1, $2, $3, 'general', $4, $4)
-			 ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = $4`,
+			 ON CONFLICT (key) DO UPDATE SET value = $3, updated_at = $4`,
 			uuid.New().String(), key, value, now,
 		)
 		if err != nil {

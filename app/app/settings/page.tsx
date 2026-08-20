@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Typography, Card, Descriptions, Tag, Row, Col, Form, InputNumber, Button, Switch, Space, App, Spin } from 'antd';
-import { SafetyCertificateOutlined, HddOutlined, SettingOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Typography, Card, Descriptions, Tag, Row, Col, Form, InputNumber, Button, Switch, Select, Space, App, Spin } from 'antd';
+import { SafetyCertificateOutlined, HddOutlined, SettingOutlined, CheckCircleOutlined, DollarOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGetSettings, apiUpdateSettings, ApiSetting } from '@/lib/api';
 
@@ -26,6 +26,8 @@ export default function SettingsPage() {
         if (item.key === 'max_retries') settingsMap.maxRetries = Number(item.value);
         if (item.key === 'cooldown_seconds') settingsMap.cooldownSeconds = Number(item.value);
         if (item.key === 'auto_rotation') settingsMap.enableAutoRotation = item.value === 'true';
+        if (item.key === 'default_currency') settingsMap.defaultCurrency = item.value;
+        if (item.key === 'usd_to_idr_rate') settingsMap.usdToIdrRate = Number(item.value);
       });
       form.setFieldsValue(settingsMap);
     }
@@ -45,6 +47,8 @@ export default function SettingsPage() {
       max_retries: String(values.maxRetries || 2),
       cooldown_seconds: String(values.cooldownSeconds || 300),
       auto_rotation: String(!!values.enableAutoRotation),
+      default_currency: values.defaultCurrency || 'IDR',
+      usd_to_idr_rate: String(values.usdToIdrRate || 16000),
     });
   };
 
@@ -54,7 +58,7 @@ export default function SettingsPage() {
         <Title level={3} style={{ margin: 0 }}>
           Settings & Security
         </Title>
-        <Text type="secondary">System parameters, encryption keys state, and rate-limit cooldown settings</Text>
+        <Text type="secondary">System parameters, encryption keys state, currency preferences, and rate-limit cooldown settings</Text>
       </div>
 
       <Row gutter={[16, 16]}>
@@ -97,14 +101,35 @@ export default function SettingsPage() {
         </Col>
       </Row>
 
-      <Card title={<Space><SettingOutlined /> Gateway Retry & Cooldown Configuration</Space>} variant="borderless" style={{ marginTop: 20, borderRadius: 8 }}>
+      <Card title={<Space><SettingOutlined /> Gateway Retry, Currency & Expenses Configuration</Space>} variant="borderless" style={{ marginTop: 20, borderRadius: 8 }}>
         <Spin spinning={isLoading}>
           <Form
             form={form}
             layout="vertical"
-            initialValues={{ maxRetries: 2, cooldownSeconds: 300, enableAutoRotation: true }}
+            initialValues={{ maxRetries: 2, cooldownSeconds: 300, enableAutoRotation: true, defaultCurrency: 'IDR', usdToIdrRate: 16000 }}
             onFinish={onSaveSettings}
           >
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item label="Default Display Currency" name="defaultCurrency">
+                  <Select
+                    options={[
+                      { label: 'IDR (Indonesian Rupiah - Rp)', value: 'IDR' },
+                      { label: 'USD (US Dollar - $)', value: 'USD' },
+                      { label: 'EUR (Euro - €)', value: 'EUR' },
+                      { label: 'SGD (Singapore Dollar - S$)', value: 'SGD' },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} sm={12}>
+                <Form.Item label="USD to IDR Exchange Rate (Rp)" name="usdToIdrRate">
+                  <InputNumber min={1000} max={30000} step={100} style={{ width: '100%' }} addonBefore="Rp" />
+                </Form.Item>
+              </Col>
+            </Row>
+
             <Row gutter={16}>
               <Col xs={24} sm={12}>
                 <Form.Item label="Max Retries on HTTP 429 Failover" name="maxRetries">

@@ -168,20 +168,22 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 }
 
 type DashboardStats struct {
-	TotalRequests     int64   `json:"totalRequests"`
-	TotalTokens       int64   `json:"totalTokens"`
-	AvgLatency        float64 `json:"avgLatency"`
-	ErrorRate         float64 `json:"errorRate"`
-	ActiveProviders   int     `json:"activeProviders"`
-	ActiveCredentials int     `json:"activeCredentials"`
-	ActiveKeys        int     `json:"activeKeys"`
+	TotalRequests      int64   `json:"totalRequests"`
+	TotalTokens        int64   `json:"totalTokens"`
+	TotalEstimatedCost float64 `json:"totalEstimatedCost"`
+	AvgLatency         float64 `json:"avgLatency"`
+	ErrorRate          float64 `json:"errorRate"`
+	ActiveProviders    int     `json:"activeProviders"`
+	ActiveCredentials  int     `json:"activeCredentials"`
+	ActiveKeys         int     `json:"activeKeys"`
 }
 
 type UsagePoint struct {
-	Date     string `json:"date"`
-	Model    string `json:"model"`
-	Requests int64  `json:"requests"`
-	Tokens   int64  `json:"tokens"`
+	Date          string  `json:"date"`
+	Model         string  `json:"model"`
+	Requests      int64   `json:"requests"`
+	Tokens        int64   `json:"tokens"`
+	EstimatedCost float64 `json:"estimatedCost"`
 }
 
 func (r *RequestLogRepository) GetStats(ctx context.Context, userID string) (*DashboardStats, error) {
@@ -198,6 +200,35 @@ func (r *RequestLogRepository) GetStats(ctx context.Context, userID string) (*Da
 	).Scan(&s.TotalRequests, &s.TotalTokens, &s.AvgLatency, &s.ErrorRate)
 	if err != nil {
 		return nil, err
+	}
+
+	// Calculate total estimated cost
+	costRows, err := r.db.QueryContext(ctx,
+		`SELECT COALESCE(NULLIF(rl.model, ''), 'default'), COALESCE(SUM(rl.total_tokens), 0)
+		 FROM request_logs rl
+		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE gak.user_id = $1
+		 GROUP BY COALESCE(NULLIF(rl.model, ''), 'default')`, userID,
+	)
+	if err == nil {
+		defer costRows.Close()
+		var totalCost float64
+		for costRows.Next() {
+			var m string
+			var tok int64
+			if err := costRows.Scan(&m, &tok); err == nil {
+				rate := 0.001
+				mLower := strings.ToLower(m)
+				if strings.Contains(mLower, "pickle") || strings.Contains(mLower, "gpt-4") || strings.Contains(mLower, "claude-3") || strings.Contains(mLower, "opus") || strings.Contains(mLower, "sonnet") {
+					rate = 0.002
+				} else if strings.Contains(mLower, "flash") || strings.Contains(mLower, "mini") || strings.Contains(mLower, "haiku") || strings.Contains(mLower, "nano") {
+					rate = 0.00015
+				}
+				totalCost += (float64(tok) / 1000.0) * rate
+			}
+		}
+		_ = costRows.Err()
+		s.TotalEstimatedCost = totalCost
 	}
 
 	err = r.db.QueryRowContext(ctx,
@@ -272,6 +303,14 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 		if err := rows.Scan(&p.Date, &p.Model, &p.Requests, &p.Tokens); err != nil {
 			return nil, err
 		}
+		rate := 0.001
+		mLower := strings.ToLower(p.Model)
+		if strings.Contains(mLower, "pickle") || strings.Contains(mLower, "gpt-4") || strings.Contains(mLower, "claude-3") || strings.Contains(mLower, "opus") || strings.Contains(mLower, "sonnet") {
+			rate = 0.002
+		} else if strings.Contains(mLower, "flash") || strings.Contains(mLower, "mini") || strings.Contains(mLower, "haiku") || strings.Contains(mLower, "nano") {
+			rate = 0.00015
+		}
+		p.EstimatedCost = (float64(p.Tokens) / 1000.0) * rate
 		points = append(points, p)
 	}
 	if err := rows.Err(); err != nil {

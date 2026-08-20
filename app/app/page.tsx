@@ -23,6 +23,7 @@ import {
   KeyOutlined,
   SyncOutlined,
   CodeOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { Line } from '@ant-design/plots';
 import { useQuery } from '@tanstack/react-query';
@@ -33,9 +34,11 @@ import {
   apiGetDashboardStats,
   apiGetDashboardUsage,
   apiGetDashboardHealth,
+  apiGetSettings,
   apiGetLogs,
   ApiRequestLog,
   ApiProviderHealth,
+  ApiSetting,
 } from '@/lib/api';
 
 const { Text } = Typography;
@@ -48,6 +51,7 @@ export default function DashboardPage() {
 
   const [timeframe, setTimeframe] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Custom'>('Daily');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [metricView, setMetricView] = useState<'requests' | 'estimatedCost'>('requests');
 
   // Compute params for usage API query
   const usageQueryParams = React.useMemo(() => {
@@ -72,6 +76,31 @@ export default function DashboardPage() {
   };
 
   // React Query calls
+  const { data: settingsData } = useQuery({
+    queryKey: ['settings'],
+    queryFn: apiGetSettings,
+  });
+
+  // Currency & Exchange Rate configuration
+  const defaultCurrency = React.useMemo(() => {
+    const item = settingsData?.value?.find((s: ApiSetting) => s.key === 'default_currency');
+    return item?.value || 'IDR';
+  }, [settingsData]);
+
+  const usdToIdrRate = React.useMemo(() => {
+    const item = settingsData?.value?.find((s: ApiSetting) => s.key === 'usd_to_idr_rate');
+    return Number(item?.value) || 16000;
+  }, [settingsData]);
+
+  const formatCost = React.useCallback((usdAmount: number) => {
+    if (defaultCurrency === 'USD') return `$${usdAmount.toFixed(4)}`;
+    if (defaultCurrency === 'EUR') return `€${(usdAmount * 0.92).toFixed(4)}`;
+    if (defaultCurrency === 'SGD') return `S$${(usdAmount * 1.35).toFixed(4)}`;
+    // Default IDR
+    const idrVal = Math.round(usdAmount * usdToIdrRate);
+    return `Rp ${idrVal.toLocaleString('id-ID')}`;
+  }, [defaultCurrency, usdToIdrRate]);
+
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: apiGetDashboardStats,
@@ -94,9 +123,11 @@ export default function DashboardPage() {
 
   // Calculate per-model totals for summary legend tags
   const modelTotals: Record<string, number> = {};
+  const modelCosts: Record<string, number> = {};
   usageData.forEach((item) => {
     const m = item.model || 'default';
     modelTotals[m] = (modelTotals[m] || 0) + (item.requests || 0);
+    modelCosts[m] = (modelCosts[m] || 0) + (item.estimatedCost || 0);
   });
 
   // Ant Design Charts Config
@@ -104,17 +135,22 @@ export default function DashboardPage() {
     date: item.date,
     model: item.model || 'default',
     requests: item.requests,
+    estimatedCost: item.estimatedCost || 0,
   }));
 
   // Find peak point for persistent detail callout
   const peakPoint = chartData.length > 0
-    ? chartData.reduce((max, p) => (p.requests > (max?.requests || 0) ? p : max), chartData[0])
+    ? chartData.reduce((max, p) => (
+        metricView === 'requests'
+          ? (p.requests > (max?.requests || 0) ? p : max)
+          : (p.estimatedCost > (max?.estimatedCost || 0) ? p : max)
+      ), chartData[0])
     : null;
 
   const chartConfig = {
     data: chartData,
     xField: 'date',
-    yField: 'requests',
+    yField: metricView,
     seriesField: 'model',
     colorField: 'model',
     smooth: true,
@@ -132,9 +168,16 @@ export default function DashboardPage() {
         fill: isDark ? '#ffffff' : '#141414',
       },
       formatter: (val: any) => {
-        const count = typeof val === 'object' && val !== null ? val.requests : val;
-        if (count !== undefined && count !== null && count !== '') {
-          return `${count} reqs`;
+        if (metricView === 'requests') {
+          const count = typeof val === 'object' && val !== null ? val.requests : val;
+          if (count !== undefined && count !== null && count !== '') {
+            return `${count} reqs`;
+          }
+        } else {
+          const cost = typeof val === 'object' && val !== null ? val.estimatedCost : val;
+          if (cost !== undefined && cost !== null && cost !== '') {
+            return formatCost(Number(cost));
+          }
         }
         return '';
       },
@@ -148,7 +191,7 @@ export default function DashboardPage() {
     theme: isDark ? 'dark' : 'light',
   };
 
-  const columns = React.useMemo(() => [
+  const activityColumns = React.useMemo(() => [
     {
       title: 'Request ID',
       dataIndex: 'id',
@@ -203,7 +246,7 @@ export default function DashboardPage() {
         description="Real-time metrics, model usage analytics, provider health, and live gateway activity"
       />
 
-      {/* Top 4 KPI Cards */}
+      {/* Top KPI Cards */}
       <Spin spinning={statsLoading}>
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={24} sm={12} lg={6}>
@@ -211,6 +254,14 @@ export default function DashboardPage() {
               title="Total Requests"
               value={stats?.totalRequests || 0}
               prefix={<ThunderboltOutlined style={{ color: '#1677ff' }} />}
+            />
+          </Col>
+
+          <Col xs={24} sm={12} lg={6}>
+            <MetricCard
+              title={`Est. API Expenses (${defaultCurrency})`}
+              value={formatCost(stats?.totalEstimatedCost || 0)}
+              prefix={<DollarOutlined style={{ color: '#faad14' }} />}
             />
           </Col>
 
@@ -231,14 +282,6 @@ export default function DashboardPage() {
               suffix="ms"
             />
           </Col>
-
-          <Col xs={24} sm={12} lg={6}>
-            <MetricCard
-              title="Active Gateway Keys"
-              value={stats?.activeKeys || 0}
-              prefix={<KeyOutlined style={{ color: '#722ed1' }} />}
-            />
-          </Col>
         </Row>
       </Spin>
 
@@ -247,9 +290,20 @@ export default function DashboardPage() {
         <Col xs={24} lg={16}>
           <Card
             title={
-              <Space>
-                <LineChartOutlined style={{ color: '#1677ff' }} />
-                <span>Request Traffic & Volume</span>
+              <Space size="middle">
+                <Space>
+                  <LineChartOutlined style={{ color: '#1677ff' }} />
+                  <span>Analytics & Volume</span>
+                </Space>
+                <Segmented
+                  size="small"
+                  options={[
+                    { label: 'Traffic (Reqs)', value: 'requests' },
+                    { label: `Expenses (${defaultCurrency})`, value: 'estimatedCost' },
+                  ]}
+                  value={metricView}
+                  onChange={(val) => setMetricView(val as any)}
+                />
               </Space>
             }
             extra={
@@ -286,7 +340,11 @@ export default function DashboardPage() {
                           color={['blue', 'purple', 'cyan', 'magenta', 'green', 'orange', 'gold'][i % 7]}
                           style={{ borderRadius: 12, padding: '2px 10px', fontSize: 12, margin: 0 }}
                         >
-                          <Text strong style={{ color: 'inherit' }}>{mName}</Text>: {reqCount.toLocaleString()} reqs
+                          <Text strong style={{ color: 'inherit' }}>{mName}</Text>: {
+                            metricView === 'requests'
+                              ? `${reqCount.toLocaleString()} reqs`
+                              : formatCost(modelCosts[mName] || 0)
+                          }
                         </Tag>
                       ))}
                       {peakPoint && peakPoint.requests > 0 && (
@@ -294,7 +352,11 @@ export default function DashboardPage() {
                           color="red"
                           style={{ borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 'bold', margin: 0 }}
                         >
-                          🔥 Peak: {peakPoint.requests} reqs ({peakPoint.model} on {peakPoint.date})
+                          🔥 Peak: {
+                            metricView === 'requests'
+                              ? `${peakPoint.requests} reqs (${peakPoint.model} on ${peakPoint.date})`
+                              : `${formatCost(peakPoint.estimatedCost)} (${peakPoint.model} on ${peakPoint.date})`
+                          }
                         </Tag>
                       )}
                     </Space>
