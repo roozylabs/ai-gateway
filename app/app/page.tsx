@@ -130,7 +130,12 @@ export default function DashboardPage() {
         fontSize: 11,
         fill: isDark ? '#ffffff' : '#141414',
       },
-      formatter: (datum: any) => `${datum.requests}`,
+      formatter: (val: any) => {
+        if (typeof val === 'object' && val !== null) {
+          return `${val.requests ?? ''}`;
+        }
+        return val !== undefined && val !== null ? `${val}` : '';
+      },
     },
     annotations: peakPoint && peakPoint.requests > 0 ? [
       {
