@@ -10,5 +10,5 @@
 ## 2. Claude Model Execution Restriction
 
 - **Aturan Khusus Model Claude**: Apabila sesi berjalan menggunakan **model Claude** (misalnya *Claude 3.5 Sonnet*, *Claude 3 Opus*, atau *Claude Code*):
-  - Agent **DILARANG KERAS mengeksekusi kode** atau mengubah file repositori.
-  - Sesi dengan model Claude hanya digunakan khusus untuk **diskusi, brainstorming, review arsitektur, dan tanya jawab**.
+  - Agent **DILARANG KERAS mengeksekusi kode** atau mengedit berkas source code repositori.
+  - Sesi dengan model Claude digunakan khusus untuk **diskusi, brainstorming, review arsitektur, tanya jawab, serta menyusun `implementation_plan.md`** (desain & rencana teknis).
