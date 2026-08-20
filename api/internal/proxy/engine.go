@@ -61,6 +61,34 @@ type ProxyRequest struct {
 	Extra       map[string]interface{}   `json:"-"`
 }
 
+func (r *ProxyRequest) UnmarshalJSON(data []byte) error {
+	type Alias ProxyRequest
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(r),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	var rawMap map[string]interface{}
+	if err := json.Unmarshal(data, &rawMap); err != nil {
+		return err
+	}
+
+	r.Extra = make(map[string]interface{})
+	for k, v := range rawMap {
+		switch k {
+		case "model", "messages", "stream", "max_tokens", "temperature":
+			// Known struct fields
+		default:
+			r.Extra[k] = v
+		}
+	}
+	return nil
+}
+
 func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) (*ProviderResponse, *models.RequestLog, error) {
 	start := time.Now()
 
