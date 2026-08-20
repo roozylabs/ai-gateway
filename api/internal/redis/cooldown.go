@@ -7,6 +7,7 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
+	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
 type CooldownStore struct {
@@ -99,6 +100,7 @@ func (s *CooldownStore) GetActiveStreams(ctx context.Context) (*ActiveStreamsSum
 	globalVal, _ := s.rdb.Get(ctx, "gateway:active:global").Int64()
 	if globalVal < 0 {
 		globalVal = 0
+		_ = s.rdb.Set(ctx, "gateway:active:global", 0, 0).Err()
 	}
 
 	summary := &ActiveStreamsSummary{
@@ -114,6 +116,8 @@ func (s *CooldownStore) GetActiveStreams(ctx context.Context) (*ActiveStreamsSum
 		if err == nil && val > 0 {
 			slug := strings.TrimPrefix(k, "gateway:active:model:")
 			summary.ByModel[slug] = val
+		} else if err == nil && val <= 0 {
+			_ = s.rdb.Del(ctx, k)
 		}
 	}
 
@@ -121,8 +125,11 @@ func (s *CooldownStore) GetActiveStreams(ctx context.Context) (*ActiveStreamsSum
 	for _, k := range credKeys {
 		val, err := s.rdb.Get(ctx, k).Int64()
 		if err == nil && val > 0 {
-			cred := strings.TrimPrefix(k, "gateway:active:cred:")
-			summary.ByCredential[cred] = val
+			rawCred := strings.TrimPrefix(k, "gateway:active:cred:")
+			maskedCred := utils.MaskEmailName(rawCred)
+			summary.ByCredential[maskedCred] += val
+		} else if err == nil && val <= 0 {
+			_ = s.rdb.Del(ctx, k)
 		}
 	}
 
@@ -132,6 +139,8 @@ func (s *CooldownStore) GetActiveStreams(ctx context.Context) (*ActiveStreamsSum
 		if err == nil && val > 0 {
 			keyID := strings.TrimPrefix(k, "gateway:active:key:")
 			summary.ByKey[keyID] = val
+		} else if err == nil && val <= 0 {
+			_ = s.rdb.Del(ctx, k)
 		}
 	}
 

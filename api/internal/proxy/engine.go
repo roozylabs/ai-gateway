@@ -19,6 +19,7 @@ import (
 	"github.com/roozylabs/ai-gateway/internal/models"
 	goredis "github.com/roozylabs/ai-gateway/internal/redis"
 	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
 type Engine struct {
@@ -109,10 +110,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 	activeCredName := ""
 	if len(routes) > 0 {
-		activeCredName = routes[0].Credential.Name
-		if activeCredName == "" {
-			activeCredName = routes[0].Credential.MaskedKey
-		}
+		activeCredName = getCredentialDisplayName(routes[0].Credential)
 	}
 
 	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID, activeCredName)
@@ -276,10 +274,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 	activeCredName := ""
 	if len(routes) > 0 {
-		activeCredName = routes[0].Credential.Name
-		if activeCredName == "" {
-			activeCredName = routes[0].Credential.MaskedKey
-		}
+		activeCredName = getCredentialDisplayName(routes[0].Credential)
 	}
 
 	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID, activeCredName)
@@ -477,4 +472,23 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 	}
 
 	return nil, fmt.Errorf("all credentials exhausted after %d retries: %w", retryCount, lastErr)
+}
+
+func getCredentialDisplayName(c *models.Credential) string {
+	if c == nil {
+		return "unknown-cred"
+	}
+	if c.Name != "" {
+		return utils.MaskEmailName(c.Name)
+	}
+	if c.MaskedKey != "" {
+		return c.MaskedKey
+	}
+	if c.KeyPrefix != "" {
+		return c.KeyPrefix + "••••"
+	}
+	if len(c.ID) >= 8 {
+		return "cred-" + c.ID[:8]
+	}
+	return "active-cred"
 }
