@@ -440,7 +440,7 @@ export default function DashboardPage() {
       >
         <Table
           dataSource={logsData?.data || []}
-          columns={columns}
+          columns={activityColumns}
           loading={logsLoading}
           pagination={false}
           rowKey="id"
