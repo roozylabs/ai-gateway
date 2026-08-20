@@ -8,6 +8,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
   apiGetProviders,
+  apiGetCredentials,
   apiGetGatewayKeys,
   apiCreateGatewayKey,
   apiDeleteGatewayKey,
@@ -35,6 +36,24 @@ export default function GatewayKeysPage() {
     queryKey: ['providers'],
     queryFn: apiGetProviders,
   });
+
+  // Fetch All Credentials to filter active provider keys
+  const { data: allCredentialsData, isLoading: credentialsLoading } = useQuery({
+    queryKey: ['credentials', 'all'],
+    queryFn: () => apiGetCredentials('all', { limit: 200 }),
+    staleTime: 5000,
+  });
+
+  const activeProviderIds = React.useMemo(() => {
+    const creds = allCredentialsData?.data || [];
+    const set = new Set<string>();
+    creds.forEach((c) => {
+      if (c.enabled && (c.status === 'active' || !c.status)) {
+        set.add(c.providerId);
+      }
+    });
+    return set;
+  }, [allCredentialsData]);
 
   // Build provider lookup map
   const providerMap = React.useMemo(() => {
@@ -336,19 +355,42 @@ export default function GatewayKeysPage() {
               <Input placeholder="e.g. OpenCode Development Environment" />
             </Form.Item>
 
+            {activeProviderIds.size === 0 && (
+              <Alert
+                type="warning"
+                showIcon
+                message="No Active Credentials Available"
+                description="There are currently no active credentials in the Credentials Pool. Please add an active API Key or connect a Google Account in Credentials Pool before creating a Gateway Key."
+                style={{ marginBottom: 16 }}
+              />
+            )}
+
             <Form.Item
               name="providerId"
               label="Target Provider"
-              tooltip="This Gateway Key will only route requests to the selected provider's credential pool."
+              tooltip="Only providers with active credentials in the pool can be assigned to a Gateway API Key."
               rules={[{ required: true, message: 'Please select a provider' }]}
             >
               <Select
-                placeholder="Select Provider"
-                loading={providersLoading}
-                options={providers.map((p: ApiProvider) => ({
-                  label: p.name,
-                  value: p.id,
-                }))}
+                placeholder="Select Provider with Active Credentials"
+                loading={providersLoading || credentialsLoading}
+                options={providers.map((p: ApiProvider) => {
+                  const hasActive = activeProviderIds.has(p.id);
+                  return {
+                    label: (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span>{p.name}</span>
+                        {hasActive ? (
+                          <Tag color="success" style={{ fontSize: 10, margin: 0 }}>Active Keys</Tag>
+                        ) : (
+                          <Tag color="default" style={{ fontSize: 10, margin: 0 }}>No Active Key</Tag>
+                        )}
+                      </div>
+                    ),
+                    value: p.id,
+                    disabled: !hasActive,
+                  };
+                })}
               />
             </Form.Item>
 
