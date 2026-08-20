@@ -87,5 +87,10 @@ type RequestLog struct {
 	EstimatedCost   float64        `json:"estimatedCost"`
 	ErrorMessage    sql.NullString `json:"errorMessage,omitempty" db:"error_message"`
 	RetryCount      int            `json:"retryCount" db:"retry_count"`
+	ClientIP        string         `json:"clientIp,omitempty" db:"client_ip"`
+	UserAgent       string         `json:"userAgent,omitempty" db:"user_agent"`
+	ClientApp       string         `json:"clientApp,omitempty" db:"client_app"`
+	IsStream        bool           `json:"isStream" db:"is_stream"`
+	TTFTMs          int            `json:"ttftMs" db:"ttft_ms"`
 	CreatedAt       time.Time      `json:"createdAt" db:"created_at"`
 }

@@ -30,11 +30,13 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO request_logs (id, request_id, gateway_api_key_id, provider_id, credential_id, model,
 		                          status_code, latency_ms, input_tokens, output_tokens, total_tokens,
-		                          error_message, retry_count, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+		                          error_message, retry_count, client_ip, user_agent, client_app,
+		                          is_stream, ttft_ms, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
 		log.ID, log.RequestID, log.GatewayAPIKeyID, log.ProviderID, log.CredentialID, log.Model,
 		log.StatusCode, log.LatencyMs, log.InputTokens, log.OutputTokens, log.TotalTokens,
-		log.ErrorMessage, log.RetryCount, log.CreatedAt,
+		log.ErrorMessage, log.RetryCount, log.ClientIP, log.UserAgent, log.ClientApp,
+		log.IsStream, log.TTFTMs, log.CreatedAt,
 	)
 	return err
 }
@@ -43,7 +45,8 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT rl.id, rl.request_id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id, rl.model,
 		        rl.status_code, rl.latency_ms, rl.input_tokens, rl.output_tokens, rl.total_tokens,
-		        rl.error_message, rl.retry_count, rl.created_at
+		        rl.error_message, rl.retry_count, COALESCE(rl.client_ip, ''), COALESCE(rl.user_agent, ''),
+		        COALESCE(rl.client_app, ''), COALESCE(rl.is_stream, false), COALESCE(rl.ttft_ms, 0), rl.created_at
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 WHERE gak.user_id = $1
@@ -60,7 +63,8 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 		var l models.RequestLog
 		if err := rows.Scan(&l.ID, &l.RequestID, &l.GatewayAPIKeyID, &l.ProviderID, &l.CredentialID,
 			&l.Model, &l.StatusCode, &l.LatencyMs, &l.InputTokens, &l.OutputTokens,
-			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.CreatedAt); err != nil {
+			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.ClientIP, &l.UserAgent,
+			&l.ClientApp, &l.IsStream, &l.TTFTMs, &l.CreatedAt); err != nil {
 			return nil, err
 		}
 		l.EstimatedCost = calculateCost(l.Model, l.TotalTokens)
@@ -131,7 +135,8 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 		`SELECT rl.id, rl.request_id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id,
 		        COALESCE(c.name, '') as credential_name, rl.model,
 		        rl.status_code, rl.latency_ms, rl.input_tokens, rl.output_tokens, rl.total_tokens,
-		        rl.error_message, rl.retry_count, rl.created_at
+		        rl.error_message, rl.retry_count, COALESCE(rl.client_ip, ''), COALESCE(rl.user_agent, ''),
+		        COALESCE(rl.client_app, ''), COALESCE(rl.is_stream, false), COALESCE(rl.ttft_ms, 0), rl.created_at
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 LEFT JOIN providers p ON rl.provider_id = p.id
@@ -154,7 +159,8 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 		var rawCredName string
 		if err := rows.Scan(&l.ID, &l.RequestID, &l.GatewayAPIKeyID, &l.ProviderID, &l.CredentialID,
 			&rawCredName, &l.Model, &l.StatusCode, &l.LatencyMs, &l.InputTokens, &l.OutputTokens,
-			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.CreatedAt); err != nil {
+			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.ClientIP, &l.UserAgent,
+			&l.ClientApp, &l.IsStream, &l.TTFTMs, &l.CreatedAt); err != nil {
 			return nil, 0, err
 		}
 		if rawCredName != "" {

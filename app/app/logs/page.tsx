@@ -78,6 +78,30 @@ export default function LogsPage() {
       render: (val: string) => (val ? new Date(val).toLocaleString() : '-'),
     },
     {
+      title: 'Client / Source',
+      key: 'clientApp',
+      render: (_: any, record: ApiRequestLog) => (
+        <Space direction="vertical" size={0}>
+          <Text strong style={{ fontSize: 13 }}>
+            {record.clientApp || 'API Client'}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            {record.clientIp || '-'}
+          </Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Type',
+      key: 'isStream',
+      render: (_: any, record: ApiRequestLog) =>
+        record.isStream ? (
+          <Tag color="blue" style={{ margin: 0 }}>Stream</Tag>
+        ) : (
+          <Tag color="purple" style={{ margin: 0 }}>JSON</Tag>
+        ),
+    },
+    {
       title: 'Credential Used',
       dataIndex: 'credentialName',
       key: 'credentialName',
@@ -203,6 +227,15 @@ export default function LogsPage() {
       >
         {selectedLog && (
           <Descriptions column={1} bordered size="small">
+            <Descriptions.Item label="Client Application">
+              <Text strong>{selectedLog.clientApp || 'API Client'}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Client IP Address">
+              <Text code>{selectedLog.clientIp || 'N/A'}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="User-Agent">
+              <Text style={{ fontSize: 12, wordBreak: 'break-all' }}>{selectedLog.userAgent || 'N/A'}</Text>
+            </Descriptions.Item>
             <Descriptions.Item label="Request ID">
               <Text code>{selectedLog.id}</Text>
             </Descriptions.Item>

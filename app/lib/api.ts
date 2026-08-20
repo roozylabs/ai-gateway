@@ -113,6 +113,11 @@ export interface ApiRequestLog {
   estimatedCost?: number;
   errorMessage?: string;
   retryCount: number;
+  clientIp?: string;
+  userAgent?: string;
+  clientApp?: string;
+  isStream?: boolean;
+  ttftMs?: number;
   createdAt: string;
 }
 

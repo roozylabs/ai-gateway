@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -56,6 +57,10 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
+	clientIP := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
+	clientApp := parseClientApp(userAgent)
+
 	if req.Stream {
 		log, err := h.engine.ProxyStream(c, &req, gatewayKey)
 		if err != nil {
@@ -64,6 +69,10 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		}
 		if log != nil {
 			log.RequestID = requestID
+			log.ClientIP = clientIP
+			log.UserAgent = userAgent
+			log.ClientApp = clientApp
+			log.IsStream = true
 			_ = h.requestLogs.Create(c.Request.Context(), log)
 			_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 			h.publishEvents(c, requestID, log, gatewayKey)
@@ -80,6 +89,10 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 
 	if log != nil {
 		log.RequestID = requestID
+		log.ClientIP = clientIP
+		log.UserAgent = userAgent
+		log.ClientApp = clientApp
+		log.IsStream = false
 		_ = h.requestLogs.Create(c.Request.Context(), log)
 		_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 		h.publishEvents(c, requestID, log, gatewayKey)
@@ -179,4 +192,30 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		"object": "list",
 		"data":   models,
 	})
+}
+
+func parseClientApp(ua string) string {
+	if ua == "" {
+		return "API Client"
+	}
+	uaLower := strings.ToLower(ua)
+	if strings.Contains(uaLower, "opencode") {
+		return "OpenCode"
+	}
+	if strings.Contains(uaLower, "antigravity") || strings.Contains(uaLower, "agy") {
+		return "Antigravity"
+	}
+	if strings.Contains(uaLower, "claude-code") || strings.Contains(uaLower, "claudecode") {
+		return "Claude Code"
+	}
+	if strings.Contains(uaLower, "python") {
+		return "Python SDK"
+	}
+	if strings.Contains(uaLower, "node") || strings.Contains(uaLower, "axios") {
+		return "Node.js SDK"
+	}
+	if strings.Contains(uaLower, "mozilla") || strings.Contains(uaLower, "chrome") || strings.Contains(uaLower, "safari") {
+		return "Web Sandbox"
+	}
+	return "Custom App"
 }
