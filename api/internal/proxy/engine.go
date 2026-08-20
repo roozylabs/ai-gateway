@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/roozylabs/ai-gateway/internal/models"
 	goredis "github.com/roozylabs/ai-gateway/internal/redis"
 	"github.com/roozylabs/ai-gateway/internal/repository"
@@ -103,6 +104,11 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		gwKeyID = gatewayKey.ID
 	}
 
+	reqID := c.GetString("requestID")
+	if reqID == "" {
+		reqID = uuid.New().String()
+	}
+
 	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
 	if err != nil {
 		return nil, nil, err
@@ -113,7 +119,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		activeCredName = getCredentialDisplayName(routes[0].Credential)
 	}
 
-	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID, activeCredName)
+	_ = e.cooldown.TrackActiveStream(c.Request.Context(), reqID, req.Model, gwKeyID, activeCredName)
 	if e.publisher != nil {
 		if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
 			_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
@@ -122,7 +128,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 	defer func() {
 		bgCtx := context.Background()
-		_ = e.cooldown.DecrementActiveStream(bgCtx, req.Model, gwKeyID, activeCredName)
+		_ = e.cooldown.UntrackActiveStream(bgCtx, reqID)
 		if e.publisher != nil {
 			if summary, err := e.cooldown.GetActiveStreams(bgCtx); err == nil {
 				_ = e.publisher.Publish(bgCtx, "active_streams_update", summary)
@@ -136,6 +142,12 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 	for i, route := range routes {
 		if i > 0 {
 			retryCount++
+			_ = e.cooldown.TrackActiveStream(c.Request.Context(), reqID, req.Model, gwKeyID, getCredentialDisplayName(route.Credential))
+			if e.publisher != nil {
+				if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
+					_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
+				}
+			}
 		}
 
 		var apiKey string
@@ -267,6 +279,11 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		gwKeyID = gatewayKey.ID
 	}
 
+	reqID := c.GetString("requestID")
+	if reqID == "" {
+		reqID = uuid.New().String()
+	}
+
 	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
 	if err != nil {
 		return nil, err
@@ -277,7 +294,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		activeCredName = getCredentialDisplayName(routes[0].Credential)
 	}
 
-	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID, activeCredName)
+	_ = e.cooldown.TrackActiveStream(c.Request.Context(), reqID, req.Model, gwKeyID, activeCredName)
 	if e.publisher != nil {
 		if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
 			_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
@@ -286,7 +303,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 	defer func() {
 		bgCtx := context.Background()
-		_ = e.cooldown.DecrementActiveStream(bgCtx, req.Model, gwKeyID, activeCredName)
+		_ = e.cooldown.UntrackActiveStream(bgCtx, reqID)
 		if e.publisher != nil {
 			if summary, err := e.cooldown.GetActiveStreams(bgCtx); err == nil {
 				_ = e.publisher.Publish(bgCtx, "active_streams_update", summary)
@@ -300,6 +317,12 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 	for i, route := range routes {
 		if i > 0 {
 			retryCount++
+			_ = e.cooldown.TrackActiveStream(c.Request.Context(), reqID, req.Model, gwKeyID, getCredentialDisplayName(route.Credential))
+			if e.publisher != nil {
+				if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
+					_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
+				}
+			}
 		}
 
 		var apiKey string

@@ -130,42 +130,52 @@ function SidebarActivityWidget({ collapsed, mode }: { collapsed: boolean; mode: 
       </div>
 
       {total > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
           {activeModels && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>Model:</Text>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>Model</Text>
               <Text
                 strong
                 style={{
                   fontSize: 11,
-                  maxWidth: 120,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
                   color: '#1677ff',
                 }}
-                title={activeModels}
               >
                 {activeModels}
               </Text>
             </div>
           )}
-          {activeCreds && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>Cred:</Text>
-              <Text
-                code
-                style={{
-                  fontSize: 10,
-                  maxWidth: 120,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-                title={activeCreds}
-              >
-                {activeCreds}
+
+          {data?.byCredential && Object.keys(data.byCredential).length > 0 && (
+            <div>
+              <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 4, letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                Credentials
               </Text>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {Object.entries(data.byCredential).map(([cred, count]) => (
+                  <div
+                    key={cred}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9',
+                      padding: '3px 6px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                    }}
+                  >
+                    <Text code style={{ fontSize: 10, border: 'none', background: 'transparent', padding: 0 }}>
+                      {cred}
+                    </Text>
+                    {count > 1 && (
+                      <Tag color="processing" style={{ margin: 0, fontSize: 10, padding: '0 4px', lineHeight: '16px', height: 16 }}>
+                        ×{count}
+                      </Tag>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

@@ -2,8 +2,9 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
@@ -25,11 +26,14 @@ func (s *CooldownStore) SetCooldown(ctx context.Context, credentialID string, se
 
 func (s *CooldownStore) IsCoolingDown(ctx context.Context, credentialID string) (bool, error) {
 	key := fmt.Sprintf("credential:%s:cooldown", credentialID)
-	exists, err := s.rdb.Exists(ctx, key).Result()
+	val, err := s.rdb.Get(ctx, key).Result()
+	if errors.Is(err, goredis.Nil) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
-	return exists > 0, nil
+	return val == "1", nil
 }
 
 func (s *CooldownStore) GetCooldownTTL(ctx context.Context, credentialID string) (time.Duration, error) {
@@ -40,6 +44,10 @@ func (s *CooldownStore) GetCooldownTTL(ctx context.Context, credentialID string)
 func (s *CooldownStore) RemoveCooldown(ctx context.Context, credentialID string) error {
 	key := fmt.Sprintf("credential:%s:cooldown", credentialID)
 	return s.rdb.Del(ctx, key).Err()
+}
+
+func (s *CooldownStore) ClearCooldown(ctx context.Context, credentialID string) error {
+	return s.RemoveCooldown(ctx, credentialID)
 }
 
 func (s *CooldownStore) SetAccessToken(ctx context.Context, credentialID, token string, ttlSeconds int) error {
@@ -57,6 +65,15 @@ func (s *CooldownStore) DeleteAccessToken(ctx context.Context, credentialID stri
 	return s.rdb.Del(ctx, key).Err()
 }
 
+const ActiveRequestsHashKey = "gateway:active_requests"
+
+type ActiveRequestRecord struct {
+	Model        string `json:"model"`
+	GatewayKeyID string `json:"gatewayKeyId"`
+	Credential   string `json:"credential"`
+	StartedAt    int64  `json:"startedAt"`
+}
+
 type ActiveStreamsSummary struct {
 	TotalActive  int64            `json:"totalActive"`
 	ByModel      map[string]int64 `json:"byModel"`
@@ -64,86 +81,82 @@ type ActiveStreamsSummary struct {
 	ByKey        map[string]int64 `json:"byKey"`
 }
 
+func (s *CooldownStore) TrackActiveStream(ctx context.Context, reqID, modelSlug, gatewayKeyID, credName string) error {
+	if reqID == "" {
+		return nil
+	}
+	rec := ActiveRequestRecord{
+		Model:        modelSlug,
+		GatewayKeyID: gatewayKeyID,
+		Credential:   utils.MaskEmailName(credName),
+		StartedAt:    time.Now().Unix(),
+	}
+	data, err := json.Marshal(rec)
+	if err != nil {
+		return err
+	}
+	return s.rdb.HSet(ctx, ActiveRequestsHashKey, reqID, data).Err()
+}
+
+func (s *CooldownStore) UntrackActiveStream(ctx context.Context, reqID string) error {
+	if reqID == "" {
+		return nil
+	}
+	return s.rdb.HDel(ctx, ActiveRequestsHashKey, reqID).Err()
+}
+
 func (s *CooldownStore) IncrementActiveStream(ctx context.Context, modelSlug, gatewayKeyID, credName string) error {
-	pipe := s.rdb.Pipeline()
-	pipe.Incr(ctx, "gateway:active:global")
-	if modelSlug != "" {
-		pipe.Incr(ctx, fmt.Sprintf("gateway:active:model:%s", modelSlug))
-	}
-	if gatewayKeyID != "" {
-		pipe.Incr(ctx, fmt.Sprintf("gateway:active:key:%s", gatewayKeyID))
-	}
-	if credName != "" {
-		pipe.Incr(ctx, fmt.Sprintf("gateway:active:cred:%s", credName))
-	}
-	_, err := pipe.Exec(ctx)
-	return err
+	return nil
 }
 
 func (s *CooldownStore) DecrementActiveStream(ctx context.Context, modelSlug, gatewayKeyID, credName string) error {
-	pipe := s.rdb.Pipeline()
-	pipe.Decr(ctx, "gateway:active:global")
-	if modelSlug != "" {
-		pipe.Decr(ctx, fmt.Sprintf("gateway:active:model:%s", modelSlug))
-	}
-	if gatewayKeyID != "" {
-		pipe.Decr(ctx, fmt.Sprintf("gateway:active:key:%s", gatewayKeyID))
-	}
-	if credName != "" {
-		pipe.Decr(ctx, fmt.Sprintf("gateway:active:cred:%s", credName))
-	}
-	_, err := pipe.Exec(ctx)
-	return err
+	return nil
 }
 
 func (s *CooldownStore) GetActiveStreams(ctx context.Context) (*ActiveStreamsSummary, error) {
-	globalVal, _ := s.rdb.Get(ctx, "gateway:active:global").Int64()
-	if globalVal < 0 {
-		globalVal = 0
-		_ = s.rdb.Set(ctx, "gateway:active:global", 0, 0).Err()
-	}
-
 	summary := &ActiveStreamsSummary{
-		TotalActive:  globalVal,
+		TotalActive:  0,
 		ByModel:      make(map[string]int64),
 		ByCredential: make(map[string]int64),
 		ByKey:        make(map[string]int64),
 	}
 
-	modelKeys, _ := s.rdb.Keys(ctx, "gateway:active:model:*").Result()
-	for _, k := range modelKeys {
-		val, err := s.rdb.Get(ctx, k).Int64()
-		if err == nil && val > 0 {
-			slug := strings.TrimPrefix(k, "gateway:active:model:")
-			summary.ByModel[slug] = val
-		} else if err == nil && val <= 0 {
-			_ = s.rdb.Del(ctx, k)
+	items, err := s.rdb.HGetAll(ctx, ActiveRequestsHashKey).Result()
+	if err != nil && !errors.Is(err, goredis.Nil) {
+		return summary, err
+	}
+
+	now := time.Now().Unix()
+	var staleKeys []string
+
+	for reqID, rawJSON := range items {
+		var rec ActiveRequestRecord
+		if err := json.Unmarshal([]byte(rawJSON), &rec); err != nil {
+			staleKeys = append(staleKeys, reqID)
+			continue
+		}
+
+		// Clean up any requests older than 15 minutes as stale
+		if rec.StartedAt > 0 && (now-rec.StartedAt) > 900 {
+			staleKeys = append(staleKeys, reqID)
+			continue
+		}
+
+		summary.TotalActive++
+		if rec.Model != "" {
+			summary.ByModel[rec.Model]++
+		}
+		if rec.Credential != "" {
+			summary.ByCredential[rec.Credential]++
+		}
+		if rec.GatewayKeyID != "" {
+			summary.ByKey[rec.GatewayKeyID]++
 		}
 	}
 
-	credKeys, _ := s.rdb.Keys(ctx, "gateway:active:cred:*").Result()
-	for _, k := range credKeys {
-		val, err := s.rdb.Get(ctx, k).Int64()
-		if err == nil && val > 0 {
-			rawCred := strings.TrimPrefix(k, "gateway:active:cred:")
-			maskedCred := utils.MaskEmailName(rawCred)
-			summary.ByCredential[maskedCred] += val
-		} else if err == nil && val <= 0 {
-			_ = s.rdb.Del(ctx, k)
-		}
-	}
-
-	gatewayKeys, _ := s.rdb.Keys(ctx, "gateway:active:key:*").Result()
-	for _, k := range gatewayKeys {
-		val, err := s.rdb.Get(ctx, k).Int64()
-		if err == nil && val > 0 {
-			keyID := strings.TrimPrefix(k, "gateway:active:key:")
-			summary.ByKey[keyID] = val
-		} else if err == nil && val <= 0 {
-			_ = s.rdb.Del(ctx, k)
-		}
+	if len(staleKeys) > 0 {
+		_ = s.rdb.HDel(ctx, ActiveRequestsHashKey, staleKeys...).Err()
 	}
 
 	return summary, nil
 }
-

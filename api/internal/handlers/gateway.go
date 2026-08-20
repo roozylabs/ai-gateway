@@ -39,6 +39,7 @@ func NewGatewayHandler(
 func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	gatewayKey := c.MustGet("gatewayKey").(*models.GatewayAPIKey)
 	requestID := uuid.New().String()
+	c.Set("requestID", requestID)
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
