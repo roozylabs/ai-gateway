@@ -92,6 +92,9 @@ func (r *GatewayKeyRepository) ListByUserID(ctx context.Context, userID string) 
 		k.AllowedModels = allowedModels
 		keys = append(keys, k)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return keys, nil
 }
 
@@ -145,6 +148,9 @@ func (r *GatewayKeyRepository) ListByUserIDWithFilter(ctx context.Context, userI
 		}
 		k.AllowedModels = allowedModels
 		keys = append(keys, k)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
 	return keys, total, nil
 }

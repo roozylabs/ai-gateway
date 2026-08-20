@@ -37,6 +37,9 @@ func (r *ModelRepository) ListByProviderID(ctx context.Context, providerID strin
 		}
 		modelList = append(modelList, m)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return modelList, nil
 }
 
@@ -94,6 +97,9 @@ func (r *ModelRepository) ListWithFilter(ctx context.Context, providerID, search
 			return nil, 0, err
 		}
 		modelList = append(modelList, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
 	return modelList, total, nil
 }

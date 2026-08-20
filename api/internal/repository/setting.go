@@ -52,6 +52,9 @@ func (r *SettingRepository) List(ctx context.Context) ([]models.Setting, error) 
 		}
 		settings = append(settings, s)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return settings, nil
 }
 
@@ -69,6 +72,9 @@ func (r *SettingRepository) GetAll(ctx context.Context) (map[string]string, erro
 			return nil, err
 		}
 		settings[key] = value
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return settings, nil
 }

@@ -36,6 +36,9 @@ func (r *ProviderRepository) ListByUserID(ctx context.Context, userID string) ([
 		}
 		providers = append(providers, p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return providers, nil
 }
 

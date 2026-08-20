@@ -41,6 +41,9 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 		}
 		credentials = append(credentials, c)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return credentials, nil
 }
 
@@ -101,6 +104,9 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 			return nil, 0, err
 		}
 		credentials = append(credentials, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
 	return credentials, total, nil
 }
@@ -193,6 +199,9 @@ func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, pr
 		}
 		creds = append(creds, c)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return creds, nil
 }
 
@@ -234,6 +243,9 @@ func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID st
 		}
 		creds = append(creds, c)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return creds, nil
 }
 
@@ -259,6 +271,9 @@ func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string) (
 			return nil, err
 		}
 		creds = append(creds, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return creds, nil
 }
