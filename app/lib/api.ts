@@ -120,6 +120,7 @@ export interface ApiDashboardStats {
 
 export interface ApiUsagePoint {
   date: string;
+  model?: string;
   requests: number;
   tokens: number;
 }

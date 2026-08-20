@@ -166,6 +166,7 @@ type DashboardStats struct {
 
 type UsagePoint struct {
 	Date     string `json:"date"`
+	Model    string `json:"model"`
 	Requests int64  `json:"requests"`
 	Tokens   int64  `json:"tokens"`
 }
@@ -215,14 +216,15 @@ func (r *RequestLogRepository) GetStats(ctx context.Context, userID string) (*Da
 func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string, days int) ([]UsagePoint, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT TO_CHAR(rl.created_at, 'YYYY-MM-DD') as date,
+		        COALESCE(NULLIF(rl.model, ''), 'default') as model,
 		        COUNT(*) as requests,
 		        COALESCE(SUM(total_tokens), 0) as tokens
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 WHERE gak.user_id = $1
 		   AND rl.created_at >= NOW() - ($2 || ' days')::INTERVAL
-		 GROUP BY TO_CHAR(rl.created_at, 'YYYY-MM-DD')
-		 ORDER BY date ASC`, userID, days,
+		 GROUP BY TO_CHAR(rl.created_at, 'YYYY-MM-DD'), COALESCE(NULLIF(rl.model, ''), 'default')
+		 ORDER BY date ASC, model ASC`, userID, days,
 	)
 	if err != nil {
 		return nil, err
@@ -232,7 +234,7 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 	var points []UsagePoint
 	for rows.Next() {
 		var p UsagePoint
-		if err := rows.Scan(&p.Date, &p.Requests, &p.Tokens); err != nil {
+		if err := rows.Scan(&p.Date, &p.Model, &p.Requests, &p.Tokens); err != nil {
 			return nil, err
 		}
 		points = append(points, p)

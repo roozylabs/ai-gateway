@@ -69,9 +69,17 @@ export default function DashboardPage() {
     queryFn: () => apiGetLogs({ limit: 5 }),
   });
 
+  // Calculate per-model totals for summary legend tags
+  const modelTotals: Record<string, number> = {};
+  usageData.forEach((item) => {
+    const m = item.model || 'default';
+    modelTotals[m] = (modelTotals[m] || 0) + (item.requests || 0);
+  });
+
   // Ant Design Charts Config
   const chartData = usageData.map((item) => ({
     date: item.date,
+    model: item.model || 'default',
     requests: item.requests,
   }));
 
@@ -79,19 +87,20 @@ export default function DashboardPage() {
     data: chartData,
     xField: 'date',
     yField: 'requests',
+    seriesField: 'model',
+    colorField: 'model',
     smooth: true,
-    height: 280,
+    height: 260,
     autoFit: true,
-    color: '#1677ff',
-    areaStyle: () => ({
-      fill: 'l(270) 0:#ffffff 0.5:#e6f4ff 1:#1677ff',
-    }),
     point: {
       size: 4,
       shape: 'diamond',
     },
     tooltip: {
       showMarkers: true,
+    },
+    legend: {
+      position: 'top-left' as const,
     },
     theme: isDark ? 'dark' : 'light',
   };
@@ -205,7 +214,23 @@ export default function DashboardPage() {
             style={{ borderRadius: 8 }}
           >
             <Spin spinning={usageLoading}>
-              <div style={{ paddingTop: 16 }}>
+              <div style={{ paddingTop: 12 }}>
+                {Object.keys(modelTotals).length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <Space wrap size={[6, 6]}>
+                      <Text type="secondary" style={{ fontSize: 12, marginRight: 4 }}>Models Breakdown:</Text>
+                      {Object.entries(modelTotals).map(([mName, reqCount], i) => (
+                        <Tag
+                          key={mName}
+                          color={['blue', 'purple', 'cyan', 'magenta', 'green', 'orange', 'gold'][i % 7]}
+                          style={{ borderRadius: 12, padding: '2px 10px', fontSize: 12, margin: 0 }}
+                        >
+                          <Text strong style={{ color: 'inherit' }}>{mName}</Text>: {reqCount.toLocaleString()} reqs
+                        </Tag>
+                      ))}
+                    </Space>
+                  </div>
+                )}
                 {chartData.length > 0 ? (
                   <Line {...chartConfig} />
                 ) : (
