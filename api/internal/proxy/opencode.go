@@ -47,6 +47,10 @@ func (a *OpenCodeAdapter) BuildRequest(baseURL, apiKey string, req *ProviderRequ
 		return nil, err
 	}
 	httpReq.Header.Set("User-Agent", "opencode-cli/1.0")
+	httpReq.Header.Set("x-api-key", apiKey)
+	if req.Stream {
+		httpReq.Header.Set("Accept", "text/event-stream")
+	}
 	return httpReq, nil
 }
 
