@@ -1,28 +1,34 @@
-# Rule: Mandatory Build & Test Verification Before Git Push
+# Rule: Dynamic Build & Test Verification Before Git Push
 
 ## Description
-Setiap kali agent melakukan perubahan kode pada backend Go (`api`) atau frontend Next.js (`app`), agent **DILARANG KERAS** menjalankan `git push` sebelum kompilasi build dan pengujian pada kedua subfolder tersebut dinyatakan **100% SUKSES (Exit Code 0)**.
+Sebelum mengeksekusi `git push`, agent wajib mengecek berkas/subfolder mana yang mengalami perubahan (`api/` atau `app/`), dan hanya menjalankan proses build/tes pada subfolder yang relevan:
+
+- **Hanya `api/` yang berubah**: Cukup jalankan build & tes pada Go Backend (`api`).
+- **Hanya `app/` yang berubah**: Cukup jalankan build & tes pada Next.js Frontend (`app`).
+- **Kedua subfolder (`api/` & `app/`) berubah**: Wajib menjalankan build & tes pada **KEDUA** subfolder (`api` dan `app`).
 
 ---
 
-## Mandatory Pre-Push Verification Checklist
+## Pre-Push Verification Flow
 
 Sebelum mengeksekusi `git push`:
 
-1. **Go Backend (`api`) Verification**:
-   - Wajib menjalankan kompilasi Go:
+1. **Periksa Berkas Berubah**:
+   Cek lokasi file yang diubah (`git status` atau file change scope).
+
+2. **Eksekusi Build Relevan**:
+   - **Jika menyentuh `api/`**:
      ```powershell
      cd api; & "C:\Program Files\Go\bin\go.exe" build -v ./...
      ```
-   - Pastikan output kompilasi sukses tanpa error dan tanpa warning `sqlrowserr`.
+     Pastikan kompilasi Go sukses tanpa error dan tanpa warning `sqlrowserr`.
 
-2. **Next.js Frontend (`app`) Verification**:
-   - Wajib menjalankan Next.js production build:
+   - **Jika menyentuh `app/`**:
      ```powershell
      cd app; pnpm build
      ```
-   - Pastikan proses `pnpm build` selesai dengan status **`✓ Compiled successfully`** dan **Exit Code 0**.
+     Pastikan `pnpm build` selesai dengan **`✓ Compiled successfully`** (Exit Code 0).
 
 3. **Strict Gate**:
-   - Jika salah satu kompilasi gagal, mengalami type error, atau dibatalkan, agent **TIDAK BOLEH** mengeksekusi `git push`.
-   - Perbaiki terlebih dahulu semua error kompilasi hingga kedua build terkonfirmasi lulus sepenuhnya.
+   - Jika kompilasi pada subfolder yang diubah mengalami error, agent **TIDAK BOLEH** mengeksekusi `git push`.
+   - Perbaiki terlebih dahulu semua error kompilasi hingga build terkonfirmasi lulus (Exit Code 0).
