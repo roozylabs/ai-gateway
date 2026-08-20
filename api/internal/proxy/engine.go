@@ -9,8 +9,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -30,6 +33,7 @@ type Engine struct {
 	cooldown     *goredis.CooldownStore
 	publisher    *goredis.EventPublisher
 	oauthMgr     *OAuthTokenManager
+	throttler    *ProviderThrottler
 	encKey       string
 	maxRetries   int
 	cooldownSecs int
@@ -37,7 +41,15 @@ type Engine struct {
 }
 
 func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int) *Engine {
+	proxyFunc := http.ProxyFromEnvironment
+	if customProxy := os.Getenv("GLOBAL_PROXY_URL"); customProxy != "" {
+		if proxyURL, err := url.Parse(customProxy); err == nil {
+			proxyFunc = http.ProxyURL(proxyURL)
+		}
+	}
+
 	tr := &http.Transport{
+		Proxy: proxyFunc,
 		DialContext: (&net.Dialer{
 			Timeout:   10 * time.Second,
 			KeepAlive: 30 * time.Second,
@@ -53,6 +65,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		cooldown:     cooldown,
 		publisher:    publisher,
 		oauthMgr:     NewOAuthTokenManager(cooldown),
+		throttler:    NewProviderThrottler(),
 		encKey:       encKey,
 		maxRetries:   maxRetries,
 		cooldownSecs: cooldownSecs,
@@ -193,6 +206,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			continue
 		}
 
+		_ = e.throttler.Wait(c.Request.Context(), route.Provider.Type)
+
 		httpResp, err := e.client.Do(httpReq)
 		if err != nil {
 			lastErr = fmt.Errorf("execute request: %w", err)
@@ -213,7 +228,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
 			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds): %s", route.Credential.ID, retryAfter, strings.TrimSpace(bodyStr))
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(calculateBackoff(i, retryAfter))
 			continue
 		}
 
@@ -362,6 +377,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			continue
 		}
 
+		_ = e.throttler.Wait(c.Request.Context(), route.Provider.Type)
+
 		httpResp, err := e.client.Do(httpReq)
 		if err != nil {
 			lastErr = fmt.Errorf("execute request: %w", err)
@@ -378,7 +395,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
 			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds): %s", route.Credential.ID, retryAfter, strings.TrimSpace(bodyStr))
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(calculateBackoff(i, retryAfter))
 			continue
 		}
 
@@ -643,4 +660,17 @@ func determineCooldownDuration(header http.Header, bodyStr string) int {
 	// so the current request can immediately try the next key in the pool,
 	// without locking out this key for minutes or days.
 	return 5
+}
+
+func calculateBackoff(attempt int, retryAfter int) time.Duration {
+	if retryAfter > 0 && retryAfter <= 30 {
+		jitter := time.Duration(rand.Intn(300)) * time.Millisecond
+		return time.Duration(retryAfter)*time.Second + jitter
+	}
+	baseMs := 500 * (1 << attempt)
+	if baseMs > 4000 {
+		baseMs = 4000
+	}
+	jitter := rand.Intn(300)
+	return time.Duration(baseMs+jitter) * time.Millisecond
 }
