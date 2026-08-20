@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import { Typography, Space, Button, Modal, Form, Input, Select, Tag, App } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
   apiGetProviders,
   apiGetModels,
+  apiGetActiveStreams,
   apiCreateModel,
   apiDeleteModel,
   ApiProvider,
@@ -36,6 +37,13 @@ export default function ModelsPage() {
   const { data: providers = [], isLoading: providersLoading } = useQuery({
     queryKey: ['providers'],
     queryFn: apiGetProviders,
+  });
+
+  // Fetch Active Streams
+  const { data: activeStreamsData } = useQuery({
+    queryKey: ['active-streams'],
+    queryFn: apiGetActiveStreams,
+    refetchInterval: 3000,
   });
 
   // Fetch Models for all or selected provider
@@ -131,6 +139,21 @@ export default function ModelsPage() {
         key: 'enabled',
         sorter: (a: CombinedModel, b: CombinedModel) => Number(a.enabled) - Number(b.enabled),
         render: (enabled: boolean) => <StatusTag status={enabled ? 'active' : 'disabled'} />,
+      },
+      {
+        title: 'Activity',
+        key: 'activity',
+        render: (_: any, record: CombinedModel) => {
+          const count = activeStreamsData?.byModel?.[record.slug] || activeStreamsData?.byModel?.[record.name] || 0;
+          if (count > 0) {
+            return (
+              <Tag color="processing" style={{ borderRadius: 10, fontWeight: 600 }}>
+                <SyncOutlined spin style={{ marginRight: 4 }} /> ⚡ {count} Running
+              </Tag>
+            );
+          }
+          return <Tag color="default" style={{ borderRadius: 10 }}>🟢 Idle</Tag>;
+        },
       },
       {
         title: 'Actions',

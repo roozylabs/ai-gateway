@@ -68,7 +68,7 @@ func main() {
 	// Proxy
 	cooldown := goredis.NewCooldownStore(rdb)
 	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo, settingRepo)
-	engine := proxy.NewEngine(router, credentialRepo, cooldown, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds)
+	engine := proxy.NewEngine(router, credentialRepo, cooldown, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -80,6 +80,7 @@ func main() {
 	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo)
+	activeStreamsHandler := handlers.NewActiveStreamsHandler(cooldown)
 	settingsHandler := handlers.NewSettingsHandler(settingRepo)
 	sseHandler := handlers.NewSSEHandler(eventPublisher)
 	googleOAuthHandler := handlers.NewGoogleOAuthHandler(credentialRepo, providerRepo, cfg.EncryptionKey)
@@ -150,6 +151,7 @@ func main() {
 			protected.GET("/dashboard/stats", dashboardHandler.GetStats)
 			protected.GET("/dashboard/usage", dashboardHandler.GetUsageChart)
 			protected.GET("/dashboard/health", dashboardHandler.GetProviderHealth)
+			protected.GET("/dashboard/active-streams", activeStreamsHandler.GetActiveStreams)
 
 			// Settings
 			protected.GET("/settings", settingsHandler.List)

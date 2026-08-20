@@ -50,6 +50,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
               queryClient.invalidateQueries({ queryKey: ['dashboard-usage'] });
               queryClient.invalidateQueries({ queryKey: ['dashboard-health'] });
+              queryClient.invalidateQueries({ queryKey: ['active-streams'] });
               queryClient.invalidateQueries({ queryKey: ['logs'] });
               queryClient.invalidateQueries({ queryKey: ['recent-logs'] });
               queryClient.invalidateQueries({ queryKey: ['credentials'] });

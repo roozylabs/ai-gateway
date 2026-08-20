@@ -201,6 +201,17 @@ export async function apiGetDashboardHealth(): Promise<ApiProviderHealth[]> {
   return response.data;
 }
 
+export interface ApiActiveStreams {
+  totalActive: number;
+  byModel: Record<string, number>;
+  byKey: Record<string, number>;
+}
+
+export async function apiGetActiveStreams(): Promise<ApiActiveStreams> {
+  const response = await api.get<ApiActiveStreams>('/dashboard/active-streams');
+  return response.data;
+}
+
 // Providers API
 export async function apiGetProviders(): Promise<ApiProvider[]> {
   const response = await api.get<ApiProvider[]>('/providers');

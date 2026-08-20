@@ -515,11 +515,11 @@ export default function CredentialsPage() {
               value={addAuthType}
               onChange={(val) => setAddAuthType(val)}
               options={[
-                { label: '🔑 API Key (Standard)', value: 'api_key' },
+                { label: 'API Key (Standard)', value: 'api_key' },
                 {
                   label: isGoogleProvider
-                    ? '🔐 GCP User OAuth (Free Gemini Account)'
-                    : '🔐 GCP User OAuth (Google Provider Only)',
+                    ? 'GCP User OAuth (Gemini Account)'
+                    : 'GCP User OAuth (Google Provider Only)',
                   value: 'gcp_user_oauth',
                   disabled: !isGoogleProvider,
                 },
@@ -534,7 +534,7 @@ export default function CredentialsPage() {
                 Connect Google Account
               </Typography.Title>
               <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 20 }}>
-                Sign in with your Google / Gmail account to grant Gemini API access. No manual Client ID or Secret needed!
+                Sign in with your Google / Gmail account to grant Gemini API access.
               </Typography.Paragraph>
               <Button
                 type="primary"

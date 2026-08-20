@@ -9,6 +9,7 @@ import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/at
 import {
   apiGetProviders,
   apiGetCredentials,
+  apiGetActiveStreams,
   apiGetGatewayKeys,
   apiCreateGatewayKey,
   apiDeleteGatewayKey,
@@ -54,6 +55,13 @@ export default function GatewayKeysPage() {
     });
     return set;
   }, [allCredentialsData]);
+
+  // Fetch Active Streams for live activity indicators
+  const { data: activeStreamsData } = useQuery({
+    queryKey: ['active-streams'],
+    queryFn: apiGetActiveStreams,
+    refetchInterval: 3000,
+  });
 
   // Build provider lookup map
   const providerMap = React.useMemo(() => {
@@ -226,6 +234,21 @@ export default function GatewayKeysPage() {
         key: 'enabled',
         sorter: (a: ApiGatewayKey, b: ApiGatewayKey) => Number(a.enabled) - Number(b.enabled),
         render: (enabled: boolean) => <StatusTag status={enabled ? 'active' : 'revoked'} />,
+      },
+      {
+        title: 'Activity',
+        key: 'activity',
+        render: (_: any, record: ApiGatewayKey) => {
+          const count = activeStreamsData?.byKey?.[record.id] || 0;
+          if (count > 0) {
+            return (
+              <Tag color="processing" style={{ borderRadius: 10, fontWeight: 600 }}>
+                <SyncOutlined spin style={{ marginRight: 4 }} /> ⚡ {count} Running
+              </Tag>
+            );
+          }
+          return <Tag color="default" style={{ borderRadius: 10 }}>🟢 Idle</Tag>;
+        },
       },
       {
         title: 'Created At',

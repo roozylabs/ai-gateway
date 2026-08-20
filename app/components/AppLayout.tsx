@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useSSE } from '@/hooks/useSSE';
+import { apiGetActiveStreams } from '@/lib/api';
 import {
   Layout,
   Menu,
@@ -13,6 +15,7 @@ import {
   Dropdown,
   Space,
   Badge,
+  Tag,
   Button,
   theme,
   Tooltip,
@@ -33,7 +36,53 @@ import {
   SunOutlined,
   MoonOutlined,
   CodeOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
+
+function ActiveStreamHeaderBadge() {
+  const { data } = useQuery({
+    queryKey: ['active-streams'],
+    queryFn: apiGetActiveStreams,
+    refetchInterval: 3000,
+  });
+
+  const total = data?.totalActive || 0;
+
+  if (total === 0) {
+    return (
+      <Tag color="default" style={{ margin: 0, fontSize: 12, borderRadius: 12, padding: '2px 10px' }}>
+        🟢 Idle (0 active)
+      </Tag>
+    );
+  }
+
+  const modelsList = data?.byModel
+    ? Object.entries(data.byModel)
+        .map(([slug, count]) => `${slug}: ${count}`)
+        .join(', ')
+    : '';
+
+  return (
+    <Tooltip title={`Active Streams: ${modelsList}`}>
+      <Tag
+        color="processing"
+        style={{
+          margin: 0,
+          fontSize: 12,
+          fontWeight: 600,
+          borderRadius: 12,
+          padding: '2px 12px',
+          background: '#111b26',
+          borderColor: '#1677ff',
+          color: '#1677ff',
+        }}
+      >
+        <SyncOutlined spin style={{ marginRight: 6 }} />
+        ⚡ {total} {total === 1 ? 'Stream Active' : 'Streams Active'}
+      </Tag>
+    </Tooltip>
+  );
+}
 
 const { Header, Sider, Content, Footer } = Layout;
 const { Text, Title } = Typography;
@@ -202,6 +251,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               style={{ fontSize: '16px', width: 40, height: 40 }}
             />
             <Badge status={badgeStatus} color={badgeColor} text={<Text type="secondary">{systemStatusText}</Text>} />
+            <ActiveStreamHeaderBadge />
           </Space>
 
           <Space size="large">

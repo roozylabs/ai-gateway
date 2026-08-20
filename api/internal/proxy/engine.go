@@ -3,6 +3,7 @@ package proxy
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -24,6 +25,7 @@ type Engine struct {
 	router       *Router
 	creds        *repository.CredentialRepository
 	cooldown     *goredis.CooldownStore
+	publisher    *goredis.EventPublisher
 	oauthMgr     *OAuthTokenManager
 	encKey       string
 	maxRetries   int
@@ -31,7 +33,7 @@ type Engine struct {
 	client       *http.Client
 }
 
-func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, encKey string, maxRetries, cooldownSecs int) *Engine {
+func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int) *Engine {
 	tr := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   10 * time.Second,
@@ -46,6 +48,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		router:       router,
 		creds:        creds,
 		cooldown:     cooldown,
+		publisher:    publisher,
 		oauthMgr:     NewOAuthTokenManager(cooldown),
 		encKey:       encKey,
 		maxRetries:   maxRetries,
@@ -93,6 +96,28 @@ func (r *ProxyRequest) UnmarshalJSON(data []byte) error {
 
 func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) (*ProviderResponse, *models.RequestLog, error) {
 	start := time.Now()
+
+	gwKeyID := ""
+	if gatewayKey != nil {
+		gwKeyID = gatewayKey.ID
+	}
+
+	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID)
+	if e.publisher != nil {
+		if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
+			_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
+		}
+	}
+
+	defer func() {
+		bgCtx := context.Background()
+		_ = e.cooldown.DecrementActiveStream(bgCtx, req.Model, gwKeyID)
+		if e.publisher != nil {
+			if summary, err := e.cooldown.GetActiveStreams(bgCtx); err == nil {
+				_ = e.publisher.Publish(bgCtx, "active_streams_update", summary)
+			}
+		}
+	}()
 
 	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
 	if err != nil {
