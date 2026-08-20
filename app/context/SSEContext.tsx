@@ -51,6 +51,8 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               queryClient.invalidateQueries({ queryKey: ['dashboard-usage'] });
               queryClient.invalidateQueries({ queryKey: ['dashboard-health'] });
               queryClient.invalidateQueries({ queryKey: ['logs'] });
+              queryClient.invalidateQueries({ queryKey: ['recent-logs'] });
+              queryClient.invalidateQueries({ queryKey: ['credentials'] });
             }
           } catch (err) {
             console.error('[SSE Parse Error]', err);

@@ -26,7 +26,7 @@ import {
   DollarOutlined,
 } from '@ant-design/icons';
 import { Line } from '@ant-design/plots';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
 import { useSSE } from '@/hooks/useSSE';
 import { PageHeader, MetricCard, StatusTag } from '@/components/atoms';
@@ -104,21 +104,25 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: apiGetDashboardStats,
+    refetchInterval: 5000,
   });
 
   const { data: usageData = [], isLoading: usageLoading } = useQuery({
     queryKey: ['dashboard-usage', usageQueryParams],
     queryFn: () => apiGetDashboardUsage(usageQueryParams),
+    refetchInterval: 5000,
   });
 
   const { data: healthData = [], isLoading: healthLoading } = useQuery({
     queryKey: ['dashboard-health'],
     queryFn: apiGetDashboardHealth,
+    refetchInterval: 5000,
   });
 
   const { data: logsData, isLoading: logsLoading } = useQuery({
     queryKey: ['recent-logs'],
     queryFn: () => apiGetLogs({ limit: 5 }),
+    refetchInterval: 5000,
   });
 
   // Calculate per-model totals for summary legend tags
