@@ -307,6 +307,16 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 			if chunk.Choices == nil {
 				chunk.Choices = []Choice{}
+			} else {
+				for i := range chunk.Choices {
+					if chunk.Choices[i].Delta != nil {
+						for k, v := range chunk.Choices[i].Delta {
+							if v == nil {
+								delete(chunk.Choices[i].Delta, k)
+							}
+						}
+					}
+				}
 			}
 
 			jsonChunk, _ := json.Marshal(chunk)
