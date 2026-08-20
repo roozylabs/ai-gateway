@@ -181,8 +181,8 @@ export async function apiGetDashboardStats(): Promise<ApiDashboardStats> {
   return response.data;
 }
 
-export async function apiGetDashboardUsage(days: number = 30): Promise<ApiUsagePoint[]> {
-  const response = await api.get<ApiUsagePoint[]>(`/dashboard/usage?days=${days}`);
+export async function apiGetDashboardUsage(params?: { days?: number; startDate?: string; endDate?: string }): Promise<ApiUsagePoint[]> {
+  const response = await api.get<ApiUsagePoint[]>('/dashboard/usage', { params });
   return response.data;
 }
 

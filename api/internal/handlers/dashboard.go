@@ -28,13 +28,19 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 
 func (h *DashboardHandler) GetUsageChart(c *gin.Context) {
 	userID := c.GetString("userId")
+	startDate := c.Query("startDate")
+	endDate := c.Query("endDate")
 	days := 30
 	if d := c.Query("days"); d != "" {
-		if n, err := strconv.Atoi(d); err == nil && n > 0 && n <= 365 {
-			days = n
+		if n, err := strconv.Atoi(d); err == nil && n > 0 {
+			if n > 30 {
+				days = 30
+			} else {
+				days = n
+			}
 		}
 	}
-	data, err := h.requestLogs.GetUsageChart(c.Request.Context(), userID, days)
+	data, err := h.requestLogs.GetUsageChart(c.Request.Context(), userID, days, startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get usage chart"})
 		return

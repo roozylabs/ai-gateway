@@ -213,9 +213,28 @@ func (r *RequestLogRepository) GetStats(ctx context.Context, userID string) (*Da
 	return s, nil
 }
 
-func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string, days int) ([]UsagePoint, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT TO_CHAR(rl.created_at, 'YYYY-MM-DD') as date,
+func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string, days int, startDate, endDate string) ([]UsagePoint, error) {
+	var query string
+	var args []interface{}
+
+	if startDate != "" && endDate != "" {
+		query = `SELECT TO_CHAR(rl.created_at, 'YYYY-MM-DD') as date,
+		        COALESCE(NULLIF(rl.model, ''), 'default') as model,
+		        COUNT(*) as requests,
+		        COALESCE(SUM(total_tokens), 0) as tokens
+		 FROM request_logs rl
+		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE gak.user_id = $1
+		   AND rl.created_at >= $2::DATE
+		   AND rl.created_at <= ($3::DATE + INTERVAL '1 day')
+		 GROUP BY TO_CHAR(rl.created_at, 'YYYY-MM-DD'), COALESCE(NULLIF(rl.model, ''), 'default')
+		 ORDER BY date ASC, model ASC`
+		args = []interface{}{userID, startDate, endDate}
+	} else {
+		if days <= 0 || days > 30 {
+			days = 30
+		}
+		query = `SELECT TO_CHAR(rl.created_at, 'YYYY-MM-DD') as date,
 		        COALESCE(NULLIF(rl.model, ''), 'default') as model,
 		        COUNT(*) as requests,
 		        COALESCE(SUM(total_tokens), 0) as tokens
@@ -224,8 +243,11 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 		 WHERE gak.user_id = $1
 		   AND rl.created_at >= NOW() - ($2 || ' days')::INTERVAL
 		 GROUP BY TO_CHAR(rl.created_at, 'YYYY-MM-DD'), COALESCE(NULLIF(rl.model, ''), 'default')
-		 ORDER BY date ASC, model ASC`, userID, days,
-	)
+		 ORDER BY date ASC, model ASC`
+		args = []interface{}{userID, days}
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

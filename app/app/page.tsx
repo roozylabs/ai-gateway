@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dayjs, { Dayjs } from 'dayjs';
 import {
   Row,
   Col,
@@ -45,7 +46,30 @@ export default function DashboardPage() {
   const isDark = mode === 'dark';
   const { isConnected } = useSSE();
 
-  const [timeframe, setTimeframe] = useState<'Daily' | 'Weekly' | 'Custom'>('Daily');
+  const [timeframe, setTimeframe] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Custom'>('Daily');
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+
+  // Compute params for usage API query
+  const usageQueryParams = React.useMemo(() => {
+    if (timeframe === 'Daily') return { days: 1 };
+    if (timeframe === 'Weekly') return { days: 7 };
+    if (timeframe === 'Monthly') return { days: 30 };
+    if (timeframe === 'Custom' && dateRange && dateRange[0] && dateRange[1]) {
+      return {
+        startDate: dateRange[0].format('YYYY-MM-DD'),
+        endDate: dateRange[1].format('YYYY-MM-DD'),
+      };
+    }
+    return { days: 30 };
+  }, [timeframe, dateRange]);
+
+  // Disable dates beyond 30 days or in the future
+  const disabledDate = (current: Dayjs) => {
+    if (!current) return false;
+    if (current > dayjs().endOf('day')) return true;
+    if (current < dayjs().subtract(30, 'days').startOf('day')) return true;
+    return false;
+  };
 
   // React Query calls
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -53,10 +77,9 @@ export default function DashboardPage() {
     queryFn: apiGetDashboardStats,
   });
 
-  const daysParam = timeframe === 'Daily' ? 1 : timeframe === 'Weekly' ? 7 : 30;
   const { data: usageData = [], isLoading: usageLoading } = useQuery({
-    queryKey: ['dashboard-usage', daysParam],
-    queryFn: () => apiGetDashboardUsage(daysParam),
+    queryKey: ['dashboard-usage', usageQueryParams],
+    queryFn: () => apiGetDashboardUsage(usageQueryParams),
   });
 
   const { data: healthData = [], isLoading: healthLoading } = useQuery({
@@ -229,11 +252,19 @@ export default function DashboardPage() {
             extra={
               <Space>
                 <Segmented
-                  options={['Daily', 'Weekly', 'Custom']}
+                  options={['Daily', 'Weekly', 'Monthly', 'Custom']}
                   value={timeframe}
                   onChange={(val) => setTimeframe(val as any)}
                 />
-                {timeframe === 'Custom' && <RangePicker size="small" style={{ width: 210 }} />}
+                {timeframe === 'Custom' && (
+                  <RangePicker
+                    size="small"
+                    style={{ width: 230 }}
+                    disabledDate={disabledDate}
+                    value={dateRange as any}
+                    onChange={(dates) => setDateRange(dates as any)}
+                  />
+                )}
               </Space>
             }
             size="small"
