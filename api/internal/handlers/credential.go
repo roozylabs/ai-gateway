@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"database/sql"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"path"
@@ -31,10 +33,18 @@ func NewCredentialHandler(credentials *repository.CredentialRepository, provider
 	}
 }
 
+type OAuthMetadataInput struct {
+	ClientID     string `json:"clientId"`
+	ClientSecret string `json:"clientSecret"`
+	RefreshToken string `json:"refreshToken"`
+}
+
 type CreateCredentialRequest struct {
-	Name     string `json:"name" binding:"required"`
-	APIKey   string `json:"apiKey" binding:"required"`
-	Priority int    `json:"priority"`
+	Name     string              `json:"name" binding:"required"`
+	AuthType string              `json:"authType"`
+	APIKey   string              `json:"apiKey"`
+	Metadata *OAuthMetadataInput `json:"metadata"`
+	Priority int                 `json:"priority"`
 }
 
 // List godoc
@@ -141,28 +151,78 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 		return
 	}
 
-	maskedKey := utils.MaskAPIKey(req.APIKey)
-
-	encrypted, err := utils.EncryptAES256GCM(req.APIKey, h.encKey)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt key"})
-		return
+	authType := req.AuthType
+	if authType == "" {
+		authType = "api_key"
 	}
 
-	keyPrefix := req.APIKey
-	if len(keyPrefix) > 8 {
-		keyPrefix = keyPrefix[:8]
+	var encrypted string
+	var keyPrefix string
+	var maskedKey string
+	var encMeta sql.NullString
+
+	if authType == "gcp_user_oauth" {
+		if req.Metadata == nil || req.Metadata.ClientID == "" || req.Metadata.ClientSecret == "" || req.Metadata.RefreshToken == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "OAuth credentials require clientId, clientSecret, and refreshToken"})
+			return
+		}
+		metaBytes, err := json.Marshal(map[string]string{
+			"client_id":     req.Metadata.ClientID,
+			"client_secret": req.Metadata.ClientSecret,
+			"refresh_token": req.Metadata.RefreshToken,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode metadata"})
+			return
+		}
+		encryptedMeta, err := utils.EncryptAES256GCM(string(metaBytes), h.encKey)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt metadata"})
+			return
+		}
+		encMeta = sql.NullString{String: encryptedMeta, Valid: true}
+		encrypted, _ = utils.EncryptAES256GCM("oauth_token", h.encKey)
+
+		cid := req.Metadata.ClientID
+		if len(cid) > 12 {
+			keyPrefix = cid[:12]
+		} else {
+			keyPrefix = cid
+		}
+		if len(cid) > 16 {
+			maskedKey = cid[:6] + "••••" + cid[len(cid)-4:]
+		} else {
+			maskedKey = cid + "••••"
+		}
+	} else {
+		if req.APIKey == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "apiKey is required for api_key auth type"})
+			return
+		}
+		var err error
+		encrypted, err = utils.EncryptAES256GCM(req.APIKey, h.encKey)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt key"})
+			return
+		}
+		maskedKey = utils.MaskAPIKey(req.APIKey)
+		keyPrefix = req.APIKey
+		if len(keyPrefix) > 8 {
+			keyPrefix = keyPrefix[:8]
+		}
 	}
 
 	cred := &models.Credential{
-		ProviderID:   providerID,
-		Name:         req.Name,
-		EncryptedKey: encrypted,
-		KeyPrefix:    keyPrefix,
-		MaskedKey:    maskedKey,
-		Priority:     req.Priority,
-		Enabled:      true,
-		Status:       "active",
+		ProviderID:        providerID,
+		Name:              req.Name,
+		EncryptedKey:      encrypted,
+		KeyPrefix:         keyPrefix,
+		MaskedKey:         maskedKey,
+		AuthType:          authType,
+		EncryptedMetadata: encMeta,
+		Priority:          req.Priority,
+		Enabled:           true,
+		Status:            "active",
 	}
 
 	if err := h.credentials.Create(c.Request.Context(), cred); err != nil {
@@ -172,12 +232,6 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, cred)
 }
 
-// Update godoc
-// @Summary      Update credential
-// @Description  Update a credential
-// @Tags         credentials
-// @Security     BearerAuth
-// @Param        id path string true "Provider ID"
 func maskEmailName(name string) string {
 	if !strings.Contains(name, "@") {
 		return name
@@ -192,10 +246,12 @@ func maskEmailName(name string) string {
 }
 
 type UpdateCredentialRequest struct {
-	Name     string `json:"name"`
-	APIKey   string `json:"apiKey"`
-	Priority int    `json:"priority"`
-	Status   string `json:"status"`
+	Name     string              `json:"name"`
+	AuthType string              `json:"authType"`
+	APIKey   string              `json:"apiKey"`
+	Metadata *OAuthMetadataInput `json:"metadata"`
+	Priority int                 `json:"priority"`
+	Status   string              `json:"status"`
 }
 
 // Update godoc
@@ -227,6 +283,9 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 	if req.Name != "" {
 		existing.Name = req.Name
 	}
+	if req.AuthType != "" {
+		existing.AuthType = req.AuthType
+	}
 	if req.Priority > 0 {
 		existing.Priority = req.Priority
 	}
@@ -237,6 +296,35 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 		} else if req.Status == "disabled" {
 			existing.Enabled = false
 		}
+	}
+	if req.Metadata != nil && req.Metadata.ClientID != "" && req.Metadata.ClientSecret != "" && req.Metadata.RefreshToken != "" {
+		metaBytes, err := json.Marshal(map[string]string{
+			"client_id":     req.Metadata.ClientID,
+			"client_secret": req.Metadata.ClientSecret,
+			"refresh_token": req.Metadata.RefreshToken,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode metadata"})
+			return
+		}
+		encryptedMeta, err := utils.EncryptAES256GCM(string(metaBytes), h.encKey)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt metadata"})
+			return
+		}
+		existing.EncryptedMetadata = sql.NullString{String: encryptedMeta, Valid: true}
+		cid := req.Metadata.ClientID
+		if len(cid) > 12 {
+			existing.KeyPrefix = cid[:12]
+		} else {
+			existing.KeyPrefix = cid
+		}
+		if len(cid) > 16 {
+			existing.MaskedKey = cid[:6] + "••••" + cid[len(cid)-4:]
+		} else {
+			existing.MaskedKey = cid + "••••"
+		}
+		_ = h.cooldownStore.DeleteAccessToken(c.Request.Context(), existing.ID)
 	}
 	if req.APIKey != "" {
 		encrypted, err := utils.EncryptAES256GCM(req.APIKey, h.encKey)

@@ -68,6 +68,9 @@ export default function CredentialsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [modalTargetProviderId, setModalTargetProviderId] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [addAuthType, setAddAuthType] = useState<'api_key' | 'gcp_user_oauth'>('api_key');
+  const [editAuthType, setEditAuthType] = useState<'api_key' | 'gcp_user_oauth'>('api_key');
+  const [editingCredential, setEditingCredential] = useState<CombinedCredential | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testModalResult, setTestModalResult] = useState<{
     credName: string;
@@ -209,8 +212,10 @@ export default function CredentialsPage() {
     const provCreds = credentials.filter((c) => c.providerId === initialProvId);
     const nextPriority = provCreds.length > 0 ? Math.max(...provCreds.map((c) => c.priority)) + 1 : 1;
     form.resetFields();
+    setAddAuthType('api_key');
     form.setFieldsValue({
       providerId: initialProvId,
+      authType: 'api_key',
       priority: nextPriority,
     });
     setIsModalOpen(true);
@@ -229,7 +234,9 @@ export default function CredentialsPage() {
       providerId: values.providerId,
       data: {
         name: values.name,
+        authType: values.authType || 'api_key',
         apiKey: values.apiKey,
+        metadata: values.metadata,
         priority: values.priority || 1,
         enabled: true,
       },
@@ -272,6 +279,17 @@ export default function CredentialsPage() {
         sorter: (a: CombinedCredential, b: CombinedCredential) =>
           (a.providerName || '').localeCompare(b.providerName || ''),
         render: (name: string) => <Tag color="blue">{name || 'Provider'}</Tag>,
+      },
+      {
+        title: 'Auth Type',
+        dataIndex: 'authType',
+        key: 'authType',
+        render: (authType: string) => {
+          if (authType === 'gcp_user_oauth') {
+            return <Tag color="purple">🔐 GCP OAuth</Tag>;
+          }
+          return <Tag color="default">🔑 API Key</Tag>;
+        },
       },
       {
         title: 'Masked Key Prefix',
@@ -435,6 +453,21 @@ export default function CredentialsPage() {
           </Form.Item>
 
           <Form.Item
+            name="authType"
+            label="Authentication Type"
+            initialValue="api_key"
+            tooltip="Select API Key for standard provider key or GCP User OAuth for free-tier Google Gemini OAuth account."
+          >
+            <Select
+              onChange={(val) => setAddAuthType(val)}
+              options={[
+                { label: '🔑 API Key (Standard)', value: 'api_key' },
+                { label: '🔐 GCP User OAuth (Free Gemini Account)', value: 'gcp_user_oauth' },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item
             name="name"
             label="Credential Label"
             rules={[{ required: true, message: 'Please enter credential label' }]}
@@ -442,13 +475,41 @@ export default function CredentialsPage() {
             <Input placeholder="e.g. Gemini Production Key #1" />
           </Form.Item>
 
-          <Form.Item
-            name="apiKey"
-            label="Provider API Secret Key"
-            rules={[{ required: true, message: 'Please enter API Key' }]}
-          >
-            <Input.Password placeholder="AIzaSy... / AQ.Ab8..." />
-          </Form.Item>
+          {addAuthType === 'gcp_user_oauth' ? (
+            <>
+              <Form.Item
+                name={['metadata', 'clientId']}
+                label="Google OAuth Client ID"
+                rules={[{ required: true, message: 'Please enter Client ID' }]}
+              >
+                <Input placeholder="123456789012-xxx.apps.googleusercontent.com" />
+              </Form.Item>
+
+              <Form.Item
+                name={['metadata', 'clientSecret']}
+                label="Google OAuth Client Secret"
+                rules={[{ required: true, message: 'Please enter Client Secret' }]}
+              >
+                <Input.Password placeholder="GOCSPX-xxxxxxxxx" />
+              </Form.Item>
+
+              <Form.Item
+                name={['metadata', 'refreshToken']}
+                label="Google OAuth Refresh Token"
+                rules={[{ required: true, message: 'Please enter Refresh Token' }]}
+              >
+                <Input.Password placeholder="1//04xxxxxxxxx" />
+              </Form.Item>
+            </>
+          ) : (
+            <Form.Item
+              name="apiKey"
+              label="Provider API Secret Key"
+              rules={[{ required: true, message: 'Please enter API Key' }]}
+            >
+              <Input.Password placeholder="AIzaSy... / AQ.Ab8..." />
+            </Form.Item>
+          )}
 
           <Form.Item
             name="priority"

@@ -50,6 +50,12 @@ export interface ApiCredential {
   keyPrefix: string;
   maskedKey?: string;
   apiKey?: string;
+  authType?: string;
+  metadata?: {
+    clientId?: string;
+    clientSecret?: string;
+    refreshToken?: string;
+  };
   priority: number;
   enabled: boolean;
   status: string;
@@ -224,7 +230,7 @@ export async function apiGetCredentials(
   return response.data;
 }
 
-export async function apiCreateCredential(providerId: string, data: Partial<ApiCredential> & { apiKey: string }): Promise<ApiCredential> {
+export async function apiCreateCredential(providerId: string, data: Partial<ApiCredential>): Promise<ApiCredential> {
   const response = await api.post<ApiCredential>(`/providers/${providerId}/credentials`, data);
   return response.data;
 }

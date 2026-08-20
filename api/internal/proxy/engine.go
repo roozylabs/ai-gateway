@@ -24,6 +24,7 @@ type Engine struct {
 	router       *Router
 	creds        *repository.CredentialRepository
 	cooldown     *goredis.CooldownStore
+	oauthMgr     *OAuthTokenManager
 	encKey       string
 	maxRetries   int
 	cooldownSecs int
@@ -45,6 +46,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		router:       router,
 		creds:        creds,
 		cooldown:     cooldown,
+		oauthMgr:     NewOAuthTokenManager(cooldown),
 		encKey:       encKey,
 		maxRetries:   maxRetries,
 		cooldownSecs: cooldownSecs,
@@ -105,10 +107,26 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			retryCount++
 		}
 
-		apiKey, err := e.creds.DecryptKey(c.Request.Context(), route.Credential.ID, e.encKey)
-		if err != nil {
-			lastErr = fmt.Errorf("decrypt credential: %w", err)
-			continue
+		var apiKey string
+		if route.Credential.AuthType == "gcp_user_oauth" {
+			meta, err := e.creds.DecryptMetadata(c.Request.Context(), route.Credential.ID, e.encKey)
+			if err != nil {
+				lastErr = fmt.Errorf("decrypt metadata: %w", err)
+				continue
+			}
+			accessToken, err := e.oauthMgr.GetAccessToken(c.Request.Context(), route.Credential.ID, meta)
+			if err != nil {
+				lastErr = fmt.Errorf("fetch oauth access token: %w", err)
+				continue
+			}
+			apiKey = accessToken
+		} else {
+			var err error
+			apiKey, err = e.creds.DecryptKey(c.Request.Context(), route.Credential.ID, e.encKey)
+			if err != nil {
+				lastErr = fmt.Errorf("decrypt credential: %w", err)
+				continue
+			}
 		}
 
 		targetModel := req.Model

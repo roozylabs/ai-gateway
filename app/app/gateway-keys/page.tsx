@@ -667,6 +667,58 @@ print(response.choices[0].message.content)`}</code>
               </div>
             ),
           },
+          {
+            key: '4',
+            label: 'Antigravity (IDE & CLI)',
+            children: (
+              <div>
+                <Typography.Paragraph>
+                  <Text strong style={{ display: 'block', marginBottom: 6 }}>
+                    Antigravity CLI (Bash / PowerShell Environment Variables):
+                  </Text>
+                </Typography.Paragraph>
+                <pre
+                  style={{
+                    background: isDark ? '#141414' : '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 6,
+                    overflowX: 'auto',
+                  }}
+                >
+                  <code>{`# Windows PowerShell
+$env:GOOGLE_GEMINI_BASE_URL = "${apiBaseUrl.replace('/v1', '/v1beta/openai')}"
+$env:GEMINI_API_KEY = "${apiKeyDisplay}"
+
+# Linux / macOS (Bash / Zsh)
+export GOOGLE_GEMINI_BASE_URL="${apiBaseUrl.replace('/v1', '/v1beta/openai')}"
+export GEMINI_API_KEY="${apiKeyDisplay}"`}</code>
+                </pre>
+
+                <Typography.Paragraph style={{ marginTop: 16 }}>
+                  <Text strong style={{ display: 'block', marginBottom: 6 }}>
+                    Antigravity IDE Config (<Text code>~/.gemini/config.json</Text>):
+                  </Text>
+                </Typography.Paragraph>
+                <pre
+                  style={{
+                    background: isDark ? '#141414' : '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 6,
+                    overflowX: 'auto',
+                  }}
+                >
+                  <code>{JSON.stringify(
+                    {
+                      apiEndpoint: apiBaseUrl.replace('/v1', '/v1beta/openai'),
+                      apiKey: apiKeyDisplay,
+                    },
+                    null,
+                    2
+                  )}</code>
+                </pre>
+              </div>
+            ),
+          },
         ]}
       />
     </div>

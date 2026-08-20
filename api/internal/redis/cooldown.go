@@ -39,3 +39,18 @@ func (s *CooldownStore) RemoveCooldown(ctx context.Context, credentialID string)
 	key := fmt.Sprintf("credential:%s:cooldown", credentialID)
 	return s.rdb.Del(ctx, key).Err()
 }
+
+func (s *CooldownStore) SetAccessToken(ctx context.Context, credentialID, token string, ttlSeconds int) error {
+	key := fmt.Sprintf("credential:%s:access_token", credentialID)
+	return s.rdb.Set(ctx, key, token, time.Duration(ttlSeconds)*time.Second).Err()
+}
+
+func (s *CooldownStore) GetAccessToken(ctx context.Context, credentialID string) (string, error) {
+	key := fmt.Sprintf("credential:%s:access_token", credentialID)
+	return s.rdb.Get(ctx, key).Result()
+}
+
+func (s *CooldownStore) DeleteAccessToken(ctx context.Context, credentialID string) error {
+	key := fmt.Sprintf("credential:%s:access_token", credentialID)
+	return s.rdb.Del(ctx, key).Err()
+}
