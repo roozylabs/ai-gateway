@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -40,7 +39,7 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 	defer ticker.Stop()
 
 	// Send initial connected event
-	if _, err := c.Writer.Write([]byte("event: connected\ndata: {\"status\":\"ok\"}\n\n")); err != nil {
+	if _, err := fmt.Fprint(c.Writer, "event: connected\ndata: {\"status\":\"ok\"}\n\n"); err != nil {
 		return
 	}
 	c.Writer.Flush()
@@ -50,7 +49,7 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 		case <-c.Request.Context().Done():
 			return
 		case <-ticker.C:
-			if _, err := c.Writer.Write([]byte("event: ping\ndata: {\"status\":\"ok\"}\n\n")); err != nil {
+			if _, err := fmt.Fprint(c.Writer, "event: ping\ndata: {\"status\":\"ok\"}\n\n"); err != nil {
 				return
 			}
 			c.Writer.Flush()
@@ -58,14 +57,7 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 			if !ok {
 				return
 			}
-			eventType := "message"
-			var evt struct {
-				Type string `json:"type"`
-			}
-			if err := json.Unmarshal([]byte(msg.Payload), &evt); err == nil && evt.Type != "" {
-				eventType = evt.Type
-			}
-			if _, err := c.Writer.Write([]byte(fmt.Sprintf("event: %s\ndata: %s\n\n", eventType, msg.Payload))); err != nil {
+			if _, err := fmt.Fprintf(c.Writer, "event: message\ndata: %s\n\n", msg.Payload); err != nil {
 				return
 			}
 			c.Writer.Flush()
