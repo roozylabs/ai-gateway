@@ -82,6 +82,7 @@ func main() {
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo)
 	settingsHandler := handlers.NewSettingsHandler(settingRepo)
 	sseHandler := handlers.NewSSEHandler(eventPublisher)
+	googleOAuthHandler := handlers.NewGoogleOAuthHandler(credentialRepo, providerRepo, cfg.EncryptionKey)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -101,6 +102,8 @@ func main() {
 		// Public API routes
 		api.GET("/health", healthHandler.Check)
 		api.POST("/auth/login", authHandler.Login)
+		api.GET("/auth/google/login", googleOAuthHandler.Login)
+		api.GET("/auth/google/callback", googleOAuthHandler.Callback)
 
 		// Protected API routes
 		protected := api.Group("")

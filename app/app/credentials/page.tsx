@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Typography, Space, Button, Modal, Form, Input, InputNumber, Select, Tag, Table, Alert, App } from 'antd';
-import { PlusOutlined, DeleteOutlined, EditOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, EyeOutlined, EyeInvisibleOutlined, GoogleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
@@ -205,6 +205,46 @@ export default function CredentialsPage() {
     }
   };
 
+  const activeModalProvider = providers.find((p: ApiProvider) => p.id === (modalTargetProviderId || form.getFieldValue('providerId')));
+  const isGoogleProvider = activeModalProvider
+    ? activeModalProvider.type === 'google' ||
+      (activeModalProvider.slug || '').includes('google') ||
+      (activeModalProvider.slug || '').includes('gemini') ||
+      (activeModalProvider.name || '').toLowerCase().includes('google') ||
+      (activeModalProvider.name || '').toLowerCase().includes('gemini')
+    : false;
+
+  useEffect(() => {
+    const handleOAuthMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'google_oauth_success') {
+        message.success(`Google Account connected: ${event.data.email || 'Success'}`);
+        queryClient.invalidateQueries({ queryKey: ['credentials'] });
+        setIsModalOpen(false);
+      } else if (event.data && event.data.type === 'google_oauth_error') {
+        message.error(event.data.error || 'Failed to connect Google Account');
+      }
+    };
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, [queryClient, message]);
+
+  const handleGoogleConnect = () => {
+    const provId = modalTargetProviderId || form.getFieldValue('providerId');
+    if (!provId) {
+      message.error('Please select a target provider first');
+      return;
+    }
+    const width = 550;
+    const height = 650;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    window.open(
+      `/api/auth/google/login?provider_id=${provId}`,
+      'GoogleOAuthPopup',
+      `width=${width},height=${height},top=${top},left=${left}`
+    );
+  };
+
   const openAddModal = () => {
     const initialProvId = selectedProviderId !== 'all' ? selectedProviderId : providers[0]?.id || '';
     setModalTargetProviderId(initialProvId);
@@ -222,6 +262,20 @@ export default function CredentialsPage() {
 
   const handleTargetProviderChange = (provId: string) => {
     setModalTargetProviderId(provId);
+    const prov = providers.find((p: ApiProvider) => p.id === provId);
+    const isGoogle = prov
+      ? prov.type === 'google' ||
+        (prov.slug || '').includes('google') ||
+        (prov.slug || '').includes('gemini') ||
+        (prov.name || '').toLowerCase().includes('google') ||
+        (prov.name || '').toLowerCase().includes('gemini')
+      : false;
+
+    if (!isGoogle) {
+      setAddAuthType('api_key');
+      form.setFieldsValue({ authType: 'api_key' });
+    }
+
     const provCreds = credentials.filter((c) => c.providerId === provId);
     const nextPriority = provCreds.length > 0 ? Math.max(...provCreds.map((c) => c.priority)) + 1 : 1;
     form.setFieldsValue({ priority: nextPriority });
@@ -458,56 +512,58 @@ export default function CredentialsPage() {
             tooltip="Select API Key for standard provider key or GCP User OAuth for free-tier Google Gemini OAuth account."
           >
             <Select
+              value={addAuthType}
               onChange={(val) => setAddAuthType(val)}
               options={[
                 { label: '🔑 API Key (Standard)', value: 'api_key' },
-                { label: '🔐 GCP User OAuth (Free Gemini Account)', value: 'gcp_user_oauth' },
+                {
+                  label: isGoogleProvider
+                    ? '🔐 GCP User OAuth (Free Gemini Account)'
+                    : '🔐 GCP User OAuth (Google Provider Only)',
+                  value: 'gcp_user_oauth',
+                  disabled: !isGoogleProvider,
+                },
               ]}
             />
           </Form.Item>
 
-          <Form.Item
-            name="name"
-            label="Credential Label"
-            rules={[{ required: true, message: 'Please enter credential label' }]}
-          >
-            <Input placeholder="e.g. Gemini Production Key #1" />
-          </Form.Item>
-
           {addAuthType === 'gcp_user_oauth' ? (
+            <div style={{ background: '#1f1f1f', padding: '24px 20px', borderRadius: 8, textAlign: 'center', margin: '20px 0', border: '1px solid #303030' }}>
+              <GoogleOutlined style={{ fontSize: 40, color: '#4285F4', marginBottom: 12 }} />
+              <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+                Connect Google Account
+              </Typography.Title>
+              <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 20 }}>
+                Sign in with your Google / Gmail account to grant Gemini API access. No manual Client ID or Secret needed!
+              </Typography.Paragraph>
+              <Button
+                type="primary"
+                size="large"
+                icon={<GoogleOutlined />}
+                onClick={handleGoogleConnect}
+                style={{ background: '#4285F4', borderColor: '#4285F4', fontWeight: 600, paddingLeft: 24, paddingRight: 24 }}
+              >
+                Sign in with Google
+              </Button>
+            </div>
+          ) : (
             <>
               <Form.Item
-                name={['metadata', 'clientId']}
-                label="Google OAuth Client ID"
-                rules={[{ required: true, message: 'Please enter Client ID' }]}
+                name="name"
+                label="Credential Label"
+                rules={[{ required: true, message: 'Please enter credential label' }]}
               >
-                <Input placeholder="123456789012-xxx.apps.googleusercontent.com" />
+                <Input placeholder="e.g. Gemini Production Key #1" />
               </Form.Item>
 
               <Form.Item
-                name={['metadata', 'clientSecret']}
-                label="Google OAuth Client Secret"
-                rules={[{ required: true, message: 'Please enter Client Secret' }]}
+                name="apiKey"
+                label="Provider API Secret Key"
+                rules={[{ required: true, message: 'Please enter API Key' }]}
               >
-                <Input.Password placeholder="GOCSPX-xxxxxxxxx" />
-              </Form.Item>
-
-              <Form.Item
-                name={['metadata', 'refreshToken']}
-                label="Google OAuth Refresh Token"
-                rules={[{ required: true, message: 'Please enter Refresh Token' }]}
-              >
-                <Input.Password placeholder="1//04xxxxxxxxx" />
+                <Input.Password placeholder="AIzaSy... / AQ.Ab8..." />
               </Form.Item>
             </>
-          ) : (
-            <Form.Item
-              name="apiKey"
-              label="Provider API Secret Key"
-              rules={[{ required: true, message: 'Please enter API Key' }]}
-            >
-              <Input.Password placeholder="AIzaSy... / AQ.Ab8..." />
-            </Form.Item>
           )}
 
           <Form.Item
