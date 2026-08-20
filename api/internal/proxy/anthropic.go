@@ -124,11 +124,11 @@ func (a *AnthropicAdapter) ParseResponse(body io.Reader) (*ProviderResponse, err
 }
 
 func (a *AnthropicAdapter) ParseStreamChunk(line []byte) (*ProviderResponse, bool) {
-	lineStr := string(line)
-	if !strings.HasPrefix(lineStr, "data: ") {
+	lineStr := strings.TrimSpace(string(line))
+	if !strings.HasPrefix(lineStr, "data:") {
 		return nil, false
 	}
-	data := strings.TrimPrefix(lineStr, "data: ")
+	data := strings.TrimSpace(strings.TrimPrefix(lineStr, "data:"))
 
 	var event struct {
 		Type  string          `json:"type"`

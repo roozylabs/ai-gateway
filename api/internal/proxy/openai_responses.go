@@ -131,11 +131,11 @@ func (a *OpenAIResponsesAdapter) ParseResponse(body io.Reader) (*ProviderRespons
 }
 
 func (a *OpenAIResponsesAdapter) ParseStreamChunk(line []byte) (*ProviderResponse, bool) {
-	lineStr := string(line)
-	if !strings.HasPrefix(lineStr, "data: ") {
+	lineStr := strings.TrimSpace(string(line))
+	if !strings.HasPrefix(lineStr, "data:") {
 		return nil, false
 	}
-	data := strings.TrimPrefix(lineStr, "data: ")
+	data := strings.TrimSpace(strings.TrimPrefix(lineStr, "data:"))
 	if data == "[DONE]" {
 		return nil, true
 	}
