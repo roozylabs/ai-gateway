@@ -840,57 +840,55 @@ export default function CredentialsPage() {
         }}
         footer={null}
       >
-        {editingCredential && (
-          <Form
-            form={editForm}
-            layout="vertical"
-            onFinish={handleEditSubmit}
-            style={{ marginTop: 16 }}
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleEditSubmit}
+          style={{ marginTop: 16 }}
+        >
+          <Form.Item
+            name="name"
+            label="Credential Name"
+            rules={[{ required: true, message: 'Please enter credential name' }]}
           >
-            <Form.Item
-              name="name"
-              label="Credential Name"
-              rules={[{ required: true, message: 'Please enter credential name' }]}
-            >
-              <Input placeholder="e.g. Production Key #1" />
-            </Form.Item>
+            <Input placeholder="e.g. Production Key #1" />
+          </Form.Item>
 
-            <Form.Item
-              name="apiKey"
-              label="API Key"
-              tooltip="Leave empty if you do not wish to change the existing API key."
-            >
-              <Input.Password placeholder="Leave empty to keep existing key" />
-            </Form.Item>
+          <Form.Item
+            name="apiKey"
+            label="API Key"
+            tooltip="Leave empty if you do not wish to change the existing API key."
+          >
+            <Input.Password placeholder="Leave empty to keep existing key" />
+          </Form.Item>
 
-            <Form.Item
-              name="priority"
-              label="Rotation Priority"
-              tooltip="Lower number means higher priority in credential allocation."
-              rules={[{ required: true, message: 'Please enter priority' }]}
-            >
-              <InputNumber min={1} max={100} style={{ width: '100%' }} />
-            </Form.Item>
+          <Form.Item
+            name="priority"
+            label="Rotation Priority"
+            tooltip="Lower number means higher priority in credential allocation."
+            rules={[{ required: true, message: 'Please enter priority' }]}
+          >
+            <InputNumber min={1} max={100} style={{ width: '100%' }} />
+          </Form.Item>
 
-            <Form.Item name="status" label="Status">
-              <Select
-                options={[
-                  { label: 'Active', value: 'active' },
-                  { label: 'Disabled', value: 'disabled' },
-                ]}
-              />
-            </Form.Item>
+          <Form.Item name="status" label="Status">
+            <Select
+              options={[
+                { label: 'Active', value: 'active' },
+                { label: 'Disabled', value: 'disabled' },
+              ]}
+            />
+          </Form.Item>
 
-            <Form.Item style={{ marginTop: 24, textAlign: 'right' }}>
-              <Space>
-                <Button onClick={() => setEditingCredential(null)}>Cancel</Button>
-                <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
-                  Save Changes
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        )}
+          <Form.Item style={{ marginTop: 24, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setEditingCredential(null)}>Cancel</Button>
+              <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
+                Save Changes
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );
