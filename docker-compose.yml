@@ -64,7 +64,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      - "0.0.0.0:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -82,7 +82,7 @@ services:
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD:-redis}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "0.0.0.0:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     networks:
