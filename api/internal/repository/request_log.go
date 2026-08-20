@@ -65,6 +65,9 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 		}
 		logs = append(logs, l)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return logs, nil
 }
 
@@ -157,6 +160,9 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 			l.CredentialName = utils.MaskEmailName(rawCredName)
 		}
 		logs = append(logs, l)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
 	return logs, total, nil
 }
@@ -268,6 +274,9 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 		}
 		points = append(points, p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return points, nil
 }
 
@@ -306,6 +315,9 @@ func (r *RequestLogRepository) GetProviderHealth(ctx context.Context, userID str
 			ph.Status = "down"
 		}
 		providers = append(providers, ph)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return providers, nil
 }
