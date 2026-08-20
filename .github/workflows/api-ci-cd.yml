@@ -5,11 +5,13 @@ on:
     branches: [ main, master, develop ]
     paths:
       - 'api/**'
+      - 'docker-compose*.yml'
       - '.github/workflows/api-ci-cd.yml'
   pull_request:
     branches: [ main, master, develop ]
     paths:
       - 'api/**'
+      - 'docker-compose*.yml'
       - '.github/workflows/api-ci-cd.yml'
   workflow_dispatch:
 
