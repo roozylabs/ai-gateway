@@ -2,15 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { Typography, Space, Button, Modal, Form, Input, InputNumber, Select, Tag, Table, Alert, App } from 'antd';
-import { PlusOutlined, DeleteOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
   apiGetProviders,
   apiGetCredentials,
   apiCreateCredential,
+  apiUpdateCredential,
   apiDeleteCredential,
   apiTestCredential,
+  apiRevealCredential,
   ApiProvider,
   ApiCredential,
   ApiTestCredentialResult,
@@ -71,6 +73,28 @@ export default function CredentialsPage() {
     credName: string;
     res: ApiTestCredentialResult;
   } | null>(null);
+  const [revealedNames, setRevealedNames] = useState<Record<string, string>>({});
+  const [revealingId, setRevealingId] = useState<string | null>(null);
+
+  const toggleReveal = async (record: CombinedCredential) => {
+    if (revealedNames[record.id]) {
+      setRevealedNames((prev) => {
+        const next = { ...prev };
+        delete next[record.id];
+        return next;
+      });
+    } else {
+      setRevealingId(record.id);
+      try {
+        const res = await apiRevealCredential(record.providerId, record.id);
+        setRevealedNames((prev) => ({ ...prev, [record.id]: res.name }));
+      } catch (err: any) {
+        message.error(err.response?.data?.error || 'Failed to reveal credential info');
+      } finally {
+        setRevealingId(null);
+      }
+    }
+  };
 
   const [form] = Form.useForm();
 
@@ -107,6 +131,45 @@ export default function CredentialsPage() {
     },
     onError: (err: Error) => message.error(err.message),
   });
+
+  const [editingCredential, setEditingCredential] = useState<CombinedCredential | null>(null);
+  const [editForm] = Form.useForm();
+
+  const updateMutation = useMutation({
+    mutationFn: ({ providerId, credId, data }: { providerId: string; credId: string; data: Partial<ApiCredential> & { apiKey?: string } }) =>
+      apiUpdateCredential(providerId, credId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['credentials'] });
+      message.success('Credential updated successfully');
+      setEditingCredential(null);
+      editForm.resetFields();
+    },
+    onError: (err: Error) => message.error(err.message),
+  });
+
+  const handleEditOpen = (record: CombinedCredential) => {
+    setEditingCredential(record);
+    editForm.setFieldsValue({
+      name: record.name,
+      priority: record.priority || 1,
+      status: record.status || 'active',
+      apiKey: '',
+    });
+  };
+
+  const handleEditSubmit = (values: any) => {
+    if (!editingCredential) return;
+    updateMutation.mutate({
+      providerId: editingCredential.providerId,
+      credId: editingCredential.id,
+      data: {
+        name: values.name,
+        priority: values.priority,
+        status: values.status,
+        ...(values.apiKey ? { apiKey: values.apiKey } : {}),
+      },
+    });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: ({ providerId, credId }: { providerId: string; credId: string }) =>
@@ -180,7 +243,24 @@ export default function CredentialsPage() {
         dataIndex: 'name',
         key: 'name',
         sorter: (a: CombinedCredential, b: CombinedCredential) => a.name.localeCompare(b.name),
-        render: (text: string) => <Text strong>{text}</Text>,
+        render: (text: string, record: CombinedCredential) => {
+          const isRevealed = !!revealedNames[record.id];
+          const displayName = isRevealed ? revealedNames[record.id] : text;
+
+          return (
+            <Space align="center" size="small">
+              <Text strong>{displayName}</Text>
+              <Button
+                type="text"
+                size="small"
+                icon={isRevealed ? <EyeInvisibleOutlined style={{ color: '#ff4d4f' }} /> : <EyeOutlined style={{ color: '#1890ff' }} />}
+                loading={revealingId === record.id}
+                onClick={() => toggleReveal(record)}
+                title={isRevealed ? 'Hide credential info' : 'Reveal unmasked info'}
+              />
+            </Space>
+          );
+        },
       },
       {
         title: 'Provider',
@@ -241,6 +321,13 @@ export default function CredentialsPage() {
           <Space size="middle">
             <Button
               type="link"
+              icon={<EditOutlined />}
+              onClick={() => handleEditOpen(record)}
+            >
+              Edit
+            </Button>
+            <Button
+              type="link"
               icon={<ExperimentOutlined />}
               loading={testingId === record.id}
               onClick={() => handleTestConnection(record.providerId, record.id, record.name)}
@@ -258,7 +345,7 @@ export default function CredentialsPage() {
         ),
       },
     ],
-    [testingId, deleteMutation]
+    [testingId, deleteMutation, revealedNames, revealingId]
   );
 
   const extraActions = (
@@ -478,6 +565,69 @@ export default function CredentialsPage() {
               showHeader={false}
             />
           </div>
+        )}
+      </Modal>
+
+      {/* Edit Credential Modal */}
+      <Modal
+        title="Edit Credential"
+        open={!!editingCredential}
+        onCancel={() => {
+          setEditingCredential(null);
+          editForm.resetFields();
+        }}
+        footer={null}
+      >
+        {editingCredential && (
+          <Form
+            form={editForm}
+            layout="vertical"
+            onFinish={handleEditSubmit}
+            style={{ marginTop: 16 }}
+          >
+            <Form.Item
+              name="name"
+              label="Credential Name"
+              rules={[{ required: true, message: 'Please enter credential name' }]}
+            >
+              <Input placeholder="e.g. Production Key #1" />
+            </Form.Item>
+
+            <Form.Item
+              name="apiKey"
+              label="API Key"
+              tooltip="Leave empty if you do not wish to change the existing API key."
+            >
+              <Input.Password placeholder="Leave empty to keep existing key" />
+            </Form.Item>
+
+            <Form.Item
+              name="priority"
+              label="Rotation Priority"
+              tooltip="Lower number means higher priority in credential allocation."
+              rules={[{ required: true, message: 'Please enter priority' }]}
+            >
+              <InputNumber min={1} max={100} style={{ width: '100%' }} />
+            </Form.Item>
+
+            <Form.Item name="status" label="Status">
+              <Select
+                options={[
+                  { label: 'Active', value: 'active' },
+                  { label: 'Disabled', value: 'disabled' },
+                ]}
+              />
+            </Form.Item>
+
+            <Form.Item style={{ marginTop: 24, textAlign: 'right' }}>
+              <Space>
+                <Button onClick={() => setEditingCredential(null)}>Cancel</Button>
+                <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
+                  Save Changes
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
         )}
       </Modal>
     </div>

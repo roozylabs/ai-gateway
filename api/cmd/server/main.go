@@ -125,6 +125,7 @@ func main() {
 			protected.PUT("/providers/:id/credentials/:credId", credentialHandler.Update)
 			protected.DELETE("/providers/:id/credentials/:credId", credentialHandler.Delete)
 			protected.POST("/providers/:id/credentials/:credId/test", credentialHandler.Test)
+			protected.POST("/providers/:id/credentials/:credId/reveal", credentialHandler.Reveal)
 
 			// Models (nested under provider & top-level)
 			protected.GET("/models", modelHandler.List)

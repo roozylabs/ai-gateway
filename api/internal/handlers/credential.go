@@ -80,6 +80,7 @@ func (h *CredentialHandler) List(c *gin.Context) {
 	}
 
 	for i := range credentials {
+		credentials[i].Name = maskEmailName(credentials[i].Name)
 		ttl, _ := h.cooldownStore.GetCooldownTTL(c.Request.Context(), credentials[i].ID)
 		if ttl > 0 {
 			credentials[i].IsCoolingDown = true
@@ -177,8 +178,34 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 // @Tags         credentials
 // @Security     BearerAuth
 // @Param        id path string true "Provider ID"
+func maskEmailName(name string) string {
+	if !strings.Contains(name, "@") {
+		return name
+	}
+	parts := strings.SplitN(name, "@", 2)
+	user := parts[0]
+	domain := parts[1]
+	if len(user) <= 2 {
+		return user[:1] + "***@" + domain
+	}
+	return user[:2] + "***" + user[len(user)-1:] + "@" + domain
+}
+
+type UpdateCredentialRequest struct {
+	Name     string `json:"name"`
+	APIKey   string `json:"apiKey"`
+	Priority int    `json:"priority"`
+	Status   string `json:"status"`
+}
+
+// Update godoc
+// @Summary      Update credential
+// @Description  Update a credential
+// @Tags         credentials
+// @Security     BearerAuth
+// @Param        id path string true "Provider ID"
 // @Param        credId path string true "Credential ID"
-// @Param        request body models.Credential true "Credential data"
+// @Param        request body UpdateCredentialRequest true "Credential data"
 // @Success      200 {object} models.Credential
 // @Failure      400 {object} map[string]string
 // @Failure      404 {object} map[string]string
@@ -191,9 +218,45 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 		return
 	}
 
-	if err := c.ShouldBindJSON(existing); err != nil {
+	var req UpdateCredentialRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
+	}
+
+	if req.Name != "" {
+		existing.Name = req.Name
+	}
+	if req.Priority > 0 {
+		existing.Priority = req.Priority
+	}
+	if req.Status != "" {
+		existing.Status = req.Status
+		if req.Status == "active" {
+			existing.Enabled = true
+		} else if req.Status == "disabled" {
+			existing.Enabled = false
+		}
+	}
+	if req.APIKey != "" {
+		encrypted, err := utils.EncryptAES256GCM(req.APIKey, h.encKey)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt key"})
+			return
+		}
+		existing.EncryptedKey = encrypted
+		prefixLen := 8
+		if len(req.APIKey) < prefixLen {
+			prefixLen = len(req.APIKey)
+		}
+		existing.KeyPrefix = req.APIKey[:prefixLen]
+
+		suffixLen := 4
+		if len(req.APIKey) <= prefixLen+suffixLen {
+			existing.MaskedKey = existing.KeyPrefix + "••••"
+		} else {
+			existing.MaskedKey = existing.KeyPrefix + "••••" + req.APIKey[len(req.APIKey)-suffixLen:]
+		}
 	}
 
 	if err := h.credentials.Update(c.Request.Context(), existing); err != nil {
@@ -220,6 +283,29 @@ func (h *CredentialHandler) Delete(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// Reveal godoc
+// @Summary      Reveal unmasked credential name
+// @Description  Get unmasked original credential name
+// @Tags         credentials
+// @Security     BearerAuth
+// @Param        id path string true "Provider ID"
+// @Param        credId path string true "Credential ID"
+// @Success      200 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Router       /api/providers/{id}/credentials/{credId}/reveal [post]
+func (h *CredentialHandler) Reveal(c *gin.Context) {
+	credID := c.Param("credId")
+	cred, err := h.credentials.FindByID(c.Request.Context(), credID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"id":   cred.ID,
+		"name": cred.Name,
+	})
 }
 
 func (h *CredentialHandler) Test(c *gin.Context) {

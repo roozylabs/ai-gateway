@@ -249,6 +249,14 @@ export async function apiTestCredential(
   return response.data;
 }
 
+export async function apiRevealCredential(
+  providerId: string,
+  credId: string
+): Promise<{ id: string; name: string }> {
+  const response = await api.post<{ id: string; name: string }>(`/providers/${providerId}/credentials/${credId}/reveal`);
+  return response.data;
+}
+
 // Models API
 export async function apiGetModels(
   providerId: string,
