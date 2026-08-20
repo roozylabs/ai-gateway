@@ -50,58 +50,59 @@ function formatTokens(tokens: number): string {
   return tokens.toString();
 }
 
+function getDailyResetSeconds(): number {
+  const now = new Date();
+  const nextMidnightUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+  return Math.max(0, Math.floor((nextMidnightUtc.getTime() - now.getTime()) / 1000));
+}
+
+function getResetAtSeconds(resetAt?: string): number {
+  if (!resetAt) return 0;
+  const target = new Date(resetAt).getTime();
+  if (isNaN(target)) return 0;
+  return Math.max(0, Math.floor((target - Date.now()) / 1000));
+}
+
 function RateLimitQuotaBadge({
   record,
-  onResetCooldown,
-  isResetting,
   onExpire,
 }: {
   record: CombinedCredential;
-  onResetCooldown?: () => void;
-  isResetting?: boolean;
   onExpire?: () => void;
 }) {
-  const [seconds, setSeconds] = useState(record.cooldownTtl || 0);
+  const [cooldownSec, setCooldownSec] = useState(record.cooldownTtl || 0);
+  const [dailyResetSec, setDailyResetSec] = useState(getDailyResetSeconds());
+  const [resetAtSec, setResetAtSec] = useState(getResetAtSeconds(record.quota?.resetAt));
 
   useEffect(() => {
-    setSeconds(record.cooldownTtl || 0);
+    setCooldownSec(record.cooldownTtl || 0);
   }, [record.cooldownTtl]);
 
   useEffect(() => {
-    if (seconds <= 0) return;
+    setResetAtSec(getResetAtSeconds(record.quota?.resetAt));
+  }, [record.quota?.resetAt]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      setSeconds((prev) => {
+      setDailyResetSec(getDailyResetSeconds());
+      setResetAtSec((prev) => (prev > 0 ? prev - 1 : 0));
+      setCooldownSec((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
-          onExpire?.();
+          if (prev === 1) onExpire?.();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [seconds, onExpire]);
+  }, [onExpire]);
 
-  if (record.isCoolingDown || seconds > 0) {
+  if (record.isCoolingDown || cooldownSec > 0) {
     return (
-      <Space size={8}>
-        <Badge
-          status="warning"
-          text={<Text style={{ fontSize: 13, fontWeight: 500 }}>Cooldown ({formatDuration(seconds)})</Text>}
-        />
-        {onResetCooldown && (
-          <Button
-            size="small"
-            type="link"
-            danger
-            loading={isResetting}
-            onClick={onResetCooldown}
-            style={{ padding: 0, height: 'auto', fontSize: 12 }}
-          >
-            Reset
-          </Button>
-        )}
-      </Space>
+      <Badge
+        status="warning"
+        text={<Text style={{ fontSize: 13, fontWeight: 500 }}>Cooldown ({formatDuration(cooldownSec)})</Text>}
+      />
     );
   }
 
@@ -131,26 +132,34 @@ function RateLimitQuotaBadge({
       );
     }
     if (record.quota.statusText) {
-      const isExceeded = record.quota.statusText.toLowerCase().includes('exceeded') || record.quota.statusText.toLowerCase().includes('limit');
-      return (
-        <Space size={8}>
+      const lower = record.quota.statusText.toLowerCase();
+      const isDailyExceeded = lower.includes('daily') || lower.includes('free usage') || lower.includes('freeusagelimit');
+      const isRateLimited = lower.includes('rate limit') || lower.includes('limited');
+
+      if (isDailyExceeded) {
+        return (
           <Badge
-            status={isExceeded ? 'error' : 'warning'}
-            text={<Text style={{ fontSize: 13 }}>{record.quota.statusText}</Text>}
+            status="error"
+            text={<Text style={{ fontSize: 13 }}>Daily Quota Exceeded (Resets in {formatDuration(dailyResetSec)})</Text>}
           />
-          {onResetCooldown && (
-            <Button
-              size="small"
-              type="link"
-              danger
-              loading={isResetting}
-              onClick={onResetCooldown}
-              style={{ padding: 0, height: 'auto', fontSize: 12 }}
-            >
-              Reset
-            </Button>
-          )}
-        </Space>
+        );
+      }
+
+      if (isRateLimited && resetAtSec > 0) {
+        return (
+          <Badge
+            status="warning"
+            text={<Text style={{ fontSize: 13 }}>Rate Limited (Resets in {formatDuration(resetAtSec)})</Text>}
+          />
+        );
+      }
+
+      const isExceeded = lower.includes('exceeded') || lower.includes('limit');
+      return (
+        <Badge
+          status={isExceeded ? 'error' : 'warning'}
+          text={<Text style={{ fontSize: 13 }}>{record.quota.statusText}</Text>}
+        />
       );
     }
     return <Badge status="success" text={<Text style={{ fontSize: 13 }}>Normal</Text>} />;
@@ -489,8 +498,6 @@ export default function CredentialsPage() {
         render: (_: any, record: CombinedCredential) => (
           <RateLimitQuotaBadge
             record={record}
-            isResetting={resetCooldownMutation.isPending}
-            onResetCooldown={() => resetCooldownMutation.mutate({ providerId: record.providerId, credId: record.id })}
             onExpire={() => refetch()}
           />
         ),
