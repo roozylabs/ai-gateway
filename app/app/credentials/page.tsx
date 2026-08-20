@@ -133,10 +133,24 @@ function RateLimitQuotaBadge({
     if (record.quota.statusText) {
       const isExceeded = record.quota.statusText.toLowerCase().includes('exceeded') || record.quota.statusText.toLowerCase().includes('limit');
       return (
-        <Badge
-          status={isExceeded ? 'error' : 'warning'}
-          text={<Text style={{ fontSize: 13 }}>{record.quota.statusText}</Text>}
-        />
+        <Space size={8}>
+          <Badge
+            status={isExceeded ? 'error' : 'warning'}
+            text={<Text style={{ fontSize: 13 }}>{record.quota.statusText}</Text>}
+          />
+          {onResetCooldown && (
+            <Button
+              size="small"
+              type="link"
+              danger
+              loading={isResetting}
+              onClick={onResetCooldown}
+              style={{ padding: 0, height: 'auto', fontSize: 12 }}
+            >
+              Reset
+            </Button>
+          )}
+        </Space>
       );
     }
     return <Badge status="success" text={<Text style={{ fontSize: 13 }}>Normal</Text>} />;

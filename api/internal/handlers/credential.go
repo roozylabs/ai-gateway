@@ -478,6 +478,7 @@ func (h *CredentialHandler) ResetCooldown(c *gin.Context) {
 	credID := c.Param("credId")
 	if h.cooldownStore != nil {
 		_ = h.cooldownStore.ClearCooldown(c.Request.Context(), credID)
+		_ = h.cooldownStore.DeleteCredentialQuota(c.Request.Context(), credID)
 	}
 	_ = h.credentials.UpdateStatus(c.Request.Context(), credID, "active")
 	if h.publisher != nil {
