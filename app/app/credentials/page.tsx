@@ -246,18 +246,21 @@ export default function CredentialsPage() {
         render: (text: string, record: CombinedCredential) => {
           const isRevealed = !!revealedNames[record.id];
           const displayName = isRevealed ? revealedNames[record.id] : text;
+          const isRedacted = text.includes('***') || isRevealed;
 
           return (
             <Space align="center" size="small">
               <Text strong>{displayName}</Text>
-              <Button
-                type="text"
-                size="small"
-                icon={isRevealed ? <EyeInvisibleOutlined style={{ color: '#ff4d4f' }} /> : <EyeOutlined style={{ color: '#1890ff' }} />}
-                loading={revealingId === record.id}
-                onClick={() => toggleReveal(record)}
-                title={isRevealed ? 'Hide credential info' : 'Reveal unmasked info'}
-              />
+              {isRedacted && (
+                <Button
+                  type="text"
+                  size="small"
+                  icon={isRevealed ? <EyeInvisibleOutlined style={{ color: '#ff4d4f' }} /> : <EyeOutlined style={{ color: '#1890ff' }} />}
+                  loading={revealingId === record.id}
+                  onClick={() => toggleReveal(record)}
+                  title={isRevealed ? 'Hide credential info' : 'Reveal unmasked info'}
+                />
+              )}
             </Space>
           );
         },
