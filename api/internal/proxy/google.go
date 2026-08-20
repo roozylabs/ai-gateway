@@ -39,6 +39,11 @@ func (a *GoogleAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 		"messages": req.Messages,
 		"stream":   req.Stream,
 	}
+	if req.Stream {
+		body["stream_options"] = map[string]interface{}{
+			"include_usage": true,
+		}
+	}
 	if req.MaxTokens > 0 {
 		body["max_tokens"] = req.MaxTokens
 	}

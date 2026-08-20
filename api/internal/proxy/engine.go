@@ -256,6 +256,34 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			continue
 		}
 
+		if resp.Usage.TotalTokens == 0 {
+			inputChars := 0
+			for _, m := range req.Messages {
+				if content, ok := m["content"].(string); ok {
+					inputChars += len(content)
+				}
+			}
+			outputChars := 0
+			for _, choice := range resp.Choices {
+				if content, ok := choice.Message["content"].(string); ok {
+					outputChars += len(content)
+				}
+			}
+			estInput := (inputChars + 3) / 4
+			estOutput := (outputChars + 3) / 4
+			if estInput < 1 {
+				estInput = 1
+			}
+			if estOutput < 1 && outputChars > 0 {
+				estOutput = 1
+			}
+			resp.Usage = Usage{
+				PromptTokens:     estInput,
+				CompletionTokens: estOutput,
+				TotalTokens:      estInput + estOutput,
+			}
+		}
+
 		latency := int(time.Since(start).Milliseconds())
 
 		log := &models.RequestLog{
@@ -433,6 +461,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		c.Status(http.StatusOK)
 
 		var totalTokens Usage
+		var outputCharCount int
 		scanner := bufio.NewScanner(httpResp.Body)
 		scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 
@@ -452,6 +481,14 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 			if chunk.Usage.TotalTokens > 0 {
 				totalTokens = chunk.Usage
+			}
+
+			for _, ch := range chunk.Choices {
+				if ch.Delta != nil {
+					if content, ok := ch.Delta["content"].(string); ok {
+						outputCharCount += len(content)
+					}
+				}
 			}
 
 			if chunk.Choices == nil {
@@ -481,6 +518,28 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		_, _ = c.Writer.Write([]byte("data: [DONE]\n\n"))
 		c.Writer.Flush()
+
+		if totalTokens.TotalTokens == 0 {
+			inputChars := 0
+			for _, m := range req.Messages {
+				if content, ok := m["content"].(string); ok {
+					inputChars += len(content)
+				}
+			}
+			estInput := (inputChars + 3) / 4
+			estOutput := (outputCharCount + 3) / 4
+			if estInput < 1 {
+				estInput = 1
+			}
+			if estOutput < 1 && outputCharCount > 0 {
+				estOutput = 1
+			}
+			totalTokens = Usage{
+				PromptTokens:     estInput,
+				CompletionTokens: estOutput,
+				TotalTokens:      estInput + estOutput,
+			}
+		}
 
 		latency := int(time.Since(start).Milliseconds())
 
