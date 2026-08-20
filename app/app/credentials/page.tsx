@@ -306,6 +306,7 @@ export default function CredentialsPage() {
         title: 'Requests Served',
         dataIndex: 'requestCount',
         key: 'requestCount',
+        defaultSortOrder: 'descend',
         sorter: (a: CombinedCredential, b: CombinedCredential) => (a.requestCount || 0) - (b.requestCount || 0),
         render: (count: number) => (count || 0).toLocaleString(),
       },

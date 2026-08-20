@@ -75,7 +75,7 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 		return nil, 0, err
 	}
 
-	query += " ORDER BY c.priority ASC, c.created_at DESC"
+	query += " ORDER BY c.request_count DESC, c.priority ASC, c.created_at DESC"
 
 	if limit > 0 {
 		args = append(args, limit)
