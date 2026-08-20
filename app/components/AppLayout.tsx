@@ -39,47 +39,138 @@ import {
   SyncOutlined,
 } from '@ant-design/icons';
 
-function ActiveStreamHeaderBadge() {
+function SidebarActivityWidget({ collapsed, mode }: { collapsed: boolean; mode: 'light' | 'dark' }) {
   const { data } = useQuery({
     queryKey: ['active-streams'],
     queryFn: apiGetActiveStreams,
   });
 
   const total = data?.totalActive || 0;
-
-  if (total === 0) {
-    return (
-      <Tag color="default" style={{ margin: 0, fontSize: 12, borderRadius: 12, padding: '2px 10px' }}>
-        🟢 Idle (0 active)
-      </Tag>
-    );
-  }
-
-  const modelsList = data?.byModel
+  const activeModels = data?.byModel
     ? Object.entries(data.byModel)
-        .map(([slug, count]) => `${slug}: ${count}`)
+        .map(([slug, count]) => (count > 1 ? `${slug} (${count})` : slug))
         .join(', ')
     : '';
 
-  return (
-    <Tooltip title={`Active Streams: ${modelsList}`}>
-      <Tag
-        color="processing"
+  const activeCreds = data?.byCredential
+    ? Object.entries(data.byCredential)
+        .map(([cred, count]) => (count > 1 ? `${cred} (${count})` : cred))
+        .join(', ')
+    : '';
+
+  if (collapsed) {
+    return (
+      <div
         style={{
-          margin: 0,
-          fontSize: 12,
-          fontWeight: 600,
-          borderRadius: 12,
-          padding: '2px 12px',
-          background: '#111b26',
-          borderColor: '#1677ff',
-          color: '#1677ff',
+          padding: '16px 0',
+          display: 'flex',
+          justifyContent: 'center',
+          borderTop: `1px solid ${mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#f0f0f0'}`,
         }}
       >
-        <SyncOutlined spin style={{ marginRight: 6 }} />
-        ⚡ {total} {total === 1 ? 'Stream Active' : 'Streams Active'}
-      </Tag>
-    </Tooltip>
+        <Tooltip
+          title={
+            total > 0
+              ? `Active: ${total} stream(s) | Model: ${activeModels || '-'} | Credential: ${activeCreds || '-'}`
+              : 'Gateway Status: Idle (0 active)'
+          }
+          placement="right"
+        >
+          {total > 0 ? (
+            <Badge count={total} size="small">
+              <SyncOutlined spin style={{ color: '#1677ff', fontSize: 16 }} />
+            </Badge>
+          ) : (
+            <Badge status="default" />
+          )}
+        </Tooltip>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        padding: '12px 14px',
+        margin: '8px 12px 14px 12px',
+        background: mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
+        border: `1px solid ${mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
+        borderRadius: 8,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: total > 0 ? 8 : 0,
+        }}
+      >
+        <Text
+          type="secondary"
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.6px',
+            textTransform: 'uppercase',
+          }}
+        >
+          Activity
+        </Text>
+        {total > 0 ? (
+          <Tag color="processing" style={{ margin: 0, fontSize: 11, fontWeight: 600, borderRadius: 10 }}>
+            <SyncOutlined spin style={{ marginRight: 4 }} />
+            {total} Active
+          </Tag>
+        ) : (
+          <Tag color="default" style={{ margin: 0, fontSize: 11, borderRadius: 10 }}>
+            Idle
+          </Tag>
+        )}
+      </div>
+
+      {total > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+          {activeModels && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>Model:</Text>
+              <Text
+                strong
+                style={{
+                  fontSize: 11,
+                  maxWidth: 120,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  color: '#1677ff',
+                }}
+                title={activeModels}
+              >
+                {activeModels}
+              </Text>
+            </div>
+          )}
+          {activeCreds && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>Cred:</Text>
+              <Text
+                code
+                style={{
+                  fontSize: 10,
+                  maxWidth: 120,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                title={activeCreds}
+              >
+                {activeCreds}
+              </Text>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -194,6 +285,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           boxShadow: '2px 0 8px 0 rgba(29,35,41,.05)',
           background: mode === 'dark' ? '#141414' : '#ffffff',
           borderRight: mode === 'light' ? `1px solid ${token.colorBorderSecondary}` : 'none',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <div
@@ -205,6 +298,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             padding: '0 20px',
             background: mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : '#ffffff',
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
+            flexShrink: 0,
           }}
         >
           <ThunderboltFilled style={{ fontSize: 24, color: '#1677ff', marginRight: collapsed ? 0 : 12 }} />
@@ -215,14 +309,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <Menu
-          theme={mode}
-          mode="inline"
-          selectedKeys={[pathname]}
-          items={menuItems}
-          onClick={({ key }) => router.push(key)}
-          style={{ padding: '12px 0', borderRight: 0, background: 'transparent' }}
-        />
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <Menu
+            theme={mode}
+            mode="inline"
+            selectedKeys={[pathname]}
+            items={menuItems}
+            onClick={({ key }) => router.push(key)}
+            style={{ padding: '12px 0', borderRight: 0, background: 'transparent' }}
+          />
+        </div>
+
+        <div style={{ flexShrink: 0 }}>
+          <SidebarActivityWidget collapsed={collapsed} mode={mode} />
+        </div>
       </Sider>
 
       <Layout style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: token.colorBgLayout }}>
@@ -250,7 +350,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               style={{ fontSize: '16px', width: 40, height: 40 }}
             />
             <Badge status={badgeStatus} color={badgeColor} text={<Text type="secondary">{systemStatusText}</Text>} />
-            <ActiveStreamHeaderBadge />
           </Space>
 
           <Space size="large">

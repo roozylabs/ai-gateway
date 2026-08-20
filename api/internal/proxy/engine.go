@@ -102,7 +102,20 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		gwKeyID = gatewayKey.ID
 	}
 
-	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID)
+	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	activeCredName := ""
+	if len(routes) > 0 {
+		activeCredName = routes[0].Credential.Name
+		if activeCredName == "" {
+			activeCredName = routes[0].Credential.MaskedKey
+		}
+	}
+
+	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID, activeCredName)
 	if e.publisher != nil {
 		if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
 			_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
@@ -111,18 +124,13 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 	defer func() {
 		bgCtx := context.Background()
-		_ = e.cooldown.DecrementActiveStream(bgCtx, req.Model, gwKeyID)
+		_ = e.cooldown.DecrementActiveStream(bgCtx, req.Model, gwKeyID, activeCredName)
 		if e.publisher != nil {
 			if summary, err := e.cooldown.GetActiveStreams(bgCtx); err == nil {
 				_ = e.publisher.Publish(bgCtx, "active_streams_update", summary)
 			}
 		}
 	}()
-
-	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	var lastErr error
 	var retryCount int
@@ -261,7 +269,20 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		gwKeyID = gatewayKey.ID
 	}
 
-	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID)
+	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
+	if err != nil {
+		return nil, err
+	}
+
+	activeCredName := ""
+	if len(routes) > 0 {
+		activeCredName = routes[0].Credential.Name
+		if activeCredName == "" {
+			activeCredName = routes[0].Credential.MaskedKey
+		}
+	}
+
+	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID, activeCredName)
 	if e.publisher != nil {
 		if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
 			_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
@@ -270,18 +291,13 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 	defer func() {
 		bgCtx := context.Background()
-		_ = e.cooldown.DecrementActiveStream(bgCtx, req.Model, gwKeyID)
+		_ = e.cooldown.DecrementActiveStream(bgCtx, req.Model, gwKeyID, activeCredName)
 		if e.publisher != nil {
 			if summary, err := e.cooldown.GetActiveStreams(bgCtx); err == nil {
 				_ = e.publisher.Publish(bgCtx, "active_streams_update", summary)
 			}
 		}
 	}()
-
-	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
-	if err != nil {
-		return nil, err
-	}
 
 	var lastErr error
 	var retryCount int

@@ -242,11 +242,11 @@ export default function GatewayKeysPage() {
           if (count > 0) {
             return (
               <Tag color="processing" style={{ borderRadius: 10, fontWeight: 600 }}>
-                <SyncOutlined spin style={{ marginRight: 4 }} /> ⚡ {count} Running
+                <SyncOutlined spin style={{ marginRight: 4 }} /> {count} Running
               </Tag>
             );
           }
-          return <Tag color="default" style={{ borderRadius: 10 }}>🟢 Idle</Tag>;
+          return <Tag color="default" style={{ borderRadius: 10 }}> Idle</Tag>;
         },
       },
       {

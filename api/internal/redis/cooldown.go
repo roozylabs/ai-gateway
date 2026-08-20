@@ -57,12 +57,13 @@ func (s *CooldownStore) DeleteAccessToken(ctx context.Context, credentialID stri
 }
 
 type ActiveStreamsSummary struct {
-	TotalActive int64            `json:"totalActive"`
-	ByModel     map[string]int64 `json:"byModel"`
-	ByKey       map[string]int64 `json:"byKey"`
+	TotalActive  int64            `json:"totalActive"`
+	ByModel      map[string]int64 `json:"byModel"`
+	ByCredential map[string]int64 `json:"byCredential"`
+	ByKey        map[string]int64 `json:"byKey"`
 }
 
-func (s *CooldownStore) IncrementActiveStream(ctx context.Context, modelSlug, gatewayKeyID string) error {
+func (s *CooldownStore) IncrementActiveStream(ctx context.Context, modelSlug, gatewayKeyID, credName string) error {
 	pipe := s.rdb.Pipeline()
 	pipe.Incr(ctx, "gateway:active:global")
 	if modelSlug != "" {
@@ -71,11 +72,14 @@ func (s *CooldownStore) IncrementActiveStream(ctx context.Context, modelSlug, ga
 	if gatewayKeyID != "" {
 		pipe.Incr(ctx, fmt.Sprintf("gateway:active:key:%s", gatewayKeyID))
 	}
+	if credName != "" {
+		pipe.Incr(ctx, fmt.Sprintf("gateway:active:cred:%s", credName))
+	}
 	_, err := pipe.Exec(ctx)
 	return err
 }
 
-func (s *CooldownStore) DecrementActiveStream(ctx context.Context, modelSlug, gatewayKeyID string) error {
+func (s *CooldownStore) DecrementActiveStream(ctx context.Context, modelSlug, gatewayKeyID, credName string) error {
 	pipe := s.rdb.Pipeline()
 	pipe.Decr(ctx, "gateway:active:global")
 	if modelSlug != "" {
@@ -83,6 +87,9 @@ func (s *CooldownStore) DecrementActiveStream(ctx context.Context, modelSlug, ga
 	}
 	if gatewayKeyID != "" {
 		pipe.Decr(ctx, fmt.Sprintf("gateway:active:key:%s", gatewayKeyID))
+	}
+	if credName != "" {
+		pipe.Decr(ctx, fmt.Sprintf("gateway:active:cred:%s", credName))
 	}
 	_, err := pipe.Exec(ctx)
 	return err
@@ -95,9 +102,10 @@ func (s *CooldownStore) GetActiveStreams(ctx context.Context) (*ActiveStreamsSum
 	}
 
 	summary := &ActiveStreamsSummary{
-		TotalActive: globalVal,
-		ByModel:     make(map[string]int64),
-		ByKey:       make(map[string]int64),
+		TotalActive:  globalVal,
+		ByModel:      make(map[string]int64),
+		ByCredential: make(map[string]int64),
+		ByKey:        make(map[string]int64),
 	}
 
 	modelKeys, _ := s.rdb.Keys(ctx, "gateway:active:model:*").Result()
@@ -106,6 +114,15 @@ func (s *CooldownStore) GetActiveStreams(ctx context.Context) (*ActiveStreamsSum
 		if err == nil && val > 0 {
 			slug := strings.TrimPrefix(k, "gateway:active:model:")
 			summary.ByModel[slug] = val
+		}
+	}
+
+	credKeys, _ := s.rdb.Keys(ctx, "gateway:active:cred:*").Result()
+	for _, k := range credKeys {
+		val, err := s.rdb.Get(ctx, k).Int64()
+		if err == nil && val > 0 {
+			cred := strings.TrimPrefix(k, "gateway:active:cred:")
+			summary.ByCredential[cred] = val
 		}
 	}
 

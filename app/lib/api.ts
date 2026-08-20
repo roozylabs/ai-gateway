@@ -209,6 +209,7 @@ export async function apiGetDashboardHealth(): Promise<ApiProviderHealth[]> {
 export interface ApiActiveStreams {
   totalActive: number;
   byModel: Record<string, number>;
+  byCredential?: Record<string, number>;
   byKey: Record<string, number>;
 }
 
