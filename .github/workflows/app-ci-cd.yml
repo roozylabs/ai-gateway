@@ -6,12 +6,16 @@ on:
     paths:
       - 'app/**'
       - 'docker-compose*.yml'
+      - '.dockerignore'
+      - '.env.example'
       - '.github/workflows/app-ci-cd.yml'
   pull_request:
     branches: [ main, master, develop ]
     paths:
       - 'app/**'
       - 'docker-compose*.yml'
+      - '.dockerignore'
+      - '.env.example'
       - '.github/workflows/app-ci-cd.yml'
   workflow_dispatch:
 
