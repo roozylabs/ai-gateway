@@ -135,7 +135,6 @@ export default function CredentialsPage() {
     onError: (err: Error) => message.error(err.message),
   });
 
-  const [editingCredential, setEditingCredential] = useState<CombinedCredential | null>(null);
   const [editForm] = Form.useForm();
 
   const updateMutation = useMutation({
