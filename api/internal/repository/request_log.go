@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
 type RequestLogRepository struct {
@@ -123,12 +124,14 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 	offset := f.Offset
 
 	query := fmt.Sprintf(
-		`SELECT rl.id, rl.request_id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id, rl.model,
+		`SELECT rl.id, rl.request_id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id,
+		        COALESCE(c.name, '') as credential_name, rl.model,
 		        rl.status_code, rl.latency_ms, rl.input_tokens, rl.output_tokens, rl.total_tokens,
 		        rl.error_message, rl.retry_count, rl.created_at
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 LEFT JOIN providers p ON rl.provider_id = p.id
+		 LEFT JOIN credentials c ON rl.credential_id = c.id
 		 WHERE %s
 		 ORDER BY rl.created_at DESC
 		 LIMIT $%d OFFSET $%d`, whereClause, argIdx, argIdx+1)
@@ -144,10 +147,14 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 	var logs []models.RequestLog
 	for rows.Next() {
 		var l models.RequestLog
+		var rawCredName string
 		if err := rows.Scan(&l.ID, &l.RequestID, &l.GatewayAPIKeyID, &l.ProviderID, &l.CredentialID,
-			&l.Model, &l.StatusCode, &l.LatencyMs, &l.InputTokens, &l.OutputTokens,
+			&rawCredName, &l.Model, &l.StatusCode, &l.LatencyMs, &l.InputTokens, &l.OutputTokens,
 			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.CreatedAt); err != nil {
 			return nil, 0, err
+		}
+		if rawCredName != "" {
+			l.CredentialName = utils.MaskEmailName(rawCredName)
 		}
 		logs = append(logs, l)
 	}

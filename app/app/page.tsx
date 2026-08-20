@@ -169,6 +169,16 @@ export default function DashboardPage() {
       render: (val: string) => (val ? new Date(val).toLocaleTimeString() : '-'),
     },
     {
+      title: 'Credential Used',
+      dataIndex: 'credentialName',
+      key: 'credentialName',
+      render: (name: string) => (
+        <Text strong style={{ fontSize: 13 }}>
+          {name || '-'}
+        </Text>
+      ),
+    },
+    {
       title: 'Model',
       dataIndex: 'model',
       key: 'model',

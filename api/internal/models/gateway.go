@@ -70,18 +70,19 @@ type GatewayAPIKey struct {
 }
 
 type RequestLog struct {
-	ID              string     `json:"id" db:"id"`
-	RequestID       string     `json:"requestId" db:"request_id"`
-	GatewayAPIKeyID *string    `json:"gatewayApiKeyId,omitempty" db:"gateway_api_key_id"`
-	ProviderID      *string    `json:"providerId,omitempty" db:"provider_id"`
-	CredentialID    *string    `json:"credentialId,omitempty" db:"credential_id"`
-	Model           string     `json:"model" db:"model"`
-	StatusCode      int        `json:"statusCode" db:"status_code"`
-	LatencyMs       int        `json:"latencyMs" db:"latency_ms"`
-	InputTokens     int        `json:"inputTokens" db:"input_tokens"`
-	OutputTokens    int        `json:"outputTokens" db:"output_tokens"`
-	TotalTokens     int        `json:"totalTokens" db:"total_tokens"`
+	ID              string         `json:"id" db:"id"`
+	RequestID       string         `json:"requestId" db:"request_id"`
+	GatewayAPIKeyID *string        `json:"gatewayApiKeyId,omitempty" db:"gateway_api_key_id"`
+	ProviderID      *string        `json:"providerId,omitempty" db:"provider_id"`
+	CredentialID    *string        `json:"credentialId,omitempty" db:"credential_id"`
+	CredentialName  string         `json:"credentialName,omitempty" db:"credential_name"`
+	Model           string         `json:"model" db:"model"`
+	StatusCode      int            `json:"statusCode" db:"status_code"`
+	LatencyMs       int            `json:"latencyMs" db:"latency_ms"`
+	InputTokens     int            `json:"inputTokens" db:"input_tokens"`
+	OutputTokens    int            `json:"outputTokens" db:"output_tokens"`
+	TotalTokens     int            `json:"totalTokens" db:"total_tokens"`
 	ErrorMessage    sql.NullString `json:"errorMessage,omitempty" db:"error_message"`
-	RetryCount      int        `json:"retryCount" db:"retry_count"`
-	CreatedAt       time.Time  `json:"createdAt" db:"created_at"`
+	RetryCount      int            `json:"retryCount" db:"retry_count"`
+	CreatedAt       time.Time      `json:"createdAt" db:"created_at"`
 }

@@ -97,6 +97,7 @@ export interface ApiRequestLog {
   gatewayApiKeyId?: string;
   providerId?: string;
   credentialId?: string;
+  credentialName?: string;
   model: string;
   statusCode: number;
   latencyMs: number;
