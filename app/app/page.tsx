@@ -83,6 +83,11 @@ export default function DashboardPage() {
     requests: item.requests,
   }));
 
+  // Find peak point for persistent detail callout
+  const peakPoint = chartData.length > 0
+    ? chartData.reduce((max, p) => (p.requests > (max?.requests || 0) ? p : max), chartData[0])
+    : null;
+
   const chartConfig = {
     data: chartData,
     xField: 'date',
@@ -90,12 +95,34 @@ export default function DashboardPage() {
     seriesField: 'model',
     colorField: 'model',
     smooth: true,
-    height: 260,
+    height: 280,
     autoFit: true,
     point: {
-      size: 4,
+      size: 5,
       shape: 'diamond',
     },
+    label: {
+      position: 'top',
+      style: {
+        fontSize: 11,
+        fill: isDark ? '#ffffff' : '#141414',
+      },
+      formatter: (datum: any) => `${datum.requests}`,
+    },
+    annotations: peakPoint && peakPoint.requests > 0 ? [
+      {
+        type: 'text',
+        position: [peakPoint.date, peakPoint.requests],
+        content: `🔥 Peak: ${peakPoint.requests} reqs (${peakPoint.model})`,
+        offsetY: -22,
+        style: {
+          textAlign: 'center',
+          fill: '#ff4d4f',
+          fontSize: 12,
+          fontWeight: 'bold',
+        },
+      },
+    ] : [],
     tooltip: {
       showMarkers: true,
     },
