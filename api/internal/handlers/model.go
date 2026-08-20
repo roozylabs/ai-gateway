@@ -1,21 +1,35 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/models"
+	goredis "github.com/roozylabs/ai-gateway/internal/redis"
 	"github.com/roozylabs/ai-gateway/internal/repository"
 )
 
 type ModelHandler struct {
-	models    *repository.ModelRepository
-	providers *repository.ProviderRepository
+	models        *repository.ModelRepository
+	providers     *repository.ProviderRepository
+	gatewayKeys   *repository.GatewayKeyRepository
+	cooldownStore *goredis.CooldownStore
 }
 
-func NewModelHandler(models *repository.ModelRepository, providers *repository.ProviderRepository) *ModelHandler {
-	return &ModelHandler{models: models, providers: providers}
+func NewModelHandler(
+	models *repository.ModelRepository,
+	providers *repository.ProviderRepository,
+	gatewayKeys *repository.GatewayKeyRepository,
+	cooldownStore *goredis.CooldownStore,
+) *ModelHandler {
+	return &ModelHandler{
+		models:        models,
+		providers:     providers,
+		gatewayKeys:   gatewayKeys,
+		cooldownStore: cooldownStore,
+	}
 }
 
 // List godoc
@@ -154,11 +168,51 @@ func (h *ModelHandler) Update(c *gin.Context) {
 // @Param        modelId path string true "Model ID"
 // @Success      204
 // @Failure      404 {object} map[string]string
+// @Failure      409 {object} map[string]string
 // @Router       /api/providers/{id}/models/{modelId} [delete]
 func (h *ModelHandler) Delete(c *gin.Context) {
 	modelID := c.Param("modelId")
-	if err := h.models.Delete(c.Request.Context(), modelID); err != nil {
+	m, err := h.models.FindByID(c.Request.Context(), modelID)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "model not found"})
+		return
+	}
+
+	// 1. Guard against deleting model with active in-flight streams
+	if h.cooldownStore != nil {
+		if summary, err := h.cooldownStore.GetActiveStreams(c.Request.Context()); err == nil {
+			count := summary.ByModel[m.Slug] + summary.ByModel[m.Name]
+			if count > 0 {
+				c.JSON(http.StatusConflict, gin.H{
+					"error": fmt.Sprintf("Cannot delete model: it is currently processing %d active live streams", count),
+				})
+				return
+			}
+		}
+	}
+
+	// 2. Guard against deleting model referenced in active Gateway API Keys
+	if h.gatewayKeys != nil {
+		keyCount, err := h.gatewayKeys.CountByAllowedModel(c.Request.Context(), m.Slug)
+		if err == nil && keyCount > 0 {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": fmt.Sprintf("Cannot delete model: in use by %d active Gateway API Key(s)", keyCount),
+			})
+			return
+		}
+		if m.Name != m.Slug {
+			keyCount2, err := h.gatewayKeys.CountByAllowedModel(c.Request.Context(), m.Name)
+			if err == nil && keyCount2 > 0 {
+				c.JSON(http.StatusConflict, gin.H{
+					"error": fmt.Sprintf("Cannot delete model: in use by %d active Gateway API Key(s)", keyCount2),
+				})
+				return
+			}
+		}
+	}
+
+	if err := h.models.Delete(c.Request.Context(), modelID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete model"})
 		return
 	}
 	c.Status(http.StatusNoContent)

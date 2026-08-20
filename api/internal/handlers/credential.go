@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"path"
@@ -20,15 +21,26 @@ import (
 type CredentialHandler struct {
 	credentials   *repository.CredentialRepository
 	providers     *repository.ProviderRepository
+	gatewayKeys   *repository.GatewayKeyRepository
 	cooldownStore *goredis.CooldownStore
+	publisher     *goredis.EventPublisher
 	encKey        string
 }
 
-func NewCredentialHandler(credentials *repository.CredentialRepository, providers *repository.ProviderRepository, cooldownStore *goredis.CooldownStore, encKey string) *CredentialHandler {
+func NewCredentialHandler(
+	credentials *repository.CredentialRepository,
+	providers *repository.ProviderRepository,
+	gatewayKeys *repository.GatewayKeyRepository,
+	cooldownStore *goredis.CooldownStore,
+	publisher *goredis.EventPublisher,
+	encKey string,
+) *CredentialHandler {
 	return &CredentialHandler{
 		credentials:   credentials,
 		providers:     providers,
+		gatewayKeys:   gatewayKeys,
 		cooldownStore: cooldownStore,
+		publisher:     publisher,
 		encKey:        encKey,
 	}
 }
@@ -91,10 +103,24 @@ func (h *CredentialHandler) List(c *gin.Context) {
 
 	for i := range credentials {
 		credentials[i].Name = maskEmailName(credentials[i].Name)
-		ttl, _ := h.cooldownStore.GetCooldownTTL(c.Request.Context(), credentials[i].ID)
-		if ttl > 0 {
-			credentials[i].IsCoolingDown = true
-			credentials[i].CooldownTTL = int(ttl.Seconds())
+		if h.cooldownStore != nil {
+			ttl, _ := h.cooldownStore.GetCooldownTTL(c.Request.Context(), credentials[i].ID)
+			if ttl > 0 {
+				credentials[i].IsCoolingDown = true
+				credentials[i].CooldownTTL = int(ttl.Seconds())
+			}
+			if q, err := h.cooldownStore.GetCredentialQuota(c.Request.Context(), credentials[i].ID); err == nil && q != nil {
+				credentials[i].Quota = &models.CredentialQuota{
+					RemainingRequests: q.RemainingRequests,
+					LimitRequests:     q.LimitRequests,
+					RemainingTokens:   q.RemainingTokens,
+					LimitTokens:       q.LimitTokens,
+					ResetDurationSec:  q.ResetDurationSec,
+					ResetAt:           q.ResetAt,
+					StatusText:        q.StatusText,
+					LastUpdated:       q.LastUpdated,
+				}
+			}
 		}
 	}
 
@@ -123,10 +149,24 @@ func (h *CredentialHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
 		return
 	}
-	ttl, _ := h.cooldownStore.GetCooldownTTL(c.Request.Context(), cred.ID)
-	if ttl > 0 {
-		cred.IsCoolingDown = true
-		cred.CooldownTTL = int(ttl.Seconds())
+	if h.cooldownStore != nil {
+		ttl, _ := h.cooldownStore.GetCooldownTTL(c.Request.Context(), cred.ID)
+		if ttl > 0 {
+			cred.IsCoolingDown = true
+			cred.CooldownTTL = int(ttl.Seconds())
+		}
+		if q, err := h.cooldownStore.GetCredentialQuota(c.Request.Context(), cred.ID); err == nil && q != nil {
+			cred.Quota = &models.CredentialQuota{
+				RemainingRequests: q.RemainingRequests,
+				LimitRequests:     q.LimitRequests,
+				RemainingTokens:   q.RemainingTokens,
+				LimitTokens:       q.LimitTokens,
+				ResetDurationSec:  q.ResetDurationSec,
+				ResetAt:           q.ResetAt,
+				StatusText:        q.StatusText,
+				LastUpdated:       q.LastUpdated,
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, cred)
@@ -363,14 +403,84 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 // @Param        credId path string true "Credential ID"
 // @Success      204
 // @Failure      404 {object} map[string]string
+// @Failure      409 {object} map[string]string
 // @Router       /api/providers/{id}/credentials/{credId} [delete]
 func (h *CredentialHandler) Delete(c *gin.Context) {
 	credID := c.Param("credId")
-	if err := h.credentials.Delete(c.Request.Context(), credID); err != nil {
+	cred, err := h.credentials.FindByID(c.Request.Context(), credID)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
 		return
 	}
+
+	// 1. Guard against deleting credential with active in-flight streams
+	if h.cooldownStore != nil {
+		if summary, err := h.cooldownStore.GetActiveStreams(c.Request.Context()); err == nil {
+			maskedName := utils.MaskEmailName(cred.Name)
+			count := summary.ByCredential[maskedName]
+			if count == 0 && cred.MaskedKey != "" {
+				count = summary.ByCredential[cred.MaskedKey]
+			}
+			if count > 0 {
+				c.JSON(http.StatusConflict, gin.H{
+					"error": fmt.Sprintf("Cannot delete credential: it is currently processing %d active live streams", count),
+				})
+				return
+			}
+		}
+	}
+
+	// 2. Guard against deleting sole active credential for provider with active Gateway Keys
+	if h.gatewayKeys != nil && h.credentials != nil {
+		activeCredsCount, err := h.credentials.CountActiveByProviderID(c.Request.Context(), cred.ProviderID)
+		if err == nil && activeCredsCount <= 1 {
+			gwKeyCount, err := h.gatewayKeys.CountByProviderID(c.Request.Context(), cred.ProviderID)
+			if err == nil && gwKeyCount > 0 {
+				c.JSON(http.StatusConflict, gin.H{
+					"error": fmt.Sprintf("Cannot delete the only active credential for provider with %d active Gateway API Key(s)", gwKeyCount),
+				})
+				return
+			}
+		}
+	}
+
+	if err := h.credentials.Delete(c.Request.Context(), credID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete credential"})
+		return
+	}
+
+	// Clean up Redis state
+	if h.cooldownStore != nil {
+		_ = h.cooldownStore.ClearCooldown(c.Request.Context(), credID)
+		_ = h.cooldownStore.DeleteAccessToken(c.Request.Context(), credID)
+		_ = h.cooldownStore.DeleteCredentialQuota(c.Request.Context(), credID)
+	}
+
 	c.Status(http.StatusNoContent)
+}
+
+// ResetCooldown godoc
+// @Summary      Reset credential cooldown
+// @Description  Manually reset cooldown state for a credential
+// @Tags         credentials
+// @Security     BearerAuth
+// @Param        id path string true "Provider ID"
+// @Param        credId path string true "Credential ID"
+// @Success      200 {object} map[string]string
+// @Router       /api/providers/{id}/credentials/{credId}/reset-cooldown [post]
+func (h *CredentialHandler) ResetCooldown(c *gin.Context) {
+	credID := c.Param("credId")
+	if h.cooldownStore != nil {
+		_ = h.cooldownStore.ClearCooldown(c.Request.Context(), credID)
+	}
+	_ = h.credentials.UpdateStatus(c.Request.Context(), credID, "active")
+	if h.publisher != nil {
+		_ = h.publisher.Publish(c.Request.Context(), "CREDENTIAL_STATUS_CHANGED", map[string]interface{}{
+			"credentialId": credID,
+			"status":       "active",
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Cooldown reset successfully"})
 }
 
 // Reveal godoc

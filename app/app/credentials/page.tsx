@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Typography, Space, Button, Modal, Form, Input, InputNumber, Select, Tag, Table, Alert, App } from 'antd';
-import { PlusOutlined, DeleteOutlined, EditOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, EyeOutlined, EyeInvisibleOutlined, GoogleOutlined } from '@ant-design/icons';
+import { Typography, Space, Button, Modal, Form, Input, InputNumber, Select, Tag, Table, Alert, App, Badge, Tooltip } from 'antd';
+import { PlusOutlined, DeleteOutlined, EditOutlined, ExperimentOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, EyeOutlined, EyeInvisibleOutlined, GoogleOutlined, RedoOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
 import {
@@ -13,6 +13,8 @@ import {
   apiDeleteCredential,
   apiTestCredential,
   apiRevealCredential,
+  apiResetCredentialCooldown,
+  apiGetActiveStreams,
   ApiProvider,
   ApiCredential,
   ApiTestCredentialResult,
@@ -24,12 +26,46 @@ export interface CombinedCredential extends ApiCredential {
   providerName?: string;
 }
 
-function CooldownCountdownTag({ initialTtl, status, onExpire }: { initialTtl: number; status: string; onExpire?: () => void }) {
-  const [seconds, setSeconds] = useState(initialTtl);
+function formatDuration(sec: number): string {
+  if (sec >= 3600) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    return `${h}h ${m}m`;
+  }
+  if (sec >= 60) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}m ${s}s`;
+  }
+  return `${sec}s`;
+}
+
+function formatTokens(tokens: number): string {
+  if (tokens >= 1000000) {
+    return (tokens / 1000000).toFixed(1) + 'M';
+  }
+  if (tokens >= 1000) {
+    return (tokens / 1000).toFixed(0) + 'k';
+  }
+  return tokens.toString();
+}
+
+function RateLimitQuotaBadge({
+  record,
+  onResetCooldown,
+  isResetting,
+  onExpire,
+}: {
+  record: CombinedCredential;
+  onResetCooldown?: () => void;
+  isResetting?: boolean;
+  onExpire?: () => void;
+}) {
+  const [seconds, setSeconds] = useState(record.cooldownTtl || 0);
 
   useEffect(() => {
-    setSeconds(initialTtl);
-  }, [initialTtl]);
+    setSeconds(record.cooldownTtl || 0);
+  }, [record.cooldownTtl]);
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -46,15 +82,67 @@ function CooldownCountdownTag({ initialTtl, status, onExpire }: { initialTtl: nu
     return () => clearInterval(interval);
   }, [seconds, onExpire]);
 
-  if (seconds > 0) {
+  if (record.isCoolingDown || seconds > 0) {
     return (
-      <Tag color="warning" icon={<ClockCircleOutlined />}>
-        Cooldown ({seconds}s)
-      </Tag>
+      <Space size={8}>
+        <Badge
+          status="warning"
+          text={<Text style={{ fontSize: 13, fontWeight: 500 }}>Cooldown ({formatDuration(seconds)})</Text>}
+        />
+        {onResetCooldown && (
+          <Button
+            size="small"
+            type="link"
+            danger
+            loading={isResetting}
+            onClick={onResetCooldown}
+            style={{ padding: 0, height: 'auto', fontSize: 12 }}
+          >
+            Reset
+          </Button>
+        )}
+      </Space>
     );
   }
 
-  return <StatusTag status={status || 'active'} />;
+  if (record.status === 'invalid' || record.status === 'error') {
+    return (
+      <Badge
+        status="error"
+        text={<Text type="danger" style={{ fontSize: 13 }}>{record.quota?.statusText || 'Invalid / Revoked'}</Text>}
+      />
+    );
+  }
+
+  if (record.quota) {
+    const parts: string[] = [];
+    if (record.quota.remainingTokens !== undefined && record.quota.remainingTokens > 0) {
+      parts.push(`${formatTokens(record.quota.remainingTokens)} tokens`);
+    }
+    if (record.quota.remainingRequests !== undefined && record.quota.remainingRequests > 0) {
+      parts.push(`${record.quota.remainingRequests} req`);
+    }
+    if (parts.length > 0) {
+      return (
+        <Badge
+          status="success"
+          text={<Text style={{ fontSize: 13 }}>Remaining: {parts.join(' / ')}</Text>}
+        />
+      );
+    }
+    if (record.quota.statusText) {
+      const isExceeded = record.quota.statusText.toLowerCase().includes('exceeded') || record.quota.statusText.toLowerCase().includes('limit');
+      return (
+        <Badge
+          status={isExceeded ? 'error' : 'warning'}
+          text={<Text style={{ fontSize: 13 }}>{record.quota.statusText}</Text>}
+        />
+      );
+    }
+    return <Badge status="success" text={<Text style={{ fontSize: 13 }}>Normal</Text>} />;
+  }
+
+  return <Badge status="default" text={<Text type="secondary" style={{ fontSize: 13 }}>Normal</Text>} />;
 }
 
 export default function CredentialsPage() {
@@ -172,6 +260,21 @@ export default function CredentialsPage() {
     });
   };
 
+  const { data: activeStreamsData } = useQuery({
+    queryKey: ['active-streams'],
+    queryFn: apiGetActiveStreams,
+  });
+
+  const resetCooldownMutation = useMutation({
+    mutationFn: ({ providerId, credId }: { providerId: string; credId: string }) =>
+      apiResetCredentialCooldown(providerId, credId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['credentials'] });
+      message.success('Cooldown reset successfully');
+    },
+    onError: (err: any) => message.error(err.response?.data?.error || err.message || 'Failed to reset cooldown'),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: ({ providerId, credId }: { providerId: string; credId: string }) =>
       apiDeleteCredential(providerId, credId),
@@ -179,7 +282,7 @@ export default function CredentialsPage() {
       queryClient.invalidateQueries({ queryKey: ['credentials'] });
       message.success('Credential deleted');
     },
-    onError: (err: Error) => message.error(err.message),
+    onError: (err: any) => message.error(err.response?.data?.error || err.message || 'Failed to delete credential'),
   });
 
   const handleTestConnection = async (providerId: string, credId: string, name: string) => {
@@ -364,10 +467,16 @@ export default function CredentialsPage() {
         dataIndex: 'status',
         key: 'status',
         sorter: true,
-        render: (status: string, record: CombinedCredential) => (
-          <CooldownCountdownTag
-            initialTtl={record.cooldownTtl || 0}
-            status={status || 'active'}
+        render: (status: string) => <StatusTag status={status || 'active'} />,
+      },
+      {
+        title: 'Rate Limit & Quota',
+        key: 'quota',
+        render: (_: any, record: CombinedCredential) => (
+          <RateLimitQuotaBadge
+            record={record}
+            isResetting={resetCooldownMutation.isPending}
+            onResetCooldown={() => resetCooldownMutation.mutate({ providerId: record.providerId, credId: record.id })}
             onExpire={() => refetch()}
           />
         ),
@@ -391,35 +500,48 @@ export default function CredentialsPage() {
       {
         title: 'Actions',
         key: 'actions',
-        render: (_: any, record: CombinedCredential) => (
-          <Space size="middle">
-            <Button
-              type="link"
-              icon={<EditOutlined />}
-              onClick={() => handleEditOpen(record)}
-            >
-              Edit
-            </Button>
-            <Button
-              type="link"
-              icon={<ExperimentOutlined />}
-              loading={testingId === record.id}
-              onClick={() => handleTestConnection(record.providerId, record.id, record.name)}
-            >
-              Test
-            </Button>
-            <ConfirmButton
-              confirmTitle="Delete Credential?"
-              onConfirm={() => deleteMutation.mutate({ providerId: record.providerId, credId: record.id })}
-              icon={<DeleteOutlined />}
-            >
-              Delete
-            </ConfirmButton>
-          </Space>
-        ),
+        render: (_: any, record: CombinedCredential) => {
+          const isRunning = (activeStreamsData?.byCredential?.[record.maskedKey || ''] || activeStreamsData?.byCredential?.[record.name || ''] || 0) > 0;
+          return (
+            <Space size="middle">
+              <Button
+                type="link"
+                icon={<EditOutlined />}
+                onClick={() => handleEditOpen(record)}
+              >
+                Edit
+              </Button>
+              <Button
+                type="link"
+                icon={<ExperimentOutlined />}
+                loading={testingId === record.id}
+                onClick={() => handleTestConnection(record.providerId, record.id, record.name)}
+              >
+                Test
+              </Button>
+              {isRunning ? (
+                <Tooltip title="Cannot delete credential: it is currently processing active live streams">
+                  <span>
+                    <Button type="link" danger disabled icon={<DeleteOutlined />}>
+                      Delete
+                    </Button>
+                  </span>
+                </Tooltip>
+              ) : (
+                <ConfirmButton
+                  confirmTitle="Delete Credential?"
+                  onConfirm={() => deleteMutation.mutate({ providerId: record.providerId, credId: record.id })}
+                  icon={<DeleteOutlined />}
+                >
+                  Delete
+                </ConfirmButton>
+              )}
+            </Space>
+          );
+        },
       },
     ],
-    [testingId, deleteMutation, revealedNames, revealingId]
+    [testingId, deleteMutation, resetCooldownMutation, revealedNames, revealingId, activeStreamsData]
   );
 
   const extraActions = (

@@ -43,9 +43,21 @@ export interface ApiProvider {
   updatedAt?: string;
 }
 
+export interface ApiCredentialQuota {
+  remainingRequests?: number;
+  limitRequests?: number;
+  remainingTokens?: number;
+  limitTokens?: number;
+  resetDurationSec?: number;
+  resetAt?: string;
+  statusText?: string;
+  lastUpdated?: number;
+}
+
 export interface ApiCredential {
   id: string;
   providerId: string;
+  providerName?: string;
   name: string;
   keyPrefix: string;
   maskedKey?: string;
@@ -68,6 +80,7 @@ export interface ApiCredential {
   updatedAt: string;
   isCoolingDown?: boolean;
   cooldownTtl?: number;
+  quota?: ApiCredentialQuota;
 }
 
 export interface ApiModel {
@@ -259,6 +272,11 @@ export async function apiUpdateCredential(providerId: string, credId: string, da
 
 export async function apiDeleteCredential(providerId: string, credId: string): Promise<void> {
   await api.delete(`/providers/${providerId}/credentials/${credId}`);
+}
+
+export async function apiResetCredentialCooldown(providerId: string, credId: string): Promise<{ status: string; message: string }> {
+  const response = await api.post<{ status: string; message: string }>(`/providers/${providerId}/credentials/${credId}/reset-cooldown`);
+  return response.data;
 }
 
 export interface ApiTestCredentialResult {

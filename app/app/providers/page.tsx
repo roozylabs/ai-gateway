@@ -114,7 +114,7 @@ export default function ProvidersPage() {
       queryClient.invalidateQueries({ queryKey: ['providers'] });
       message.success('Provider deleted');
     },
-    onError: (err: Error) => message.error(err.message),
+    onError: (err: any) => message.error(err.response?.data?.error || err.message || 'Failed to delete provider'),
   });
 
   const handleToggle = (provider: ApiProvider, enabled: boolean) => {

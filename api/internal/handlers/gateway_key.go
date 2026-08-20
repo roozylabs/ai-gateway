@@ -14,11 +14,12 @@ import (
 )
 
 type GatewayKeyHandler struct {
-	keys *repository.GatewayKeyRepository
+	keys        *repository.GatewayKeyRepository
+	credentials *repository.CredentialRepository
 }
 
-func NewGatewayKeyHandler(keys *repository.GatewayKeyRepository) *GatewayKeyHandler {
-	return &GatewayKeyHandler{keys: keys}
+func NewGatewayKeyHandler(keys *repository.GatewayKeyRepository, credentials *repository.CredentialRepository) *GatewayKeyHandler {
+	return &GatewayKeyHandler{keys: keys, credentials: credentials}
 }
 
 type CreateGatewayKeyRequest struct {
@@ -39,6 +40,14 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: name and providerId are required"})
 		return
+	}
+
+	if h.credentials != nil && req.ProviderID != "" {
+		count, err := h.credentials.CountActiveByProviderID(c.Request.Context(), req.ProviderID)
+		if err != nil || count == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create Gateway Key: the selected provider has no active credentials"})
+			return
+		}
 	}
 
 	rawBytes := make([]byte, 24)

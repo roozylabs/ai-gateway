@@ -176,3 +176,15 @@ func (r *GatewayKeyRepository) IncrementUsage(ctx context.Context, id string) er
 		`UPDATE gateway_api_keys SET request_count = request_count + 1, last_used_at = NOW() WHERE id = $1`, id)
 	return err
 }
+
+func (r *GatewayKeyRepository) CountByProviderID(ctx context.Context, providerID string) (int64, error) {
+	var count int64
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM gateway_api_keys WHERE provider_id = $1 AND enabled = true`, providerID).Scan(&count)
+	return count, err
+}
+
+func (r *GatewayKeyRepository) CountByAllowedModel(ctx context.Context, modelSlug string) (int64, error) {
+	var count int64
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM gateway_api_keys WHERE $1 = ANY(allowed_models) AND enabled = true`, modelSlug).Scan(&count)
+	return count, err
+}

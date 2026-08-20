@@ -310,3 +310,9 @@ func (r *CredentialRepository) IncrementUsage(ctx context.Context, credentialID 
 	return err
 }
 
+func (r *CredentialRepository) CountActiveByProviderID(ctx context.Context, providerID string) (int64, error) {
+	var count int64
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'`, providerID).Scan(&count)
+	return count, err
+}
+

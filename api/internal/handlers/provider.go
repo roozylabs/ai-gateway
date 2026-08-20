@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -9,11 +10,15 @@ import (
 )
 
 type ProviderHandler struct {
-	providers *repository.ProviderRepository
+	providers   *repository.ProviderRepository
+	gatewayKeys *repository.GatewayKeyRepository
 }
 
-func NewProviderHandler(providers *repository.ProviderRepository) *ProviderHandler {
-	return &ProviderHandler{providers: providers}
+func NewProviderHandler(providers *repository.ProviderRepository, gatewayKeys *repository.GatewayKeyRepository) *ProviderHandler {
+	return &ProviderHandler{
+		providers:   providers,
+		gatewayKeys: gatewayKeys,
+	}
 }
 
 // List godoc
@@ -119,9 +124,22 @@ func (h *ProviderHandler) Update(c *gin.Context) {
 // @Param        id path string true "Provider ID"
 // @Success      204
 // @Failure      404 {object} map[string]string
+// @Failure      409 {object} map[string]string
 // @Router       /api/providers/{id} [delete]
 func (h *ProviderHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
+
+	// Guard against deleting provider that has active Gateway API Keys
+	if h.gatewayKeys != nil {
+		count, err := h.gatewayKeys.CountByProviderID(c.Request.Context(), id)
+		if err == nil && count > 0 {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": fmt.Sprintf("Cannot delete provider: %d active Gateway API Key(s) are bound to it. Please revoke or reassign the keys first.", count),
+			})
+			return
+		}
+	}
+
 	if err := h.providers.Delete(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
 		return

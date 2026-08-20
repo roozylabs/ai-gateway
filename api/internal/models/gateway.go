@@ -18,28 +18,40 @@ type Provider struct {
 	UpdatedAt        time.Time `json:"updatedAt" db:"updated_at"`
 }
 
+type CredentialQuota struct {
+	RemainingRequests int64  `json:"remainingRequests,omitempty"`
+	LimitRequests     int64  `json:"limitRequests,omitempty"`
+	RemainingTokens   int64  `json:"remainingTokens,omitempty"`
+	LimitTokens       int64  `json:"limitTokens,omitempty"`
+	ResetDurationSec  int    `json:"resetDurationSec,omitempty"`
+	ResetAt           string `json:"resetAt,omitempty"`
+	StatusText        string `json:"statusText,omitempty"`
+	LastUpdated       int64  `json:"lastUpdated,omitempty"`
+}
+
 type Credential struct {
-	ID                string         `json:"id" db:"id"`
-	ProviderID        string         `json:"providerId" db:"provider_id"`
-	Name              string         `json:"name" db:"name"`
-	EncryptedKey      string         `json:"-" db:"encrypted_key"`
-	KeyPrefix         string         `json:"keyPrefix" db:"key_prefix"`
-	MaskedKey         string         `json:"maskedKey" db:"masked_key"`
-	AuthType          string         `json:"authType" db:"auth_type"`
-	EncryptedMetadata sql.NullString `json:"-" db:"encrypted_metadata"`
-	Priority          int            `json:"priority" db:"priority"`
-	Enabled           bool           `json:"enabled" db:"enabled"`
-	Status            string         `json:"status" db:"status"`
-	LastUsedAt        *time.Time     `json:"lastUsedAt,omitempty" db:"last_used_at"`
-	RequestCount      int64          `json:"requestCount" db:"request_count"`
-	ErrorCount        int64          `json:"errorCount" db:"error_count"`
-	LastError         sql.NullString `json:"lastError,omitempty" db:"last_error"`
-	LastErrorAt       *time.Time     `json:"lastErrorAt,omitempty" db:"last_error_at"`
-	CreatedAt         time.Time      `json:"createdAt" db:"created_at"`
-	UpdatedAt         time.Time      `json:"updatedAt" db:"updated_at"`
-	ProviderName      string         `json:"providerName,omitempty" db:"-"`
-	IsCoolingDown     bool           `json:"isCoolingDown,omitempty" db:"-"`
-	CooldownTTL       int            `json:"cooldownTtl,omitempty" db:"-"`
+	ID                string           `json:"id" db:"id"`
+	ProviderID        string           `json:"providerId" db:"provider_id"`
+	Name              string           `json:"name" db:"name"`
+	EncryptedKey      string           `json:"-" db:"encrypted_key"`
+	KeyPrefix         string           `json:"keyPrefix" db:"key_prefix"`
+	MaskedKey         string           `json:"maskedKey" db:"masked_key"`
+	AuthType          string           `json:"authType" db:"auth_type"`
+	EncryptedMetadata sql.NullString   `json:"-" db:"encrypted_metadata"`
+	Priority          int              `json:"priority" db:"priority"`
+	Enabled           bool             `json:"enabled" db:"enabled"`
+	Status            string           `json:"status" db:"status"`
+	LastUsedAt        *time.Time       `json:"lastUsedAt,omitempty" db:"last_used_at"`
+	RequestCount      int64            `json:"requestCount" db:"request_count"`
+	ErrorCount        int64            `json:"errorCount" db:"error_count"`
+	LastError         sql.NullString   `json:"lastError,omitempty" db:"last_error"`
+	LastErrorAt       *time.Time       `json:"lastErrorAt,omitempty" db:"last_error_at"`
+	CreatedAt         time.Time        `json:"createdAt" db:"created_at"`
+	UpdatedAt         time.Time        `json:"updatedAt" db:"updated_at"`
+	ProviderName      string           `json:"providerName,omitempty" db:"-"`
+	IsCoolingDown     bool             `json:"isCoolingDown,omitempty" db:"-"`
+	CooldownTTL       int              `json:"cooldownTtl,omitempty" db:"-"`
+	Quota             *CredentialQuota `json:"quota,omitempty" db:"-"`
 }
 
 type Model struct {

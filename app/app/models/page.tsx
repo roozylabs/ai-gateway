@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Typography, Space, Button, Modal, Form, Input, Select, Tag, App } from 'antd';
+import { Typography, Space, Button, Modal, Form, Input, Select, Tag, App, Tooltip } from 'antd';
 import { PlusOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataTable, PageHeader, StatusTag, ConfirmButton } from '@/components/atoms';
@@ -76,7 +76,7 @@ export default function ModelsPage() {
       queryClient.invalidateQueries({ queryKey: ['models'] });
       message.success('Model alias deleted');
     },
-    onError: (err: Error) => message.error(err.message),
+    onError: (err: any) => message.error(err.response?.data?.error || err.message || 'Failed to delete model'),
   });
 
   const handleCreateModel = (values: any) => {
@@ -157,18 +157,32 @@ export default function ModelsPage() {
       {
         title: 'Actions',
         key: 'actions',
-        render: (_: any, record: CombinedModel) => (
-          <ConfirmButton
-            confirmTitle="Delete Model Alias?"
-            onConfirm={() => deleteMutation.mutate({ providerId: record.providerId, modelId: record.id })}
-            icon={<DeleteOutlined />}
-          >
-            Delete
-          </ConfirmButton>
-        ),
+        render: (_: any, record: CombinedModel) => {
+          const isRunning = (activeStreamsData?.byModel?.[record.slug] || activeStreamsData?.byModel?.[record.name] || 0) > 0;
+          if (isRunning) {
+            return (
+              <Tooltip title="Cannot delete model: it is currently processing active live streams">
+                <span>
+                  <Button type="link" danger disabled icon={<DeleteOutlined />}>
+                    Delete
+                  </Button>
+                </span>
+              </Tooltip>
+            );
+          }
+          return (
+            <ConfirmButton
+              confirmTitle="Delete Model Alias?"
+              onConfirm={() => deleteMutation.mutate({ providerId: record.providerId, modelId: record.id })}
+              icon={<DeleteOutlined />}
+            >
+              Delete
+            </ConfirmButton>
+          );
+        },
       },
     ],
-    [deleteMutation]
+    [deleteMutation, activeStreamsData]
   );
 
   const extraActions = (

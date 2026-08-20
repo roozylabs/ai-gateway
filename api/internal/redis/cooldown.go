@@ -65,6 +65,51 @@ func (s *CooldownStore) DeleteAccessToken(ctx context.Context, credentialID stri
 	return s.rdb.Del(ctx, key).Err()
 }
 
+type CredentialQuotaInfo struct {
+	RemainingRequests int64  `json:"remainingRequests,omitempty"`
+	LimitRequests     int64  `json:"limitRequests,omitempty"`
+	RemainingTokens   int64  `json:"remainingTokens,omitempty"`
+	LimitTokens       int64  `json:"limitTokens,omitempty"`
+	ResetDurationSec  int    `json:"resetDurationSec,omitempty"`
+	ResetAt           string `json:"resetAt,omitempty"`
+	StatusText        string `json:"statusText,omitempty"`
+	LastUpdated       int64  `json:"lastUpdated"`
+}
+
+func (s *CooldownStore) SaveCredentialQuota(ctx context.Context, credentialID string, quota *CredentialQuotaInfo) error {
+	if credentialID == "" || quota == nil {
+		return nil
+	}
+	quota.LastUpdated = time.Now().Unix()
+	data, err := json.Marshal(quota)
+	if err != nil {
+		return err
+	}
+	key := fmt.Sprintf("credential:%s:quota", credentialID)
+	return s.rdb.Set(ctx, key, data, 24*time.Hour).Err()
+}
+
+func (s *CooldownStore) GetCredentialQuota(ctx context.Context, credentialID string) (*CredentialQuotaInfo, error) {
+	key := fmt.Sprintf("credential:%s:quota", credentialID)
+	data, err := s.rdb.Get(ctx, key).Result()
+	if errors.Is(err, goredis.Nil) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var quota CredentialQuotaInfo
+	if err := json.Unmarshal([]byte(data), &quota); err != nil {
+		return nil, err
+	}
+	return &quota, nil
+}
+
+func (s *CooldownStore) DeleteCredentialQuota(ctx context.Context, credentialID string) error {
+	key := fmt.Sprintf("credential:%s:quota", credentialID)
+	return s.rdb.Del(ctx, key).Err()
+}
+
 const ActiveRequestsHashKey = "gateway:active_requests"
 
 type ActiveRequestRecord struct {

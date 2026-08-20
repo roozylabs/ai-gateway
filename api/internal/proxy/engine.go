@@ -218,6 +218,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			} else {
 				retryAfter = 300 // 5 Minutes default
 			}
+			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "rate_limited")
 			lastErr = fmt.Errorf("rate limited (429) on credential %s", route.Credential.ID)
@@ -239,6 +240,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		// Success
 		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
+		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
 
 		resp, err := route.Adapter.ParseResponse(bytes.NewReader(body))
 		if err != nil {
@@ -389,6 +391,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			} else {
 				retryAfter = 300 // 5 Minutes default
 			}
+			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "rate_limited")
 			lastErr = fmt.Errorf("rate limited (429) on credential %s", route.Credential.ID)
@@ -419,6 +422,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		// Success → start streaming
 		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
+		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
 		defer httpResp.Body.Close()
 
 		c.Header("Content-Type", "text/event-stream")
@@ -514,4 +518,98 @@ func getCredentialDisplayName(c *models.Credential) string {
 		return "cred-" + c.ID[:8]
 	}
 	return "active-cred"
+}
+
+func (e *Engine) extractAndSaveQuota(ctx context.Context, credID string, headers http.Header, is429 bool, retryAfterSec int, bodyStr string) {
+	if credID == "" || e.cooldown == nil {
+		return
+	}
+
+	quota := &goredis.CredentialQuotaInfo{
+		ResetDurationSec: retryAfterSec,
+	}
+
+	hasData := false
+
+	// OpenAI Headers
+	if rem := headers.Get("x-ratelimit-remaining-requests"); rem != "" {
+		if v, err := strconv.ParseInt(rem, 10, 64); err == nil {
+			quota.RemainingRequests = v
+			hasData = true
+		}
+	}
+	if lim := headers.Get("x-ratelimit-limit-requests"); lim != "" {
+		if v, err := strconv.ParseInt(lim, 10, 64); err == nil {
+			quota.LimitRequests = v
+			hasData = true
+		}
+	}
+	if rem := headers.Get("x-ratelimit-remaining-tokens"); rem != "" {
+		if v, err := strconv.ParseInt(rem, 10, 64); err == nil {
+			quota.RemainingTokens = v
+			hasData = true
+		}
+	}
+	if lim := headers.Get("x-ratelimit-limit-tokens"); lim != "" {
+		if v, err := strconv.ParseInt(lim, 10, 64); err == nil {
+			quota.LimitTokens = v
+			hasData = true
+		}
+	}
+	if reset := headers.Get("x-ratelimit-reset-requests"); reset != "" {
+		quota.ResetAt = reset
+		hasData = true
+	} else if reset := headers.Get("x-ratelimit-reset-tokens"); reset != "" {
+		quota.ResetAt = reset
+		hasData = true
+	}
+
+	// Anthropic Headers
+	if rem := headers.Get("anthropic-ratelimit-requests-remaining"); rem != "" {
+		if v, err := strconv.ParseInt(rem, 10, 64); err == nil {
+			quota.RemainingRequests = v
+			hasData = true
+		}
+	}
+	if lim := headers.Get("anthropic-ratelimit-requests-limit"); lim != "" {
+		if v, err := strconv.ParseInt(lim, 10, 64); err == nil {
+			quota.LimitRequests = v
+			hasData = true
+		}
+	}
+	if rem := headers.Get("anthropic-ratelimit-tokens-remaining"); rem != "" {
+		if v, err := strconv.ParseInt(rem, 10, 64); err == nil {
+			quota.RemainingTokens = v
+			hasData = true
+		}
+	}
+	if lim := headers.Get("anthropic-ratelimit-tokens-limit"); lim != "" {
+		if v, err := strconv.ParseInt(lim, 10, 64); err == nil {
+			quota.LimitTokens = v
+			hasData = true
+		}
+	}
+	if reset := headers.Get("anthropic-ratelimit-requests-reset"); reset != "" {
+		quota.ResetAt = reset
+		hasData = true
+	}
+
+	if is429 {
+		hasData = true
+		if strings.Contains(bodyStr, "FreeUsageLimitError") || strings.Contains(bodyStr, "quota") || strings.Contains(bodyStr, "Quota") || strings.Contains(bodyStr, "exceeded") {
+			quota.StatusText = "Daily Quota Exceeded"
+		} else {
+			quota.StatusText = "Rate Limited"
+		}
+	}
+
+	if hasData {
+		_ = e.cooldown.SaveCredentialQuota(ctx, credID, quota)
+		if e.publisher != nil {
+			_ = e.publisher.Publish(ctx, "CREDENTIAL_QUOTA_UPDATED", map[string]interface{}{
+				"credentialId": credID,
+				"quota":        quota,
+			})
+		}
+	}
 }
