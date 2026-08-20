@@ -208,20 +208,11 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		// 429 → cooldown and retry
 		if httpResp.StatusCode == http.StatusTooManyRequests {
 			bodyStr := string(body)
-			retryAfter := e.cooldownSecs
-			if h := httpResp.Header.Get("Retry-After"); h != "" {
-				if sec, err := strconv.Atoi(h); err == nil && sec > 0 {
-					retryAfter = sec
-				}
-			} else if strings.Contains(bodyStr, "FreeUsageLimitError") || strings.Contains(bodyStr, "quota") || strings.Contains(bodyStr, "Quota") || strings.Contains(bodyStr, "exceeded") {
-				retryAfter = 86400 // 24 Hours for daily quota limits
-			} else {
-				retryAfter = 300 // 5 Minutes default
-			}
+			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr, e.cooldownSecs)
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "rate_limited")
-			lastErr = fmt.Errorf("rate limited (429) on credential %s", route.Credential.ID)
+			lastErr = fmt.Errorf("rate limited (429) on credential %s (cooling down for %ds)", route.Credential.ID, retryAfter)
 			continue
 		}
 
@@ -240,6 +231,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		// Success
 		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
+		_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "active")
 		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
 
 		resp, err := route.Adapter.ParseResponse(bytes.NewReader(body))
@@ -381,20 +373,11 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			httpResp.Body.Close()
 			bodyStr := string(bodyBytes)
 
-			retryAfter := e.cooldownSecs
-			if h := httpResp.Header.Get("Retry-After"); h != "" {
-				if sec, err := strconv.Atoi(h); err == nil && sec > 0 {
-					retryAfter = sec
-				}
-			} else if strings.Contains(bodyStr, "FreeUsageLimitError") || strings.Contains(bodyStr, "quota") || strings.Contains(bodyStr, "Quota") || strings.Contains(bodyStr, "exceeded") {
-				retryAfter = 86400 // 24 Hours for daily quota limits
-			} else {
-				retryAfter = 300 // 5 Minutes default
-			}
+			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr, e.cooldownSecs)
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "rate_limited")
-			lastErr = fmt.Errorf("rate limited (429) on credential %s", route.Credential.ID)
+			lastErr = fmt.Errorf("rate limited (429) on credential %s (cooling down for %ds)", route.Credential.ID, retryAfter)
 			continue
 		}
 
@@ -422,6 +405,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		// Success → start streaming
 		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
+		_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "active")
 		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
 		defer httpResp.Body.Close()
 
@@ -596,7 +580,8 @@ func (e *Engine) extractAndSaveQuota(ctx context.Context, credID string, headers
 
 	if is429 {
 		hasData = true
-		if strings.Contains(bodyStr, "FreeUsageLimitError") || strings.Contains(bodyStr, "quota") || strings.Contains(bodyStr, "Quota") || strings.Contains(bodyStr, "exceeded") {
+		lower := strings.ToLower(bodyStr)
+		if strings.Contains(bodyStr, "FreeUsageLimitError") || strings.Contains(lower, "insufficient_quota") || strings.Contains(lower, "daily limit") || strings.Contains(lower, "monthly limit") {
 			quota.StatusText = "Daily Quota Exceeded"
 		} else {
 			quota.StatusText = "Rate Limited"
@@ -612,4 +597,49 @@ func (e *Engine) extractAndSaveQuota(ctx context.Context, credID string, headers
 			})
 		}
 	}
+}
+
+func determineCooldownDuration(header http.Header, bodyStr string, defaultCooldown int) int {
+	if defaultCooldown <= 0 {
+		defaultCooldown = 60
+	}
+
+	// 1. Check upstream Retry-After header
+	if h := header.Get("Retry-After"); h != "" {
+		if sec, err := strconv.Atoi(h); err == nil && sec > 0 {
+			return sec
+		}
+	}
+
+	// 2. Check for Anthropic reset header
+	if reset := header.Get("anthropic-ratelimit-requests-reset"); reset != "" {
+		if t, err := time.Parse(time.RFC3339, reset); err == nil {
+			diff := int(time.Until(t).Seconds())
+			if diff > 0 && diff < 86400 {
+				return diff
+			}
+		}
+	}
+
+	// 3. Check for OpenAI reset duration header (e.g. "6m0s" or "20s" or "500ms")
+	if reset := header.Get("x-ratelimit-reset-requests"); reset != "" {
+		if d, err := time.ParseDuration(reset); err == nil && d > 0 {
+			return int(d.Seconds()) + 1
+		}
+	}
+
+	lower := strings.ToLower(bodyStr)
+
+	// 4. Hard daily/monthly billing quota limits (require long cooldown)
+	if strings.Contains(bodyStr, "FreeUsageLimitError") ||
+		strings.Contains(lower, "insufficient_quota") ||
+		strings.Contains(lower, "exceeded your current quota, please check your plan") ||
+		strings.Contains(lower, "credit balance is too low") ||
+		strings.Contains(lower, "daily limit reached") ||
+		strings.Contains(lower, "monthly limit reached") {
+		return 86400 // 24 Hours
+	}
+
+	// 5. Standard burst / RPM / TPM rate limits -> short cooldown (default 60s)
+	return defaultCooldown
 }

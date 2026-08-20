@@ -188,7 +188,7 @@ func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, pr
 		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status != 'invalid'
 		 ORDER BY priority ASC`, providerID,
 	)
 	if err != nil {
@@ -251,7 +251,7 @@ func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID st
 		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status != 'invalid'
 		 ORDER BY request_count ASC, priority ASC`, providerID,
 	)
 	if err != nil {
@@ -280,7 +280,7 @@ func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string) (
 		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status != 'invalid'
 		 ORDER BY last_used_at ASC NULLS FIRST, priority ASC`, providerID,
 	)
 	if err != nil {
@@ -312,7 +312,7 @@ func (r *CredentialRepository) IncrementUsage(ctx context.Context, credentialID 
 
 func (r *CredentialRepository) CountActiveByProviderID(ctx context.Context, providerID string) (int64, error) {
 	var count int64
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'`, providerID).Scan(&count)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM credentials WHERE provider_id = $1 AND enabled = true AND status != 'invalid'`, providerID).Scan(&count)
 	return count, err
 }
 

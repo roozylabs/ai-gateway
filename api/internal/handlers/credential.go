@@ -108,6 +108,9 @@ func (h *CredentialHandler) List(c *gin.Context) {
 			if ttl > 0 {
 				credentials[i].IsCoolingDown = true
 				credentials[i].CooldownTTL = int(ttl.Seconds())
+			} else if credentials[i].Status == "rate_limited" {
+				credentials[i].Status = "active"
+				_ = h.credentials.UpdateStatus(c.Request.Context(), credentials[i].ID, "active")
 			}
 			if q, err := h.cooldownStore.GetCredentialQuota(c.Request.Context(), credentials[i].ID); err == nil && q != nil {
 				credentials[i].Quota = &models.CredentialQuota{
@@ -154,6 +157,9 @@ func (h *CredentialHandler) Get(c *gin.Context) {
 		if ttl > 0 {
 			cred.IsCoolingDown = true
 			cred.CooldownTTL = int(ttl.Seconds())
+		} else if cred.Status == "rate_limited" {
+			cred.Status = "active"
+			_ = h.credentials.UpdateStatus(c.Request.Context(), cred.ID, "active")
 		}
 		if q, err := h.cooldownStore.GetCredentialQuota(c.Request.Context(), cred.ID); err == nil && q != nil {
 			cred.Quota = &models.CredentialQuota{
