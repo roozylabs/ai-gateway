@@ -49,6 +49,8 @@ func main() {
 
 	// Repositories (use underlying sql.DB from sqlx)
 	sqlDB := db.DB
+	_, _ = sqlDB.Exec("UPDATE credentials SET status = 'active' WHERE status = 'rate_limited'")
+
 	userRepo := repository.NewUserRepository(sqlDB)
 	sessionRepo := repository.NewSessionRepository(sqlDB)
 	accountRepo := repository.NewAccountRepository(sqlDB)

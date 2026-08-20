@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -208,11 +209,10 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		// 429 → cooldown and retry
 		if httpResp.StatusCode == http.StatusTooManyRequests {
 			bodyStr := string(body)
-			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr, e.cooldownSecs)
+			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
-			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "rate_limited")
-			lastErr = fmt.Errorf("rate limited (429) on credential %s (cooling down for %ds)", route.Credential.ID, retryAfter)
+			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds)", route.Credential.ID, retryAfter)
 			continue
 		}
 
@@ -373,11 +373,10 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			httpResp.Body.Close()
 			bodyStr := string(bodyBytes)
 
-			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr, e.cooldownSecs)
+			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
-			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "rate_limited")
-			lastErr = fmt.Errorf("rate limited (429) on credential %s (cooling down for %ds)", route.Credential.ID, retryAfter)
+			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds)", route.Credential.ID, retryAfter)
 			continue
 		}
 
@@ -599,47 +598,47 @@ func (e *Engine) extractAndSaveQuota(ctx context.Context, credID string, headers
 	}
 }
 
-func determineCooldownDuration(header http.Header, bodyStr string, defaultCooldown int) int {
-	if defaultCooldown <= 0 {
-		defaultCooldown = 60
-	}
+var retryInRegex = regexp.MustCompile(`(?i)(?:retry|try again|wait|in)\s+(\d+)\s*(?:s|sec|seconds?)`)
 
-	// 1. Check upstream Retry-After header
+func determineCooldownDuration(header http.Header, bodyStr string) int {
+	// 1. Check upstream Retry-After header (seconds)
 	if h := header.Get("Retry-After"); h != "" {
 		if sec, err := strconv.Atoi(h); err == nil && sec > 0 {
 			return sec
 		}
 	}
 
-	// 2. Check for Anthropic reset header
+	// 2. Check for Anthropic reset header (ISO timestamp)
 	if reset := header.Get("anthropic-ratelimit-requests-reset"); reset != "" {
 		if t, err := time.Parse(time.RFC3339, reset); err == nil {
 			diff := int(time.Until(t).Seconds())
-			if diff > 0 && diff < 86400 {
+			if diff > 0 {
 				return diff
 			}
 		}
 	}
 
-	// 3. Check for OpenAI reset duration header (e.g. "6m0s" or "20s" or "500ms")
+	// 3. Check for OpenAI reset duration header (e.g. "6s" or "500ms" or "1m0s")
 	if reset := header.Get("x-ratelimit-reset-requests"); reset != "" {
 		if d, err := time.ParseDuration(reset); err == nil && d > 0 {
 			return int(d.Seconds()) + 1
 		}
 	}
-
-	lower := strings.ToLower(bodyStr)
-
-	// 4. Hard daily/monthly billing quota limits (require long cooldown)
-	if strings.Contains(bodyStr, "FreeUsageLimitError") ||
-		strings.Contains(lower, "insufficient_quota") ||
-		strings.Contains(lower, "exceeded your current quota, please check your plan") ||
-		strings.Contains(lower, "credit balance is too low") ||
-		strings.Contains(lower, "daily limit reached") ||
-		strings.Contains(lower, "monthly limit reached") {
-		return 86400 // 24 Hours
+	if reset := header.Get("x-ratelimit-reset-tokens"); reset != "" {
+		if d, err := time.ParseDuration(reset); err == nil && d > 0 {
+			return int(d.Seconds()) + 1
+		}
 	}
 
-	// 5. Standard burst / RPM / TPM rate limits -> short cooldown (default 60s)
-	return defaultCooldown
+	// 4. Try to parse from error message (e.g. "Rate limit reached. Please try again in 5s")
+	if matches := retryInRegex.FindStringSubmatch(bodyStr); len(matches) > 1 {
+		if sec, err := strconv.Atoi(matches[1]); err == nil && sec > 0 {
+			return sec
+		}
+	}
+
+	// 5. If upstream did not provide a specific duration, use a minimal 5-second backoff
+	// so the current request can immediately try the next key in the pool,
+	// without locking out this key for minutes or days.
+	return 5
 }
