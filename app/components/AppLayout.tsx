@@ -43,7 +43,6 @@ function ActiveStreamHeaderBadge() {
   const { data } = useQuery({
     queryKey: ['active-streams'],
     queryFn: apiGetActiveStreams,
-    refetchInterval: 3000,
   });
 
   const total = data?.totalActive || 0;

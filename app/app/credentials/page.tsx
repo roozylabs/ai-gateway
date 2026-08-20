@@ -117,7 +117,6 @@ export default function CredentialsPage() {
     queryKey: ['credentials', selectedProviderId, page, pageSize, searchQuery],
     queryFn: () => apiGetCredentials(selectedProviderId, { page, limit: pageSize, search: searchQuery || undefined }),
     staleTime: 5000,
-    refetchInterval: 5000,
   });
 
   const credentials = credentialsData?.data || [];

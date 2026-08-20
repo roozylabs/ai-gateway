@@ -60,7 +60,6 @@ export default function LogsPage() {
         limit: pageSize,
         page: page,
       }),
-    refetchInterval: isLiveStream ? 3000 : false,
   });
 
   const columns = React.useMemo(() => [

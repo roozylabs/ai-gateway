@@ -60,7 +60,6 @@ export default function GatewayKeysPage() {
   const { data: activeStreamsData } = useQuery({
     queryKey: ['active-streams'],
     queryFn: apiGetActiveStreams,
-    refetchInterval: 3000,
   });
 
   // Build provider lookup map

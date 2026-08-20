@@ -107,25 +107,21 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: apiGetDashboardStats,
-    refetchInterval: 5000,
   });
 
   const { data: usageData = [], isLoading: usageLoading } = useQuery({
     queryKey: ['dashboard-usage', usageQueryParams],
     queryFn: () => apiGetDashboardUsage(usageQueryParams),
-    refetchInterval: 5000,
   });
 
   const { data: healthData = [], isLoading: healthLoading } = useQuery({
     queryKey: ['dashboard-health'],
     queryFn: apiGetDashboardHealth,
-    refetchInterval: 5000,
   });
 
   const { data: logsData, isLoading: logsLoading } = useQuery({
     queryKey: ['recent-logs'],
     queryFn: () => apiGetLogs({ limit: 5 }),
-    refetchInterval: 5000,
   });
 
   // Calculate per-model totals for summary legend tags

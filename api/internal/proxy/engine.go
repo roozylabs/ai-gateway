@@ -256,6 +256,28 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) (*models.RequestLog, error) {
 	start := time.Now()
 
+	gwKeyID := ""
+	if gatewayKey != nil {
+		gwKeyID = gatewayKey.ID
+	}
+
+	_ = e.cooldown.IncrementActiveStream(c.Request.Context(), req.Model, gwKeyID)
+	if e.publisher != nil {
+		if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
+			_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
+		}
+	}
+
+	defer func() {
+		bgCtx := context.Background()
+		_ = e.cooldown.DecrementActiveStream(bgCtx, req.Model, gwKeyID)
+		if e.publisher != nil {
+			if summary, err := e.cooldown.GetActiveStreams(bgCtx); err == nil {
+				_ = e.publisher.Publish(bgCtx, "active_streams_update", summary)
+			}
+		}
+	}()
+
 	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
 	if err != nil {
 		return nil, err
@@ -269,10 +291,26 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			retryCount++
 		}
 
-		apiKey, err := e.creds.DecryptKey(c.Request.Context(), route.Credential.ID, e.encKey)
-		if err != nil {
-			lastErr = fmt.Errorf("decrypt credential: %w", err)
-			continue
+		var apiKey string
+		if route.Credential.AuthType == "gcp_user_oauth" {
+			meta, err := e.creds.DecryptMetadata(c.Request.Context(), route.Credential.ID, e.encKey)
+			if err != nil {
+				lastErr = fmt.Errorf("decrypt metadata: %w", err)
+				continue
+			}
+			accessToken, err := e.oauthMgr.GetAccessToken(c.Request.Context(), route.Credential.ID, meta)
+			if err != nil {
+				lastErr = fmt.Errorf("fetch oauth access token: %w", err)
+				continue
+			}
+			apiKey = accessToken
+		} else {
+			var err error
+			apiKey, err = e.creds.DecryptKey(c.Request.Context(), route.Credential.ID, e.encKey)
+			if err != nil {
+				lastErr = fmt.Errorf("decrypt credential: %w", err)
+				continue
+			}
 		}
 
 		targetModel := req.Model

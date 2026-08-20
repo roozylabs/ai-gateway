@@ -43,7 +43,6 @@ export default function ModelsPage() {
   const { data: activeStreamsData } = useQuery({
     queryKey: ['active-streams'],
     queryFn: apiGetActiveStreams,
-    refetchInterval: 3000,
   });
 
   // Fetch Models for all or selected provider
