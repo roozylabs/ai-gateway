@@ -128,29 +128,17 @@ export default function DashboardPage() {
       position: 'top',
       style: {
         fontSize: 11,
+        fontWeight: 'bold' as const,
         fill: isDark ? '#ffffff' : '#141414',
       },
       formatter: (val: any) => {
-        if (typeof val === 'object' && val !== null) {
-          return `${val.requests ?? ''}`;
+        const count = typeof val === 'object' && val !== null ? val.requests : val;
+        if (count !== undefined && count !== null && count !== '') {
+          return `${count} reqs`;
         }
-        return val !== undefined && val !== null ? `${val}` : '';
+        return '';
       },
     },
-    annotations: peakPoint && peakPoint.requests > 0 ? [
-      {
-        type: 'text',
-        position: [peakPoint.date, peakPoint.requests],
-        content: `🔥 Peak: ${peakPoint.requests} reqs (${peakPoint.model})`,
-        offsetY: -22,
-        style: {
-          textAlign: 'center',
-          fill: '#ff4d4f',
-          fontSize: 12,
-          fontWeight: 'bold',
-        },
-      },
-    ] : [],
     tooltip: {
       showMarkers: true,
     },
@@ -301,6 +289,14 @@ export default function DashboardPage() {
                           <Text strong style={{ color: 'inherit' }}>{mName}</Text>: {reqCount.toLocaleString()} reqs
                         </Tag>
                       ))}
+                      {peakPoint && peakPoint.requests > 0 && (
+                        <Tag
+                          color="red"
+                          style={{ borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 'bold', margin: 0 }}
+                        >
+                          🔥 Peak: {peakPoint.requests} reqs ({peakPoint.model} on {peakPoint.date})
+                        </Tag>
+                      )}
                     </Space>
                   </div>
                 )}
