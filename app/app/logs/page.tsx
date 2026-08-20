@@ -6,7 +6,7 @@ import { EyeOutlined, SyncOutlined, ThunderboltOutlined } from '@ant-design/icon
 import { useQuery } from '@tanstack/react-query';
 import { useSSE } from '@/hooks/useSSE';
 import { DataTable, PageHeader, StatusTag } from '@/components/atoms';
-import { apiGetLogs, apiGetProviders, ApiRequestLog, ApiProvider } from '@/lib/api';
+import { apiGetLogs, apiGetProviders, apiGetSettings, ApiRequestLog, ApiProvider, ApiSetting } from '@/lib/api';
 
 const { Text } = Typography;
 
@@ -18,6 +18,31 @@ export default function LogsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [isLiveStream, setIsLiveStream] = useState<boolean>(true);
+
+  // Fetch Settings for Currency configuration
+  const { data: settingsData } = useQuery({
+    queryKey: ['settings'],
+    queryFn: apiGetSettings,
+  });
+
+  const defaultCurrency = React.useMemo(() => {
+    const item = settingsData?.value?.find((s: ApiSetting) => s.key === 'default_currency');
+    return item?.value || 'IDR';
+  }, [settingsData]);
+
+  const usdToIdrRate = React.useMemo(() => {
+    const item = settingsData?.value?.find((s: ApiSetting) => s.key === 'usd_to_idr_rate');
+    return Number(item?.value) || 16000;
+  }, [settingsData]);
+
+  const formatCost = React.useCallback((usdAmount: number) => {
+    if (defaultCurrency === 'USD') return `$${usdAmount.toFixed(4)}`;
+    if (defaultCurrency === 'EUR') return `€${(usdAmount * 0.92).toFixed(4)}`;
+    if (defaultCurrency === 'SGD') return `S$${(usdAmount * 1.35).toFixed(4)}`;
+    // Default IDR
+    const idrVal = Math.round(usdAmount * usdToIdrRate);
+    return `Rp ${idrVal.toLocaleString('id-ID')}`;
+  }, [defaultCurrency, usdToIdrRate]);
 
   // Fetch Providers list for filter dropdown
   const { data: providers = [] } = useQuery({
@@ -35,6 +60,7 @@ export default function LogsPage() {
         limit: pageSize,
         page: page,
       }),
+    refetchInterval: isLiveStream ? 3000 : false,
   });
 
   const columns = React.useMemo(() => [
@@ -51,6 +77,16 @@ export default function LogsPage() {
       key: 'createdAt',
       sorter: (a: ApiRequestLog, b: ApiRequestLog) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
       render: (val: string) => (val ? new Date(val).toLocaleString() : '-'),
+    },
+    {
+      title: 'Credential Used',
+      dataIndex: 'credentialName',
+      key: 'credentialName',
+      render: (c: string) => (
+        <Text strong style={{ fontSize: 13 }}>
+          {c || '—'}
+        </Text>
+      ),
     },
     {
       title: 'Model',
@@ -73,6 +109,16 @@ export default function LogsPage() {
       render: (_: any, record: ApiRequestLog) => `${record.inputTokens} / ${record.outputTokens}`,
     },
     {
+      title: 'Est. Cost',
+      key: 'estimatedCost',
+      sorter: (a: ApiRequestLog, b: ApiRequestLog) => (a.estimatedCost || 0) - (b.estimatedCost || 0),
+      render: (_: any, record: ApiRequestLog) => (
+        <Tag color="gold" style={{ margin: 0, fontWeight: 'bold' }}>
+          {formatCost(record.estimatedCost || 0)}
+        </Tag>
+      ),
+    },
+    {
       title: 'Status Code',
       dataIndex: 'statusCode',
       key: 'statusCode',
@@ -88,7 +134,7 @@ export default function LogsPage() {
         </Button>
       ),
     },
-  ], []);
+  ], [formatCost]);
 
   const extraActions = (
     <Space wrap>

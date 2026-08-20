@@ -63,6 +63,7 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.CreatedAt); err != nil {
 			return nil, err
 		}
+		l.EstimatedCost = calculateCost(l.Model, l.TotalTokens)
 		logs = append(logs, l)
 	}
 	if err := rows.Err(); err != nil {
@@ -159,12 +160,24 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 		if rawCredName != "" {
 			l.CredentialName = utils.MaskEmailName(rawCredName)
 		}
+		l.EstimatedCost = calculateCost(l.Model, l.TotalTokens)
 		logs = append(logs, l)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, 0, err
 	}
 	return logs, total, nil
+}
+
+func calculateCost(model string, tokens int) float64 {
+	rate := 0.001
+	mLower := strings.ToLower(model)
+	if strings.Contains(mLower, "pickle") || strings.Contains(mLower, "gpt-4") || strings.Contains(mLower, "claude-3") || strings.Contains(mLower, "opus") || strings.Contains(mLower, "sonnet") {
+		rate = 0.002
+	} else if strings.Contains(mLower, "flash") || strings.Contains(mLower, "mini") || strings.Contains(mLower, "haiku") || strings.Contains(mLower, "nano") {
+		rate = 0.00015
+	}
+	return (float64(tokens) / 1000.0) * rate
 }
 
 type DashboardStats struct {

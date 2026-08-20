@@ -82,6 +82,7 @@ type RequestLog struct {
 	InputTokens     int            `json:"inputTokens" db:"input_tokens"`
 	OutputTokens    int            `json:"outputTokens" db:"output_tokens"`
 	TotalTokens     int            `json:"totalTokens" db:"total_tokens"`
+	EstimatedCost   float64        `json:"estimatedCost"`
 	ErrorMessage    sql.NullString `json:"errorMessage,omitempty" db:"error_message"`
 	RetryCount      int            `json:"retryCount" db:"retry_count"`
 	CreatedAt       time.Time      `json:"createdAt" db:"created_at"`

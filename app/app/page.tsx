@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import dayjs, { Dayjs } from 'dayjs';
 import {
   Row,
@@ -14,6 +15,7 @@ import {
   Spin,
   Badge,
   Tag,
+  Button,
 } from 'antd';
 import {
   ThunderboltOutlined,
@@ -24,6 +26,7 @@ import {
   SyncOutlined,
   CodeOutlined,
   DollarOutlined,
+  ArrowRightOutlined,
 } from '@ant-design/icons';
 import { Line } from '@ant-design/plots';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -236,12 +239,21 @@ export default function DashboardPage() {
       render: (_: any, record: ApiRequestLog) => `${record.inputTokens} / ${record.outputTokens}`,
     },
     {
+      title: 'Est. Cost',
+      key: 'estimatedCost',
+      render: (_: any, record: ApiRequestLog) => (
+        <Tag color="gold" style={{ margin: 0, fontWeight: 'bold' }}>
+          {formatCost(record.estimatedCost || 0)}
+        </Tag>
+      ),
+    },
+    {
       title: 'Status',
       dataIndex: 'statusCode',
       key: 'statusCode',
       render: (code: number) => <StatusTag status={code} />,
     },
-  ], []);
+  ], [formatCost]);
 
   return (
     <div>
@@ -431,12 +443,17 @@ export default function DashboardPage() {
       {/* Live Gateway Request Log Table */}
       <Card
         title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Space>
-              <ThunderboltOutlined style={{ color: '#fa8c16' }} />
-              <span>Live Gateway Activity Feed</span>
-            </Space>
-          </div>
+          <Space>
+            <ThunderboltOutlined style={{ color: '#fa8c16' }} />
+            <span>Live Gateway Activity Feed</span>
+          </Space>
+        }
+        extra={
+          <Link href="/logs">
+            <Button type="link" size="small" icon={<ArrowRightOutlined />}>
+              View All Logs
+            </Button>
+          </Link>
         }
         size="small"
         variant="borderless"

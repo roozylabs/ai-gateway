@@ -104,6 +104,7 @@ export interface ApiRequestLog {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  estimatedCost?: number;
   errorMessage?: string;
   retryCount: number;
   createdAt: string;
