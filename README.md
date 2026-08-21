@@ -5,13 +5,13 @@
 [![CI/CD Pipeline](https://github.com/roozylabs/ai-gateway/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/roozylabs/ai-gateway/actions/workflows/ci-cd.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**AI Gateway** adalah *centralized AI API Gateway* berkinerja tinggi yang memungkinkan Anda mengelola berbagai provider AI (OpenAI, Anthropic, Google Gemini, OpenRouter) dan banyak API credential dalam satu tempat.
+**AI Gateway** is a high-performance *centralized AI API Gateway* that allows you to manage multiple AI providers (OpenAI, Anthropic, Google Gemini, OpenRouter, OpenCode) and numerous API credentials in one place.
 
-Dengan **AI Gateway**, AI coding tools Anda (seperti **OpenCode**, **Claude Code**, **Antigravity**, maupun aplikasi custom) cukup terhubung ke satu **Gateway API Key** dan **Gateway URL**.
+With **AI Gateway**, your AI coding tools (such as **OpenCode**, **Claude Code**, **Antigravity**, or custom applications) simply connect to a single **Gateway API Key** and **Gateway URL**.
 
 ---
 
-## 📐 Arsitektur Sistem
+## 📐 System Architecture
 
 ```text
                         CLIENTS
@@ -26,7 +26,8 @@ Dengan **AI Gateway**, AI coding tools Anda (seperti **OpenCode**, **Claude Code
                   │   AI Gateway    │
                   │                 │
                   │  • Auth         │
-                  │  • Router       │
+                  │  • Smart Router │
+                  │  • Budget Mgr   │
                   │  • Rotation     │
                   │  • Retry (429)  │
                   │  • Streaming    │
@@ -40,22 +41,22 @@ Dengan **AI Gateway**, AI coding tools Anda (seperti **OpenCode**, **Claude Code
 
 ---
 
-## ✨ Fitur Utama
+## ✨ Key Features
 
-- **🧠 Roozy Auto Smart Router (`roozy-auto`)**: Router cerdas yang mengklasifikasikan karakteristik request (Task, Complexity, Context Size) secara deterministik dan melakukan *weighted scoring* untuk memilih model/provider paling optimal.
-- **💰 AI Budget Manager & Auto Downgrade**: Mengatur *monthly/daily spend limits*, *warning/critical thresholds*, dan secara otomatis melakukan *model downgrade* saat terjadi tekanan anggaran sebelum menyentuh *hard cutoff*.
-- **🔑 Centralized Credential Management**: Simpan dan kelola banyak API key provider dari berbagai akun secara terpusat dengan enkripsi **AES-256-GCM** (*encrypted at rest*).
-- **⚡ Instant Zero-Delay Rotation (Pre-Filtered Ready Pool)**: Rotasi strategi **Round Robin**, **LRU**, dan **Fallback Cascade** yang menyaring credential cooling 429 secara instan di Redis sebelum seleksi rute.
-- **🛡️ Clean User-Friendly Error Sanitization**: Mengisolasi error teknis (dump 429, timeout net/http, UUID internal) menjadi pesan ramah pengguna dan transparan.
-- **📊 Complete Audit Trail & Response Headers**: Melacak seluruh request (sukses HTTP 200 & error 429/500/502/504), keputusan routing (`/api/routing/decisions`), serta menyediakan header debugging (`X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID`).
-- **🛡️ Provider Concurrency Limiter & Cloudflare Evasion**: In-memory Go channel semaphores (default max **2** active streams per provider) & request pacing (`350ms`) untuk mencegah WAF concurrency limits.
-- **🌐 Outgoing Proxy Support**: Variabel environment `GLOBAL_PROXY_URL` (SOCKS5 / HTTP Proxy) untuk meneruskan outbound request melalui IP residential / SSH tunnel.
-- **🌊 Pass-Through Real-Time Streaming**: Streaming SSE real-time dengan pengumpulan token usage presisi (`stream_options: include_usage`) dan penghitungan biaya aktual (*CostUSD*).
-- **🎯 Unified OpenAI-Compatible API**: Endpoint kompatibel OpenAI (`/v1/chat/completions`, `/v1/models`) sehingga kompatibel secara instan dengan mayoritas AI client.
+- **🧠 Roozy Auto Smart Router (`roozy-auto`)**: Intelligent router that deterministically classifies request characteristics (Task, Complexity, Context Window) and executes weighted candidate scoring to select the most optimal model/provider.
+- **💰 AI Budget Manager & Auto Downgrade**: Configurable monthly and daily spend limits, alert thresholds (`healthy`, `warning`, `critical`, `exceeded`), and automatic model downgrade logic before hard cutoffs.
+- **🔑 Centralized Credential Management**: Store and manage multiple provider API keys across accounts in one place with **AES-256-GCM** encryption (*encrypted at rest*).
+- **⚡ Instant Zero-Delay Rotation (Pre-Filtered Ready Pool)**: **Round Robin**, **Least Recently Used (LRU)**, and **Fallback Cascade** allocation strategies pre-filtered against active Redis 429 cooldowns.
+- **🛡️ Clean User-Friendly Error Sanitization**: Isolates raw upstream provider errors (429 rate limits, network timeouts, internal UUIDs) into clean, transparent user-friendly JSON responses.
+- **📊 Complete Audit Trail & Debugging Headers**: Full request logging (for success HTTP 200 and error 429/500/502/504 requests), Smart Router decision audit trail (`/api/routing/decisions`), and response debugging headers (`X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID`).
+- **🛡️ Provider Concurrency Limiter & Cloudflare Evasion**: In-memory Go channel semaphores (default max **2** active streams per provider) & request pacing (`350ms`) to evade WAF concurrency rate limits.
+- **🌐 Outgoing Proxy Support**: Support for `GLOBAL_PROXY_URL` environment variable (SOCKS5 / HTTP Proxy) to route outbound requests through residential IPs or SSH tunnels.
+- **🌊 Pass-Through Real-Time Streaming**: Pass-through Server-Sent Events (SSE) streaming with token usage collection (`stream_options: include_usage`) and real-time cost calculation (`CostUSD`).
+- **🎯 Unified OpenAI-Compatible API**: OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/models`) for instant compatibility with standard AI client tools.
 
 ---
 
-## 🛠️ Teknologi & Stack
+## 🛠️ Technology Stack
 
 - **Backend**: Go (Golang 1.24), Gin Web Framework, SQLx
 - **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Ant Design, Tailwind CSS
@@ -66,52 +67,52 @@ Dengan **AI Gateway**, AI coding tools Anda (seperti **OpenCode**, **Claude Code
 
 ---
 
-## 🚀 Panduan Memulai (Quick Start)
+## 🚀 Quick Start Guide
 
-### 1. Prasyarat
-- [Docker & Docker Compose](https://docs.docker.com/get-docker/) dipasang di sistem Anda.
-- [Go 1.23+](https://go.dev/dl/) (jika ingin menjalankan/mengembangkan secara lokal tanpa Docker).
+### 1. Prerequisites
+- [Docker & Docker Compose](https://docs.docker.com/get-docker/) installed on your system.
+- [Go 1.23+](https://go.dev/dl/) (if running/developing locally without Docker).
 
-### 2. Menjalankan dengan Docker Compose
+### 2. Running with Docker Compose
 
-Clone repositori dan salin environment file:
+Clone the repository and copy the environment file:
 ```bash
 git clone https://github.com/roozylabs/ai-gateway.git
 cd ai-gateway
 cp .env.example .env
 ```
 
-Jalankan seluruh service (Go API + PostgreSQL + Redis):
+Start all services (Go API + PostgreSQL + Redis):
 ```bash
 docker compose up -d --build
 ```
 
-API Gateway akan aktif dan siap menerima request di:
+The API Gateway will be up and running at:
 `http://localhost:8080`
 
-Periksa kesehatan service:
+Verify service health:
 ```bash
 curl http://localhost:8080/health
 ```
 
 ---
 
-## 💻 Pengembangan Lokal (Local Development)
+## 💻 Local Development
 
-Jika Anda ingin menjalankan backend Go secara langsung di mesin lokal:
+If you want to run the Go backend directly on your local machine:
 
-1. **Jalankan Database PostgreSQL & Redis via Docker**:
+1. **Start PostgreSQL & Redis via Docker**:
    ```bash
    docker compose up -d postgres redis
    ```
 
-2. **Jalankan API Gateway**:
+2. **Run API Gateway**:
    ```bash
    cd api
    go run cmd/server/main.go
    ```
 
-3. **Menjalankan Unit Test**:
+3. **Run Unit Tests**:
    ```bash
    cd api
    go test ./... -v
@@ -119,54 +120,54 @@ Jika Anda ingin menjalankan backend Go secara langsung di mesin lokal:
 
 ---
 
-## 📄 Konfigurasi Environment Variables
+## 📄 Environment Variables Configuration
 
-File `.env` digunakan untuk mengatur variabel lingkungan infrastruktur:
+The `.env` file configures backend infrastructure settings:
 
-| Variable | Deskripsi | Default |
+| Variable | Description | Default |
 | :--- | :--- | :--- |
-| `APP_ENV` | Mode aplikasi (`development` / `production` / `test`) | `development` |
-| `SERVER_PORT` | Port HTTP Server | `8080` |
-| `DATABASE_URL` | Connection string PostgreSQL | `postgres://postgres:postgres@localhost:5432/ai_gateway?sslmode=disable` |
-| `REDIS_URL` | Connection string Redis | `redis://:redis@localhost:6379` |
-| `JWT_SECRET` | Secret key untuk signing JWT Session | `your-jwt-secret-here` |
-| `ENCRYPTION_KEY` | Key 32-byte untuk enkripsi AES-256-GCM API Key Provider | `your-encryption-key-here` |
-| `HASH_KEY` | Key untuk hashing Gateway API Key | `your-hash-key-here` |
+| `APP_ENV` | Application environment (`development` / `production` / `test`) | `development` |
+| `SERVER_PORT` | HTTP Server Port | `8080` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://postgres:postgres@localhost:5432/ai_gateway?sslmode=disable` |
+| `REDIS_URL` | Redis connection string | `redis://:redis@localhost:6379` |
+| `JWT_SECRET` | Secret key for signing JWT Session | `your-jwt-secret-here` |
+| `ENCRYPTION_KEY` | 32-byte AES-256-GCM encryption key for provider credentials | `your-encryption-key-here` |
+| `HASH_KEY` | Key for hashing Gateway API Keys | `your-hash-key-here` |
 
-> 🔒 *Catatan: API Credentials milik AI Provider (seperti OpenAI/Anthropic keys) **tidak disimpan** di file `.env`, melainkan dikelola secara terenkripsi di dalam database via API/Dashboard.*
+> 🔒 *Note: AI Provider API Credentials (such as OpenAI or Anthropic keys) are **not stored** in `.env`. They are securely managed and encrypted in PostgreSQL via the Dashboard API.*
 
 ---
 
-## 🔄 Pipeline CI/CD & Deployment
+## 🔄 CI/CD Pipeline & Deployment
 
-Project ini menggunakan **GitHub Actions** tunggal ([ci-cd.yml](file:///.github/workflows/ci-cd.yml)):
+This project uses a unified **GitHub Actions** pipeline ([ci-cd.yml](file:///.github/workflows/ci-cd.yml)):
 
 1. **Continuous Integration (CI)**:
-   - Linting kode Go menggunakan `golangci-lint`.
-   - Otomatisasi pengujian (`go test ./...`) menggunakan PostgreSQL 15 & Redis 7 service containers.
-   - Verifikasi kompilasi biner Go & Docker build.
+   - Go code linting using `golangci-lint`.
+   - Automated testing (`go test ./...`) with PostgreSQL 15 & Redis 7 service containers.
+   - Go binary compilation & Docker build verification.
 2. **Continuous Deployment (CD)**:
-   - Build & Push Docker image ke **GitHub Container Registry** (`ghcr.io/roozylabs/ai-gateway-api:latest`).
-   - SSH otomatis ke VPS untuk melakukan `git pull`, `docker compose pull`, dan `docker compose up -d`.
+   - Build & Push Docker image to **GitHub Container Registry** (`ghcr.io/roozylabs/ai-gateway-api:latest`).
+   - Automated SSH deployment to VPS executing `git pull`, `docker compose pull`, and `docker compose up -d`.
 
 ---
 
-## 📚 Endpoint API Ringkas
+## 📚 API Endpoints Summary
 
-| Method | Endpoint | Deskripsi | Autentikasi |
+| Method | Endpoint | Description | Auth |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/health` | Healthcheck status API, DB, & Redis | Publik |
-| `POST` | `/api/auth/login` | Login user | Publik |
-| `GET` | `/api/providers` | Kelola AI Providers | Session |
-| `POST` | `/api/providers/:id/credentials` | Tambah Credential Provider | Session |
-| `GET` | `/api/policies` | Kelola Routing Policies | Session |
-| `GET` | `/api/budgets` | Kelola AI Expenditure Budgets | Session |
-| `GET` | `/api/routing/decisions` | Audit Trail Log Keputusan Smart Router | Session |
-| `GET` | `/v1/models` | List daftar model AI aktif (termasuk `roozy-auto`) | Gateway Key (`Bearer gw_sk_...`) |
-| `POST` | `/v1/chat/completions` | Inference API (Support Smart Router & Streaming) | Gateway Key (`Bearer gw_sk_...`) |
+| `GET` | `/health` | Healthcheck API, DB, & Redis status | Public |
+| `POST` | `/api/auth/login` | User Login | Public |
+| `GET` | `/api/providers` | Manage AI Providers | Session |
+| `POST` | `/api/providers/:id/credentials` | Add Provider Credential | Session |
+| `GET` | `/api/policies` | Manage Routing Policies | Session |
+| `GET` | `/api/budgets` | Manage AI Expenditure Budgets | Session |
+| `GET` | `/api/routing/decisions` | Smart Router Decision Audit Log | Session |
+| `GET` | `/v1/models` | List active AI models (including `roozy-auto`) | Gateway Key (`Bearer gw_sk_...`) |
+| `POST` | `/v1/chat/completions` | Inference API (Supports Smart Router & Streaming) | Gateway Key (`Bearer gw_sk_...`) |
 
 ---
 
-## 📝 Lisensi
+## 📝 License
 
-Distribusikan di bawah lisensi [MIT License](LICENSE).
+Distributed under the [MIT License](LICENSE).

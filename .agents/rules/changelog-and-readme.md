@@ -8,9 +8,12 @@ This rule governs when and how to update `README.md` and `CHANGELOG.md` when mak
 
 `README.md` is the primary public overview and documentation portal for the repository.
 
+### Language Standard:
+- **English Only**: `README.md` MUST ALWAYS be written in professional, clear **English** (standard for open-source / GitHub repositories).
+
 ### When to Update `README.md`:
 1. **Core Feature Addition**: Only update `README.md` when introducing new major capabilities (e.g., Smart Router, Budget Manager, new provider support, new rotation strategies).
-2. **API Endpoint / Route Changes**: Update the "Endpoint API Ringkas" table if new client/admin endpoints are added or modified.
+2. **API Endpoint / Route Changes**: Update the "API Endpoints Summary" table if new client/admin endpoints are added or modified.
 3. **Environment Variable Changes**: Update the Environment Variables table if `.env` keys are added or modified.
 4. **Architecture / Tech Stack Changes**: Update Tech Stack or Architecture diagrams if major components/technologies are added.
 
