@@ -161,13 +161,16 @@ export default function PoliciesPage() {
       title: 'Policy Name',
       dataIndex: 'name',
       key: 'name',
-      render: (name: string, record: ApiRoutingPolicy) => (
-        <Space>
-          <Text strong>{name}</Text>
-          {name === 'balanced' && <Tag color="blue">Default</Tag>}
-          {!record.enabled && <Tag color="default">Disabled</Tag>}
-        </Space>
-      ),
+      render: (name: string, record: ApiRoutingPolicy) => {
+        const isDefault = name === 'balanced';
+        return (
+          <Space>
+            <Text strong>{name}</Text>
+            {isDefault && <Tag color="blue" icon={<CheckOutlined />}>Default Active</Tag>}
+            {!record.enabled && <Tag color="default">Disabled</Tag>}
+          </Space>
+        );
+      },
     },
     {
       title: 'Weights Distribution',
@@ -206,22 +209,33 @@ export default function PoliciesPage() {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: any, record: ApiRoutingPolicy) => (
-        <Space size="small">
-          <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenEdit(record)}>
-            Edit
-          </Button>
-          <ConfirmButton
-            confirmTitle="Delete Policy"
-            confirmDescription={`Are you sure you want to delete policy "${record.name}"?`}
-            onConfirm={() => deleteMutation.mutate(record.id)}
-            danger
-            icon={<DeleteOutlined />}
-          >
-            Delete
-          </ConfirmButton>
-        </Space>
-      ),
+      render: (_: any, record: ApiRoutingPolicy) => {
+        const isDefault = record.name === 'balanced';
+        return (
+          <Space size="small">
+            <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenEdit(record)}>
+              Edit
+            </Button>
+            {isDefault ? (
+              <Tooltip title="Default Policy cannot be deleted. You can edit its weights or create new custom policies.">
+                <Button type="text" disabled icon={<DeleteOutlined />}>
+                  Delete
+                </Button>
+              </Tooltip>
+            ) : (
+              <ConfirmButton
+                confirmTitle="Delete Routing Policy"
+                confirmDescription={`Are you sure you want to delete policy "${record.name}"? Smart Router requests will automatically fall back to the Default balanced policy.`}
+                onConfirm={() => deleteMutation.mutate(record.id)}
+                danger
+                icon={<DeleteOutlined />}
+              >
+                Delete
+              </ConfirmButton>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 

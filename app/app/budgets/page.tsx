@@ -210,8 +210,8 @@ export default function BudgetsPage() {
             Edit
           </Button>
           <ConfirmButton
-            confirmTitle="Delete Budget"
-            confirmDescription={`Are you sure you want to delete budget "${record.name}"?`}
+            confirmTitle="Delete Budget Rule"
+            confirmDescription={`Are you sure you want to delete budget "${record.name}"? Deleting this budget will remove all active daily and monthly spending limits, allowing unrestricted AI requests.`}
             onConfirm={() => deleteMutation.mutate(record.id)}
             danger
             icon={<DeleteOutlined />}
