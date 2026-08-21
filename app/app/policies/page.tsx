@@ -212,8 +212,8 @@ export default function PoliciesPage() {
             Edit
           </Button>
           <ConfirmButton
-            title="Delete Policy"
-            description={`Are you sure you want to delete policy "${record.name}"?`}
+            confirmTitle="Delete Policy"
+            confirmDescription={`Are you sure you want to delete policy "${record.name}"?`}
             onConfirm={() => deleteMutation.mutate(record.id)}
             danger
             icon={<DeleteOutlined />}

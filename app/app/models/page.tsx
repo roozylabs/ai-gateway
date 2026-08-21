@@ -42,7 +42,7 @@ import {
   ApiModel,
 } from '@/lib/api';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 export interface CombinedModel extends ApiModel {
   providerName?: string;

@@ -210,8 +210,8 @@ export default function BudgetsPage() {
             Edit
           </Button>
           <ConfirmButton
-            title="Delete Budget"
-            description={`Are you sure you want to delete budget "${record.name}"?`}
+            confirmTitle="Delete Budget"
+            confirmDescription={`Are you sure you want to delete budget "${record.name}"?`}
             onConfirm={() => deleteMutation.mutate(record.id)}
             danger
             icon={<DeleteOutlined />}
@@ -240,7 +240,7 @@ export default function BudgetsPage() {
 
       {/* Budget Overview Card */}
       <Card style={{ marginBottom: 24 }} loading={statusLoading}>
-        <Row gutter={[24, 24]} alignItems="center">
+        <Row gutter={[24, 24]} align="middle">
           <Col xs={24} md={12}>
             <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
               <WalletOutlined style={{ marginRight: 8, color: '#1677ff' }} />
