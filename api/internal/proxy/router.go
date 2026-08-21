@@ -289,67 +289,92 @@ func (r *Router) ResolveSemantic(
 		return nil, nil, ErrModelNotFound
 	}
 
-	winner := scores[0]
-
 	decision := &RoutingDecision{
-		Task:            string(chars.Task),
-		Complexity:      string(chars.Complexity),
-		PolicyName:      policy.Name,
-		SelectedModel:   winner.Model.Slug,
-		SelectedProvider: winner.Model.ProviderName,
-		BudgetStatus:    budgetStatus,
-		EstimatedCost:   estimateModelCost(winner.Model, chars.ContextTokens, OutputRatioByTask(chars.Task)),
-	}
-
-	// Detect downgrade
-	if winner.Score < 0.5 {
-		decision.DowngradeReason = "low_score_under_budget_pressure"
-	}
-	for _, reason := range winner.Reason {
-		if reason == "budget_critical_penalty" || reason == "budget_exceeded_cheapest_only" {
-			decision.DowngradeReason = reason
-			break
-		}
-	}
-
-	provider, err := r.providers.FindByID(ctx, winner.Model.ProviderID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("find provider: %w", err)
-	}
-	if !provider.Enabled {
-		return nil, nil, ErrModelNotFound
-	}
-
-	strategy := r.resolveStrategy(provider)
-	allCreds, err := r.selectByStrategy(ctx, provider.ID, strategy)
-	if err != nil {
-		return nil, nil, fmt.Errorf("select credentials: %w", err)
+		Task:         string(chars.Task),
+		Complexity:   string(chars.Complexity),
+		PolicyName:   policy.Name,
+		BudgetStatus: budgetStatus,
 	}
 
 	var routes []*Route
-	var coolingCount int
-	for _, cred := range allCreds {
-		c := cred
-		cooling, _ := cooldown.IsCoolingDown(ctx, c.ID)
-		if cooling {
-			coolingCount++
+	var winningModel *models.Model
+	var winningProvider *models.Provider
+	var lastCoolingErr bool
+
+	// Iterate scored candidate models in rank order to find the first model with active credentials
+	for _, sc := range scores {
+		candModel := sc.Model
+
+		// If gateway key is bound to a specific provider, restrict candidates to that provider
+		if gatewayKey != nil && gatewayKey.ProviderID != nil && *gatewayKey.ProviderID != "" {
+			if candModel.ProviderID != *gatewayKey.ProviderID {
+				continue
+			}
+		}
+
+		prov, err := r.providers.FindByID(ctx, candModel.ProviderID)
+		if err != nil || !prov.Enabled {
 			continue
 		}
-		adapter := r.getAdapter(provider.Type)
-		routes = append(routes, &Route{
-			Model:      winner.Model,
-			Provider:   provider,
-			Credential: &c,
-			Adapter:    adapter,
-		})
+
+		strategy := r.resolveStrategy(prov)
+		allCreds, err := r.selectByStrategy(ctx, prov.ID, strategy)
+		if err != nil || len(allCreds) == 0 {
+			continue
+		}
+
+		var activeRoutes []*Route
+		var coolingCount int
+		for _, cred := range allCreds {
+			c := cred
+			cooling, _ := cooldown.IsCoolingDown(ctx, c.ID)
+			if cooling {
+				coolingCount++
+				continue
+			}
+			adapter := r.getAdapter(prov.Type)
+			activeRoutes = append(activeRoutes, &Route{
+				Model:      candModel,
+				Provider:   prov,
+				Credential: &c,
+				Adapter:    adapter,
+			})
+		}
+
+		if len(activeRoutes) > 0 {
+			routes = activeRoutes
+			winningModel = candModel
+			winningProvider = prov
+
+			// Detect downgrade reason if candidate score was penalized
+			if sc.Score < 0.5 {
+				decision.DowngradeReason = "low_score_under_budget_pressure"
+			}
+			for _, reason := range sc.Reason {
+				if reason == "budget_critical_penalty" || reason == "budget_exceeded_cheapest_only" {
+					decision.DowngradeReason = reason
+					break
+				}
+			}
+			break
+		}
+
+		if coolingCount > 0 {
+			lastCoolingErr = true
+		}
 	}
 
 	if len(routes) == 0 {
-		if coolingCount > 0 {
+		if lastCoolingErr {
 			decision.DowngradeReason = "all_credentials_cooling_down"
 			return nil, decision, ErrAllCredentialsInCooldown
 		}
 		return nil, decision, ErrNoCredentials
 	}
+
+	decision.SelectedModel = winningModel.Slug
+	decision.SelectedProvider = winningProvider.Name
+	decision.EstimatedCost = estimateModelCost(winningModel, chars.ContextTokens, OutputRatioByTask(chars.Task))
+
 	return routes, decision, nil
 }
