@@ -120,3 +120,16 @@ type ModelPricing struct {
 	CreatedAt              time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt              time.Time `json:"updatedAt" db:"updated_at"`
 }
+
+type RoutingRule struct {
+	ID           string    `json:"id" db:"id"`
+	UserID       string    `json:"userId" db:"user_id"`
+	ModelPattern string    `json:"modelPattern" db:"model_pattern"`
+	ProviderID   *string   `json:"providerId,omitempty" db:"provider_id"`
+	Priority     int       `json:"priority" db:"priority"`
+	Enabled      bool      `json:"enabled" db:"enabled"`
+	ProviderName string    `json:"providerName,omitempty" db:"-"`
+	ProviderType string    `json:"providerType,omitempty" db:"-"`
+	CreatedAt    time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt    time.Time `json:"updatedAt" db:"updated_at"`
+}

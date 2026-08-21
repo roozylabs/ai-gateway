@@ -61,6 +61,7 @@ func main() {
 	requestLogRepo := repository.NewRequestLogRepository(sqlDB)
 	settingRepo := repository.NewSettingRepository(sqlDB)
 	pricingRepo := repository.NewModelPricingRepository(sqlDB)
+	routingRuleRepo := repository.NewRoutingRuleRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -87,6 +88,7 @@ func main() {
 	settingsHandler := handlers.NewSettingsHandler(settingRepo)
 	sseHandler := handlers.NewSSEHandler(eventPublisher)
 	googleOAuthHandler := handlers.NewGoogleOAuthHandler(credentialRepo, providerRepo, cfg.EncryptionKey)
+	routingRuleHandler := handlers.NewRoutingRuleHandler(routingRuleRepo)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -165,6 +167,13 @@ func main() {
 
 			// SSE
 			protected.GET("/sse", sseHandler.Stream)
+
+			// Routing Rules
+			protected.GET("/routing-rules", routingRuleHandler.List)
+			protected.GET("/routing-rules/:id", routingRuleHandler.Get)
+			protected.POST("/routing-rules", routingRuleHandler.Create)
+			protected.PUT("/routing-rules/:id", routingRuleHandler.Update)
+			protected.DELETE("/routing-rules/:id", routingRuleHandler.Delete)
 			
 			// Sandbox
 			protected.POST("/sandbox/chat/completions", gatewayHandler.SandboxChatCompletions)

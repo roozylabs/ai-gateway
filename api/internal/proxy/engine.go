@@ -236,6 +236,13 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+			if e.publisher != nil {
+				_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_COOLDOWN_STARTED", map[string]interface{}{
+					"credentialId": route.Credential.ID,
+					"retryAfter":   retryAfter,
+					"model":        req.Model,
+				})
+			}
 			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds): %s", route.Credential.ID, retryAfter, strings.TrimSpace(bodyStr))
 			time.Sleep(calculateBackoff(i, retryAfter))
 			continue
@@ -441,6 +448,13 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+			if e.publisher != nil {
+				_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_COOLDOWN_STARTED", map[string]interface{}{
+					"credentialId": route.Credential.ID,
+					"retryAfter":   retryAfter,
+					"model":        req.Model,
+				})
+			}
 			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds): %s", route.Credential.ID, retryAfter, strings.TrimSpace(bodyStr))
 			time.Sleep(calculateBackoff(i, retryAfter))
 			continue

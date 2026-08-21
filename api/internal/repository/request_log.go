@@ -176,14 +176,15 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 }
 
 type DashboardStats struct {
-	TotalRequests      int64   `json:"totalRequests"`
-	TotalTokens        int64   `json:"totalTokens"`
-	TotalEstimatedCost float64 `json:"totalEstimatedCost"`
-	AvgLatency         float64 `json:"avgLatency"`
-	ErrorRate          float64 `json:"errorRate"`
-	ActiveProviders    int     `json:"activeProviders"`
-	ActiveCredentials  int     `json:"activeCredentials"`
-	ActiveKeys         int     `json:"activeKeys"`
+	TotalRequests        int64   `json:"totalRequests"`
+	TotalTokens          int64   `json:"totalTokens"`
+	TotalEstimatedCost   float64 `json:"totalEstimatedCost"`
+	AvgLatency           float64 `json:"avgLatency"`
+	ErrorRate            float64 `json:"errorRate"`
+	FailoverRecoveryRate float64 `json:"failoverRecoveryRate"`
+	ActiveProviders      int     `json:"activeProviders"`
+	ActiveCredentials    int     `json:"activeCredentials"`
+	ActiveKeys           int     `json:"activeKeys"`
 }
 
 type UsagePoint struct {
@@ -202,11 +203,18 @@ func (r *RequestLogRepository) GetStats(ctx context.Context, userID string) (*Da
 		        COALESCE(SUM(total_tokens), 0),
 		        COALESCE(SUM(cost_usd), 0),
 		        COALESCE(AVG(latency_ms), 0),
-		        COALESCE(CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE status_code >= 400))::float / COUNT(*) * 100 ELSE 0 END, 0)
+		        COALESCE(CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE status_code >= 400))::float / COUNT(*) * 100 ELSE 0 END, 0),
+		        COALESCE(
+		          CASE WHEN COUNT(*) FILTER (WHERE retry_count > 0) > 0
+		            THEN (COUNT(*) FILTER (WHERE retry_count > 0 AND status_code < 400))::float /
+		                 COUNT(*) FILTER (WHERE retry_count > 0) * 100
+		            ELSE 100
+		          END, 100
+		        )
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 WHERE gak.user_id = $1`, userID,
-	).Scan(&s.TotalRequests, &s.TotalTokens, &s.TotalEstimatedCost, &s.AvgLatency, &s.ErrorRate)
+	).Scan(&s.TotalRequests, &s.TotalTokens, &s.TotalEstimatedCost, &s.AvgLatency, &s.ErrorRate, &s.FailoverRecoveryRate)
 	if err != nil {
 		return nil, err
 	}
