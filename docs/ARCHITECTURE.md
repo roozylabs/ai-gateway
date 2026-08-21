@@ -8,6 +8,7 @@
 | 1.1 | 18 August 2026, 22:37 WIB | Added Real-Time Data Streaming Architecture (SSE + Redis Pub/Sub) |
 | 1.2 | 19 August 2026, 11:03 WIB | Implemented Revision History versioning rules |
 | 1.3 | 19 August 2026, 14:58 WIB | Updated Gateway API Key architecture: 1 Gateway Key is bound to 1 Provider |
+| 1.4 | 21 August 2026, 22:56 WIB | Added AI Budget Manager, Smart Router Engine (`roozy-auto`), Cost Pipeline, and UI Guardrails |
 
 ---
 
@@ -78,14 +79,14 @@ The core API gateway handling all client requests.
 | :--- | :--- |
 | `auth/` | Gateway API key validation, user context |
 | `api/` | HTTP handlers, request/response mapping |
-| `credentials/` | Credential pool management, selection, rotation |
-| `providers/` | Provider adapter interface, OpenAI/Anthropic/Google adapters |
-| `routing/` | Model-to-provider resolution, round-robin selection |
-| `proxy/` | HTTP proxy, streaming pass-through |
-| `retry/` | Retry logic, failover, 429 detection |
-| `ratelimit/` | Gateway-level rate limiting per API key |
-| `usage/` | Request logging, token tracking |
-| `logging/` | Structured request logging |
+| `credentials/` | Credential pool management, selection, pre-filtered ready pool |
+| `providers/` | Provider adapter interface (OpenAI, Anthropic, Google, OpenCode) |
+| `routing/` | Model-to-provider resolution, weighted scoring, policy resolution |
+| `proxy/` | HTTP proxy engine, `roozy-auto` classifier & scorer, pass-through streaming, budget manager |
+| `retry/` | Retry logic, failover, 429 detection, error sanitization |
+| `ratelimit/` | Gateway-level rate limiting per API key & Redis cooldown store |
+| `usage/` | Request logging (success & error logs), real-time `CostUSD` tracking |
+| `logging/` | Structured request logging & routing decision audit trail |
 | `health/` | Health check endpoints |
 
 ### 3.2 Next.js Dashboard (`app.ai-gateway.dev`)

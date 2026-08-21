@@ -11,6 +11,7 @@
 | 1.4 | 19 August 2026, 11:04 WIB | Implemented Revision History versioning rules |
 | 1.5 | 19 August 2026, 14:55 WIB | Updated Gateway API Key architecture: 1 Gateway Key is bound to 1 Provider |
 | 1.6 | 19 August 2026, 21:12 WIB | Added Google Gemini & Cloud OAuth 2.0 Token Refresh Flow Specs |
+| 1.7 | 21 August 2026, 22:56 WIB | Updated V1 Scope with AI Budget Manager & Semantic Router (`roozy-auto`), Cost Pipeline, and Debugging Headers |
 
 ---
 
@@ -119,7 +120,7 @@ Client hanya mengetahui:
 
 ### Primary Goals
 - **G1 — Centralized Credential Management:** Pengguna dapat menyimpan dan mengelola semua provider credentials dari satu dashboard.
-- **G2 — Credential Rotation:** Gateway otomatis menggunakan credential lain ketika credential aktif mengalami rate limit atau failure tertentu.
+- **G2 — Credential Rotation & Instant Failover:** Gateway otomatis menggunakan credential lain (via Pre-Filtered Ready Pool) ketika credential aktif mengalami rate limit atau failure tertentu.
 - **G3 — Unified API:** Gateway menyediakan interface API yang mudah digunakan oleh AI clients. Target utama:
   - `/v1/models`
   - `/v1/chat/completions`
@@ -130,8 +131,10 @@ Client hanya mengetahui:
   - Google
   - OpenRouter
 - **G5 — Streaming:** Gateway harus mendukung pass-through streaming response tanpa buffering penuh.
-- **G6 — Usage Monitoring:** Pengguna dapat melihat request count, token usage, error rate, credential usage, provider usage, dan model usage.
+- **G6 — Usage Monitoring & Real-Time Cost Pipeline:** Pengguna dapat melihat request count, token usage, error rate, credential usage, provider usage, model usage, dan kalkulasi biaya aktual (`CostUSD`).
 - **G7 — Secure Credential Storage:** Provider API keys tidak boleh dikirim atau ditampilkan ke client.
+- **G8 — Roozy Auto Smart Router (`roozy-auto`):** Klasifikasi request & scoring bobot (Task, Quality, Cost, Speed) untuk pemilihan model/provider otomatis.
+- **G9 — AI Budget Manager:** Pengaturan batas belanja harian/bulanan, threshold alarm, dan automatic model downgrade.
 
 ---
 
@@ -727,6 +730,17 @@ Next.js
 - `PATCH /api/credentials/:id`
 - `DELETE /api/credentials/:id`
 - `POST /api/credentials/:id/test`
+
+### Routing Policies & Budgets
+- `GET /api/policies`
+- `POST /api/policies`
+- `PUT /api/policies/:id`
+- `DELETE /api/policies/:id`
+- `GET /api/budgets`
+- `POST /api/budgets`
+- `PUT /api/budgets/:id`
+- `DELETE /api/budgets/:id`
+- `GET /api/routing/decisions`
 
 ### Gateway (OpenAI Compatible)
 - `GET /v1/models`
