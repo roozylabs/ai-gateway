@@ -127,9 +127,10 @@ export default function SandboxPage() {
 
   // Auto-select first model when availableModels change
   useEffect(() => {
+    if (selectedModel === 'roozy-auto') return;
     if (availableModels.length > 0) {
       const exists = availableModels.some((m) => m.slug === selectedModel || m.name === selectedModel);
-      if (!exists) {
+      if (!exists && selectedModel !== 'roozy-auto') {
         setSelectedModel(availableModels[0].slug || availableModels[0].name);
       }
     }
