@@ -119,40 +119,59 @@ func (r *ProxyRequest) UnmarshalJSON(data []byte) error {
 }
 
 func (e *Engine) resolveRoutes(ctx context.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) ([]*Route, error) {
-	if req.Model == "roozy-auto" && e.policyRepo != nil {
+	if req.Model == "roozy-auto" {
 		userID := ""
 		if gatewayKey != nil {
 			userID = gatewayKey.UserID
 		}
-		policy, err := e.policyRepo.FindByDefault(ctx, userID)
-		if err != nil || policy == nil {
-			// Fallback to balanced policy if no default found
-			policy, _ = e.policyRepo.FindByName(ctx, "balanced", userID)
-		}
-		if policy != nil {
-			sPolicy := &RoutingPolicy{
-				Name:        policy.Name,
-				Weights:     policy.Weights,
-				Constraints: policy.Constraints,
-			}
 
-			// Check budget status for auto-downgrade
-			budgetStatus := ""
-			if e.budgetMgr != nil && userID != "" {
-				if status, err := e.budgetMgr.GetStatus(ctx, userID); err == nil && status != nil {
-					budgetStatus = status.Status
+		var sPolicy *RoutingPolicy
+		if e.policyRepo != nil {
+			policy, err := e.policyRepo.FindByDefault(ctx, userID)
+			if err != nil || policy == nil {
+				policy, _ = e.policyRepo.FindByName(ctx, "balanced", userID)
+			}
+			if policy != nil {
+				sPolicy = &RoutingPolicy{
+					Name:        policy.Name,
+					Weights:     policy.Weights,
+					Constraints: policy.Constraints,
 				}
 			}
-
-			routes, decision, err := e.router.ResolveSemantic(ctx, req, gatewayKey, e.cooldown, sPolicy, budgetStatus)
-			if err == nil && decision != nil {
-				// Log routing decision asynchronously
-				if userID != "" {
-					go e.logRoutingDecision(context.Background(), userID, req, decision)
-				}
-			}
-			return routes, err
 		}
+
+		// Fallback to built-in balanced policy if no policy configured in DB
+		if sPolicy == nil {
+			sPolicy = &RoutingPolicy{
+				Name: "balanced",
+				Weights: map[string]float64{
+					"task_match": 0.35,
+					"quality":    0.35,
+					"cost":       0.15,
+					"speed":      0.15,
+				},
+				Constraints: map[string]float64{
+					"max_cost_per_request": 0.05,
+				},
+			}
+		}
+
+		// Check budget status for auto-downgrade
+		budgetStatus := ""
+		if e.budgetMgr != nil && userID != "" {
+			if status, err := e.budgetMgr.GetStatus(ctx, userID); err == nil && status != nil {
+				budgetStatus = status.Status
+			}
+		}
+
+		routes, decision, err := e.router.ResolveSemantic(ctx, req, gatewayKey, e.cooldown, sPolicy, budgetStatus)
+		if err == nil && decision != nil {
+			// Log routing decision asynchronously
+			if userID != "" {
+				go e.logRoutingDecision(context.Background(), userID, req, decision)
+			}
+		}
+		return routes, err
 	}
 	return e.router.ResolveWithFallback(ctx, req.Model, gatewayKey, e.cooldown)
 }

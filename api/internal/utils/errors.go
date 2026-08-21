@@ -89,9 +89,5 @@ func CleanUpstreamError(err error) (statusCode int, errType string, errCode stri
 
 	// Default Fallback: sanitize UUIDs from error string if any
 	sanitized := uuidRegex.ReplaceAllString(errStr, "<redacted>")
-	if len(sanitized) > 120 {
-		return http.StatusInternalServerError, "api_error", "internal_error", MsgGenericError
-	}
-
 	return http.StatusInternalServerError, "api_error", "internal_error", sanitized
 }
