@@ -1,0 +1,10 @@
+ALTER TABLE models DROP COLUMN IF EXISTS context_window;
+ALTER TABLE models DROP COLUMN IF EXISTS coding_score;
+ALTER TABLE models DROP COLUMN IF EXISTS reasoning_score;
+ALTER TABLE models DROP COLUMN IF EXISTS writing_score;
+ALTER TABLE models DROP COLUMN IF EXISTS speed_score;
+ALTER TABLE models DROP COLUMN IF EXISTS quality_score;
+ALTER TABLE models DROP COLUMN IF EXISTS input_price_per_1m;
+ALTER TABLE models DROP COLUMN IF EXISTS output_price_per_1m;
+ALTER TABLE models DROP COLUMN IF EXISTS supports_tools;
+ALTER TABLE models DROP COLUMN IF EXISTS supports_vision;

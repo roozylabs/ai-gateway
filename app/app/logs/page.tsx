@@ -1,17 +1,27 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Tag, Typography, Select, Space, Drawer, Descriptions, Button, Switch, Badge } from 'antd';
-import { EyeOutlined, SyncOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Tag, Typography, Select, Space, Drawer, Descriptions, Button, Switch, Badge, Segmented } from 'antd';
+import { EyeOutlined, SyncOutlined, ThunderboltOutlined, BranchesOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useSSE } from '@/hooks/useSSE';
 import { DataTable, PageHeader, StatusTag } from '@/components/atoms';
-import { apiGetLogs, apiGetProviders, apiGetSettings, ApiRequestLog, ApiProvider, ApiSetting } from '@/lib/api';
+import {
+  apiGetLogs,
+  apiGetProviders,
+  apiGetSettings,
+  apiGetRoutingDecisions,
+  ApiRequestLog,
+  ApiProvider,
+  ApiSetting,
+  ApiRoutingDecision,
+} from '@/lib/api';
 
 const { Text } = Typography;
 
 export default function LogsPage() {
   const { isConnected } = useSSE();
+  const [activeTab, setActiveTab] = useState<'logs' | 'routing'>('logs');
   const [selectedLog, setSelectedLog] = useState<ApiRequestLog | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -39,7 +49,6 @@ export default function LogsPage() {
     if (defaultCurrency === 'USD') return `$${usdAmount.toFixed(4)}`;
     if (defaultCurrency === 'EUR') return `€${(usdAmount * 0.92).toFixed(4)}`;
     if (defaultCurrency === 'SGD') return `S$${(usdAmount * 1.35).toFixed(4)}`;
-    // Default IDR
     const idrVal = Math.round(usdAmount * usdToIdrRate);
     return `Rp ${idrVal.toLocaleString('id-ID')}`;
   }, [defaultCurrency, usdToIdrRate]);
@@ -51,7 +60,7 @@ export default function LogsPage() {
   });
 
   // Fetch Request Logs
-  const { data: logsData, isLoading, refetch, isRefetching } = useQuery({
+  const { data: logsData, isLoading: logsLoading, refetch: refetchLogs, isRefetching: isRefetchingLogs } = useQuery({
     queryKey: ['logs', selectedProvider, searchQuery, page, pageSize],
     queryFn: () =>
       apiGetLogs({
@@ -60,9 +69,17 @@ export default function LogsPage() {
         limit: pageSize,
         page: page,
       }),
+    enabled: activeTab === 'logs',
   });
 
-  const columns = React.useMemo(() => [
+  // Fetch Routing Decisions
+  const { data: decisionsData, isLoading: decisionsLoading, refetch: refetchDecisions, isRefetching: isRefetchingDecisions } = useQuery({
+    queryKey: ['routing-decisions', page, pageSize],
+    queryFn: () => apiGetRoutingDecisions({ page, limit: pageSize }),
+    enabled: activeTab === 'routing',
+  });
+
+  const columnsLogs = React.useMemo(() => [
     {
       title: 'Request ID',
       dataIndex: 'id',
@@ -159,63 +176,162 @@ export default function LogsPage() {
     },
   ], [formatCost]);
 
+  const columnsRouting = React.useMemo(() => [
+    {
+      title: 'Timestamp',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (val: string) => (val ? new Date(val).toLocaleString() : '-'),
+    },
+    {
+      title: 'Task & Complexity',
+      key: 'task',
+      render: (_: any, record: ApiRoutingDecision) => (
+        <Space wrap size="small">
+          <Tag color="purple">{record.taskType || 'coding'}</Tag>
+          <Tag color="cyan">{record.complexity || 'medium'}</Tag>
+        </Space>
+      ),
+    },
+    {
+      title: 'Policy Used',
+      dataIndex: 'policyName',
+      key: 'policyName',
+      render: (p: string) => <Tag color="blue">{p || 'balanced'}</Tag>,
+    },
+    {
+      title: 'Selected Model',
+      dataIndex: 'selectedModel',
+      key: 'selectedModel',
+      render: (m: string, record: ApiRoutingDecision) => (
+        <Space direction="vertical" size={0}>
+          <Text strong>{m}</Text>
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            Provider: {record.selectedProvider || 'default'}
+          </Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Budget Status',
+      dataIndex: 'budgetStatus',
+      key: 'budgetStatus',
+      render: (status: string) => {
+        if (status === 'exceeded' || status === 'critical') return <Tag color="red">{status}</Tag>;
+        if (status === 'warning') return <Tag color="warning">{status}</Tag>;
+        return <Tag color="success">{status || 'healthy'}</Tag>;
+      },
+    },
+    {
+      title: 'Est. Cost',
+      dataIndex: 'estimatedCost',
+      key: 'estimatedCost',
+      render: (cost: number) => (
+        <Text code>${(cost || 0).toFixed(4)}</Text>
+      ),
+    },
+    {
+      title: 'Downgrade Reason',
+      dataIndex: 'downgradeReason',
+      key: 'downgradeReason',
+      render: (reason?: string) => (reason ? <Text type="danger">{reason}</Text> : <Text type="secondary">—</Text>),
+    },
+  ], []);
+
   const extraActions = (
     <Space wrap>
-      <Tag color={isConnected && isLiveStream ? 'processing' : 'default'} icon={isConnected && isLiveStream ? <SyncOutlined spin /> : null}>
-        <Badge status={isConnected && isLiveStream ? 'success' : 'default'} text={isLiveStream ? 'Live tail -f Stream' : 'Live Stream Paused'} />
-      </Tag>
+      <Segmented
+        options={[
+          { label: 'All Request Logs', value: 'logs', icon: <ThunderboltOutlined /> },
+          { label: 'Routing Decisions', value: 'routing', icon: <BranchesOutlined /> },
+        ]}
+        value={activeTab}
+        onChange={(val) => { setActiveTab(val as any); setPage(1); }}
+      />
 
-      <Space>
-        <Text strong style={{ fontSize: 13 }}>Live Mode:</Text>
-        <Switch checked={isLiveStream} onChange={(val) => setIsLiveStream(val)} />
-      </Space>
+      {activeTab === 'logs' && (
+        <>
+          <Tag color={isConnected && isLiveStream ? 'processing' : 'default'} icon={isConnected && isLiveStream ? <SyncOutlined spin /> : null}>
+            <Badge status={isConnected && isLiveStream ? 'success' : 'default'} text={isLiveStream ? 'Live tail -f Stream' : 'Live Stream Paused'} />
+          </Tag>
 
-      <Text strong style={{ fontSize: 13, marginLeft: 8 }}>Provider:</Text>
-      <Select
-        defaultValue=""
-        style={{ width: 160 }}
-        onChange={(val) => { setSelectedProvider(val); setPage(1); }}
-      >
-        <Select.Option value="">All Providers</Select.Option>
-        {providers.map((p: ApiProvider) => (
-          <Select.Option key={p.id} value={p.slug}>
-            {p.name}
-          </Select.Option>
-        ))}
-      </Select>
+          <Space>
+            <Text strong style={{ fontSize: 13 }}>Live Mode:</Text>
+            <Switch checked={isLiveStream} onChange={(val) => setIsLiveStream(val)} />
+          </Space>
+
+          <Text strong style={{ fontSize: 13, marginLeft: 8 }}>Provider:</Text>
+          <Select
+            defaultValue=""
+            style={{ width: 160 }}
+            onChange={(val) => { setSelectedProvider(val); setPage(1); }}
+          >
+            <Select.Option value="">All Providers</Select.Option>
+            {providers.map((p: ApiProvider) => (
+              <Select.Option key={p.id} value={p.slug}>
+                {p.name}
+              </Select.Option>
+            ))}
+          </Select>
+        </>
+      )}
     </Space>
   );
 
   return (
     <div>
       <PageHeader
-        title="Request Logs & Real-time Stream"
-        description="Real-time audit trail of API requests, token consumption, latencies, and failover retries"
+        title="Request Logs & Smart Routing Audit"
+        description="Real-time audit trail of API requests, token consumption, latencies, and Roozy Auto Smart Routing decisions"
       />
 
-      <DataTable
-        dataSource={logsData?.data || []}
-        columns={columns}
-        loading={isLoading}
-        rowKey="id"
-        searchPlaceholder="Search model or error..."
-        searchValue={searchQuery}
-        onSearchChange={(val) => { setSearchQuery(val); setPage(1); }}
-        extraActions={extraActions}
-        onRefresh={() => refetch()}
-        refreshing={isRefetching}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: logsData?.total || 0,
-          onChange: (p, ps) => {
-            setPage(p);
-            if (ps && ps !== pageSize) {
-              setPageSize(ps);
-            }
-          },
-        }}
-      />
+      {activeTab === 'logs' ? (
+        <DataTable<ApiRequestLog>
+          dataSource={logsData?.data || []}
+          columns={columnsLogs}
+          loading={logsLoading}
+          rowKey="id"
+          searchPlaceholder="Search model or error..."
+          searchValue={searchQuery}
+          onSearchChange={(val) => { setSearchQuery(val); setPage(1); }}
+          extraActions={extraActions}
+          onRefresh={() => refetchLogs()}
+          refreshing={isRefetchingLogs}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: logsData?.total || 0,
+            onChange: (p, ps) => {
+              setPage(p);
+              if (ps && ps !== pageSize) {
+                setPageSize(ps);
+              }
+            },
+          }}
+        />
+      ) : (
+        <DataTable<ApiRoutingDecision>
+          dataSource={decisionsData?.data || []}
+          columns={columnsRouting}
+          loading={decisionsLoading}
+          rowKey="id"
+          searchPlaceholder="Search routing decisions..."
+          extraActions={extraActions}
+          onRefresh={() => refetchDecisions()}
+          refreshing={isRefetchingDecisions}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: decisionsData?.total || 0,
+            onChange: (p, ps) => {
+              setPage(p);
+              if (ps && ps !== pageSize) {
+                setPageSize(ps);
+              }
+            },
+          }}
+        />
+      )}
 
       {/* Log Details Inspection Drawer */}
       <Drawer

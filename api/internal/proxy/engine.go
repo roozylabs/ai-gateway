@@ -35,13 +35,16 @@ type Engine struct {
 	oauthMgr     *OAuthTokenManager
 	throttler    *ProviderThrottler
 	concurrency  *ProviderConcurrencyLimiter
+	budgetMgr    *BudgetManager
+	policyRepo   *repository.RoutingPolicyRepository
+	decisionRepo *repository.RoutingDecisionRepository
 	encKey       string
 	maxRetries   int
 	cooldownSecs int
 	client       *http.Client
 }
 
-func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int) *Engine {
+func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int, budgetMgr *BudgetManager, policyRepo *repository.RoutingPolicyRepository, decisionRepo *repository.RoutingDecisionRepository) *Engine {
 	proxyFunc := http.ProxyFromEnvironment
 	if customProxy := os.Getenv("GLOBAL_PROXY_URL"); customProxy != "" {
 		if proxyURL, err := url.Parse(customProxy); err == nil {
@@ -68,6 +71,9 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		oauthMgr:     NewOAuthTokenManager(cooldown),
 		throttler:    NewProviderThrottler(),
 		concurrency:  NewProviderConcurrencyLimiter(),
+		budgetMgr:    budgetMgr,
+		policyRepo:   policyRepo,
+		decisionRepo: decisionRepo,
 		encKey:       encKey,
 		maxRetries:   maxRetries,
 		cooldownSecs: cooldownSecs,
@@ -112,6 +118,79 @@ func (r *ProxyRequest) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (e *Engine) resolveRoutes(ctx context.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) ([]*Route, error) {
+	if req.Model == "roozy-auto" && e.policyRepo != nil {
+		userID := ""
+		if gatewayKey != nil {
+			userID = gatewayKey.UserID
+		}
+		policy, err := e.policyRepo.FindByDefault(ctx, userID)
+		if err != nil || policy == nil {
+			// Fallback to balanced policy if no default found
+			policy, _ = e.policyRepo.FindByName(ctx, "balanced", userID)
+		}
+		if policy != nil {
+			sPolicy := &RoutingPolicy{
+				Name:        policy.Name,
+				Weights:     policy.Weights,
+				Constraints: policy.Constraints,
+			}
+
+			// Check budget status for auto-downgrade
+			budgetStatus := ""
+			if e.budgetMgr != nil && userID != "" {
+				if status, err := e.budgetMgr.GetStatus(ctx, userID); err == nil && status != nil {
+					budgetStatus = status.Status
+				}
+			}
+
+			routes, decision, err := e.router.ResolveSemantic(ctx, req, gatewayKey, e.cooldown, sPolicy, budgetStatus)
+			if err == nil && decision != nil {
+				// Log routing decision asynchronously
+				if userID != "" {
+					go e.logRoutingDecision(context.Background(), userID, req, decision)
+				}
+			}
+			return routes, err
+		}
+	}
+	return e.router.ResolveWithFallback(ctx, req.Model, gatewayKey, e.cooldown)
+}
+
+func (e *Engine) logRoutingDecision(ctx context.Context, userID string, req *ProxyRequest, decision *RoutingDecision) {
+	// Publish to Redis for SSE streaming
+	if e.publisher != nil {
+		_ = e.publisher.Publish(ctx, "ROUTING_DECISION", map[string]interface{}{
+			"task":              decision.Task,
+			"complexity":        decision.Complexity,
+			"policy":            decision.PolicyName,
+			"selectedModel":     decision.SelectedModel,
+			"selectedProvider":  decision.SelectedProvider,
+			"budgetStatus":      decision.BudgetStatus,
+			"estimatedCost":     decision.EstimatedCost,
+			"downgradeReason":   decision.DowngradeReason,
+		})
+	}
+
+	// Persist to database
+	if e.decisionRepo != nil {
+		candidatesJSON, _ := json.Marshal([]string{decision.SelectedModel})
+		_ = e.decisionRepo.Create(ctx, &repository.RoutingDecisionLog{
+			RequestID:        req.Model,
+			UserID:           userID,
+			TaskType:         sql.NullString{String: decision.Task, Valid: decision.Task != ""},
+			Complexity:       sql.NullString{String: decision.Complexity, Valid: decision.Complexity != ""},
+			PolicyName:       sql.NullString{String: decision.PolicyName, Valid: decision.PolicyName != ""},
+			Candidates:       candidatesJSON,
+			SelectedModel:    sql.NullString{String: decision.SelectedModel, Valid: decision.SelectedModel != ""},
+			SelectedProvider: sql.NullString{String: decision.SelectedProvider, Valid: decision.SelectedProvider != ""},
+			BudgetStatus:     sql.NullString{String: decision.BudgetStatus, Valid: decision.BudgetStatus != ""},
+			EstimatedCost:    decision.EstimatedCost,
+			DowngradeReason:  sql.NullString{String: decision.DowngradeReason, Valid: decision.DowngradeReason != ""},
+		})
+	}
+}
+
 func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) (*ProviderResponse, *models.RequestLog, error) {
 	start := time.Now()
 
@@ -125,7 +204,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		reqID = uuid.New().String()
 	}
 
-	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
+	routes, err := e.resolveRoutes(c.Request.Context(), req, gatewayKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -341,7 +420,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		reqID = uuid.New().String()
 	}
 
-	routes, err := e.router.ResolveWithFallback(c.Request.Context(), req.Model, gatewayKey, e.cooldown)
+	routes, err := e.resolveRoutes(c.Request.Context(), req, gatewayKey)
 	if err != nil {
 		return nil, err
 	}

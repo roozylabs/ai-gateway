@@ -1,0 +1,1754 @@
+# RoozyLabs AI Gateway — AI Budget Manager & Semantic Router
+
+## 1. Overview
+
+`roozylabs-ai-gateway` adalah centralized AI API Gateway yang menjadi satu pintu untuk berbagai AI provider, model, credential, dan AI client.
+
+Fondasi gateway saat ini mencakup:
+
+- Multi-provider AI integration
+- Centralized provider credential management
+- Credential rotation
+- Round Robin / LRU / Fallback Cascade routing
+- Automatic 429 cooldown dan retry
+- Provider concurrency limiting
+- Streaming response
+- OpenAI-compatible API
+- Usage metrics dan audit logging
+- Encrypted provider credentials
+- Redis untuk rate limit, cooldown, dan state
+
+Dokumen ini mendefinisikan arah pengembangan dua capability utama:
+
+1. **AI Budget Manager**
+2. **Semantic Router**
+
+Keduanya dirancang sebagai satu sistem:
+
+> **Semantic Router menentukan model/provider yang paling sesuai, sedangkan Budget Manager memastikan keputusan tersebut tetap berada dalam batas biaya dan resource yang ditentukan.**
+
+Target awal adalah **internal infrastructure**, bukan SaaS publik.
+
+---
+
+# 2. Product Vision
+
+Gateway tidak hanya menjadi proxy atau API-key rotator.
+
+Target jangka menengah:
+
+```text
+AI Clients
+    |
+    v
++---------------------------+
+| RoozyLabs AI Gateway      |
+|                           |
+| Authentication            |
+| Budget Manager            |
+| Semantic Router           |
+| Model Registry            |
+| Provider Router           |
+| Credential Pool           |
+| Reliability Layer         |
+| Usage Collector           |
++-------------+-------------+
+              |
+      +-------+-------+
+      |       |       |
+    Claude  Gemini  OpenAI
+```
+
+Gateway menjadi **AI consumption control plane**.
+
+Aplikasi tidak perlu mengetahui:
+
+- provider mana yang digunakan
+- credential mana yang dipakai
+- model mana yang paling optimal
+- berapa biaya request
+- kapan harus fallback
+- kapan harus downgrade model
+
+Client cukup meminta:
+
+```json
+{
+  "model": "roozy-auto"
+}
+```
+
+Gateway mengambil keputusan.
+
+---
+
+# 3. Core Principles
+
+## 3.1 Internal-first
+
+Jangan langsung membangun billing, marketplace, atau multi-tenancy kompleks.
+
+Gunakan gateway sendiri sebagai dogfooding environment.
+
+Prioritas:
+
+1. Reliability
+2. Cost visibility
+3. Routing quality
+4. Operational simplicity
+5. Extensibility
+
+---
+
+## 3.2 Policy over hardcoded logic
+
+Routing jangan tersebar dalam source code.
+
+Gunakan policy.
+
+Contoh:
+
+```yaml
+routing_policy: balanced
+
+constraints:
+  max_cost_per_request: 0.02
+  max_latency_ms: 5000
+
+models:
+  preferred:
+    - claude-sonnet
+    - gemini-pro
+
+  fallback:
+    - gemini-flash
+```
+
+---
+
+## 3.3 Provider-agnostic
+
+Application layer tidak boleh bergantung pada provider tertentu.
+
+Gunakan abstraction:
+
+```text
+Client
+  |
+  v
+Gateway
+  |
+  v
+Model
+  |
+  v
+Provider Adapter
+  |
+  v
+Provider API
+```
+
+---
+
+## 3.4 Budget-aware, bukan budget-only
+
+Budget tidak boleh membuat semua request otomatis menggunakan model termurah.
+
+Kualitas tetap menjadi constraint.
+
+Contoh:
+
+```text
+cheap model
+    X
+
+quality requirement
+    OK
+
+budget requirement
+    OK
+
+latency requirement
+    OK
+```
+
+Router memilih model yang memenuhi kombinasi constraint tersebut.
+
+---
+
+# 4. Semantic Router
+
+## 4.1 Definition
+
+Semantic Router adalah decision engine yang menentukan model/provider berdasarkan karakteristik request.
+
+Input:
+
+```text
+request
+task
+complexity
+context size
+latency requirement
+quality requirement
+budget
+policy
+model capabilities
+provider health
+```
+
+Output:
+
+```text
+selected model
+selected provider
+selected credential
+fallback chain
+routing reason
+estimated cost
+```
+
+---
+
+# 5. Semantic Router Flow
+
+```text
+                    Request
+                       |
+                       v
+              Request Normalizer
+                       |
+                       v
+              Task Classification
+                       |
+                       v
+             Request Characteristics
+                       |
+             +---------+---------+
+             |                   |
+             v                   v
+       Model Registry       Budget Manager
+             |                   |
+             +---------+---------+
+                       |
+                       v
+                Candidate Models
+                       |
+                       v
+                 Model Scoring
+                       |
+                       v
+                Selected Model
+                       |
+                       v
+               Provider Routing
+                       |
+                       v
+                Credential Pool
+                       |
+                       v
+                  Provider
+```
+
+---
+
+# 6. Request Classification
+
+Semantic Router V1 sebaiknya tidak langsung menggunakan LLM sebagai classifier.
+
+Gunakan deterministic heuristic terlebih dahulu.
+
+## 6.1 Task Categories
+
+Minimal:
+
+```text
+coding
+reasoning
+writing
+translation
+summarization
+extraction
+general
+```
+
+Future:
+
+```text
+vision
+long_context
+structured_output
+tool_calling
+agentic
+research
+classification
+```
+
+---
+
+# 7. Heuristic Classification
+
+Contoh indikator coding:
+
+```text
+- code block
+- file path
+- git diff
+- programming language
+- stack trace
+- compiler error
+- package.json
+- tsconfig.json
+- function/class/interface keywords
+```
+
+Contoh:
+
+```text
+"Fix this React component and explain why it rerenders."
+
+classification:
+
+task = coding
+complexity = medium
+```
+
+Tidak diperlukan classifier LLM tambahan.
+
+---
+
+# 8. Request Characteristics
+
+Setiap request dapat dinormalisasi menjadi:
+
+```json
+{
+  "task": "coding",
+  "complexity": "high",
+  "context_tokens": 18000,
+  "requires_reasoning": true,
+  "requires_tools": false,
+  "requires_structured_output": false,
+  "latency_requirement": "normal",
+  "quality_requirement": "high"
+}
+```
+
+---
+
+# 9. Complexity Detection
+
+V1 dapat menggunakan heuristic:
+
+## Low
+
+```text
+short prompt
+small context
+simple instruction
+```
+
+## Medium
+
+```text
+moderate context
+multi-step task
+some reasoning
+```
+
+## High
+
+```text
+large context
+complex codebase
+multi-step reasoning
+architecture/debugging
+```
+
+Contoh:
+
+```text
+"Translate hello world to Japanese"
+
+complexity = low
+```
+
+Sedangkan:
+
+```text
+"Analyze this 20k token codebase and refactor the authentication architecture."
+
+complexity = high
+```
+
+---
+
+# 10. Model Capability Registry
+
+Semantic Router membutuhkan registry untuk mengetahui kemampuan setiap model.
+
+Contoh schema:
+
+```text
+models
+--------------------------------
+id
+provider_id
+model_name
+input_price
+output_price
+context_window
+coding_score
+reasoning_score
+writing_score
+speed_score
+quality_score
+tool_calling
+structured_output
+vision
+enabled
+```
+
+Contoh:
+
+```json
+{
+  "model": "claude-sonnet",
+  "coding_score": 0.95,
+  "reasoning_score": 0.92,
+  "writing_score": 0.90,
+  "speed_score": 0.78,
+  "quality_score": 0.93,
+  "context_window": 200000
+}
+```
+
+Score tidak harus dianggap sebagai benchmark absolut.
+
+Score adalah **internal routing metadata**.
+
+---
+
+# 11. Routing Policy
+
+Policy menjadi abstraction utama.
+
+Contoh policy:
+
+```yaml
+name: balanced
+
+weights:
+  quality: 0.35
+  task_match: 0.35
+  cost: 0.15
+  latency: 0.15
+
+constraints:
+  max_cost_per_request: 0.02
+  max_latency_ms: 5000
+
+models:
+  preferred:
+    - claude-sonnet
+    - gemini-pro
+
+  fallback:
+    - gemini-flash
+```
+
+---
+
+# 12. Recommended Policies
+
+## 12.1 Cheap
+
+```yaml
+name: cheap
+
+weights:
+  cost: 0.60
+  task_match: 0.25
+  quality: 0.10
+  latency: 0.05
+```
+
+Digunakan untuk:
+
+- simple questions
+- extraction
+- translation
+- lightweight automation
+
+---
+
+## 12.2 Balanced
+
+```yaml
+name: balanced
+
+weights:
+  task_match: 0.35
+  quality: 0.35
+  cost: 0.15
+  latency: 0.15
+```
+
+Default policy.
+
+---
+
+## 12.3 Quality
+
+```yaml
+name: quality
+
+weights:
+  quality: 0.50
+  task_match: 0.35
+  latency: 0.10
+  cost: 0.05
+```
+
+Untuk:
+
+- architecture
+- difficult debugging
+- complex reasoning
+- high-value tasks
+
+---
+
+## 12.4 Reasoning
+
+```yaml
+name: reasoning
+
+weights:
+  reasoning: 0.50
+  quality: 0.30
+  task_match: 0.15
+  cost: 0.05
+```
+
+---
+
+# 13. Model Scoring
+
+Model candidate diberi score.
+
+Contoh:
+
+```text
+score =
+    task_match * task_weight
+  + quality     * quality_weight
+  + speed       * speed_weight
+  + cost_score  * cost_weight
+```
+
+Cost score harus dinormalisasi.
+
+Contoh:
+
+```text
+cheap model:
+cost_score = 1.0
+
+medium model:
+cost_score = 0.7
+
+expensive model:
+cost_score = 0.3
+```
+
+Score final:
+
+```text
+model_score = weighted_sum(capabilities)
+```
+
+---
+
+# 14. Candidate Filtering
+
+Sebelum scoring, filter model yang tidak memenuhi hard constraints.
+
+Contoh:
+
+```text
+context_tokens = 180k
+```
+
+Model dengan:
+
+```text
+context_window < 180k
+```
+
+langsung dikeluarkan.
+
+Jangan melakukan scoring terhadap model yang sudah pasti tidak memenuhi requirement.
+
+---
+
+# 15. AI Budget Manager
+
+Budget Manager bertanggung jawab atas:
+
+- usage tracking
+- token tracking
+- cost calculation
+- budget allocation
+- quota enforcement
+- threshold monitoring
+- model downgrade
+- request rejection
+- cost projection
+
+---
+
+# 16. Budget Hierarchy
+
+Recommended hierarchy:
+
+```text
+Organization
+    |
+    +-- Project
+          |
+          +-- Environment
+          |     |
+          |     +-- production
+          |     +-- staging
+          |     +-- development
+          |
+          +-- API Keys
+```
+
+Contoh:
+
+```text
+RoozyLabs
+|
++-- AI Gateway
+|    Monthly Budget: $50
+|
++-- Internal Agents
+|    Monthly Budget: $30
+|
++-- Experiments
+     Monthly Budget: $20
+```
+
+---
+
+# 17. Budget Types
+
+Minimal V1:
+
+```text
+monthly_budget
+daily_budget
+request_limit
+token_limit
+```
+
+Future:
+
+```text
+project_budget
+user_budget
+model_budget
+provider_budget
+environment_budget
+```
+
+---
+
+# 18. Budget State
+
+Contoh:
+
+```json
+{
+  "budget": 100,
+  "spent": 74.32,
+  "remaining": 25.68,
+  "usage_percent": 74.32,
+  "projected_spend": 91.40,
+  "status": "healthy"
+}
+```
+
+Status:
+
+```text
+healthy
+warning
+critical
+exceeded
+```
+
+---
+
+# 19. Budget Threshold
+
+Recommended defaults:
+
+```text
+80%  -> warning
+90%  -> critical
+100% -> exceeded
+```
+
+Policy dapat mengatur behavior.
+
+Contoh:
+
+```yaml
+budget_policy:
+  warning_threshold: 0.80
+  critical_threshold: 0.90
+  hard_limit: 1.00
+
+  on_warning:
+    action: normal
+
+  on_critical:
+    action: downgrade
+
+  on_exceeded:
+    action: reject
+```
+
+---
+
+# 20. Automatic Model Downgrade
+
+Ini adalah salah satu fitur utama.
+
+Contoh:
+
+```text
+Budget = 91%
+```
+
+Request:
+
+```text
+task = coding
+quality = high
+```
+
+Normal route:
+
+```text
+Claude Sonnet
+```
+
+Budget pressure:
+
+```text
+HIGH
+```
+
+Router:
+
+```text
+Claude Sonnet
+      |
+      X too expensive
+      |
+Gemini Pro
+      |
+      OK
+```
+
+Jika Gemini Pro juga tidak memenuhi budget:
+
+```text
+Gemini Flash
+```
+
+Jika tidak ada candidate:
+
+```text
+HTTP 402 / policy error
+```
+
+---
+
+# 21. Budget-aware Routing
+
+Routing harus menerima budget context.
+
+Contoh:
+
+```json
+{
+  "budget_status": "critical",
+  "remaining_budget": 8.42,
+  "max_cost_per_request": 0.01
+}
+```
+
+Semantic Router kemudian mengubah candidate set.
+
+---
+
+# 22. Cost Calculation
+
+Cost minimal dihitung berdasarkan:
+
+```text
+input_tokens
+output_tokens
+input_price
+output_price
+```
+
+Formula:
+
+```text
+input_cost =
+    input_tokens / 1_000_000
+    * input_price
+
+output_cost =
+    output_tokens / 1_000_000
+    * output_price
+
+total_cost =
+    input_cost + output_cost
+```
+
+Contoh:
+
+```text
+Input:
+10,000 tokens
+
+Output:
+2,000 tokens
+
+Input price:
+$3 / 1M
+
+Output price:
+$15 / 1M
+```
+
+Maka:
+
+```text
+input_cost  = $0.03
+output_cost = $0.03
+
+total = $0.06
+```
+
+Harga harus disimpan dalam Model Registry dan dapat diperbarui tanpa mengubah routing code.
+
+---
+
+# 23. Estimated Cost vs Actual Cost
+
+Sebelum request:
+
+```text
+estimated_cost
+```
+
+Setelah response:
+
+```text
+actual_cost
+```
+
+Flow:
+
+```text
+Request
+  |
+  v
+Estimate Cost
+  |
+  v
+Budget Check
+  |
+  v
+Execute
+  |
+  v
+Actual Usage
+  |
+  v
+Actual Cost
+  |
+  v
+Persist Usage
+```
+
+Ini penting karena output token belum diketahui sebelum inference selesai.
+
+---
+
+# 24. Usage Ledger
+
+Buat immutable-ish usage record.
+
+Contoh:
+
+```text
+usage_events
+--------------------------------
+id
+request_id
+project_id
+api_key_id
+provider_id
+model_id
+task
+input_tokens
+output_tokens
+estimated_cost
+actual_cost
+latency_ms
+status
+created_at
+```
+
+Jangan hanya menyimpan aggregate.
+
+Raw usage event memungkinkan:
+
+- audit
+- analytics
+- debugging
+- cost recalculation
+- future billing
+
+---
+
+# 25. Budget Aggregation
+
+Dari usage events:
+
+```text
+usage_events
+     |
+     +-- daily aggregate
+     |
+     +-- monthly aggregate
+     |
+     +-- project aggregate
+     |
+     +-- model aggregate
+     |
+     +-- provider aggregate
+```
+
+Untuk dashboard, gunakan aggregate table/cache jika diperlukan.
+
+---
+
+# 26. Recommended Database Model
+
+Minimal:
+
+```text
+providers
+provider_credentials
+models
+routing_policies
+projects
+gateway_api_keys
+budgets
+budget_rules
+usage_events
+```
+
+Future:
+
+```text
+routing_decisions
+provider_health
+model_benchmarks
+cost_snapshots
+```
+
+---
+
+# 27. Routing Decision Log
+
+Untuk debugging, simpan alasan router.
+
+Contoh:
+
+```json
+{
+  "request_id": "req_123",
+  "task": "coding",
+  "policy": "balanced",
+  "candidates": [
+    "claude-sonnet",
+    "gemini-pro",
+    "gemini-flash"
+  ],
+  "selected": "gemini-pro",
+  "reason": [
+    "claude-sonnet exceeded request budget",
+    "gemini-pro satisfies context requirement",
+    "gemini-pro has acceptable coding score"
+  ]
+}
+```
+
+Ini sangat berguna ketika routing terasa "aneh".
+
+---
+
+# 28. API Design
+
+Existing OpenAI-compatible API tetap dipertahankan.
+
+Contoh:
+
+```http
+POST /v1/chat/completions
+Authorization: Bearer gw_sk_xxx
+```
+
+Request:
+
+```json
+{
+  "model": "roozy-auto",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Fix this React component..."
+    }
+  ]
+}
+```
+
+Optional:
+
+```json
+{
+  "model": "roozy-auto",
+  "routing_policy": "balanced"
+}
+```
+
+---
+
+# 29. Explicit Model Override
+
+Client tetap boleh memilih model secara langsung.
+
+```json
+{
+  "model": "claude-sonnet"
+}
+```
+
+Namun Budget Manager tetap berlaku.
+
+Jadi:
+
+```text
+explicit model
+      |
+      v
+budget guard
+      |
+      +-- allowed -> execute
+      |
+      +-- not allowed -> reject / downgrade
+```
+
+Jangan membuat explicit model otomatis bypass budget.
+
+---
+
+# 30. API Response Metadata
+
+Untuk debugging internal, gateway dapat menyediakan metadata.
+
+Contoh header:
+
+```text
+X-Roozy-Model: gemini-pro
+X-Roozy-Provider: google
+X-Roozy-Routing-Policy: balanced
+X-Roozy-Request-Id: req_123
+```
+
+Jangan expose provider credential information.
+
+---
+
+# 31. Budget API
+
+Contoh endpoints:
+
+```text
+GET    /api/budgets
+POST   /api/budgets
+GET    /api/budgets/:id
+PATCH  /api/budgets/:id
+DELETE /api/budgets/:id
+```
+
+Usage:
+
+```text
+GET /api/usage
+GET /api/usage/summary
+GET /api/usage/by-model
+GET /api/usage/by-project
+GET /api/usage/by-provider
+```
+
+---
+
+# 32. Routing API
+
+Admin/internal API:
+
+```text
+GET    /api/routing/policies
+POST   /api/routing/policies
+PATCH  /api/routing/policies/:id
+DELETE /api/routing/policies/:id
+```
+
+Model registry:
+
+```text
+GET    /api/models
+POST   /api/models
+PATCH  /api/models/:id
+```
+
+---
+
+# 33. Dashboard
+
+Dashboard utama:
+
+```text
+AI Gateway Overview
+
+Requests
+12,431
+
+Tokens
+18.2M
+
+Spend
+$74.32
+
+Projected
+$91.40
+
+P95
+2.1s
+
+Error Rate
+0.8%
+```
+
+Budget card:
+
+```text
+Monthly Budget
+
+$74.32 / $100
+
+74.3%
+
+Projected:
+$91.40
+```
+
+---
+
+# 34. Cost Analytics
+
+Breakdown:
+
+```text
+Spend by Model
+---------------------
+Claude Sonnet     $31.20
+Gemini Pro        $18.40
+OpenAI             $14.72
+Gemini Flash        $6.21
+Others              $3.79
+```
+
+Task:
+
+```text
+Spend by Task
+---------------------
+Coding             $38.12
+Reasoning          $21.30
+Writing             $8.42
+Extraction          $4.81
+Other               $1.67
+```
+
+---
+
+# 35. Router Analytics
+
+Track:
+
+```text
+Routing decisions
+Model selection rate
+Fallback rate
+Downgrade rate
+Provider failure rate
+Average routing score
+Estimated vs actual cost
+```
+
+Important metrics:
+
+```text
+semantic_routing_accuracy
+fallback_rate
+downgrade_rate
+cost_savings
+routing_latency
+```
+
+---
+
+# 36. Cost Savings
+
+One of the most valuable metrics.
+
+Estimate:
+
+```text
+baseline_cost
+-
+actual_cost
+=
+estimated_savings
+```
+
+Example:
+
+```text
+Without router:
+$126.40
+
+Actual:
+$74.32
+
+Savings:
+$52.08
+
+Savings rate:
+41.2%
+```
+
+Baseline must be clearly defined.
+
+Recommended baseline:
+
+> Cost of always selecting the highest-quality/default model for the same requests.
+
+---
+
+# 37. Reliability + Routing
+
+Semantic Router should not select an unhealthy provider.
+
+Candidate score must consider provider health.
+
+Example:
+
+```text
+Claude
+quality: 0.95
+health: 0.98
+
+Gemini
+quality: 0.90
+health: 0.99
+```
+
+If Claude health drops:
+
+```text
+Claude health = 0.60
+```
+
+Gemini can win even if Claude has higher raw quality.
+
+---
+
+# 38. Credential Pool Integration
+
+Final routing chain:
+
+```text
+Semantic Router
+      |
+      v
+Model
+      |
+      v
+Provider
+      |
+      v
+Credential Pool
+      |
+      +-- credential A
+      +-- credential B
+      +-- credential C
+```
+
+Credential selection remains the responsibility of the provider routing layer.
+
+Semantic Router chooses **what to use**.
+
+Credential Router chooses **which credential to use**.
+
+This separation is important.
+
+---
+
+# 39. Separation of Responsibilities
+
+Recommended architecture:
+
+```text
+Request Router
+    |
+    +-- Semantic Router
+    |      |
+    |      +-- task classification
+    |      +-- model selection
+    |      +-- policy
+    |
+    +-- Budget Manager
+    |      |
+    |      +-- budget check
+    |      +-- quota
+    |      +-- cost
+    |
+    +-- Provider Router
+           |
+           +-- health
+           +-- failover
+           +-- credential rotation
+```
+
+Avoid creating one giant Router service.
+
+---
+
+# 40. Request Lifecycle
+
+Complete lifecycle:
+
+```text
+1. Authenticate client
+2. Resolve project/API key
+3. Load budget
+4. Normalize request
+5. Classify task
+6. Determine complexity
+7. Load routing policy
+8. Load model registry
+9. Filter incompatible models
+10. Check budget
+11. Score candidates
+12. Select model
+13. Select provider
+14. Select credential
+15. Execute request
+16. Handle retry/failover
+17. Collect token usage
+18. Calculate actual cost
+19. Persist usage event
+20. Update budget aggregates
+21. Return response
+```
+
+---
+
+# 41. V1 Scope
+
+V1 harus sederhana.
+
+## Semantic Router V1
+
+- `roozy-auto`
+- deterministic task classification
+- complexity heuristic
+- model registry
+- routing policy
+- weighted scoring
+- candidate filtering
+- provider health consideration
+- fallback
+
+## Budget Manager V1
+
+- project budget
+- monthly budget
+- usage events
+- token tracking
+- actual cost
+- budget threshold
+- hard limit
+- automatic downgrade
+
+---
+
+# 42. V1 Explicitly Out of Scope
+
+Jangan implement:
+
+- ML model training
+- LLM-based classifier
+- public billing
+- payment integration
+- multi-tenant SaaS
+- autonomous agent execution
+- marketplace
+- complex forecasting
+- dynamic model benchmarking
+
+---
+
+# 43. V2
+
+Setelah usage data cukup:
+
+## Semantic Router
+
+- LLM-assisted classification
+- embedding-based classification
+- benchmark-based model scores
+- dynamic routing
+- latency-aware routing
+- quality feedback loop
+
+## Budget
+
+- daily budgets
+- provider budgets
+- model budgets
+- user budgets
+- forecasting
+- anomaly detection
+- budget alerts
+
+---
+
+# 44. V3
+
+Potential future:
+
+```text
+AI Control Plane
+```
+
+Capabilities:
+
+- multi-tenancy
+- organization RBAC
+- billing
+- API key management
+- tool/MCP routing
+- agent routing
+- external customers
+- usage-based pricing
+
+---
+
+# 45. Future: MCP / Tool Gateway
+
+Semantic Router architecture dapat diperluas.
+
+Saat ini:
+
+```text
+Client
+  |
+  v
+LLM Gateway
+```
+
+Future:
+
+```text
+Client / Agent
+       |
+       v
+RoozyLabs AI Gateway
+       |
+       +-- LLM Router
+       |
+       +-- Tool Router
+       |
+       +-- MCP Router
+       |
+       +-- Search
+       |
+       +-- Browser
+       |
+       +-- Apify
+```
+
+Budget Manager juga dapat menghitung tool usage.
+
+Contoh:
+
+```text
+LLM cost       $0.04
+Apify cost     $0.02
+Search cost    $0.01
+---------------------
+Total          $0.07
+```
+
+Ini membuka jalan menuju **AI Infrastructure Gateway**, bukan hanya LLM Gateway.
+
+---
+
+# 46. Recommended Implementation Order
+
+```text
+Phase 1
+--------
+Model Registry
+        |
+        v
+Usage Ledger
+        |
+        v
+Cost Calculator
+```
+
+```text
+Phase 2
+--------
+Budget Manager
+        |
+        +-- budget check
+        +-- thresholds
+        +-- hard limit
+```
+
+```text
+Phase 3
+--------
+Semantic Router
+        |
+        +-- classification
+        +-- capability matching
+        +-- scoring
+```
+
+```text
+Phase 4
+--------
+Budget-aware Routing
+        |
+        +-- downgrade
+        +-- cost-aware scoring
+```
+
+```text
+Phase 5
+--------
+Analytics
+        |
+        +-- cost
+        +-- savings
+        +-- routing
+        +-- provider health
+```
+
+---
+
+# 47. Key Metrics
+
+## Budget
+
+```text
+total_spend
+daily_spend
+monthly_spend
+projected_spend
+budget_utilization
+average_cost_per_request
+cost_per_1k_tokens
+```
+
+## Routing
+
+```text
+routing_decisions
+model_selection_rate
+fallback_rate
+downgrade_rate
+routing_latency
+```
+
+## Reliability
+
+```text
+provider_error_rate
+429_rate
+timeout_rate
+credential_failover_rate
+provider_health
+```
+
+## Optimization
+
+```text
+estimated_savings
+actual_savings
+cost_reduction_percentage
+quality_vs_cost
+```
+
+---
+
+# 48. Design Goal
+
+The gateway should eventually answer three questions automatically:
+
+### 1. What should we use?
+
+```text
+Semantic Router
+```
+
+### 2. Can we afford to use it?
+
+```text
+Budget Manager
+```
+
+### 3. How do we reliably execute it?
+
+```text
+Provider Router + Credential Pool + Reliability Layer
+```
+
+Combined:
+
+```text
+                AI Request
+                    |
+                    v
+             +-------------+
+             | Budget      |
+             | Manager     |
+             +------+------+
+                    |
+                    v
+             +-------------+
+             | Semantic    |
+             | Router      |
+             +------+------+
+                    |
+                    v
+             +-------------+
+             | Provider    |
+             | Router      |
+             +------+------+
+                    |
+                    v
+             +-------------+
+             | Credential  |
+             | Pool        |
+             +------+------+
+                    |
+                    v
+                Provider
+                    |
+                    v
+               AI Response
+                    |
+                    v
+             Usage + Cost
+```
+
+---
+
+# 49. Final Product Direction
+
+The long-term architecture should evolve from:
+
+```text
+AI API Gateway
+```
+
+into:
+
+```text
+AI Control Plane
+```
+
+and eventually:
+
+```text
+RoozyLabs AI Infrastructure
+```
+
+The progression:
+
+```text
+                    Current
+                       |
+                       v
+                AI API Gateway
+                       |
+                       v
+             Credential Management
+                       |
+                       v
+              Intelligent Routing
+                       |
+                       v
+               Budget Management
+                       |
+                       v
+               Semantic Routing
+                       |
+                       v
+                AI Control Plane
+                       |
+                       v
+              Agent Infrastructure
+                       |
+                       v
+             Tool / MCP Gateway
+```
+
+The important architectural decision is to keep the gateway **provider-agnostic, policy-driven, observable, and internally useful**.
+
+The goal is not to build another generic LLM proxy.
+
+The goal is to build a system that can make intelligent decisions about:
+
+> **which AI capability should execute a request, under which policy, at what cost, using which resource, and with what fallback strategy.**
+
+That is the foundation for RoozyLabs' future AI infrastructure.

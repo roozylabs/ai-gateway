@@ -90,6 +90,16 @@ export interface ApiModel {
   slug: string;
   displayName: string;
   enabled: boolean;
+  contextWindow?: number;
+  codingScore?: number;
+  reasoningScore?: number;
+  writingScore?: number;
+  speedScore?: number;
+  qualityScore?: number;
+  inputPricePer1M?: number;
+  outputPricePer1M?: number;
+  supportsTools?: boolean;
+  supportsVision?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -385,3 +395,116 @@ export async function apiGetHealth(): Promise<ApiHealthResponse> {
   const response = await api.get<ApiHealthResponse>('/health');
   return response.data;
 }
+
+// Budget API Interfaces & Functions
+export interface ApiBudget {
+  id: string;
+  name: string;
+  monthlyLimit: number;
+  dailyLimit: number;
+  hardLimit: boolean;
+  warningThreshold: number;
+  criticalThreshold: number;
+  enabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiBudgetStatus {
+  budget: ApiBudget | null;
+  monthlySpent: number;
+  dailySpent: number;
+  monthlyRemaining: number;
+  dailyRemaining: number;
+  usagePercent: number;
+  status: 'healthy' | 'warning' | 'critical' | 'exceeded';
+}
+
+export async function apiGetBudgets(): Promise<ApiBudget[]> {
+  const response = await api.get<ApiBudget[]>('/budgets');
+  return response.data;
+}
+
+export async function apiGetBudgetStatus(): Promise<ApiBudgetStatus> {
+  const response = await api.get<ApiBudgetStatus>('/budgets/status');
+  return response.data;
+}
+
+export async function apiCreateBudget(data: Partial<ApiBudget>): Promise<ApiBudget> {
+  const response = await api.post<ApiBudget>('/budgets', data);
+  return response.data;
+}
+
+export async function apiUpdateBudget(id: string, data: Partial<ApiBudget>): Promise<ApiBudget> {
+  const response = await api.put<ApiBudget>(`/budgets/${id}`, data);
+  return response.data;
+}
+
+export async function apiDeleteBudget(id: string): Promise<void> {
+  await api.delete(`/budgets/${id}`);
+}
+
+// Routing Policy API Interfaces & Functions
+export interface ApiRoutingPolicy {
+  id: string;
+  name: string;
+  weights: {
+    task_match?: number;
+    quality?: number;
+    cost?: number;
+    speed?: number;
+  };
+  constraints: {
+    max_cost_per_request?: number;
+  };
+  enabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function apiGetPolicies(): Promise<ApiRoutingPolicy[]> {
+  const response = await api.get<ApiRoutingPolicy[]>('/policies');
+  return response.data;
+}
+
+export async function apiCreatePolicy(data: Partial<ApiRoutingPolicy>): Promise<ApiRoutingPolicy> {
+  const response = await api.post<ApiRoutingPolicy>('/policies', data);
+  return response.data;
+}
+
+export async function apiUpdatePolicy(id: string, data: Partial<ApiRoutingPolicy>): Promise<ApiRoutingPolicy> {
+  const response = await api.put<ApiRoutingPolicy>(`/policies/${id}`, data);
+  return response.data;
+}
+
+export async function apiDeletePolicy(id: string): Promise<void> {
+  await api.delete(`/policies/${id}`);
+}
+
+// Routing Decision API Interfaces & Functions
+export interface ApiRoutingDecision {
+  id: string;
+  requestId: string;
+  taskType: string;
+  complexity: string;
+  policyName: string;
+  candidates?: string[];
+  selectedModel: string;
+  selectedProvider: string;
+  budgetStatus: string;
+  estimatedCost: number;
+  actualCost: number;
+  downgradeReason?: string;
+  createdAt: string;
+}
+
+export async function apiGetRoutingDecisions(params?: {
+  page?: number;
+  limit?: number;
+  taskType?: string;
+  policyName?: string;
+}): Promise<PaginatedResult<ApiRoutingDecision>> {
+  const response = await api.get<PaginatedResult<ApiRoutingDecision>>('/routing/decisions', { params });
+  return response.data;
+}
+

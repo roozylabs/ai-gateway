@@ -217,3 +217,80 @@ func (h *ModelHandler) Delete(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+
+type UpdateCapabilitiesRequest struct {
+	ContextWindow    *int     `json:"contextWindow"`
+	CodingScore      *float64 `json:"codingScore"`
+	ReasoningScore   *float64 `json:"reasoningScore"`
+	WritingScore     *float64 `json:"writingScore"`
+	SpeedScore       *float64 `json:"speedScore"`
+	QualityScore     *float64 `json:"qualityScore"`
+	InputPricePer1M  *float64 `json:"inputPricePer1M"`
+	OutputPricePer1M *float64 `json:"outputPricePer1M"`
+	SupportsTools    *bool    `json:"supportsTools"`
+	SupportsVision   *bool    `json:"supportsVision"`
+}
+
+// UpdateCapabilities godoc
+// @Summary      Update model capabilities
+// @Description  Update model capability scores, pricing, and features
+// @Tags         models
+// @Security     BearerAuth
+// @Param        id path string true "Provider ID"
+// @Param        modelId path string true "Model ID"
+// @Param        request body UpdateCapabilitiesRequest true "Capability data"
+// @Success      200 {object} models.Model
+// @Failure      400 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Router       /api/providers/{id}/models/{modelId}/capabilities [patch]
+func (h *ModelHandler) UpdateCapabilities(c *gin.Context) {
+	modelID := c.Param("modelId")
+	m, err := h.models.FindByID(c.Request.Context(), modelID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "model not found"})
+		return
+	}
+
+	var req UpdateCapabilitiesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if req.ContextWindow != nil {
+		m.ContextWindow = *req.ContextWindow
+	}
+	if req.CodingScore != nil {
+		m.CodingScore = *req.CodingScore
+	}
+	if req.ReasoningScore != nil {
+		m.ReasoningScore = *req.ReasoningScore
+	}
+	if req.WritingScore != nil {
+		m.WritingScore = *req.WritingScore
+	}
+	if req.SpeedScore != nil {
+		m.SpeedScore = *req.SpeedScore
+	}
+	if req.QualityScore != nil {
+		m.QualityScore = *req.QualityScore
+	}
+	if req.InputPricePer1M != nil {
+		m.InputPricePer1M = *req.InputPricePer1M
+	}
+	if req.OutputPricePer1M != nil {
+		m.OutputPricePer1M = *req.OutputPricePer1M
+	}
+	if req.SupportsTools != nil {
+		m.SupportsTools = *req.SupportsTools
+	}
+	if req.SupportsVision != nil {
+		m.SupportsVision = *req.SupportsVision
+	}
+
+	if err := h.models.Update(c.Request.Context(), m); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update capabilities"})
+		return
+	}
+	c.JSON(http.StatusOK, m)
+}

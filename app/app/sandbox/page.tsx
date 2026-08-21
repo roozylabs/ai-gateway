@@ -324,14 +324,13 @@ export default function SandboxPage() {
                   value={selectedModel}
                   onChange={(val) => setSelectedModel(val)}
                   loading={modelsLoading}
-                  options={
-                    availableModels.length > 0
-                      ? availableModels.map((m: ApiModel) => ({
-                          label: `${m.displayName || m.name} (${m.slug})`,
-                          value: m.slug || m.name,
-                        }))
-                      : [{ label: 'No models registered for this provider', value: '' }]
-                  }
+                  options={[
+                    { label: '✨ roozy-auto (Smart Routing)', value: 'roozy-auto' },
+                    ...availableModels.map((m: ApiModel) => ({
+                      label: `${m.displayName || m.name} (${m.slug})`,
+                      value: m.slug || m.name,
+                    })),
+                  ]}
                 />
               </Form.Item>
 

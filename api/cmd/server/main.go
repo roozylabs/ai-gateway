@@ -62,6 +62,9 @@ func main() {
 	settingRepo := repository.NewSettingRepository(sqlDB)
 	pricingRepo := repository.NewModelPricingRepository(sqlDB)
 	routingRuleRepo := repository.NewRoutingRuleRepository(sqlDB)
+	routingPolicyRepo := repository.NewRoutingPolicyRepository(sqlDB)
+	budgetRepo := repository.NewBudgetRepository(sqlDB)
+	decisionRepo := repository.NewRoutingDecisionRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -71,8 +74,9 @@ func main() {
 
 	// Proxy
 	cooldown := goredis.NewCooldownStore(rdb)
+	budgetMgr := proxy.NewBudgetManager(budgetRepo)
 	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo, settingRepo)
-	engine := proxy.NewEngine(router, credentialRepo, cooldown, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds)
+	engine := proxy.NewEngine(router, credentialRepo, cooldown, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -89,6 +93,9 @@ func main() {
 	sseHandler := handlers.NewSSEHandler(eventPublisher)
 	googleOAuthHandler := handlers.NewGoogleOAuthHandler(credentialRepo, providerRepo, cfg.EncryptionKey)
 	routingRuleHandler := handlers.NewRoutingRuleHandler(routingRuleRepo)
+	routingPolicyHandler := handlers.NewRoutingPolicyHandler(routingPolicyRepo)
+	budgetHandler := handlers.NewBudgetHandler(budgetRepo)
+	budgetStatusHandler := handlers.NewBudgetStatusHandler(budgetMgr)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -145,6 +152,7 @@ func main() {
 			protected.POST("/providers/:id/models", modelHandler.Create)
 			protected.GET("/providers/:id/models/:modelId", modelHandler.Get)
 			protected.PUT("/providers/:id/models/:modelId", modelHandler.Update)
+			protected.PATCH("/providers/:id/models/:modelId/capabilities", modelHandler.UpdateCapabilities)
 			protected.DELETE("/providers/:id/models/:modelId", modelHandler.Delete)
 
 			// Gateway API Keys
@@ -174,6 +182,21 @@ func main() {
 			protected.POST("/routing-rules", routingRuleHandler.Create)
 			protected.PUT("/routing-rules/:id", routingRuleHandler.Update)
 			protected.DELETE("/routing-rules/:id", routingRuleHandler.Delete)
+
+			// Routing Policies
+			protected.GET("/routing-policies", routingPolicyHandler.List)
+			protected.GET("/routing-policies/:id", routingPolicyHandler.Get)
+			protected.POST("/routing-policies", routingPolicyHandler.Create)
+			protected.PUT("/routing-policies/:id", routingPolicyHandler.Update)
+			protected.DELETE("/routing-policies/:id", routingPolicyHandler.Delete)
+
+			// Budgets
+			protected.GET("/budgets", budgetHandler.List)
+			protected.GET("/budgets/status", budgetStatusHandler.GetStatus)
+			protected.GET("/budgets/:id", budgetHandler.Get)
+			protected.POST("/budgets", budgetHandler.Create)
+			protected.PUT("/budgets/:id", budgetHandler.Update)
+			protected.DELETE("/budgets/:id", budgetHandler.Delete)
 			
 			// Sandbox
 			protected.POST("/sandbox/chat/completions", gatewayHandler.SandboxChatCompletions)

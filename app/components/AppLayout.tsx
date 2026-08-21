@@ -37,6 +37,8 @@ import {
   MoonOutlined,
   CodeOutlined,
   SyncOutlined,
+  WalletOutlined,
+  BranchesOutlined,
 } from '@ant-design/icons';
 
 function SidebarActivityWidget({ collapsed, mode }: { collapsed: boolean; mode: 'light' | 'dark' }) {
@@ -231,6 +233,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       key: '/models',
       icon: <AppstoreOutlined />,
       label: 'Models & Routing',
+    },
+    {
+      key: '/budgets',
+      icon: <WalletOutlined />,
+      label: 'Budgets',
+    },
+    {
+      key: '/policies',
+      icon: <BranchesOutlined />,
+      label: 'Routing Policies',
     },
     {
       key: '/logs',

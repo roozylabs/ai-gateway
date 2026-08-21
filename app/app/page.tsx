@@ -27,6 +27,7 @@ import {
   CodeOutlined,
   DollarOutlined,
   ArrowRightOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
 import { Line } from '@ant-design/plots';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -39,6 +40,7 @@ import {
   apiGetDashboardHealth,
   apiGetSettings,
   apiGetLogs,
+  apiGetBudgetStatus,
   ApiRequestLog,
   ApiProviderHealth,
   ApiSetting,
@@ -122,6 +124,11 @@ export default function DashboardPage() {
   const { data: logsData, isLoading: logsLoading } = useQuery({
     queryKey: ['recent-logs'],
     queryFn: () => apiGetLogs({ limit: 5 }),
+  });
+
+  const { data: budgetStatusData } = useQuery({
+    queryKey: ['budget-status'],
+    queryFn: apiGetBudgetStatus,
   });
 
   // Calculate per-model totals for summary legend tags
@@ -261,7 +268,7 @@ export default function DashboardPage() {
       {/* Top KPI Cards */}
       <Spin spinning={statsLoading}>
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={12} lg={6}>
+          <Col xs={24} sm={12} lg={5}>
             <MetricCard
               title="Total Requests"
               value={stats?.totalRequests || 0}
@@ -269,7 +276,7 @@ export default function DashboardPage() {
             />
           </Col>
 
-          <Col xs={24} sm={12} lg={6}>
+          <Col xs={24} sm={12} lg={5}>
             <MetricCard
               title={`Est. API Expenses (${defaultCurrency})`}
               value={formatCost(stats?.totalEstimatedCost || 0)}
@@ -277,21 +284,33 @@ export default function DashboardPage() {
             />
           </Col>
 
-          <Col xs={24} sm={12} lg={6}>
+          <Col xs={24} sm={12} lg={5}>
             <MetricCard
-              title="Total Tokens Processed"
+              title="Total Tokens"
               value={stats?.totalTokens || 0}
               prefix={<CodeOutlined style={{ color: '#52c41a' }} />}
             />
           </Col>
 
-          <Col xs={24} sm={12} lg={6}>
+          <Col xs={24} sm={12} lg={4}>
             <MetricCard
               title="Avg Latency"
               value={stats?.avgLatency || 0}
               precision={0}
               prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
               suffix="ms"
+            />
+          </Col>
+
+          <Col xs={24} sm={12} lg={5}>
+            <MetricCard
+              title="Budget Status"
+              value={
+                budgetStatusData?.budget
+                  ? `$${(budgetStatusData.monthlySpent || 0).toFixed(2)} / $${budgetStatusData.budget.monthlyLimit}`
+                  : 'No Budget Set'
+              }
+              prefix={<WalletOutlined style={{ color: '#eb2f96' }} />}
             />
           </Col>
         </Row>

@@ -1,0 +1,257 @@
+package proxy
+
+import (
+	"testing"
+
+	"github.com/roozylabs/ai-gateway/internal/models"
+)
+
+func makeModel(slug string, inputPrice, outputPrice, quality, coding, speed, contextWindow float64) *models.Model {
+	return &models.Model{
+		ID:               slug,
+		Slug:             slug,
+		Name:             slug,
+		ContextWindow:    int(contextWindow),
+		CodingScore:      coding,
+		ReasoningScore:   0.8,
+		WritingScore:     0.7,
+		SpeedScore:       speed,
+		QualityScore:     quality,
+		InputPricePer1M:  inputPrice,
+		OutputPricePer1M: outputPrice,
+		Enabled:          true,
+	}
+}
+
+func TestScoreCandidates_BalancedPicksHighestQuality(t *testing.T) {
+	candidates := []*models.Model{
+		makeModel("cheap-model", 0.50, 1.50, 0.60, 0.50, 0.90, 128000),
+		makeModel("quality-model", 3.00, 15.00, 0.95, 0.92, 0.70, 200000),
+	}
+
+	policy := &RoutingPolicy{
+		Name:        "balanced",
+		Weights:     map[string]float64{"task_match": 0.35, "quality": 0.35, "cost": 0.15, "speed": 0.15},
+		Constraints: map[string]float64{"max_cost_per_request": 0.05},
+	}
+
+	chars := RequestCharacteristics{
+		Task:            TaskCoding,
+		ContextTokens:   500,
+		EstimatedTokens: 675,
+	}
+
+	scores := ScoreCandidates(candidates, chars, policy)
+	if len(scores) == 0 {
+		t.Fatal("expected scores, got none")
+	}
+	// quality-model has much higher quality (0.95 vs 0.60), should win with balanced policy
+	if scores[0].Model.Slug != "quality-model" {
+		t.Errorf("expected quality-model to win, got %s (score=%.4f)", scores[0].Model.Slug, scores[0].Score)
+	}
+}
+
+func TestScoreCandidates_CheapPicksCheapest(t *testing.T) {
+	candidates := []*models.Model{
+		makeModel("expensive-model", 3.00, 15.00, 0.95, 0.92, 0.70, 200000),
+		makeModel("cheap-model", 0.15, 0.60, 0.60, 0.50, 0.90, 128000),
+	}
+
+	policy := &RoutingPolicy{
+		Name:        "cheap",
+		Weights:     map[string]float64{"task_match": 0.25, "quality": 0.10, "cost": 0.60, "speed": 0.05},
+		Constraints: map[string]float64{"max_cost_per_request": 0.01},
+	}
+
+	chars := RequestCharacteristics{
+		Task:            TaskGeneral,
+		ContextTokens:   500,
+		EstimatedTokens: 650,
+	}
+
+	scores := ScoreCandidates(candidates, chars, policy)
+	if len(scores) == 0 {
+		t.Fatal("expected scores, got none")
+	}
+	if scores[0].Model.Slug != "cheap-model" {
+		t.Errorf("expected cheap-model to win, got %s (score=%.4f)", scores[0].Model.Slug, scores[0].Score)
+	}
+}
+
+func TestScoreCandidates_HardFilterContextWindow(t *testing.T) {
+	candidates := []*models.Model{
+		makeModel("small-context", 0.50, 1.50, 0.60, 0.50, 0.90, 4000),
+		makeModel("large-context", 3.00, 15.00, 0.95, 0.92, 0.70, 200000),
+	}
+
+	policy := &RoutingPolicy{
+		Name:        "balanced",
+		Weights:     map[string]float64{"task_match": 0.35, "quality": 0.35, "cost": 0.15, "speed": 0.15},
+		Constraints: map[string]float64{"max_cost_per_request": 0.50},
+	}
+
+	chars := RequestCharacteristics{
+		Task:            TaskCoding,
+		ContextTokens:   5000,
+		EstimatedTokens: 6750,
+	}
+
+	scores := ScoreCandidates(candidates, chars, policy)
+	if len(scores) == 0 {
+		t.Fatal("expected scores, got none")
+	}
+	for _, s := range scores {
+		if s.Model.Slug == "small-context" {
+			t.Error("small-context model should have been filtered out (context window too small)")
+		}
+	}
+}
+
+func TestScoreCandidates_HardFilterMaxCost(t *testing.T) {
+	candidates := []*models.Model{
+		makeModel("expensive", 50.00, 150.00, 0.95, 0.92, 0.70, 200000),
+		makeModel("affordable", 0.50, 1.50, 0.60, 0.50, 0.90, 128000),
+	}
+
+	policy := &RoutingPolicy{
+		Name:        "cheap",
+		Weights:     map[string]float64{"task_match": 0.25, "quality": 0.10, "cost": 0.60, "speed": 0.05},
+		Constraints: map[string]float64{"max_cost_per_request": 0.01},
+	}
+
+	chars := RequestCharacteristics{
+		Task:            TaskCoding,
+		ContextTokens:   500,
+		EstimatedTokens: 675,
+	}
+
+	scores := ScoreCandidates(candidates, chars, policy)
+	if len(scores) == 0 {
+		t.Fatal("expected scores, got none")
+	}
+	for _, s := range scores {
+		if s.Model.Slug == "expensive" {
+			t.Error("expensive model should have been filtered out (cost exceeds max)")
+		}
+	}
+}
+
+func TestScoreCandidates_Empty(t *testing.T) {
+	policy := &RoutingPolicy{
+		Name:    "balanced",
+		Weights: map[string]float64{"task_match": 0.35, "quality": 0.35, "cost": 0.15, "speed": 0.15},
+	}
+	scores := ScoreCandidates(nil, RequestCharacteristics{}, policy)
+	if len(scores) != 0 {
+		t.Errorf("expected empty scores for nil candidates, got %d", len(scores))
+	}
+
+	scores = ScoreCandidates([]*models.Model{}, RequestCharacteristics{}, policy)
+	if len(scores) != 0 {
+		t.Errorf("expected empty scores for empty candidates, got %d", len(scores))
+	}
+}
+
+func TestScoreCandidates_CostNormalization(t *testing.T) {
+	candidates := []*models.Model{
+		makeModel("m1", 1.00, 3.00, 0.70, 0.60, 0.80, 128000),
+		makeModel("m2", 2.00, 6.00, 0.70, 0.60, 0.80, 128000),
+	}
+
+	policy := &RoutingPolicy{
+		Name:        "cost-heavy",
+		Weights:     map[string]float64{"task_match": 0.0, "quality": 0.0, "cost": 1.0, "speed": 0.0},
+		Constraints: map[string]float64{"max_cost_per_request": 1.0},
+	}
+
+	chars := RequestCharacteristics{
+		Task:            TaskGeneral,
+		ContextTokens:   500,
+		EstimatedTokens: 650,
+	}
+
+	scores := ScoreCandidates(candidates, chars, policy)
+	if len(scores) != 2 {
+		t.Fatalf("expected 2 scores, got %d", len(scores))
+	}
+	// m1 is cheaper, should have higher cost score and win
+	if scores[0].Model.Slug != "m1" {
+		t.Errorf("expected m1 to win cost-only scoring, got %s", scores[0].Model.Slug)
+	}
+	// Verify cost score: m1 total price=4.0, m2 total price=8.0, max=8.0
+	// m1 cost_score = 1.0 - 4/8 = 0.5
+	// m2 cost_score = 1.0 - 8/8 = 0.0
+	if scores[0].Score <= scores[1].Score {
+		t.Errorf("m1 (%.4f) should score higher than m2 (%.4f)", scores[0].Score, scores[1].Score)
+	}
+}
+
+func TestScoreCandidatesWithBudget_HealthyNoChange(t *testing.T) {
+	candidates := []*models.Model{
+		makeModel("cheap", 0.50, 1.50, 0.60, 0.50, 0.90, 128000),
+		makeModel("expensive", 3.00, 15.00, 0.95, 0.92, 0.70, 200000),
+	}
+	policy := &RoutingPolicy{
+		Name:    "balanced",
+		Weights: map[string]float64{"task_match": 0.35, "quality": 0.35, "cost": 0.15, "speed": 0.15},
+	}
+	chars := RequestCharacteristics{Task: TaskCoding, ContextTokens: 500, EstimatedTokens: 675}
+
+	scores := ScoreCandidatesWithBudget(candidates, chars, policy, "healthy")
+	if len(scores) == 0 {
+		t.Fatal("expected scores")
+	}
+	// No penalty — expensive should still be present
+	found := false
+	for _, s := range scores {
+		if s.Model.Slug == "expensive" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expensive model should still be present with healthy budget")
+	}
+}
+
+func TestScoreCandidatesWithBudget_CriticalFiltersExpensive(t *testing.T) {
+	candidates := []*models.Model{
+		makeModel("cheap", 0.50, 1.50, 0.60, 0.50, 0.90, 128000),
+		makeModel("expensive", 3.00, 15.00, 0.95, 0.92, 0.70, 200000),
+	}
+	policy := &RoutingPolicy{
+		Name:    "balanced",
+		Weights: map[string]float64{"task_match": 0.35, "quality": 0.35, "cost": 0.15, "speed": 0.15},
+	}
+	chars := RequestCharacteristics{Task: TaskCoding, ContextTokens: 500, EstimatedTokens: 675}
+
+	scores := ScoreCandidatesWithBudget(candidates, chars, policy, "critical")
+	if len(scores) == 0 {
+		t.Fatal("expected scores")
+	}
+	for _, s := range scores {
+		if s.Model.Slug == "expensive" {
+			t.Error("expensive model should be filtered out in critical budget")
+		}
+	}
+}
+
+func TestScoreCandidatesWithBudget_ExceededPicksCheapest(t *testing.T) {
+	candidates := []*models.Model{
+		makeModel("cheap", 0.50, 1.50, 0.60, 0.50, 0.90, 128000),
+		makeModel("mid", 1.50, 5.00, 0.80, 0.75, 0.80, 128000),
+		makeModel("expensive", 3.00, 15.00, 0.95, 0.92, 0.70, 200000),
+	}
+	policy := &RoutingPolicy{
+		Name:    "balanced",
+		Weights: map[string]float64{"task_match": 0.35, "quality": 0.35, "cost": 0.15, "speed": 0.15},
+	}
+	chars := RequestCharacteristics{Task: TaskCoding, ContextTokens: 500, EstimatedTokens: 675}
+
+	scores := ScoreCandidatesWithBudget(candidates, chars, policy, "exceeded")
+	if len(scores) != 1 {
+		t.Fatalf("expected exactly 1 score (cheapest), got %d", len(scores))
+	}
+	if scores[0].Model.Slug != "cheap" {
+		t.Errorf("expected cheap model, got %s", scores[0].Model.Slug)
+	}
+}

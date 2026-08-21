@@ -55,15 +55,25 @@ type Credential struct {
 }
 
 type Model struct {
-	ID           string    `json:"id" db:"id"`
-	ProviderID   string    `json:"providerId" db:"provider_id"`
-	ProviderName string    `json:"providerName,omitempty" db:"-"`
-	Name         string    `json:"name" db:"name"`
-	Slug         string    `json:"slug" db:"slug"`
-	DisplayName  string    `json:"displayName" db:"display_name"`
-	Enabled      bool      `json:"enabled" db:"enabled"`
-	CreatedAt    time.Time `json:"createdAt" db:"created_at"`
-	UpdatedAt    time.Time `json:"updatedAt" db:"updated_at"`
+	ID                string    `json:"id" db:"id"`
+	ProviderID        string    `json:"providerId" db:"provider_id"`
+	ProviderName      string    `json:"providerName,omitempty" db:"-"`
+	Name              string    `json:"name" db:"name"`
+	Slug              string    `json:"slug" db:"slug"`
+	DisplayName       string    `json:"displayName" db:"display_name"`
+	Enabled           bool      `json:"enabled" db:"enabled"`
+	ContextWindow     int       `json:"contextWindow" db:"context_window"`
+	CodingScore       float64   `json:"codingScore" db:"coding_score"`
+	ReasoningScore    float64   `json:"reasoningScore" db:"reasoning_score"`
+	WritingScore      float64   `json:"writingScore" db:"writing_score"`
+	SpeedScore        float64   `json:"speedScore" db:"speed_score"`
+	QualityScore      float64   `json:"qualityScore" db:"quality_score"`
+	InputPricePer1M   float64   `json:"inputPricePer1M" db:"input_price_per_1m"`
+	OutputPricePer1M  float64   `json:"outputPricePer1M" db:"output_price_per_1m"`
+	SupportsTools     bool      `json:"supportsTools" db:"supports_tools"`
+	SupportsVision    bool      `json:"supportsVision" db:"supports_vision"`
+	CreatedAt         time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt         time.Time `json:"updatedAt" db:"updated_at"`
 }
 
 type GatewayAPIKey struct {
@@ -119,6 +129,43 @@ type ModelPricing struct {
 	EffectiveDate          time.Time `json:"effectiveDate" db:"effective_date"`
 	CreatedAt              time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt              time.Time `json:"updatedAt" db:"updated_at"`
+}
+
+type RoutingPolicy struct {
+	ID              string             `json:"id" db:"id"`
+	UserID          string             `json:"userId" db:"user_id"`
+	Name            string             `json:"name" db:"name"`
+	Weights         map[string]float64 `json:"weights" db:"-"`
+	Constraints     map[string]float64 `json:"constraints" db:"-"`
+	WeightsJSON     string             `json:"-" db:"weights"`
+	ConstraintsJSON string             `json:"-" db:"constraints"`
+	Enabled         bool               `json:"enabled" db:"enabled"`
+	CreatedAt       time.Time          `json:"createdAt" db:"created_at"`
+	UpdatedAt       time.Time          `json:"updatedAt" db:"updated_at"`
+}
+
+type Budget struct {
+	ID                string    `json:"id" db:"id"`
+	UserID            string    `json:"userId" db:"user_id"`
+	Name              string    `json:"name" db:"name"`
+	MonthlyLimit      float64   `json:"monthlyLimit" db:"monthly_limit"`
+	DailyLimit        float64   `json:"dailyLimit" db:"daily_limit"`
+	HardLimit         bool      `json:"hardLimit" db:"hard_limit"`
+	WarningThreshold  float64   `json:"warningThreshold" db:"warning_threshold"`
+	CriticalThreshold float64   `json:"criticalThreshold" db:"critical_threshold"`
+	Enabled           bool      `json:"enabled" db:"enabled"`
+	CreatedAt         time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt         time.Time `json:"updatedAt" db:"updated_at"`
+}
+
+type BudgetStatus struct {
+	Budget           *Budget  `json:"budget"`
+	MonthlySpent     float64  `json:"monthlySpent"`
+	DailySpent       float64  `json:"dailySpent"`
+	MonthlyRemaining float64  `json:"monthlyRemaining"`
+	DailyRemaining   float64  `json:"dailyRemaining"`
+	UsagePercent     float64  `json:"usagePercent"`
+	Status           string   `json:"status"`
 }
 
 type RoutingRule struct {
