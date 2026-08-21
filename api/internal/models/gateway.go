@@ -88,6 +88,7 @@ type RequestLog struct {
 	RequestID       string         `json:"requestId" db:"request_id"`
 	GatewayAPIKeyID *string        `json:"gatewayApiKeyId,omitempty" db:"gateway_api_key_id"`
 	ProviderID      *string        `json:"providerId,omitempty" db:"provider_id"`
+	ProviderType    string         `json:"providerType,omitempty" db:"-"`
 	CredentialID    *string        `json:"credentialId,omitempty" db:"credential_id"`
 	CredentialName  string         `json:"credentialName,omitempty" db:"credential_name"`
 	Model           string         `json:"model" db:"model"`

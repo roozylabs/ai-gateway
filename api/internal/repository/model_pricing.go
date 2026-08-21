@@ -17,15 +17,15 @@ func NewModelPricingRepository(db *sql.DB) *ModelPricingRepository {
 	return &ModelPricingRepository{db: db}
 }
 
-func (r *ModelPricingRepository) GetByModelSlug(ctx context.Context, modelSlug string) (*models.ModelPricing, error) {
+func (r *ModelPricingRepository) GetByModelAndProvider(ctx context.Context, modelSlug, providerType string) (*models.ModelPricing, error) {
 	var p models.ModelPricing
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, model_slug, provider_type, prompt_price_per_1m, completion_price_per_1m,
 		        cached_prompt_price_per_1m, effective_date, created_at, updated_at
 		 FROM model_pricings
-		 WHERE model_slug = $1
+		 WHERE model_slug = $1 AND provider_type = $2
 		 ORDER BY effective_date DESC
-		 LIMIT 1`, modelSlug,
+		 LIMIT 1`, modelSlug, providerType,
 	).Scan(&p.ID, &p.ModelSlug, &p.ProviderType, &p.PromptPricePer1M,
 		&p.CompletionPricePer1M, &p.CachedPromptPricePer1M, &p.EffectiveDate,
 		&p.CreatedAt, &p.UpdatedAt)
@@ -35,9 +35,9 @@ func (r *ModelPricingRepository) GetByModelSlug(ctx context.Context, modelSlug s
 	return &p, nil
 }
 
-func (r *ModelPricingRepository) CalculateCost(modelSlug string, inputTokens, outputTokens int) float64 {
+func (r *ModelPricingRepository) CalculateCost(modelSlug, providerType string, inputTokens, outputTokens int) float64 {
 	ctx := context.Background()
-	pricing, err := r.GetByModelSlug(ctx, modelSlug)
+	pricing, err := r.GetByModelAndProvider(ctx, modelSlug, providerType)
 	if err != nil {
 		return calculateCostHeuristic(modelSlug, inputTokens+outputTokens)
 	}
@@ -93,8 +93,7 @@ func (r *ModelPricingRepository) Upsert(ctx context.Context, p *models.ModelPric
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO model_pricings (id, model_slug, provider_type, prompt_price_per_1m, completion_price_per_1m, cached_prompt_price_per_1m, effective_date, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		 ON CONFLICT (model_slug) DO UPDATE SET
-		     provider_type = EXCLUDED.provider_type,
+		 ON CONFLICT (model_slug, provider_type) DO UPDATE SET
 		     prompt_price_per_1m = EXCLUDED.prompt_price_per_1m,
 		     completion_price_per_1m = EXCLUDED.completion_price_per_1m,
 		     cached_prompt_price_per_1m = EXCLUDED.cached_prompt_price_per_1m,

@@ -298,6 +298,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		log := &models.RequestLog{
 			GatewayAPIKeyID: &gatewayKey.ID,
 			ProviderID:      &route.Provider.ID,
+			ProviderType:    route.Provider.Type,
 			CredentialID:    &route.Credential.ID,
 			Model:           req.Model,
 			StatusCode:      httpResp.StatusCode,
@@ -588,6 +589,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		log := &models.RequestLog{
 			GatewayAPIKeyID: &gatewayKey.ID,
 			ProviderID:      &route.Provider.ID,
+			ProviderType:    route.Provider.Type,
 			CredentialID:    &route.Credential.ID,
 			Model:           req.Model,
 			StatusCode:      httpResp.StatusCode,

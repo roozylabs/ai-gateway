@@ -1,13 +1,14 @@
 CREATE TABLE model_pricings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    model_slug VARCHAR(255) UNIQUE NOT NULL,
+    model_slug VARCHAR(255) NOT NULL,
     provider_type VARCHAR(50) NOT NULL,
     prompt_price_per_1m NUMERIC(10, 6) NOT NULL,
     completion_price_per_1m NUMERIC(10, 6) NOT NULL,
     cached_prompt_price_per_1m NUMERIC(10, 6) DEFAULT 0,
     effective_date TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(model_slug, provider_type)
 );
 
 CREATE INDEX idx_model_pricings_slug ON model_pricings(model_slug);
@@ -32,6 +33,7 @@ INSERT INTO model_pricings (model_slug, provider_type, prompt_price_per_1m, comp
 ('gemini-2.0-flash', 'google', 0.10, 0.40),
 ('gemini-2.5-flash', 'google', 0.15, 0.60),
 ('gemini-2.5-pro', 'google', 1.25, 10.00),
+('gemini-3.6-flash', 'google', 0.15, 0.60),
 -- OpenCode (free tier)
 ('big-pickle', 'opencode', 0.00, 0.00),
 ('gemini-3.6-flash', 'opencode', 0.00, 0.00);

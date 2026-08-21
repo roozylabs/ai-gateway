@@ -77,7 +77,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			log.UserAgent = userAgent
 			log.ClientApp = clientApp
 			log.IsStream = true
-			log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.InputTokens, log.OutputTokens)
+			log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
 			_ = h.requestLogs.Create(c.Request.Context(), log)
 			_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 			h.publishEvents(c, requestID, log, gatewayKey)
@@ -98,7 +98,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		log.UserAgent = userAgent
 		log.ClientApp = clientApp
 		log.IsStream = false
-		log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.InputTokens, log.OutputTokens)
+		log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
 		_ = h.requestLogs.Create(c.Request.Context(), log)
 		_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 		h.publishEvents(c, requestID, log, gatewayKey)
