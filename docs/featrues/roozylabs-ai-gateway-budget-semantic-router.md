@@ -1,5 +1,12 @@
 # RoozyLabs AI Gateway — AI Budget Manager & Semantic Router
 
+## Revision History
+
+| Version | Date & Time | Description of Changes |
+| :--- | :--- | :--- |
+| 1.0 | 21 August 2026, 21:56 WIB | Initial creation of AI Budget Manager & Semantic Router feature specification |
+| 1.1 | 21 August 2026, 22:54 WIB | V1 Scope Implementation completed (Cost Pipeline, Response Headers, Error Logging, and UI Guardrails) |
+
 ## 1. Overview
 
 `roozylabs-ai-gateway` adalah centralized AI API Gateway yang menjadi satu pintu untuk berbagai AI provider, model, credential, dan AI client.

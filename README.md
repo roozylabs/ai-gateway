@@ -42,23 +42,25 @@ Dengan **AI Gateway**, AI coding tools Anda (seperti **OpenCode**, **Claude Code
 
 ## ✨ Fitur Utama
 
+- **🧠 Roozy Auto Smart Router (`roozy-auto`)**: Router cerdas yang mengklasifikasikan karakteristik request (Task, Complexity, Context Size) secara deterministik dan melakukan *weighted scoring* untuk memilih model/provider paling optimal.
+- **💰 AI Budget Manager & Auto Downgrade**: Mengatur *monthly/daily spend limits*, *warning/critical thresholds*, dan secara otomatis melakukan *model downgrade* saat terjadi tekanan anggaran sebelum menyentuh *hard cutoff*.
 - **🔑 Centralized Credential Management**: Simpan dan kelola banyak API key provider dari berbagai akun secara terpusat dengan enkripsi **AES-256-GCM** (*encrypted at rest*).
-- **🔄 Flexible Routing & Credential Rotation**: Mendukung strategi alokasi **Round Robin (Equal)**, **Least Recently Used (LRU)**, dan **Fallback Cascade** untuk mengoptimalkan penggunaan API key dan menghindari rate limit.
-- **⚡ Automatic Rate Limit Failover (HTTP 429)**: Jika provider mengembalikan `429 Too Many Requests`, Gateway secara otomatis memasukkan credential tersebut ke masa *cooldown* di Redis dan memicu *retry* ke credential berikutnya tanpa mengembalikan error ke pengguna.
-- **🛡️ Provider Concurrency Limiter & Cloudflare Evasion**: Menggunakan in-memory Go channel semaphores (default max **2** active streams per provider) & request pacing (`350ms`) untuk mencegah Cloudflare WAF concurrency rate limits pada datacenter IP.
-- **🌐 Outgoing Proxy Support**: Mendukung variabel environment `GLOBAL_PROXY_URL` (SOCKS5 / HTTP Proxy) untuk meneruskan outbound request melalui IP residential / SSH tunnel.
-- **🌊 Pass-Through Real-Time Streaming**: Mendukung streaming respons Server-Sent Events (SSE) secara real-time dengan pengumpulan token usage presisi (`stream_options: include_usage`) dan *Fallback Token Estimator*.
-- **🎯 Unified OpenAI-Compatible API**: Menyediakan endpoint kompatibel OpenAI (`/v1/chat/completions`, `/v1/models`) sehingga kompatibel secara instan dengan mayoritas AI client.
-- **📊 Observability & Usage Metrics**: Lacak request count, latency (P95/P99), status health, token usage (input/output), serta audit log request.
-- **🔒 Secure Token Hashing**: Client hanya menggunakan **Gateway API Key** (`gw_sk_...`). Plaintext API key milik provider asli tidak pernah terekspos ke client, browser, atau log.
+- **⚡ Instant Zero-Delay Rotation (Pre-Filtered Ready Pool)**: Rotasi strategi **Round Robin**, **LRU**, dan **Fallback Cascade** yang menyaring credential cooling 429 secara instan di Redis sebelum seleksi rute.
+- **🛡️ Clean User-Friendly Error Sanitization**: Mengisolasi error teknis (dump 429, timeout net/http, UUID internal) menjadi pesan ramah pengguna dan transparan.
+- **📊 Complete Audit Trail & Response Headers**: Melacak seluruh request (sukses HTTP 200 & error 429/500/502/504), keputusan routing (`/api/routing/decisions`), serta menyediakan header debugging (`X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID`).
+- **🛡️ Provider Concurrency Limiter & Cloudflare Evasion**: In-memory Go channel semaphores (default max **2** active streams per provider) & request pacing (`350ms`) untuk mencegah WAF concurrency limits.
+- **🌐 Outgoing Proxy Support**: Variabel environment `GLOBAL_PROXY_URL` (SOCKS5 / HTTP Proxy) untuk meneruskan outbound request melalui IP residential / SSH tunnel.
+- **🌊 Pass-Through Real-Time Streaming**: Streaming SSE real-time dengan pengumpulan token usage presisi (`stream_options: include_usage`) dan penghitungan biaya aktual (*CostUSD*).
+- **🎯 Unified OpenAI-Compatible API**: Endpoint kompatibel OpenAI (`/v1/chat/completions`, `/v1/models`) sehingga kompatibel secara instan dengan mayoritas AI client.
 
 ---
 
 ## 🛠️ Teknologi & Stack
 
 - **Backend**: Go (Golang 1.24), Gin Web Framework, SQLx
+- **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Ant Design, Tailwind CSS
 - **Database**: PostgreSQL 15 (Single Source of Truth)
-- **Cache & State Store**: Redis 7 (Rate Limiting, Cooldown, Locks)
+- **Cache & State Store**: Redis 7 (Rate Limiting, Cooldown, Events, State)
 - **Containerization**: Multi-stage Dockerfile, Docker Compose
 - **CI/CD**: GitHub Actions (Linting, Automated Testing, GHCR, SSH VPS Deployment)
 
@@ -157,8 +159,11 @@ Project ini menggunakan **GitHub Actions** tunggal ([ci-cd.yml](file:///.github/
 | `POST` | `/api/auth/login` | Login user | Publik |
 | `GET` | `/api/providers` | Kelola AI Providers | Session |
 | `POST` | `/api/providers/:id/credentials` | Tambah Credential Provider | Session |
-| `GET` | `/v1/models` | List daftar model AI aktif | Gateway Key (`Bearer gw_sk_...`) |
-| `POST` | `/v1/chat/completions` | Inference API (Support Streaming) | Gateway Key (`Bearer gw_sk_...`) |
+| `GET` | `/api/policies` | Kelola Routing Policies | Session |
+| `GET` | `/api/budgets` | Kelola AI Expenditure Budgets | Session |
+| `GET` | `/api/routing/decisions` | Audit Trail Log Keputusan Smart Router | Session |
+| `GET` | `/v1/models` | List daftar model AI aktif (termasuk `roozy-auto`) | Gateway Key (`Bearer gw_sk_...`) |
+| `POST` | `/v1/chat/completions` | Inference API (Support Smart Router & Streaming) | Gateway Key (`Bearer gw_sk_...`) |
 
 ---
 
