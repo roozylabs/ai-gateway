@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -68,7 +70,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	if req.Stream {
 		log, err := h.engine.ProxyStream(c, &req, gatewayKey)
 		if err != nil {
-			h.handleProxyError(c, err, gatewayKey, &req)
+			h.handleProxyError(c, err, gatewayKey, &req, requestID, clientIP, userAgent, clientApp, true)
 			return
 		}
 		if log != nil {
@@ -93,7 +95,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 
 	resp, log, err := h.engine.Proxy(c, &req, gatewayKey)
 	if err != nil {
-		h.handleProxyError(c, err, gatewayKey, &req)
+		h.handleProxyError(c, err, gatewayKey, &req, requestID, clientIP, userAgent, clientApp, false)
 		return
 	}
 
@@ -115,7 +117,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		c.Header("X-Roozy-Provider", log.ProviderType)
 	}
 
-	if resp.Error != nil {
+	if resp != nil && resp.Error != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"error": gin.H{
 				"message": resp.Error.Message,
@@ -130,6 +132,9 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 }
 
 func (h *GatewayHandler) publishEvents(c *gin.Context, requestID string, log *models.RequestLog, key *models.GatewayAPIKey) {
+	if log == nil {
+		return
+	}
 	_ = h.eventPublisher.Publish(c.Request.Context(), "REQUEST_COMPLETED", map[string]interface{}{
 		"requestId":  requestID,
 		"model":      log.Model,
@@ -146,13 +151,15 @@ func (h *GatewayHandler) publishEvents(c *gin.Context, requestID string, log *mo
 		"createdAt":  log.CreatedAt,
 	})
 
-	_ = h.eventPublisher.Publish(c.Request.Context(), "KEY_USED", map[string]interface{}{
-		"gatewayKeyId": key.ID,
-		"requestCount": key.RequestCount,
-	})
+	if key != nil {
+		_ = h.eventPublisher.Publish(c.Request.Context(), "KEY_USED", map[string]interface{}{
+			"gatewayKeyId": key.ID,
+			"requestCount": key.RequestCount,
+		})
+	}
 }
 
-func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models.GatewayAPIKey, req *proxy.ProxyRequest) {
+func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models.GatewayAPIKey, req *proxy.ProxyRequest, requestID, clientIP, userAgent, clientApp string, isStream bool) {
 	status, errType, errCode, cleanMsg := utils.CleanUpstreamError(err)
 	c.JSON(status, gin.H{
 		"error": gin.H{
@@ -162,6 +169,32 @@ func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models
 			"param":   nil,
 		},
 	})
+
+	if key != nil && h.requestLogs != nil {
+		modelName := ""
+		if req != nil {
+			modelName = req.Model
+		}
+		errLog := &models.RequestLog{
+			RequestID:       requestID,
+			GatewayAPIKeyID: &key.ID,
+			Model:           modelName,
+			StatusCode:      status,
+			LatencyMs:       0,
+			InputTokens:     0,
+			OutputTokens:    0,
+			TotalTokens:     0,
+			CostUSD:         0,
+			ErrorMessage:    sql.NullString{String: cleanMsg, Valid: cleanMsg != ""},
+			ClientIP:        clientIP,
+			UserAgent:       userAgent,
+			ClientApp:       clientApp,
+			IsStream:        isStream,
+			CreatedAt:       time.Now(),
+		}
+		_ = h.requestLogs.Create(c.Request.Context(), errLog)
+		h.publishEvents(c, requestID, errLog, key)
+	}
 }
 
 func (h *GatewayHandler) SandboxChatCompletions(c *gin.Context) {
