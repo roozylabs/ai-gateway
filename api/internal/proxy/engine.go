@@ -400,17 +400,29 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		latency := int(time.Since(start).Milliseconds())
 
+		modelName := req.Model
+		if modelName == "roozy-auto" || modelName == "" {
+			modelName = route.Model.Slug
+		}
+
+		inputCost := (float64(resp.Usage.PromptTokens) / 1_000_000.0) * route.Model.InputPricePer1M
+		outputCost := (float64(resp.Usage.CompletionTokens) / 1_000_000.0) * route.Model.OutputPricePer1M
+
+		c.Header("X-Roozy-Model", route.Model.Slug)
+		c.Header("X-Roozy-Provider", route.Provider.Type)
+
 		log := &models.RequestLog{
 			GatewayAPIKeyID: &gatewayKey.ID,
 			ProviderID:      &route.Provider.ID,
 			ProviderType:    route.Provider.Type,
 			CredentialID:    &route.Credential.ID,
-			Model:           req.Model,
+			Model:           modelName,
 			StatusCode:      httpResp.StatusCode,
 			LatencyMs:       latency,
 			InputTokens:     resp.Usage.PromptTokens,
 			OutputTokens:    resp.Usage.CompletionTokens,
 			TotalTokens:     resp.Usage.TotalTokens,
+			CostUSD:         inputCost + outputCost,
 			RetryCount:      retryCount,
 		}
 
@@ -595,6 +607,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
+		c.Header("X-Roozy-Model", route.Model.Slug)
+		c.Header("X-Roozy-Provider", route.Provider.Type)
 		c.Status(http.StatusOK)
 
 		var totalTokens Usage
@@ -698,17 +712,26 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		latency := int(time.Since(start).Milliseconds())
 
+		modelName := req.Model
+		if modelName == "roozy-auto" || modelName == "" {
+			modelName = route.Model.Slug
+		}
+
+		inputCost := (float64(totalTokens.PromptTokens) / 1_000_000.0) * route.Model.InputPricePer1M
+		outputCost := (float64(totalTokens.CompletionTokens) / 1_000_000.0) * route.Model.OutputPricePer1M
+
 		log := &models.RequestLog{
 			GatewayAPIKeyID: &gatewayKey.ID,
 			ProviderID:      &route.Provider.ID,
 			ProviderType:    route.Provider.Type,
 			CredentialID:    &route.Credential.ID,
-			Model:           req.Model,
+			Model:           modelName,
 			StatusCode:      httpResp.StatusCode,
 			LatencyMs:       latency,
 			InputTokens:     totalTokens.PromptTokens,
 			OutputTokens:    totalTokens.CompletionTokens,
 			TotalTokens:     totalTokens.TotalTokens,
+			CostUSD:         inputCost + outputCost,
 			RetryCount:      retryCount,
 			TTFTMs:          ttftMs,
 		}

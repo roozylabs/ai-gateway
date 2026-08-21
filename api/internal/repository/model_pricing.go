@@ -38,12 +38,19 @@ func (r *ModelPricingRepository) GetByModelAndProvider(ctx context.Context, mode
 func (r *ModelPricingRepository) CalculateCost(modelSlug, providerType string, inputTokens, outputTokens int) float64 {
 	ctx := context.Background()
 	pricing, err := r.GetByModelAndProvider(ctx, modelSlug, providerType)
-	if err != nil {
-		return calculateCostHeuristic(modelSlug, inputTokens+outputTokens)
+	if err == nil {
+		inputCost := (float64(inputTokens) / 1_000_000.0) * pricing.PromptPricePer1M
+		outputCost := (float64(outputTokens) / 1_000_000.0) * pricing.CompletionPricePer1M
+		return inputCost + outputCost
 	}
-	inputCost := (float64(inputTokens) / 1_000_000) * pricing.PromptPricePer1M
-	outputCost := (float64(outputTokens) / 1_000_000) * pricing.CompletionPricePer1M
-	return inputCost + outputCost
+
+	var inputPrice, outputPrice float64
+	err = r.db.QueryRowContext(ctx, "SELECT input_price_per_1m, output_price_per_1m FROM models WHERE slug = $1 LIMIT 1", modelSlug).Scan(&inputPrice, &outputPrice)
+	if err == nil && (inputPrice > 0 || outputPrice > 0) {
+		return (float64(inputTokens)/1_000_000.0)*inputPrice + (float64(outputTokens)/1_000_000.0)*outputPrice
+	}
+
+	return calculateCostHeuristic(modelSlug, inputTokens+outputTokens)
 }
 
 func calculateCostHeuristic(model string, tokens int) float64 {

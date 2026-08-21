@@ -77,12 +77,17 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			log.UserAgent = userAgent
 			log.ClientApp = clientApp
 			log.IsStream = true
-			log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
+			if log.CostUSD == 0 && h.pricingRepo != nil {
+				log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
+			}
 			_ = h.requestLogs.Create(c.Request.Context(), log)
 			_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 			h.publishEvents(c, requestID, log, gatewayKey)
+
+			c.Header("X-Request-ID", requestID)
+			c.Header("X-Roozy-Model", log.Model)
+			c.Header("X-Roozy-Provider", log.ProviderType)
 		}
-		c.Header("X-Request-ID", requestID)
 		return
 	}
 
@@ -98,13 +103,17 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		log.UserAgent = userAgent
 		log.ClientApp = clientApp
 		log.IsStream = false
-		log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
+		if log.CostUSD == 0 && h.pricingRepo != nil {
+			log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
+		}
 		_ = h.requestLogs.Create(c.Request.Context(), log)
 		_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 		h.publishEvents(c, requestID, log, gatewayKey)
-	}
 
-	c.Header("X-Request-ID", requestID)
+		c.Header("X-Request-ID", requestID)
+		c.Header("X-Roozy-Model", log.Model)
+		c.Header("X-Roozy-Provider", log.ProviderType)
+	}
 
 	if resp.Error != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
