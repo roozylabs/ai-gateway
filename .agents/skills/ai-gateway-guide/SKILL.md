@@ -86,6 +86,16 @@ AI Gateway is a centralized, high-performance LLM API Gateway and Model Router. 
   3. Receives new `access_token` and caches it in Redis with 55-minute TTL (3,300s).
   4. Injects `Authorization: Bearer <access_token>` into upstream request payload.
 
+### 3.5. Concurrency Limiter & Cloudflare Evasion Engine (`concurrency.go`, `throttler.go`)
+- **`ProviderConcurrencyLimiter`**: Caps maximum active parallel streams (default = `2` for `opencode`, configurable via `OPENCODE_MAX_CONCURRENCY`) using Go `chan struct{}` semaphores.
+- **Provider Throttler**: Paces outgoing requests per provider with minimum spacing (350ms) to prevent WAF burst rate limits.
+- **Outgoing Proxy Support**: Respects `GLOBAL_PROXY_URL` environment variable (SOCKS5/HTTP) for routing traffic through residential proxies / SSH tunnels.
+
+### 3.6. Precision Token Tracking & Fallback Estimator
+- **Streaming Usage (`stream_options`)**: Injects `"stream_options": {"include_usage": true}` into OpenAI and Google Gemini payloads to force providers to return final stream usage.
+- **Fallback Token Estimator**: If provider returns 0 tokens, `engine.go` calculates an accurate estimate ($\approx 4\text{ chars/token}$) from request prompt & accumulated stream response characters.
+- **Auto-Clear Quota**: On successful 200 OK request or manual connection test, stale 429 error status in Redis is automatically deleted and updated to `Normal`.
+
 ---
 
 ## 4. API Response & Pagination Standard

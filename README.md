@@ -45,10 +45,12 @@ Dengan **AI Gateway**, AI coding tools Anda (seperti **OpenCode**, **Claude Code
 - **🔑 Centralized Credential Management**: Simpan dan kelola banyak API key provider dari berbagai akun secara terpusat dengan enkripsi **AES-256-GCM** (*encrypted at rest*).
 - **🔄 Flexible Routing & Credential Rotation**: Mendukung strategi alokasi **Round Robin (Equal)**, **Least Recently Used (LRU)**, dan **Fallback Cascade** untuk mengoptimalkan penggunaan API key dan menghindari rate limit.
 - **⚡ Automatic Rate Limit Failover (HTTP 429)**: Jika provider mengembalikan `429 Too Many Requests`, Gateway secara otomatis memasukkan credential tersebut ke masa *cooldown* di Redis dan memicu *retry* ke credential berikutnya tanpa mengembalikan error ke pengguna.
-- **🌊 Pass-Through Real-Time Streaming**: Mendukung streaming respons Server-Sent Events (SSE) secara real-time tanpa buffering penuh.
+- **🛡️ Provider Concurrency Limiter & Cloudflare Evasion**: Menggunakan in-memory Go channel semaphores (default max **2** active streams per provider) & request pacing (`350ms`) untuk mencegah Cloudflare WAF concurrency rate limits pada datacenter IP.
+- **🌐 Outgoing Proxy Support**: Mendukung variabel environment `GLOBAL_PROXY_URL` (SOCKS5 / HTTP Proxy) untuk meneruskan outbound request melalui IP residential / SSH tunnel.
+- **🌊 Pass-Through Real-Time Streaming**: Mendukung streaming respons Server-Sent Events (SSE) secara real-time dengan pengumpulan token usage presisi (`stream_options: include_usage`) dan *Fallback Token Estimator*.
 - **🎯 Unified OpenAI-Compatible API**: Menyediakan endpoint kompatibel OpenAI (`/v1/chat/completions`, `/v1/models`) sehingga kompatibel secara instan dengan mayoritas AI client.
 - **📊 Observability & Usage Metrics**: Lacak request count, latency (P95/P99), status health, token usage (input/output), serta audit log request.
-- **🛡️ Secure Token Hashing**: Client hanya menggunakan **Gateway API Key** (`gw_sk_...`). Plaintext API key milik provider asli tidak pernah terekspos ke client, browser, atau log.
+- **🔒 Secure Token Hashing**: Client hanya menggunakan **Gateway API Key** (`gw_sk_...`). Plaintext API key milik provider asli tidak pernah terekspos ke client, browser, atau log.
 
 ---
 
