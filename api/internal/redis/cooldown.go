@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
@@ -39,6 +40,25 @@ func (s *CooldownStore) IsCoolingDown(ctx context.Context, credentialID string) 
 func (s *CooldownStore) GetCooldownTTL(ctx context.Context, credentialID string) (time.Duration, error) {
 	key := fmt.Sprintf("credential:%s:cooldown", credentialID)
 	return s.rdb.TTL(ctx, key).Result()
+}
+
+func (s *CooldownStore) GetCoolingIDs(ctx context.Context) ([]string, error) {
+	if s == nil || s.rdb == nil {
+		return nil, nil
+	}
+	keys, err := s.rdb.Keys(ctx, "credential:*:cooldown").Result()
+	if err != nil && !errors.Is(err, goredis.Nil) {
+		return nil, err
+	}
+	var ids []string
+	for _, key := range keys {
+		// key format: credential:<id>:cooldown
+		parts := strings.Split(key, ":")
+		if len(parts) == 3 && parts[1] != "" {
+			ids = append(ids, parts[1])
+		}
+	}
+	return ids, nil
 }
 
 func (s *CooldownStore) RemoveCooldown(ctx context.Context, credentialID string) error {

@@ -183,7 +183,7 @@ func (r *CredentialRepository) FindActiveByProviderID(ctx context.Context, provi
 	return c, nil
 }
 
-func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, providerID string) ([]models.Credential, error) {
+func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, providerID string, excludeIDs []string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
@@ -196,6 +196,11 @@ func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, pr
 	}
 	defer rows.Close()
 
+	excludeMap := make(map[string]bool)
+	for _, id := range excludeIDs {
+		excludeMap[id] = true
+	}
+
 	var creds []models.Credential
 	for rows.Next() {
 		var c models.Credential
@@ -204,7 +209,9 @@ func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, pr
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
-		creds = append(creds, c)
+		if !excludeMap[c.ID] {
+			creds = append(creds, c)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -246,7 +253,7 @@ func (r *CredentialRepository) UpdateStatus(ctx context.Context, credentialID, s
 	return err
 }
 
-func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID string) ([]models.Credential, error) {
+func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID string, excludeIDs []string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
@@ -259,6 +266,11 @@ func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID st
 	}
 	defer rows.Close()
 
+	excludeMap := make(map[string]bool)
+	for _, id := range excludeIDs {
+		excludeMap[id] = true
+	}
+
 	var creds []models.Credential
 	for rows.Next() {
 		var c models.Credential
@@ -267,7 +279,9 @@ func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID st
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
-		creds = append(creds, c)
+		if !excludeMap[c.ID] {
+			creds = append(creds, c)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -275,7 +289,7 @@ func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID st
 	return creds, nil
 }
 
-func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string) ([]models.Credential, error) {
+func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string, excludeIDs []string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
 		        last_used_at, request_count, error_count, last_error, last_error_at,
@@ -288,6 +302,11 @@ func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string) (
 	}
 	defer rows.Close()
 
+	excludeMap := make(map[string]bool)
+	for _, id := range excludeIDs {
+		excludeMap[id] = true
+	}
+
 	var creds []models.Credential
 	for rows.Next() {
 		var c models.Credential
@@ -296,7 +315,9 @@ func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string) (
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
-		creds = append(creds, c)
+		if !excludeMap[c.ID] {
+			creds = append(creds, c)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

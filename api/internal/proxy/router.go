@@ -98,7 +98,7 @@ func (r *Router) Resolve(ctx context.Context, modelSlug string, allowedModels []
 
 	strategy := r.resolveStrategy(provider)
 
-	creds, err := r.selectByStrategy(ctx, provider.ID, strategy)
+	creds, err := r.selectByStrategy(ctx, provider.ID, strategy, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, gate
 
 	strategy := r.resolveStrategy(provider)
 
-	allCreds, err := r.selectByStrategy(ctx, provider.ID, strategy)
+	allCreds, err := r.selectByStrategy(ctx, provider.ID, strategy, cooldown)
 	if err != nil {
 		return nil, fmt.Errorf("select credentials: %w", err)
 	}
@@ -232,14 +232,18 @@ func (r *Router) resolveStrategy(provider *models.Provider) string {
 	return "round_robin"
 }
 
-func (r *Router) selectByStrategy(ctx context.Context, providerID, strategy string) ([]models.Credential, error) {
+func (r *Router) selectByStrategy(ctx context.Context, providerID, strategy string, cooldown *goredis.CooldownStore) ([]models.Credential, error) {
+	var coolingIDs []string
+	if cooldown != nil {
+		coolingIDs, _ = cooldown.GetCoolingIDs(ctx)
+	}
 	switch strategy {
 	case "lru":
-		return r.creds.FindLRU(ctx, providerID)
+		return r.creds.FindLRU(ctx, providerID, coolingIDs)
 	case "fallback_cascade":
-		return r.creds.FindAllActiveByProviderID(ctx, providerID)
+		return r.creds.FindAllActiveByProviderID(ctx, providerID, coolingIDs)
 	default:
-		return r.creds.FindRoundRobin(ctx, providerID)
+		return r.creds.FindRoundRobin(ctx, providerID, coolingIDs)
 	}
 }
 
@@ -318,7 +322,7 @@ func (r *Router) ResolveSemantic(
 		}
 
 		strategy := r.resolveStrategy(prov)
-		allCreds, err := r.selectByStrategy(ctx, prov.ID, strategy)
+		allCreds, err := r.selectByStrategy(ctx, prov.ID, strategy, cooldown)
 		if err != nil || len(allCreds) == 0 {
 			continue
 		}
