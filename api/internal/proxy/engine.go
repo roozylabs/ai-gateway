@@ -197,15 +197,15 @@ func (e *Engine) logRoutingDecision(ctx context.Context, userID string, req *Pro
 		_ = e.decisionRepo.Create(ctx, &repository.RoutingDecisionLog{
 			RequestID:        req.Model,
 			UserID:           userID,
-			TaskType:         sql.NullString{String: decision.Task, Valid: decision.Task != ""},
-			Complexity:       sql.NullString{String: decision.Complexity, Valid: decision.Complexity != ""},
-			PolicyName:       sql.NullString{String: decision.PolicyName, Valid: decision.PolicyName != ""},
+			TaskType:         decision.Task,
+			Complexity:       decision.Complexity,
+			PolicyName:       decision.PolicyName,
 			Candidates:       candidatesJSON,
-			SelectedModel:    sql.NullString{String: decision.SelectedModel, Valid: decision.SelectedModel != ""},
-			SelectedProvider: sql.NullString{String: decision.SelectedProvider, Valid: decision.SelectedProvider != ""},
-			BudgetStatus:     sql.NullString{String: decision.BudgetStatus, Valid: decision.BudgetStatus != ""},
+			SelectedModel:    decision.SelectedModel,
+			SelectedProvider: decision.SelectedProvider,
+			BudgetStatus:     decision.BudgetStatus,
 			EstimatedCost:    decision.EstimatedCost,
-			DowngradeReason:  sql.NullString{String: decision.DowngradeReason, Valid: decision.DowngradeReason != ""},
+			DowngradeReason:  decision.DowngradeReason,
 		})
 	}
 }

@@ -176,6 +176,12 @@ export default function LogsPage() {
     },
   ], [formatCost]);
 
+  const safeStr = React.useCallback((v: any): string => {
+    if (!v) return '';
+    if (typeof v === 'object') return v.String || '';
+    return String(v);
+  }, []);
+
   const columnsRouting = React.useMemo(() => [
     {
       title: 'Timestamp',
@@ -188,8 +194,8 @@ export default function LogsPage() {
       key: 'task',
       render: (_: any, record: ApiRoutingDecision) => (
         <Space wrap size="small">
-          <Tag color="purple">{record.taskType || 'coding'}</Tag>
-          <Tag color="cyan">{record.complexity || 'medium'}</Tag>
+          <Tag color="purple">{safeStr(record.taskType) || 'coding'}</Tag>
+          <Tag color="cyan">{safeStr(record.complexity) || 'medium'}</Tag>
         </Space>
       ),
     },
@@ -197,17 +203,17 @@ export default function LogsPage() {
       title: 'Policy Used',
       dataIndex: 'policyName',
       key: 'policyName',
-      render: (p: string) => <Tag color="blue">{p || 'balanced'}</Tag>,
+      render: (p: any) => <Tag color="blue">{safeStr(p) || 'balanced'}</Tag>,
     },
     {
       title: 'Selected Model',
       dataIndex: 'selectedModel',
       key: 'selectedModel',
-      render: (m: string, record: ApiRoutingDecision) => (
+      render: (m: any, record: ApiRoutingDecision) => (
         <Space direction="vertical" size={0}>
-          <Text strong>{m}</Text>
+          <Text strong>{safeStr(m)}</Text>
           <Text type="secondary" style={{ fontSize: 11 }}>
-            Provider: {record.selectedProvider || 'default'}
+            Provider: {safeStr(record.selectedProvider) || 'default'}
           </Text>
         </Space>
       ),
@@ -216,10 +222,11 @@ export default function LogsPage() {
       title: 'Budget Status',
       dataIndex: 'budgetStatus',
       key: 'budgetStatus',
-      render: (status: string) => {
-        if (status === 'exceeded' || status === 'critical') return <Tag color="red">{status}</Tag>;
-        if (status === 'warning') return <Tag color="warning">{status}</Tag>;
-        return <Tag color="success">{status || 'healthy'}</Tag>;
+      render: (status: any) => {
+        const s = safeStr(status);
+        if (s === 'exceeded' || s === 'critical') return <Tag color="red">{s}</Tag>;
+        if (s === 'warning') return <Tag color="warning">{s}</Tag>;
+        return <Tag color="success">{s || 'healthy'}</Tag>;
       },
     },
     {
@@ -234,9 +241,12 @@ export default function LogsPage() {
       title: 'Downgrade Reason',
       dataIndex: 'downgradeReason',
       key: 'downgradeReason',
-      render: (reason?: string) => (reason ? <Text type="danger">{reason}</Text> : <Text type="secondary">—</Text>),
+      render: (reason?: any) => {
+        const r = safeStr(reason);
+        return r ? <Text type="danger">{r}</Text> : <Text type="secondary">—</Text>;
+      },
     },
-  ], []);
+  ], [safeStr]);
 
   const extraActions = (
     <Space wrap>

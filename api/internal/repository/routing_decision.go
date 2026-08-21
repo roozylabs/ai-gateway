@@ -14,16 +14,16 @@ type RoutingDecisionLog struct {
 	ID               string          `json:"id" db:"id"`
 	RequestID        string          `json:"requestId" db:"request_id"`
 	UserID           string          `json:"userId" db:"user_id"`
-	TaskType         sql.NullString  `json:"taskType,omitempty" db:"task_type"`
-	Complexity       sql.NullString  `json:"complexity,omitempty" db:"complexity"`
-	PolicyName       sql.NullString  `json:"policyName,omitempty" db:"policy_name"`
+	TaskType         string          `json:"taskType,omitempty" db:"task_type"`
+	Complexity       string          `json:"complexity,omitempty" db:"complexity"`
+	PolicyName       string          `json:"policyName,omitempty" db:"policy_name"`
 	Candidates       json.RawMessage `json:"candidates,omitempty" db:"candidates"`
-	SelectedModel    sql.NullString  `json:"selectedModel,omitempty" db:"selected_model"`
-	SelectedProvider sql.NullString  `json:"selectedProvider,omitempty" db:"selected_provider"`
-	BudgetStatus     sql.NullString  `json:"budgetStatus,omitempty" db:"budget_status"`
+	SelectedModel    string          `json:"selectedModel,omitempty" db:"selected_model"`
+	SelectedProvider string          `json:"selectedProvider,omitempty" db:"selected_provider"`
+	BudgetStatus     string          `json:"budgetStatus,omitempty" db:"budget_status"`
 	EstimatedCost    float64         `json:"estimatedCost" db:"estimated_cost"`
 	ActualCost       float64         `json:"actualCost" db:"actual_cost"`
-	DowngradeReason  sql.NullString  `json:"downgradeReason,omitempty" db:"downgrade_reason"`
+	DowngradeReason  string          `json:"downgradeReason,omitempty" db:"downgrade_reason"`
 	CreatedAt        time.Time       `json:"createdAt" db:"created_at"`
 }
 
@@ -55,10 +55,17 @@ func (r *RoutingDecisionRepository) Create(ctx context.Context, decision *Routin
 		     candidates, selected_model, selected_provider, budget_status, estimated_cost, actual_cost,
 		     downgrade_reason, created_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-		decision.ID, decision.RequestID, decision.UserID, decision.TaskType, decision.Complexity,
-		decision.PolicyName, candidates, decision.SelectedModel, decision.SelectedProvider,
-		decision.BudgetStatus, decision.EstimatedCost, decision.ActualCost,
-		decision.DowngradeReason, decision.CreatedAt,
+		decision.ID, decision.RequestID, decision.UserID,
+		sql.NullString{String: decision.TaskType, Valid: decision.TaskType != ""},
+		sql.NullString{String: decision.Complexity, Valid: decision.Complexity != ""},
+		sql.NullString{String: decision.PolicyName, Valid: decision.PolicyName != ""},
+		candidates,
+		sql.NullString{String: decision.SelectedModel, Valid: decision.SelectedModel != ""},
+		sql.NullString{String: decision.SelectedProvider, Valid: decision.SelectedProvider != ""},
+		sql.NullString{String: decision.BudgetStatus, Valid: decision.BudgetStatus != ""},
+		decision.EstimatedCost, decision.ActualCost,
+		sql.NullString{String: decision.DowngradeReason, Valid: decision.DowngradeReason != ""},
+		decision.CreatedAt,
 	)
 	return err
 }
@@ -110,11 +117,19 @@ func (r *RoutingDecisionRepository) ListWithFilter(ctx context.Context, userID s
 	var decisions []RoutingDecisionLog
 	for rows.Next() {
 		var d RoutingDecisionLog
-		if err := rows.Scan(&d.ID, &d.RequestID, &d.UserID, &d.TaskType, &d.Complexity,
-			&d.PolicyName, &d.Candidates, &d.SelectedModel, &d.SelectedProvider,
-			&d.BudgetStatus, &d.EstimatedCost, &d.ActualCost, &d.DowngradeReason, &d.CreatedAt); err != nil {
+		var taskType, complexity, policyName, selectedModel, selectedProvider, budgetStatus, downgradeReason sql.NullString
+		if err := rows.Scan(&d.ID, &d.RequestID, &d.UserID, &taskType, &complexity,
+			&policyName, &d.Candidates, &selectedModel, &selectedProvider,
+			&budgetStatus, &d.EstimatedCost, &d.ActualCost, &downgradeReason, &d.CreatedAt); err != nil {
 			return nil, 0, err
 		}
+		d.TaskType = taskType.String
+		d.Complexity = complexity.String
+		d.PolicyName = policyName.String
+		d.SelectedModel = selectedModel.String
+		d.SelectedProvider = selectedProvider.String
+		d.BudgetStatus = budgetStatus.String
+		d.DowngradeReason = downgradeReason.String
 		decisions = append(decisions, d)
 	}
 	if decisions == nil {
