@@ -673,6 +673,15 @@ func (e *Engine) extractAndSaveQuota(ctx context.Context, credID string, headers
 				"quota":        quota,
 			})
 		}
+	} else if !is429 {
+		// On successful 200 OK request with no rate limit headers, clear stale error quota!
+		_ = e.cooldown.DeleteCredentialQuota(ctx, credID)
+		if e.publisher != nil {
+			_ = e.publisher.Publish(ctx, "CREDENTIAL_QUOTA_UPDATED", map[string]interface{}{
+				"credentialId": credID,
+				"quota":        nil,
+			})
+		}
 	}
 }
 

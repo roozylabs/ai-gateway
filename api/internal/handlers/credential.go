@@ -550,8 +550,21 @@ func (h *CredentialHandler) Test(c *gin.Context) {
 
 	latency := int(time.Since(start).Milliseconds())
 
+	success := statusCode >= 200 && statusCode < 300
+	if success && h.cooldownStore != nil {
+		_ = h.cooldownStore.ClearCooldown(c.Request.Context(), credID)
+		_ = h.cooldownStore.DeleteCredentialQuota(c.Request.Context(), credID)
+		_ = h.credentials.UpdateStatus(c.Request.Context(), credID, "active")
+		if h.publisher != nil {
+			_ = h.publisher.Publish(c.Request.Context(), "CREDENTIAL_QUOTA_UPDATED", map[string]interface{}{
+				"credentialId": credID,
+				"quota":        nil,
+			})
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"success":    statusCode >= 200 && statusCode < 300,
+		"success":    success,
 		"latencyMs":  latency,
 		"httpStatus": statusCode,
 		"error":      errMsg,
