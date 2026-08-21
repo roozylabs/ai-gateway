@@ -175,17 +175,6 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 	return logs, total, nil
 }
 
-func calculateCost(model string, tokens int) float64 {
-	rate := 0.001
-	mLower := strings.ToLower(model)
-	if strings.Contains(mLower, "pickle") || strings.Contains(mLower, "gpt-4") || strings.Contains(mLower, "claude-3") || strings.Contains(mLower, "opus") || strings.Contains(mLower, "sonnet") {
-		rate = 0.002
-	} else if strings.Contains(mLower, "flash") || strings.Contains(mLower, "mini") || strings.Contains(mLower, "haiku") || strings.Contains(mLower, "nano") {
-		rate = 0.00015
-	}
-	return (float64(tokens) / 1000.0) * rate
-}
-
 type DashboardStats struct {
 	TotalRequests      int64   `json:"totalRequests"`
 	TotalTokens        int64   `json:"totalTokens"`
