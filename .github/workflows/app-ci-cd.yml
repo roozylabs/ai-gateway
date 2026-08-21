@@ -120,6 +120,7 @@ jobs:
               git pull origin main || git pull origin master || true
             fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker system prune -f || true
             docker compose pull app
-            docker compose up -d app
+            docker compose up -d --no-build app
             docker image prune -f
