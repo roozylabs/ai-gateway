@@ -34,6 +34,7 @@ type Engine struct {
 	publisher    *goredis.EventPublisher
 	oauthMgr     *OAuthTokenManager
 	throttler    *ProviderThrottler
+	concurrency  *ProviderConcurrencyLimiter
 	encKey       string
 	maxRetries   int
 	cooldownSecs int
@@ -66,6 +67,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		publisher:    publisher,
 		oauthMgr:     NewOAuthTokenManager(cooldown),
 		throttler:    NewProviderThrottler(),
+		concurrency:  NewProviderConcurrencyLimiter(),
 		encKey:       encKey,
 		maxRetries:   maxRetries,
 		cooldownSecs: cooldownSecs,
@@ -207,15 +209,22 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		}
 
 		_ = e.throttler.Wait(c.Request.Context(), route.Provider.Type)
+		release, err := e.concurrency.Acquire(c.Request.Context(), route.Provider.Type)
+		if err != nil {
+			lastErr = fmt.Errorf("concurrency limit wait: %w", err)
+			continue
+		}
 
 		httpResp, err := e.client.Do(httpReq)
 		if err != nil {
+			release()
 			lastErr = fmt.Errorf("execute request: %w", err)
 			continue
 		}
 
 		body, err := io.ReadAll(httpResp.Body)
 		httpResp.Body.Close()
+		release()
 		if err != nil {
 			lastErr = fmt.Errorf("read response: %w", err)
 			continue
@@ -406,9 +415,15 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		}
 
 		_ = e.throttler.Wait(c.Request.Context(), route.Provider.Type)
+		release, err := e.concurrency.Acquire(c.Request.Context(), route.Provider.Type)
+		if err != nil {
+			lastErr = fmt.Errorf("concurrency limit wait: %w", err)
+			continue
+		}
 
 		httpResp, err := e.client.Do(httpReq)
 		if err != nil {
+			release()
 			lastErr = fmt.Errorf("execute request: %w", err)
 			continue
 		}
@@ -417,6 +432,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		if httpResp.StatusCode == http.StatusTooManyRequests {
 			bodyBytes, _ := io.ReadAll(httpResp.Body)
 			httpResp.Body.Close()
+			release()
 			bodyStr := string(bodyBytes)
 
 			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
@@ -430,6 +446,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		// 401/403 → mark invalid, retry
 		if httpResp.StatusCode == http.StatusUnauthorized || httpResp.StatusCode == http.StatusForbidden {
 			httpResp.Body.Close()
+			release()
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
 			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
 			continue
@@ -438,6 +455,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		// 5xx → retry
 		if httpResp.StatusCode >= 500 {
 			httpResp.Body.Close()
+			release()
 			lastErr = fmt.Errorf("upstream returned %d", httpResp.StatusCode)
 			continue
 		}
@@ -446,6 +464,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		if httpResp.StatusCode >= 400 && httpResp.StatusCode < 500 {
 			bodyBytes, _ := io.ReadAll(httpResp.Body)
 			httpResp.Body.Close()
+			release()
 			return nil, fmt.Errorf("upstream error %d: %s", httpResp.StatusCode, string(bodyBytes))
 		}
 
@@ -453,7 +472,10 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
 		_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "active")
 		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
-		defer httpResp.Body.Close()
+		defer func() {
+			httpResp.Body.Close()
+			release()
+		}()
 
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
