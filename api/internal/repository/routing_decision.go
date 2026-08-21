@@ -132,6 +132,10 @@ func (r *RoutingDecisionRepository) ListWithFilter(ctx context.Context, userID s
 		d.DowngradeReason = downgradeReason.String
 		decisions = append(decisions, d)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
 	if decisions == nil {
 		decisions = []RoutingDecisionLog{}
 	}
