@@ -60,6 +60,7 @@ func main() {
 	gatewayKeyRepo := repository.NewGatewayKeyRepository(sqlDB)
 	requestLogRepo := repository.NewRequestLogRepository(sqlDB)
 	settingRepo := repository.NewSettingRepository(sqlDB)
+	pricingRepo := repository.NewModelPricingRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -79,7 +80,7 @@ func main() {
 	credentialHandler := handlers.NewCredentialHandler(credentialRepo, providerRepo, gatewayKeyRepo, cooldown, eventPublisher, cfg.EncryptionKey)
 	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo, gatewayKeyRepo, cooldown)
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo, credentialRepo)
-	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher)
+	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo)
 	activeStreamsHandler := handlers.NewActiveStreamsHandler(cooldown)

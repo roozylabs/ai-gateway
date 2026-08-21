@@ -320,6 +320,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) (*models.RequestLog, error) {
 	start := time.Now()
+	var ttftMs int
+	var ttftCaptured bool
 
 	gwKeyID := ""
 	if gatewayKey != nil {
@@ -501,6 +503,24 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 				continue
 			}
 
+			// Capture TTFT on first non-empty content or reasoning token
+			if !ttftCaptured && chunk.Choices != nil {
+				for _, ch := range chunk.Choices {
+					if ch.Delta != nil {
+						if content, ok := ch.Delta["content"].(string); ok && content != "" {
+							ttftMs = int(time.Since(start).Milliseconds())
+							ttftCaptured = true
+							break
+						}
+						if _, ok := ch.Delta["reasoning_content"].(string); ok {
+							ttftMs = int(time.Since(start).Milliseconds())
+							ttftCaptured = true
+							break
+						}
+					}
+				}
+			}
+
 			if chunk.Usage.TotalTokens > 0 {
 				totalTokens = chunk.Usage
 			}
@@ -576,6 +596,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			OutputTokens:    totalTokens.CompletionTokens,
 			TotalTokens:     totalTokens.TotalTokens,
 			RetryCount:      retryCount,
+			TTFTMs:          ttftMs,
 		}
 
 		return log, nil

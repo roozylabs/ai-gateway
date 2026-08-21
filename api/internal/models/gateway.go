@@ -96,6 +96,7 @@ type RequestLog struct {
 	InputTokens     int            `json:"inputTokens" db:"input_tokens"`
 	OutputTokens    int            `json:"outputTokens" db:"output_tokens"`
 	TotalTokens     int            `json:"totalTokens" db:"total_tokens"`
+	CostUSD         float64        `json:"costUsd" db:"cost_usd"`
 	EstimatedCost   float64        `json:"estimatedCost"`
 	ErrorMessage    sql.NullString `json:"errorMessage,omitempty" db:"error_message"`
 	RetryCount      int            `json:"retryCount" db:"retry_count"`
@@ -105,4 +106,16 @@ type RequestLog struct {
 	IsStream        bool           `json:"isStream" db:"is_stream"`
 	TTFTMs          int            `json:"ttftMs" db:"ttft_ms"`
 	CreatedAt       time.Time      `json:"createdAt" db:"created_at"`
+}
+
+type ModelPricing struct {
+	ID                     string    `json:"id" db:"id"`
+	ModelSlug              string    `json:"modelSlug" db:"model_slug"`
+	ProviderType           string    `json:"providerType" db:"provider_type"`
+	PromptPricePer1M       float64   `json:"promptPricePer1M" db:"prompt_price_per_1m"`
+	CompletionPricePer1M   float64   `json:"completionPricePer1M" db:"completion_price_per_1m"`
+	CachedPromptPricePer1M float64   `json:"cachedPromptPricePer1M" db:"cached_prompt_price_per_1m"`
+	EffectiveDate          time.Time `json:"effectiveDate" db:"effective_date"`
+	CreatedAt              time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt              time.Time `json:"updatedAt" db:"updated_at"`
 }

@@ -30,12 +30,12 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO request_logs (id, request_id, gateway_api_key_id, provider_id, credential_id, model,
 		                          status_code, latency_ms, input_tokens, output_tokens, total_tokens,
-		                          error_message, retry_count, client_ip, user_agent, client_app,
+		                          cost_usd, error_message, retry_count, client_ip, user_agent, client_app,
 		                          is_stream, ttft_ms, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
 		log.ID, log.RequestID, log.GatewayAPIKeyID, log.ProviderID, log.CredentialID, log.Model,
 		log.StatusCode, log.LatencyMs, log.InputTokens, log.OutputTokens, log.TotalTokens,
-		log.ErrorMessage, log.RetryCount, log.ClientIP, log.UserAgent, log.ClientApp,
+		log.CostUSD, log.ErrorMessage, log.RetryCount, log.ClientIP, log.UserAgent, log.ClientApp,
 		log.IsStream, log.TTFTMs, log.CreatedAt,
 	)
 	return err
@@ -45,7 +45,7 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT rl.id, rl.request_id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id, rl.model,
 		        rl.status_code, rl.latency_ms, rl.input_tokens, rl.output_tokens, rl.total_tokens,
-		        rl.error_message, rl.retry_count, COALESCE(rl.client_ip, ''), COALESCE(rl.user_agent, ''),
+		        COALESCE(rl.cost_usd, 0), rl.error_message, rl.retry_count, COALESCE(rl.client_ip, ''), COALESCE(rl.user_agent, ''),
 		        COALESCE(rl.client_app, ''), COALESCE(rl.is_stream, false), COALESCE(rl.ttft_ms, 0), rl.created_at
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
@@ -63,11 +63,11 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 		var l models.RequestLog
 		if err := rows.Scan(&l.ID, &l.RequestID, &l.GatewayAPIKeyID, &l.ProviderID, &l.CredentialID,
 			&l.Model, &l.StatusCode, &l.LatencyMs, &l.InputTokens, &l.OutputTokens,
-			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.ClientIP, &l.UserAgent,
+			&l.TotalTokens, &l.CostUSD, &l.ErrorMessage, &l.RetryCount, &l.ClientIP, &l.UserAgent,
 			&l.ClientApp, &l.IsStream, &l.TTFTMs, &l.CreatedAt); err != nil {
 			return nil, err
 		}
-		l.EstimatedCost = calculateCost(l.Model, l.TotalTokens)
+		l.EstimatedCost = l.CostUSD
 		logs = append(logs, l)
 	}
 	if err := rows.Err(); err != nil {
@@ -135,7 +135,7 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 		`SELECT rl.id, rl.request_id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id,
 		        COALESCE(c.name, '') as credential_name, rl.model,
 		        rl.status_code, rl.latency_ms, rl.input_tokens, rl.output_tokens, rl.total_tokens,
-		        rl.error_message, rl.retry_count, COALESCE(rl.client_ip, ''), COALESCE(rl.user_agent, ''),
+		        COALESCE(rl.cost_usd, 0), rl.error_message, rl.retry_count, COALESCE(rl.client_ip, ''), COALESCE(rl.user_agent, ''),
 		        COALESCE(rl.client_app, ''), COALESCE(rl.is_stream, false), COALESCE(rl.ttft_ms, 0), rl.created_at
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
@@ -159,14 +159,14 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 		var rawCredName string
 		if err := rows.Scan(&l.ID, &l.RequestID, &l.GatewayAPIKeyID, &l.ProviderID, &l.CredentialID,
 			&rawCredName, &l.Model, &l.StatusCode, &l.LatencyMs, &l.InputTokens, &l.OutputTokens,
-			&l.TotalTokens, &l.ErrorMessage, &l.RetryCount, &l.ClientIP, &l.UserAgent,
+			&l.TotalTokens, &l.CostUSD, &l.ErrorMessage, &l.RetryCount, &l.ClientIP, &l.UserAgent,
 			&l.ClientApp, &l.IsStream, &l.TTFTMs, &l.CreatedAt); err != nil {
 			return nil, 0, err
 		}
 		if rawCredName != "" {
 			l.CredentialName = utils.MaskEmailName(rawCredName)
 		}
-		l.EstimatedCost = calculateCost(l.Model, l.TotalTokens)
+		l.EstimatedCost = l.CostUSD
 		logs = append(logs, l)
 	}
 	if err := rows.Err(); err != nil {
@@ -211,43 +211,15 @@ func (r *RequestLogRepository) GetStats(ctx context.Context, userID string) (*Da
 	err := r.db.QueryRowContext(ctx,
 		`SELECT COALESCE(COUNT(*), 0),
 		        COALESCE(SUM(total_tokens), 0),
+		        COALESCE(SUM(cost_usd), 0),
 		        COALESCE(AVG(latency_ms), 0),
 		        COALESCE(CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE status_code >= 400))::float / COUNT(*) * 100 ELSE 0 END, 0)
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 WHERE gak.user_id = $1`, userID,
-	).Scan(&s.TotalRequests, &s.TotalTokens, &s.AvgLatency, &s.ErrorRate)
+	).Scan(&s.TotalRequests, &s.TotalTokens, &s.TotalEstimatedCost, &s.AvgLatency, &s.ErrorRate)
 	if err != nil {
 		return nil, err
-	}
-
-	// Calculate total estimated cost
-	costRows, err := r.db.QueryContext(ctx,
-		`SELECT COALESCE(NULLIF(rl.model, ''), 'default'), COALESCE(SUM(rl.total_tokens), 0)
-		 FROM request_logs rl
-		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
-		 WHERE gak.user_id = $1
-		 GROUP BY COALESCE(NULLIF(rl.model, ''), 'default')`, userID,
-	)
-	if err == nil {
-		defer costRows.Close()
-		var totalCost float64
-		for costRows.Next() {
-			var m string
-			var tok int64
-			if err := costRows.Scan(&m, &tok); err == nil {
-				rate := 0.001
-				mLower := strings.ToLower(m)
-				if strings.Contains(mLower, "pickle") || strings.Contains(mLower, "gpt-4") || strings.Contains(mLower, "claude-3") || strings.Contains(mLower, "opus") || strings.Contains(mLower, "sonnet") {
-					rate = 0.002
-				} else if strings.Contains(mLower, "flash") || strings.Contains(mLower, "mini") || strings.Contains(mLower, "haiku") || strings.Contains(mLower, "nano") {
-					rate = 0.00015
-				}
-				totalCost += (float64(tok) / 1000.0) * rate
-			}
-		}
-		_ = costRows.Err()
-		s.TotalEstimatedCost = totalCost
 	}
 
 	err = r.db.QueryRowContext(ctx,
@@ -284,7 +256,8 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 		query = `SELECT TO_CHAR(rl.created_at, 'YYYY-MM-DD') as date,
 		        COALESCE(NULLIF(rl.model, ''), 'default') as model,
 		        COUNT(*) as requests,
-		        COALESCE(SUM(total_tokens), 0) as tokens
+		        COALESCE(SUM(total_tokens), 0) as tokens,
+		        COALESCE(SUM(cost_usd), 0) as cost
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 WHERE gak.user_id = $1
@@ -300,7 +273,8 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 		query = `SELECT TO_CHAR(rl.created_at, 'YYYY-MM-DD') as date,
 		        COALESCE(NULLIF(rl.model, ''), 'default') as model,
 		        COUNT(*) as requests,
-		        COALESCE(SUM(total_tokens), 0) as tokens
+		        COALESCE(SUM(total_tokens), 0) as tokens,
+		        COALESCE(SUM(cost_usd), 0) as cost
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 WHERE gak.user_id = $1
@@ -319,17 +293,9 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 	var points []UsagePoint
 	for rows.Next() {
 		var p UsagePoint
-		if err := rows.Scan(&p.Date, &p.Model, &p.Requests, &p.Tokens); err != nil {
+		if err := rows.Scan(&p.Date, &p.Model, &p.Requests, &p.Tokens, &p.EstimatedCost); err != nil {
 			return nil, err
 		}
-		rate := 0.001
-		mLower := strings.ToLower(p.Model)
-		if strings.Contains(mLower, "pickle") || strings.Contains(mLower, "gpt-4") || strings.Contains(mLower, "claude-3") || strings.Contains(mLower, "opus") || strings.Contains(mLower, "sonnet") {
-			rate = 0.002
-		} else if strings.Contains(mLower, "flash") || strings.Contains(mLower, "mini") || strings.Contains(mLower, "haiku") || strings.Contains(mLower, "nano") {
-			rate = 0.00015
-		}
-		p.EstimatedCost = (float64(p.Tokens) / 1000.0) * rate
 		points = append(points, p)
 	}
 	if err := rows.Err(); err != nil {

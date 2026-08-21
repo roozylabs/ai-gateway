@@ -20,6 +20,7 @@ type GatewayHandler struct {
 	gatewayKeys   *repository.GatewayKeyRepository
 	requestLogs   *repository.RequestLogRepository
 	eventPublisher *goredis.EventPublisher
+	pricingRepo   *repository.ModelPricingRepository
 }
 
 func NewGatewayHandler(
@@ -27,12 +28,14 @@ func NewGatewayHandler(
 	gatewayKeys *repository.GatewayKeyRepository,
 	requestLogs *repository.RequestLogRepository,
 	eventPublisher *goredis.EventPublisher,
+	pricingRepo *repository.ModelPricingRepository,
 ) *GatewayHandler {
 	return &GatewayHandler{
 		engine:        engine,
 		gatewayKeys:   gatewayKeys,
 		requestLogs:   requestLogs,
 		eventPublisher: eventPublisher,
+		pricingRepo:   pricingRepo,
 	}
 }
 
@@ -74,6 +77,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			log.UserAgent = userAgent
 			log.ClientApp = clientApp
 			log.IsStream = true
+			log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.InputTokens, log.OutputTokens)
 			_ = h.requestLogs.Create(c.Request.Context(), log)
 			_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 			h.publishEvents(c, requestID, log, gatewayKey)
@@ -94,6 +98,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		log.UserAgent = userAgent
 		log.ClientApp = clientApp
 		log.IsStream = false
+		log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.InputTokens, log.OutputTokens)
 		_ = h.requestLogs.Create(c.Request.Context(), log)
 		_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
 		h.publishEvents(c, requestID, log, gatewayKey)
