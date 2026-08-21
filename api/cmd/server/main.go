@@ -184,12 +184,23 @@ func main() {
 			protected.PUT("/routing-rules/:id", routingRuleHandler.Update)
 			protected.DELETE("/routing-rules/:id", routingRuleHandler.Delete)
 
-			// Routing Policies
+			// Routing Policies (with aliases for /policies and /routing/policies)
 			protected.GET("/routing-policies", routingPolicyHandler.List)
 			protected.GET("/routing-policies/:id", routingPolicyHandler.Get)
 			protected.POST("/routing-policies", routingPolicyHandler.Create)
 			protected.PUT("/routing-policies/:id", routingPolicyHandler.Update)
 			protected.DELETE("/routing-policies/:id", routingPolicyHandler.Delete)
+
+			protected.GET("/policies", routingPolicyHandler.List)
+			protected.GET("/policies/:id", routingPolicyHandler.Get)
+			protected.POST("/policies", routingPolicyHandler.Create)
+			protected.PUT("/policies/:id", routingPolicyHandler.Update)
+			protected.DELETE("/policies/:id", routingPolicyHandler.Delete)
+
+			protected.GET("/routing/policies", routingPolicyHandler.List)
+			protected.POST("/routing/policies", routingPolicyHandler.Create)
+			protected.PUT("/routing/policies/:id", routingPolicyHandler.Update)
+			protected.DELETE("/routing/policies/:id", routingPolicyHandler.Delete)
 
 			// Routing Decisions Audit Logs
 			protected.GET("/routing/decisions", routingDecisionHandler.List)
