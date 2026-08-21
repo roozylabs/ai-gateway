@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,25 +63,47 @@ func (r *RoutingDecisionRepository) Create(ctx context.Context, decision *Routin
 	return err
 }
 
-func (r *RoutingDecisionRepository) ListByUserID(ctx context.Context, userID string, limit, offset int) ([]RoutingDecisionLog, error) {
+func (r *RoutingDecisionRepository) ListWithFilter(ctx context.Context, userID string, limit, offset int) ([]RoutingDecisionLog, int64, error) {
 	if limit <= 0 || limit > 100 {
-		limit = 50
+		limit = 20
 	}
 	if offset < 0 {
 		offset = 0
 	}
 
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, request_id, user_id, task_type, complexity, policy_name,
+	query := `SELECT id, request_id, user_id, task_type, complexity, policy_name,
 		        candidates, selected_model, selected_provider, budget_status,
 		        estimated_cost, actual_cost, downgrade_reason, created_at
-		 FROM routing_decisions
-		 WHERE user_id = $1
-		 ORDER BY created_at DESC
-		 LIMIT $2 OFFSET $3`, userID, limit, offset,
-	)
+		 FROM routing_decisions WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM routing_decisions WHERE 1=1`
+
+	var args []interface{}
+	var countArgs []interface{}
+
+	if userID != "" {
+		args = append(args, userID)
+		countArgs = append(countArgs, userID)
+		filter := fmt.Sprintf(" AND user_id = $%d", len(args))
+		query += filter
+		countQuery += filter
+	}
+
+	var total int64
+	if err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query += " ORDER BY created_at DESC"
+
+	args = append(args, limit)
+	query += fmt.Sprintf(" LIMIT $%d", len(args))
+
+	args = append(args, offset)
+	query += fmt.Sprintf(" OFFSET $%d", len(args))
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -90,9 +113,17 @@ func (r *RoutingDecisionRepository) ListByUserID(ctx context.Context, userID str
 		if err := rows.Scan(&d.ID, &d.RequestID, &d.UserID, &d.TaskType, &d.Complexity,
 			&d.PolicyName, &d.Candidates, &d.SelectedModel, &d.SelectedProvider,
 			&d.BudgetStatus, &d.EstimatedCost, &d.ActualCost, &d.DowngradeReason, &d.CreatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		decisions = append(decisions, d)
 	}
-	return decisions, rows.Err()
+	if decisions == nil {
+		decisions = []RoutingDecisionLog{}
+	}
+	return decisions, total, nil
+}
+
+func (r *RoutingDecisionRepository) ListByUserID(ctx context.Context, userID string, limit, offset int) ([]RoutingDecisionLog, error) {
+	decisions, _, err := r.ListWithFilter(ctx, userID, limit, offset)
+	return decisions, err
 }
