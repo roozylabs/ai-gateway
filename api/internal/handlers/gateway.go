@@ -184,7 +184,8 @@ func (h *GatewayHandler) SandboxChatCompletions(c *gin.Context) {
 }
 
 func (h *GatewayHandler) Models(c *gin.Context) {
-	models := []map[string]interface{}{
+	modelsList := []map[string]interface{}{
+		{"id": models.SmartRouterModel, "object": "model", "owned_by": "roozylabs"},
 		{"id": "gpt-4o", "object": "model", "owned_by": "openai"},
 		{"id": "gpt-4o-mini", "object": "model", "owned_by": "openai"},
 		{"id": "claude-3-5-sonnet-20241022", "object": "model", "owned_by": "anthropic"},
@@ -196,7 +197,7 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"object": "list",
-		"data":   models,
+		"data":   modelsList,
 	})
 }
 

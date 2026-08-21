@@ -621,13 +621,14 @@ function IntegrationModalContent({
                     loading={modelsLoading}
                     value={selectedSlugs}
                     onChange={(values) => setSelectedSlugs(values)}
-                    options={[
-                      { label: '✨ roozy-auto (Smart Routing)', value: 'roozy-auto' },
-                      ...availableModels.map((m) => ({
-                        label: `${m.name} (${m.slug})`,
-                        value: m.slug || m.name,
-                      })),
-                    ]}
+                    options={
+                      availableModels.length > 0
+                        ? availableModels.map((m) => ({
+                            label: `${m.displayName || m.name} (${m.slug})`,
+                            value: m.slug || m.name,
+                          }))
+                        : [{ label: '✨ roozy-auto (Smart Routing)', value: 'roozy-auto' }]
+                    }
                   />
                 </div>
 

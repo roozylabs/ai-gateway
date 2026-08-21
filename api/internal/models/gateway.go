@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const SmartRouterModel = "roozy-auto"
+
 type Provider struct {
 	ID               string    `json:"id" db:"id"`
 	UserID           string    `json:"userId" db:"user_id"`
