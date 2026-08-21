@@ -90,6 +90,7 @@ export interface ApiModel {
   slug: string;
   displayName: string;
   enabled: boolean;
+  providerName?: string;
   contextWindow?: number;
   codingScore?: number;
   reasoningScore?: number;
