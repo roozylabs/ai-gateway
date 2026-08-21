@@ -175,7 +175,9 @@ export default function SandboxPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error?.message || `HTTP ${response.status} ${response.statusText}`);
+        const errObj = errorData?.error;
+        const msg = (typeof errObj === 'object' ? errObj?.message : errObj) || `HTTP ${response.status} ${response.statusText}`;
+        throw new Error(msg);
       }
 
       if (isStreaming && response.body) {

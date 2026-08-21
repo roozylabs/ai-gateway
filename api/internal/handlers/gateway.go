@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -11,8 +10,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/roozylabs/ai-gateway/internal/models"
 	"github.com/roozylabs/ai-gateway/internal/proxy"
-	"github.com/roozylabs/ai-gateway/internal/repository"
 	goredis "github.com/roozylabs/ai-gateway/internal/redis"
+	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
 type GatewayHandler struct {
@@ -144,26 +144,15 @@ func (h *GatewayHandler) publishEvents(c *gin.Context, requestID string, log *mo
 }
 
 func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models.GatewayAPIKey, req *proxy.ProxyRequest) {
-	status := http.StatusInternalServerError
-	errType := "api_error"
-
-	switch {
-	case errors.Is(err, proxy.ErrModelNotAllowed):
-		status = http.StatusForbidden
-		errType = "invalid_request_error"
-	case errors.Is(err, proxy.ErrModelNotFound):
-		status = http.StatusNotFound
-		errType = "invalid_request_error"
-	case errors.Is(err, proxy.ErrNoCredentials):
-		status = http.StatusServiceUnavailable
-		errType = "api_error"
-	case errors.Is(err, proxy.ErrAllCredentialsInCooldown):
-		status = http.StatusTooManyRequests
-		errType = "rate_limit_error"
-		err = errors.New("All credentials for this provider are currently in cooldown due to upstream rate limits or errors. Please try again later.")
-	}
-
-	c.JSON(status, gin.H{"error": gin.H{"message": err.Error(), "type": errType}})
+	status, errType, errCode, cleanMsg := utils.CleanUpstreamError(err)
+	c.JSON(status, gin.H{
+		"error": gin.H{
+			"message": cleanMsg,
+			"type":    errType,
+			"code":    errCode,
+			"param":   nil,
+		},
+	})
 }
 
 func (h *GatewayHandler) SandboxChatCompletions(c *gin.Context) {

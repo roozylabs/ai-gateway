@@ -193,7 +193,11 @@ api.interceptors.response.use(
       // If 401 unauthorized, clear auth token cookie
       Cookies.remove('auth_token');
     }
-    const message = error.response?.data?.error || error.message || 'An error occurred';
+    const errObj = error.response?.data?.error;
+    const message =
+      (typeof errObj === 'object' ? errObj?.message : errObj) ||
+      error.message ||
+      'An error occurred';
     return Promise.reject(new Error(message));
   }
 );
