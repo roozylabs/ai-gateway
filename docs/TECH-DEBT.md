@@ -1,56 +1,49 @@
-# AI Gateway Technical Debt
+# AI Gateway Technical Debt & Roadmap Tracker
 
 ## Revision History
 
 | Version | Date & Time | Description of Changes |
 | :--- | :--- | :--- |
 | 1.0 | 19 August 2026, 10:59 WIB | Initial creation of Tech Debt document for missing API endpoints |
+| 1.1 | 21 August 2026, 22:56 WIB | Marked all V1 API gaps as Resolved and updated pending V2 architecture roadmap |
 
-This document tracks known technical debt, missing features, and pending implementations in the AI Gateway project, specifically comparing the implemented Go backend API with the Next.js frontend requirements and architectural specifications.
+This document tracks resolved technical debt, current system health, and pending architectural enhancements for **AI Gateway**.
 
-## 1. Missing API Endpoints (Backend vs Frontend Gap Analysis)
+---
 
-Based on the current frontend pages (`@app`) and the specifications in `docs/PRD-AI-Gateway.md` and `docs/ARCHITECTURE.md`, the following backend API endpoints are designed/required but not yet implemented in `api/cmd/server/main.go`.
+## 1. Resolved Technical Debt (V1 Implementation Complete)
 
-### 1.1 Real-Time Events (SSE)
-*   **Endpoint**: `GET /api/v1/sse`
-*   **Status**: Missing
-*   **Required by**: All dashboard pages (Providers, Credentials, Dashboard, Logs)
-*   **Description**: The centralized Server-Sent Events endpoint for pushing real-time updates (health status, rate limits, request logs) to the frontend via Redis Pub/Sub, as defined in ARCHITECTURE.md Section 14.
+All initial backend API gaps between the Next.js frontend and Go backend have been **fully resolved and deployed**:
 
-### 1.2 Dashboard Metrics & Charts
-*   **Endpoints**: `GET /api/dashboard/metrics`, `GET /api/dashboard/chart` (or combined)
-*   **Status**: Missing
-*   **Required by**: `DashboardPage` (`app/app/page.tsx`)
-*   **Description**: Aggregated statistics for total requests, tokens, average latency, and time-series data for the model usage chart. Currently, the dashboard likely relies on mock data or lacks these feeds.
+| Item | Feature | Status | Implementation Details |
+| :--- | :--- | :---: | :--- |
+| **1.1** | Real-Time Events (SSE) | ✅ **Resolved** | `GET /api/v1/sse` with Redis Pub/Sub for live status, cooldown timers, request feed, and health updates. |
+| **1.2** | Dashboard Metrics & Charts | ✅ **Resolved** | `GET /api/dashboard/stats`, `/chart`, and `/health` endpoints powering real-time usage charts and summary cards. |
+| **1.3** | Request Logs & Audit Trail | ✅ **Resolved** | `GET /api/logs` (historical REST API) & `GET /api/routing/decisions` (Smart Router decision logs). |
+| **1.4** | Credential Testing | ✅ **Resolved** | `POST /api/credentials/:id/test` for instant verification of provider API keys. |
+| **1.5** | Routing Policies & Budgets | ✅ **Resolved** | `GET/POST/PUT/DELETE` endpoints for `/api/policies` and `/api/budgets`. |
+| **1.6** | Real-Time Cost Pipeline | ✅ **Resolved** | Real-time `CostUSD` calculation per request based on input/output tokens and model pricing stored in `request_logs`. |
+| **1.7** | Instant Failover (Ready Pool) | ✅ **Resolved** | Pre-filtering 429 rate-limited cooling credentials in Redis before strategy rotation (Round Robin/LRU/Fallback). |
+| **1.8** | Error Sanitization & Headers | ✅ **Resolved** | Sanitized user-friendly error responses and `X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID` response headers. |
 
-### 1.3 Request Logs (Historical & Live)
-*   **Endpoint**: `GET /api/logs`
-*   **Status**: Missing
-*   **Required by**: `LogsPage` (`app/app/logs/page.tsx`), `DashboardPage` (Recent Activity)
-*   **Description**: Endpoint to fetch paginated historical request logs. While the SSE endpoint provides a live tail, a REST endpoint is needed for initial load and historical querying.
+---
 
-### 1.4 Credential Testing
-*   **Endpoint**: `POST /api/providers/:id/credentials/:credId/test`
-*   **Status**: Missing
-*   **Required by**: `CredentialsPage`
-*   **Description**: Explicitly listed in `ARCHITECTURE.md` (Section 13) to allow admins to test if an API key is valid before enabling it.
+## 2. Pending Technical Debt & V2 Architectural Roadmap
 
-### 1.5 Global Routing Rules (Models)
-*   **Endpoint**: `GET /api/routing-rules` or global `GET /api/models`
-*   **Status**: Partially Missing / Needs Adjustment
-*   **Required by**: `ModelsPage` (`app/app/models/page.tsx`)
-*   **Description**: The current backend implements nested model routes (`/api/providers/:id/models`). However, the `ModelsPage` UI presents a global routing table mapping aliases to upstream providers. A global endpoint to manage these routing rules independently of a single provider might be necessary.
+The following items are planned for future optimization as traffic scales:
 
-### 1.6 Settings & Configuration
-*   **Endpoint**: `GET/PUT /api/settings`
-*   **Status**: Missing
-*   **Required by**: `SettingsPage` (`app/app/settings/page.tsx`)
-*   **Description**: Endpoints to manage global gateway configurations, security settings, or user preferences.
+### 2.1 Dedicated `usage_events` Immutable Ledger
+*   **Current State**: `request_logs` currently serves both request audit trailing and budget spend aggregation (`SUM(cost_usd)`).
+*   **Future Enhancement**: Create an immutable `usage_events` table (Spec §24) and periodic aggregate rollups (`usage_aggregates_daily`) to keep analytical queries fast as request volume reaches millions.
 
-## 2. Next Steps for Backend Team
+### 2.2 Dynamic Provider Health Score in Weighted Scoring Formula
+*   **Current State**: Credentials encountering HTTP 429 are excluded upfront via the Redis Cooldown Store (Pre-Filtered Ready Pool).
+*   **Future Enhancement**: Incorporate a continuous health score variable ($0.0 \dots 1.0$) directly into `scorer.go` weighted sum equation so degraded providers seamlessly yield priority to healthier alternatives before hitting hard 429 errors.
 
-1.  **Prioritize SSE Implementation**: Implement `GET /api/v1/sse` and the Redis Pub/Sub integration to unblock real-time UI features.
-2.  **Implement Dashboard Endpoints**: Create the aggregation queries in the repository layer to power the dashboard metrics and charts.
-3.  **Implement Log Retrieval**: Create the `GET /api/logs` endpoint with pagination and filtering.
-4.  **Implement Credential Testing**: Add the `test` endpoint that makes a minimal probe request to the target provider to verify the key.
+### 2.3 Expanded Multi-Auth Type System (Enterprise Cloud Providers)
+*   **Current State**: Standard API Keys (`api_key`) and Google OAuth 2.0 User Tokens (`gcp_user_oauth`) are supported.
+*   **Future Enhancement**: Add AWS Bedrock SigV4 IAM signing (`aws_iam`), Azure AD Entra ID OAuth (`azure_oauth`), dan GCP Service Account JWT exchange (`gcp_service_account`) as outlined in Spec §8.1.
+
+### 2.4 Multi-Tier Hierarchy Budgets (Project & Environment Scope)
+*   **Current State**: Budgets operate at the User level (`monthly_limit`, `daily_limit`).
+*   **Future Enhancement**: Support Organization → Project → Environment budget hierarchies (Spec §16–§17) with per-project API keys.
