@@ -342,7 +342,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 				})
 			}
 			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds): %s", route.Credential.ID, retryAfter, strings.TrimSpace(bodyStr))
-			time.Sleep(calculateBackoff(i, retryAfter))
+			time.Sleep(calculateBackoff(i))
 			continue
 		}
 
@@ -554,7 +554,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 				})
 			}
 			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds): %s", route.Credential.ID, retryAfter, strings.TrimSpace(bodyStr))
-			time.Sleep(calculateBackoff(i, retryAfter))
+			time.Sleep(calculateBackoff(i))
 			continue
 		}
 
@@ -887,15 +887,11 @@ func determineCooldownDuration(header http.Header, bodyStr string) int {
 	return 5
 }
 
-func calculateBackoff(attempt int, retryAfter int) time.Duration {
-	if retryAfter > 0 && retryAfter <= 30 {
-		jitter := time.Duration(rand.Intn(300)) * time.Millisecond
-		return time.Duration(retryAfter)*time.Second + jitter
+func calculateBackoff(attempt int) time.Duration {
+	baseMs := 100 * (1 << attempt)
+	if baseMs > 1000 {
+		baseMs = 1000
 	}
-	baseMs := 500 * (1 << attempt)
-	if baseMs > 4000 {
-		baseMs = 4000
-	}
-	jitter := rand.Intn(300)
+	jitter := rand.Intn(100)
 	return time.Duration(baseMs+jitter) * time.Millisecond
 }
