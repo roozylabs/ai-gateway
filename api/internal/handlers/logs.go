@@ -74,9 +74,37 @@ func (h *LogsHandler) List(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data":     logs,
-		"total":    total,
-		"page":     page,
-		"pageSize": limit,
+		"data": logs,
+		"meta": gin.H{
+			"total":    total,
+			"page":     page,
+			"limit":    limit,
+			"pageSize": limit,
+		},
+	})
+}
+
+func (h *LogsHandler) GetAnalytics(c *gin.Context) {
+	userID := c.GetString("userId")
+	days := 30
+	if d := c.Query("days"); d != "" {
+		if n, err := strconv.Atoi(d); err == nil && n > 0 && n <= 90 {
+			days = n
+		}
+	}
+
+	analytics, err := h.logs.GetLogAnalytics(c.Request.Context(), userID, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{
+				"code":    "internal_error",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": analytics,
 	})
 }

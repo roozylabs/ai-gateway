@@ -206,6 +206,9 @@ func main() {
 			protected.GET("/routing/decisions", routingDecisionHandler.List)
 			protected.GET("/routing-decisions", routingDecisionHandler.List)
 
+			// Analytics Logs
+			protected.GET("/analytics/logs", logsHandler.GetAnalytics)
+
 			// Budgets
 			protected.GET("/budgets", budgetHandler.List)
 			protected.GET("/budgets/status", budgetStatusHandler.GetStatus)

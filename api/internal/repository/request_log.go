@@ -342,3 +342,108 @@ func (r *RequestLogRepository) GetProviderHealth(ctx context.Context, userID str
 	}
 	return providers, nil
 }
+
+type ClientAppStat struct {
+	ClientApp string  `json:"clientApp"`
+	Requests  int64   `json:"requests"`
+	Tokens    int64   `json:"tokens"`
+	CostUSD   float64 `json:"costUsd"`
+}
+
+type ModelStat struct {
+	Model        string  `json:"model"`
+	Requests     int64   `json:"requests"`
+	Tokens       int64   `json:"tokens"`
+	CostUSD      float64 `json:"costUsd"`
+	AvgTTFTMs    float64 `json:"avgTtftMs"`
+	AvgLatencyMs float64 `json:"avgLatencyMs"`
+}
+
+type LogAnalytics struct {
+	TotalSpendUSD       float64         `json:"totalSpendUsd"`
+	EstimatedSavingsUSD float64         `json:"estimatedSavingsUsd"`
+	AvgTTFTMs           float64         `json:"avgTtftMs"`
+	AvgLatencyMs        float64         `json:"avgLatencyMs"`
+	ClientApps          []ClientAppStat `json:"clientApps"`
+	Models              []ModelStat     `json:"models"`
+}
+
+func (r *RequestLogRepository) GetLogAnalytics(ctx context.Context, userID string, days int) (*LogAnalytics, error) {
+	if days <= 0 || days > 90 {
+		days = 30
+	}
+
+	analytics := &LogAnalytics{
+		ClientApps: []ClientAppStat{},
+		Models:     []ModelStat{},
+	}
+
+	// 1. Overall Summary & Estimated Savings
+	// Baseline flagship cost: $3.00/1M input ($0.000003), $15.00/1M output ($0.000015)
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COALESCE(SUM(cost_usd), 0),
+		        COALESCE(AVG(latency_ms), 0),
+		        COALESCE(AVG(CASE WHEN ttft_ms > 0 THEN ttft_ms END), 0),
+		        COALESCE(SUM(GREATEST(0, (input_tokens * 0.000003 + output_tokens * 0.000015) - cost_usd)), 0)
+		 FROM request_logs rl
+		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE gak.user_id = $1
+		   AND rl.created_at >= NOW() - ($2 || ' days')::INTERVAL`, userID, days,
+	).Scan(&analytics.TotalSpendUSD, &analytics.AvgLatencyMs, &analytics.AvgTTFTMs, &analytics.EstimatedSavingsUSD)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Client Apps Breakdown
+	rowsApps, err := r.db.QueryContext(ctx,
+		`SELECT COALESCE(NULLIF(rl.client_app, ''), 'Unknown Client') as client_app,
+		        COUNT(*) as requests,
+		        COALESCE(SUM(total_tokens), 0) as tokens,
+		        COALESCE(SUM(cost_usd), 0) as cost_usd
+		 FROM request_logs rl
+		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE gak.user_id = $1
+		   AND rl.created_at >= NOW() - ($2 || ' days')::INTERVAL
+		 GROUP BY COALESCE(NULLIF(rl.client_app, ''), 'Unknown Client')
+		 ORDER BY cost_usd DESC, requests DESC`, userID, days,
+	)
+	if err == nil {
+		defer rowsApps.Close()
+		for rowsApps.Next() {
+			var app ClientAppStat
+			if err := rowsApps.Scan(&app.ClientApp, &app.Requests, &app.Tokens, &app.CostUSD); err == nil {
+				analytics.ClientApps = append(analytics.ClientApps, app)
+			}
+		}
+		_ = rowsApps.Err()
+	}
+
+	// 3. Models Breakdown
+	rowsModels, err := r.db.QueryContext(ctx,
+		`SELECT COALESCE(NULLIF(rl.model, ''), 'default') as model,
+		        COUNT(*) as requests,
+		        COALESCE(SUM(total_tokens), 0) as tokens,
+		        COALESCE(SUM(cost_usd), 0) as cost_usd,
+		        COALESCE(AVG(CASE WHEN ttft_ms > 0 THEN ttft_ms END), 0) as avg_ttft,
+		        COALESCE(AVG(latency_ms), 0) as avg_latency
+		 FROM request_logs rl
+		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE gak.user_id = $1
+		   AND rl.created_at >= NOW() - ($2 || ' days')::INTERVAL
+		 GROUP BY COALESCE(NULLIF(rl.model, ''), 'default')
+		 ORDER BY cost_usd DESC, requests DESC`, userID, days,
+	)
+	if err == nil {
+		defer rowsModels.Close()
+		for rowsModels.Next() {
+			var ms ModelStat
+			if err := rowsModels.Scan(&ms.Model, &ms.Requests, &ms.Tokens, &ms.CostUSD, &ms.AvgTTFTMs, &ms.AvgLatencyMs); err == nil {
+				analytics.Models = append(analytics.Models, ms)
+			}
+		}
+		_ = rowsModels.Err()
+	}
+
+	return analytics, nil
+}
+

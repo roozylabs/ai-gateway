@@ -538,3 +538,33 @@ export async function apiGetRoutingDecisions(params?: {
   return response.data;
 }
 
+export interface ApiClientAppStat {
+  clientApp: string;
+  requests: number;
+  tokens: number;
+  costUsd: number;
+}
+
+export interface ApiModelStat {
+  model: string;
+  requests: number;
+  tokens: number;
+  costUsd: number;
+  avgTtftMs: number;
+  avgLatencyMs: number;
+}
+
+export interface ApiLogAnalytics {
+  totalSpendUsd: number;
+  estimatedSavingsUsd: number;
+  avgTtftMs: number;
+  avgLatencyMs: number;
+  clientApps: ApiClientAppStat[];
+  models: ApiModelStat[];
+}
+
+export async function apiGetLogAnalytics(params?: { days?: number }): Promise<ApiLogAnalytics> {
+  const response = await api.get<{ data: ApiLogAnalytics }>('/analytics/logs', { params });
+  return response.data.data;
+}
+
