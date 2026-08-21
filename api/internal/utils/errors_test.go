@@ -47,6 +47,14 @@ func TestCleanUpstreamError(t *testing.T) {
 			expectedCode:         "no_credentials_available",
 			expectedMsgSubstring: "No active API keys",
 		},
+		{
+			name:                 "Upstream Network Timeout",
+			inputErr:             errors.New(`all credentials exhausted after 1 retries: execute request: Post "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions": net/http: timeout awaiting response headers`),
+			expectedStatus:       http.StatusGatewayTimeout,
+			expectedType:         "api_error",
+			expectedCode:         "upstream_timeout",
+			expectedMsgSubstring: "timed out while processing your request",
+		},
 	}
 
 	for _, tt := range tests {

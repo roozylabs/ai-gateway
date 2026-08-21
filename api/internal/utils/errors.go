@@ -9,13 +9,15 @@ import (
 
 // Standard User-Friendly Messages
 const (
-	MsgRateLimitExceeded = "All API keys for this provider have temporarily reached their usage limit. Please wait a moment or try again later."
+	MsgRateLimitExceeded  = "All API keys for this provider have temporarily reached their usage limit. Please wait a moment or try again later."
 	MsgDailyQuotaExceeded = "The daily free usage limit for this model has been reached for today. It will reset automatically at 00:00 UTC."
-	MsgNoCredentials     = "No active API keys are available for this provider. Please check your Credentials Pool."
-	MsgModelNotFound     = "The requested AI model is unavailable or has been disabled."
-	MsgModelNotAllowed  = "You do not have permission to access the requested model."
-	MsgAuthFailed        = "Invalid or expired API credential for provider."
-	MsgGenericError      = "An unexpected error occurred while processing your request. Please try again later."
+	MsgNoCredentials      = "No active API keys are available for this provider. Please check your Credentials Pool."
+	MsgModelNotFound      = "The requested AI model is unavailable or has been disabled."
+	MsgModelNotAllowed   = "You do not have permission to access the requested model."
+	MsgAuthFailed         = "Invalid or expired API credential for provider."
+	MsgUpstreamTimeout    = "The upstream AI provider timed out while processing your request. Please try again in a moment."
+	MsgUpstreamConnection = "Unable to connect to the upstream AI provider. Please try again later."
+	MsgGenericError       = "An unexpected error occurred while processing your request. Please try again later."
 )
 
 var uuidRegex = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
@@ -39,10 +41,18 @@ func CleanUpstreamError(err error) (statusCode int, errType string, errCode stri
 	}
 
 	errStr := err.Error()
-
-	// 1. Check known keywords for Rate Limits & Quotas
 	lowerStr := strings.ToLower(errStr)
 
+	// 1. Check known keywords for Timeouts & Network Failures
+	if strings.Contains(lowerStr, "timeout") || strings.Contains(lowerStr, "deadline exceeded") {
+		return http.StatusGatewayTimeout, "api_error", "upstream_timeout", MsgUpstreamTimeout
+	}
+
+	if strings.Contains(lowerStr, "connection refused") || strings.Contains(lowerStr, "dial tcp") || strings.Contains(lowerStr, "connectex") {
+		return http.StatusBadGateway, "api_error", "upstream_connection_failed", MsgUpstreamConnection
+	}
+
+	// 2. Check known keywords for Rate Limits & Quotas
 	if strings.Contains(lowerStr, "freeusagelimiterror") || strings.Contains(lowerStr, "daily limit") || strings.Contains(lowerStr, "quota exceeded") {
 		return http.StatusTooManyRequests, "rate_limit_error", "quota_exceeded", MsgDailyQuotaExceeded
 	}
