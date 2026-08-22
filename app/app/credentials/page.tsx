@@ -134,9 +134,12 @@ function RateLimitQuotaBadge({
     if (record.quota.statusText) {
       const lower = record.quota.statusText.toLowerCase();
       const isDailyExceeded = lower.includes('daily') || lower.includes('free usage') || lower.includes('freeusagelimit');
-      const isRateLimited = lower.includes('rate limit') || lower.includes('limited');
+      const isRateLimited = lower.includes('rate limit') || lower.includes('limited') || lower.includes('cooldown');
 
       if (isDailyExceeded) {
+        if (dailyResetSec <= 0) {
+          return <Badge status="success" text={<Text style={{ fontSize: 13 }}>Normal</Text>} />;
+        }
         return (
           <Badge
             status="error"
@@ -145,11 +148,15 @@ function RateLimitQuotaBadge({
         );
       }
 
-      if (isRateLimited && resetAtSec > 0) {
+      if (isRateLimited) {
+        const remainingSec = resetAtSec > 0 ? resetAtSec : cooldownSec;
+        if (remainingSec <= 0) {
+          return <Badge status="success" text={<Text style={{ fontSize: 13 }}>Normal</Text>} />;
+        }
         return (
           <Badge
             status="warning"
-            text={<Text style={{ fontSize: 13 }}>Rate Limited (Resets in {formatDuration(resetAtSec)})</Text>}
+            text={<Text style={{ fontSize: 13 }}>Rate Limited (Resets in {formatDuration(remainingSec)})</Text>}
           />
         );
       }

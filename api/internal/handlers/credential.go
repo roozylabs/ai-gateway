@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -103,28 +104,7 @@ func (h *CredentialHandler) List(c *gin.Context) {
 
 	for i := range credentials {
 		credentials[i].Name = maskEmailName(credentials[i].Name)
-		if h.cooldownStore != nil {
-			ttl, _ := h.cooldownStore.GetCooldownTTL(c.Request.Context(), credentials[i].ID)
-			if ttl > 0 {
-				credentials[i].IsCoolingDown = true
-				credentials[i].CooldownTTL = int(ttl.Seconds())
-			} else if credentials[i].Status == "rate_limited" {
-				credentials[i].Status = "active"
-				_ = h.credentials.UpdateStatus(c.Request.Context(), credentials[i].ID, "active")
-			}
-			if q, err := h.cooldownStore.GetCredentialQuota(c.Request.Context(), credentials[i].ID); err == nil && q != nil {
-				credentials[i].Quota = &models.CredentialQuota{
-					RemainingRequests: q.RemainingRequests,
-					LimitRequests:     q.LimitRequests,
-					RemainingTokens:   q.RemainingTokens,
-					LimitTokens:       q.LimitTokens,
-					ResetDurationSec:  q.ResetDurationSec,
-					ResetAt:           q.ResetAt,
-					StatusText:        q.StatusText,
-					LastUpdated:       q.LastUpdated,
-				}
-			}
-		}
+		h.enrichCredentialQuota(c.Request.Context(), &credentials[i])
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -152,28 +132,7 @@ func (h *CredentialHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
 		return
 	}
-	if h.cooldownStore != nil {
-		ttl, _ := h.cooldownStore.GetCooldownTTL(c.Request.Context(), cred.ID)
-		if ttl > 0 {
-			cred.IsCoolingDown = true
-			cred.CooldownTTL = int(ttl.Seconds())
-		} else if cred.Status == "rate_limited" {
-			cred.Status = "active"
-			_ = h.credentials.UpdateStatus(c.Request.Context(), cred.ID, "active")
-		}
-		if q, err := h.cooldownStore.GetCredentialQuota(c.Request.Context(), cred.ID); err == nil && q != nil {
-			cred.Quota = &models.CredentialQuota{
-				RemainingRequests: q.RemainingRequests,
-				LimitRequests:     q.LimitRequests,
-				RemainingTokens:   q.RemainingTokens,
-				LimitTokens:       q.LimitTokens,
-				ResetDurationSec:  q.ResetDurationSec,
-				ResetAt:           q.ResetAt,
-				StatusText:        q.StatusText,
-				LastUpdated:       q.LastUpdated,
-			}
-		}
-	}
+	h.enrichCredentialQuota(c.Request.Context(), cred)
 
 	c.JSON(http.StatusOK, cred)
 }
@@ -681,6 +640,84 @@ func (h *CredentialHandler) testOpenCode(baseURL, apiKey string) (int, string) {
 		return resp.StatusCode, "authentication failed"
 	}
 	return resp.StatusCode, ""
+}
+
+func (h *CredentialHandler) enrichCredentialQuota(ctx context.Context, cred *models.Credential) {
+	if h.cooldownStore == nil || cred == nil {
+		return
+	}
+
+	ttl, _ := h.cooldownStore.GetCooldownTTL(ctx, cred.ID)
+	if ttl > 0 {
+		cred.IsCoolingDown = true
+		cred.CooldownTTL = int(ttl.Seconds())
+	} else if cred.Status == "rate_limited" || cred.Status == "quota_exceeded" {
+		cred.Status = "active"
+		_ = h.credentials.UpdateStatus(ctx, cred.ID, "active")
+	}
+
+	q, err := h.cooldownStore.GetCredentialQuota(ctx, cred.ID)
+	if err != nil || q == nil {
+		return
+	}
+
+	now := time.Now()
+	nowUnix := now.Unix()
+	isExpired := false
+
+	// 1. Check ResetAt timestamp
+	if q.ResetAt != "" {
+		if t, err := time.Parse(time.RFC3339, q.ResetAt); err == nil && now.After(t) {
+			isExpired = true
+		}
+	}
+
+	// 2. Check ResetDurationSec relative to LastUpdated
+	if !isExpired && q.ResetDurationSec > 0 && q.LastUpdated > 0 {
+		if nowUnix >= q.LastUpdated+int64(q.ResetDurationSec) {
+			isExpired = true
+		}
+	}
+
+	// 3. Check Daily Quota Reset (Midnight UTC)
+	if !isExpired && q.LastUpdated > 0 {
+		lowerStatus := strings.ToLower(q.StatusText)
+		if strings.Contains(lowerStatus, "daily") || strings.Contains(lowerStatus, "free") {
+			lastUpdatedUtc := time.Unix(q.LastUpdated, 0).UTC()
+			if now.UTC().Year() > lastUpdatedUtc.Year() || now.UTC().YearDay() > lastUpdatedUtc.YearDay() {
+				isExpired = true
+			}
+		}
+	}
+
+	// 4. If cooldown TTL has passed (ttl <= 0) and statusText is a rate limit or daily quota message
+	if !isExpired && ttl <= 0 && q.ResetAt == "" && q.ResetDurationSec == 0 {
+		lowerStatus := strings.ToLower(q.StatusText)
+		if strings.Contains(lowerStatus, "rate limit") || strings.Contains(lowerStatus, "cooldown") {
+			isExpired = true
+		}
+	}
+
+	if isExpired {
+		_ = h.cooldownStore.DeleteCredentialQuota(ctx, cred.ID)
+		if cred.Status == "rate_limited" || cred.Status == "quota_exceeded" {
+			cred.Status = "active"
+			_ = h.credentials.UpdateStatus(ctx, cred.ID, "active")
+		}
+		cred.Quota = nil
+		return
+	}
+
+	cred.Quota = &models.CredentialQuota{
+		RemainingRequests: q.RemainingRequests,
+		LimitRequests:     q.LimitRequests,
+		RemainingTokens:   q.RemainingTokens,
+		LimitTokens:       q.LimitTokens,
+		ResetDurationSec:  q.ResetDurationSec,
+		ResetAt:           q.ResetAt,
+		StatusText:        q.StatusText,
+		LastUpdated:       q.LastUpdated,
+	}
 }
 
 
