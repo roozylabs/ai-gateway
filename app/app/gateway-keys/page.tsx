@@ -186,18 +186,24 @@ export default function GatewayKeysPage() {
         render: (text: string) => <Text strong>{text}</Text>,
       },
       {
-        title: 'Provider',
+        title: 'Access Scope & Provider',
         dataIndex: 'providerId',
         key: 'providerId',
         sorter: (a: ApiGatewayKey, b: ApiGatewayKey) => {
-          const nameA = (a.providerId && providerMap[a.providerId]?.name) || '';
-          const nameB = (b.providerId && providerMap[b.providerId]?.name) || '';
+          const nameA = a.providerId ? (providerMap[a.providerId]?.name || '') : 'Global';
+          const nameB = b.providerId ? (providerMap[b.providerId]?.name || '') : 'Global';
           return nameA.localeCompare(nameB);
         },
         render: (providerId?: string) => {
-          if (!providerId) return <Text type="secondary">All</Text>;
+          if (!providerId) {
+            return (
+              <Tag color="purple">
+                🌐 Global (All & Smart Router)
+              </Tag>
+            );
+          }
           const provider = providerMap[providerId];
-          return provider ? <Tag color="blue">{provider.name}</Tag> : <Text type="secondary">{providerId.slice(0, 8)}...</Text>;
+          return provider ? <Tag color="blue">{provider.name} (Restricted)</Tag> : <Text type="secondary">{providerId.slice(0, 8)}...</Text>;
         },
       },
       {
@@ -366,7 +372,7 @@ export default function GatewayKeysPage() {
             form={form}
             layout="vertical"
             onFinish={handleCreateKey}
-            initialValues={{ rateLimit: 100, expiresInDays: 0 }}
+            initialValues={{ providerId: '', rateLimit: 100, expiresInDays: 0 }}
             style={{ marginTop: 16 }}
           >
             <Form.Item
@@ -382,37 +388,47 @@ export default function GatewayKeysPage() {
                 type="warning"
                 showIcon
                 message="No Active Credentials Available"
-                description="There are currently no active credentials in the Credentials Pool. Please add an active API Key or connect a Google Account in Credentials Pool before creating a Gateway Key."
+                description="There are currently no active credentials in the Credentials Pool. Please add an active API Key or connect a Google Account in Credentials Pool before using Gateway Keys."
                 style={{ marginBottom: 16 }}
               />
             )}
 
             <Form.Item
               name="providerId"
-              label="Target Provider"
-              tooltip="Only providers with active credentials in the pool can be assigned to a Gateway API Key."
-              rules={[{ required: true, message: 'Please select a provider' }]}
+              label="Access Scope & Target Provider"
+              tooltip="Global Keys can access all active providers and the roozy-auto Smart Router with a single key. Restricted Keys lock access to a single provider."
             >
               <Select
-                placeholder="Select Provider with Active Credentials"
+                placeholder="Select Access Scope"
                 loading={providersLoading || credentialsLoading}
-                options={providers.map((p: ApiProvider) => {
-                  const hasActive = activeProviderIds.has(p.id);
-                  return {
+                options={[
+                  {
                     label: (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <span>{p.name}</span>
-                        {hasActive ? (
-                          <Tag color="success" style={{ fontSize: 10, margin: 0 }}>Active Keys</Tag>
-                        ) : (
-                          <Tag color="default" style={{ fontSize: 10, margin: 0 }}>No Active Key</Tag>
-                        )}
+                        <span style={{ fontWeight: 600, color: '#722ed1' }}>🌐 Global (All Providers & Smart Router)</span>
+                        <Tag color="purple" style={{ fontSize: 10, margin: 0 }}>Recommended</Tag>
                       </div>
                     ),
-                    value: p.id,
-                    disabled: !hasActive,
-                  };
-                })}
+                    value: '',
+                  },
+                  ...providers.map((p: ApiProvider) => {
+                    const hasActive = activeProviderIds.has(p.id);
+                    return {
+                      label: (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <span>{p.name} (Restricted)</span>
+                          {hasActive ? (
+                            <Tag color="success" style={{ fontSize: 10, margin: 0 }}>Active Keys</Tag>
+                          ) : (
+                            <Tag color="default" style={{ fontSize: 10, margin: 0 }}>No Active Key</Tag>
+                          )}
+                        </div>
+                      ),
+                      value: p.id,
+                      disabled: !hasActive,
+                    };
+                  }),
+                ]}
               />
             </Form.Item>
 

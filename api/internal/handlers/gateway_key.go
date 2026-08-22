@@ -24,7 +24,7 @@ func NewGatewayKeyHandler(keys *repository.GatewayKeyRepository, credentials *re
 
 type CreateGatewayKeyRequest struct {
 	Name          string   `json:"name" binding:"required"`
-	ProviderID    string   `json:"providerId" binding:"required"`
+	ProviderID    string   `json:"providerId"`
 	RateLimit     int      `json:"rateLimit"`
 	AllowedModels []string `json:"allowedModels"`
 	ExpiresInDays int      `json:"expiresInDays"`
@@ -38,15 +38,21 @@ type CreateGatewayKeyResponse struct {
 func (h *GatewayKeyHandler) Create(c *gin.Context) {
 	var req CreateGatewayKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: name and providerId are required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: name is required"})
 		return
 	}
 
-	if h.credentials != nil && req.ProviderID != "" {
-		count, err := h.credentials.CountActiveByProviderID(c.Request.Context(), req.ProviderID)
-		if err != nil || count == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create Gateway Key: the selected provider has no active credentials"})
-			return
+	var providerIDPtr *string
+	if req.ProviderID != "" && req.ProviderID != "global" {
+		pID := req.ProviderID
+		providerIDPtr = &pID
+
+		if h.credentials != nil {
+			count, err := h.credentials.CountActiveByProviderID(c.Request.Context(), req.ProviderID)
+			if err != nil || count == 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create Gateway Key: the selected provider has no active credentials"})
+				return
+			}
 		}
 	}
 
@@ -70,11 +76,9 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 		expiresAt = &t
 	}
 
-	providerID := req.ProviderID
-
 	key := &models.GatewayAPIKey{
 		UserID:        c.GetString("userId"),
-		ProviderID:    &providerID,
+		ProviderID:    providerIDPtr,
 		Name:          req.Name,
 		KeyHash:       keyHash,
 		KeyPrefix:     keyPrefix,
