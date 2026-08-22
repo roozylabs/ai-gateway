@@ -31,6 +31,7 @@ import {
   apiGetProviders,
   apiGetCredentials,
   apiGetModels,
+  GLOBAL_SMART_ROUTER_ITEM,
   ApiGatewayKey,
   ApiProvider,
   ApiCredential,
@@ -114,14 +115,41 @@ export default function SandboxPage() {
   const activeProviderId = activeKeyObj?.providerId || '';
   const activeProvider = providers.find((p) => p.id === activeProviderId);
 
-  // Fetch Models for active Key's Provider
+  // Fetch Models for active Key's Provider (or all models for Global Keys)
   const { data: modelsResult, isLoading: modelsLoading } = useQuery({
-    queryKey: ['sandbox-models', activeProviderId],
+    queryKey: ['sandbox-models', activeProviderId, providers.map((p) => p.id).join(',')],
     queryFn: async () => {
-      if (!activeProviderId) return { data: [], total: 0, page: 1, pageSize: 100 };
-      return apiGetModels(activeProviderId, { limit: 100 });
+      if (activeProviderId) {
+        return apiGetModels(activeProviderId, { limit: 100 });
+      }
+
+      // If Global Gateway Key (no providerId), combine models from all providers
+      if (!providers || providers.length === 0) {
+        return { data: [GLOBAL_SMART_ROUTER_ITEM], total: 1, page: 1, pageSize: 100 };
+      }
+
+      const allModelsMap = new Map<string, ApiModel>();
+      allModelsMap.set(GLOBAL_SMART_ROUTER_ITEM.slug, GLOBAL_SMART_ROUTER_ITEM);
+
+      await Promise.all(
+        providers.map(async (p) => {
+          try {
+            const res = await apiGetModels(p.id, { limit: 100 });
+            (res.data || []).forEach((m) => {
+              if (m.enabled && !allModelsMap.has(m.slug)) {
+                allModelsMap.set(m.slug, m);
+              }
+            });
+          } catch {
+            // ignore error for unconfigured providers
+          }
+        })
+      );
+
+      const combinedModels = Array.from(allModelsMap.values());
+      return { data: combinedModels, total: combinedModels.length, page: 1, pageSize: 100 };
     },
-    enabled: !!activeProviderId,
+    enabled: true,
   });
   const availableModels = modelsResult?.data || [];
 
@@ -130,7 +158,7 @@ export default function SandboxPage() {
     if (selectedModel === 'roozy-auto') return;
     if (availableModels.length > 0) {
       const exists = availableModels.some((m) => m.slug === selectedModel || m.name === selectedModel);
-      if (!exists && selectedModel !== 'roozy-auto') {
+      if (!exists) {
         setSelectedModel(availableModels[0].slug || availableModels[0].name);
       }
     }
