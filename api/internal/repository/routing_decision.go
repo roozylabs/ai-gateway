@@ -81,6 +81,14 @@ func (r *RoutingDecisionRepository) Create(ctx context.Context, decision *Routin
 	return err
 }
 
+func (r *RoutingDecisionRepository) UpdateActualCostByRequestID(ctx context.Context, requestID string, cost float64) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE routing_decisions SET actual_cost = $1 WHERE request_id = $2`,
+		cost, requestID,
+	)
+	return err
+}
+
 func (r *RoutingDecisionRepository) ListWithFilter(ctx context.Context, userID string, limit, offset int) ([]RoutingDecisionLog, int64, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20

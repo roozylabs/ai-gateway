@@ -192,6 +192,19 @@ func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models
 			IsStream:        isStream,
 			CreatedAt:       time.Now(),
 		}
+		if v, ok := c.Get(proxy.CtxFailoverInfo); ok {
+			if fi, fiOK := v.(*proxy.FailoverInfo); fiOK && fi != nil {
+				if len(fi.Attempts) > 0 {
+					errLog.Attempts = fi.Attempts
+				}
+				if fi.LastStatus > 0 {
+					errLog.StatusCode = fi.LastStatus
+				}
+				if fi.Retries > 0 {
+					errLog.RetryCount = fi.Retries
+				}
+			}
+		}
 		_ = h.requestLogs.Create(c.Request.Context(), errLog)
 		h.publishEvents(c, requestID, errLog, key)
 	}

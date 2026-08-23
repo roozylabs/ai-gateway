@@ -121,6 +121,7 @@ type RequestLog struct {
 	TTFTMs          int            `json:"ttftMs" db:"ttft_ms"`
 	ResponseHash    string         `json:"responseHash" db:"response_hash"`
 	ResponseBytes   int            `json:"responseBytes" db:"response_bytes"`
+	Attempts        []byte         `json:"attempts,omitempty" db:"attempts"`
 	CreatedAt       time.Time      `json:"createdAt" db:"created_at"`
 }
 

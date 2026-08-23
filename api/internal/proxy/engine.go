@@ -310,6 +310,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 	var lastErr error
 	var retryCount int
+	var attempts []AttemptRecord
+	var lastAttemptStatus int
 
 	for i, route := range routes {
 		if i > 0 {
@@ -382,6 +384,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			continue
 		}
 
+		attemptStart := time.Now()
 		httpResp, err := e.client.Do(httpReq)
 		if err != nil {
 			release()
@@ -424,6 +427,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 				})
 			}
 			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds): %s", route.Credential.ID, retryAfter, strings.TrimSpace(bodyStr))
+			lastAttemptStatus = httpResp.StatusCode
+			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
 			time.Sleep(calculateBackoff(i))
 			continue
 		}
@@ -432,6 +437,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		if httpResp.StatusCode == http.StatusUnauthorized || httpResp.StatusCode == http.StatusForbidden {
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
 			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
+			lastAttemptStatus = httpResp.StatusCode
+			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
 			continue
 		}
 
@@ -448,6 +455,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 				}
 			}
 			lastErr = fmt.Errorf("upstream returned %d", httpResp.StatusCode)
+			lastAttemptStatus = httpResp.StatusCode
+			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
 			time.Sleep(calculateBackoff(i))
 			continue
 		}
@@ -507,6 +516,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		inputCost := (float64(resp.Usage.PromptTokens) / 1_000_000.0) * route.Model.InputPricePer1M
 		outputCost := (float64(resp.Usage.CompletionTokens) / 1_000_000.0) * route.Model.OutputPricePer1M
+		costUSD := inputCost + outputCost
+		e.backfillActualCost(reqID, costUSD)
 
 		c.Header("X-Roozy-Model", route.Model.Slug)
 		c.Header("X-Roozy-Provider", route.Provider.Type)
@@ -522,10 +533,11 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			InputTokens:     resp.Usage.PromptTokens,
 			OutputTokens:    resp.Usage.CompletionTokens,
 			TotalTokens:     resp.Usage.TotalTokens,
-			CostUSD:         inputCost + outputCost,
+			CostUSD:         costUSD,
 			RetryCount:      retryCount,
 			ResponseHash:    respHash,
 			ResponseBytes:   respBytes,
+			Attempts:        MarshalAttempts(attempts),
 		}
 
 		if resp.Error != nil {
@@ -544,6 +556,14 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		}
 
 		return resp, log, nil
+	}
+
+	if len(attempts) > 0 {
+		c.Set(CtxFailoverInfo, &FailoverInfo{
+			Attempts:   MarshalAttempts(attempts),
+			LastStatus: lastAttemptStatus,
+			Retries:    len(attempts),
+		})
 	}
 
 	return nil, nil, fmt.Errorf("all credentials exhausted after %d retries: %w", retryCount, lastErr)
@@ -593,6 +613,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 	var lastErr error
 	var retryCount int
+	var attempts []AttemptRecord
+	var lastAttemptStatus int
 
 	for i, route := range routes {
 		if i > 0 {
@@ -665,6 +687,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			continue
 		}
 
+		attemptStart := time.Now()
 		httpResp, err := e.client.Do(httpReq)
 		if err != nil {
 			release()
@@ -700,6 +723,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 				})
 			}
 			lastErr = fmt.Errorf("upstream rate limit (429) on credential %s (retry after %ds): %s", route.Credential.ID, retryAfter, strings.TrimSpace(bodyStr))
+			lastAttemptStatus = httpResp.StatusCode
+			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
 			time.Sleep(calculateBackoff(i))
 			continue
 		}
@@ -710,6 +735,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			release()
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
 			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
+			lastAttemptStatus = httpResp.StatusCode
+			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
 			continue
 		}
 
@@ -728,6 +755,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 				}
 			}
 			lastErr = fmt.Errorf("upstream returned %d", httpResp.StatusCode)
+			lastAttemptStatus = httpResp.StatusCode
+			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
 			time.Sleep(calculateBackoff(i))
 			continue
 		}
@@ -889,6 +918,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		inputCost := (float64(totalTokens.PromptTokens) / 1_000_000.0) * route.Model.InputPricePer1M
 		outputCost := (float64(totalTokens.CompletionTokens) / 1_000_000.0) * route.Model.OutputPricePer1M
+		costUSD := inputCost + outputCost
+		e.backfillActualCost(reqID, costUSD)
 
 		log := &models.RequestLog{
 			GatewayAPIKeyID: &gatewayKey.ID,
@@ -901,17 +932,38 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			InputTokens:     totalTokens.PromptTokens,
 			OutputTokens:    totalTokens.CompletionTokens,
 			TotalTokens:     totalTokens.TotalTokens,
-			CostUSD:         inputCost + outputCost,
+			CostUSD:         costUSD,
 			RetryCount:      retryCount,
 			TTFTMs:          ttftMs,
 			ResponseHash:    respHash,
 			ResponseBytes:   respBytes,
+			Attempts:        MarshalAttempts(attempts),
 		}
 
 		return log, nil
 	}
 
+	if len(attempts) > 0 {
+		c.Set(CtxFailoverInfo, &FailoverInfo{
+			Attempts:   MarshalAttempts(attempts),
+			LastStatus: lastAttemptStatus,
+			Retries:    len(attempts),
+		})
+	}
+
 	return nil, fmt.Errorf("all credentials exhausted after %d retries: %w", retryCount, lastErr)
+}
+
+func (e *Engine) backfillActualCost(requestID string, cost float64) {
+	if e.decisionRepo == nil || requestID == "" {
+		return
+	}
+	go func(rid string, c float64) {
+		defer func() { _ = recover() }()
+		if err := e.decisionRepo.UpdateActualCostByRequestID(context.Background(), rid, c); err != nil {
+			log.Printf("backfill actual cost: %v", err)
+		}
+	}(requestID, cost)
 }
 
 func getCredentialDisplayName(c *models.Credential) string {
