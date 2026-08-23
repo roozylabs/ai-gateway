@@ -194,3 +194,18 @@ type RequestPayload struct {
 	PromptHash      string          `json:"promptHash" db:"prompt_hash"`
 	ByteSize        int             `json:"byteSize" db:"byte_size"`
 }
+
+type ToolCallRecord struct {
+	Name      string          `json:"name"`
+	CallID    string          `json:"call_id,omitempty"`
+	Arguments json.RawMessage `json:"arguments,omitempty"`
+}
+
+type ToolInvocation struct {
+	ID        int64           `db:"id" json:"id"`
+	RequestID string          `db:"request_id" json:"request_id"`
+	ToolName  string          `db:"tool_name" json:"tool_name"`
+	CallID    *string         `db:"call_id" json:"call_id"`
+	Arguments json.RawMessage `db:"arguments" json:"arguments"`
+	CreatedAt time.Time       `db:"created_at" json:"created_at"`
+}

@@ -41,6 +41,7 @@ type Engine struct {
 	policyRepo   *repository.RoutingPolicyRepository
 	decisionRepo *repository.RoutingDecisionRepository
 	payloads     *repository.PayloadRepository
+	toolCalls    *repository.ToolInvocationRepository
 	telemetry    *goredis.ModelTelemetryStore
 	encKey       string
 	maxRetries   int
@@ -48,7 +49,7 @@ type Engine struct {
 	client       *http.Client
 }
 
-func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, telemetry *goredis.ModelTelemetryStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int, budgetMgr *BudgetManager, policyRepo *repository.RoutingPolicyRepository, decisionRepo *repository.RoutingDecisionRepository, payloads *repository.PayloadRepository) *Engine {
+func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, telemetry *goredis.ModelTelemetryStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int, budgetMgr *BudgetManager, policyRepo *repository.RoutingPolicyRepository, decisionRepo *repository.RoutingDecisionRepository, payloads *repository.PayloadRepository, toolCalls *repository.ToolInvocationRepository) *Engine {
 	proxyFunc := http.ProxyFromEnvironment
 	if customProxy := os.Getenv("GLOBAL_PROXY_URL"); customProxy != "" {
 		if proxyURL, err := url.Parse(customProxy); err == nil {
@@ -81,6 +82,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		policyRepo:   policyRepo,
 		decisionRepo: decisionRepo,
 		payloads:     payloads,
+		toolCalls:    toolCalls,
 		encKey:       encKey,
 		maxRetries:   maxRetries,
 		cooldownSecs: cooldownSecs,
@@ -530,6 +532,17 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			log.ErrorMessage = sql.NullString{String: resp.Error.Message, Valid: true}
 		}
 
+		if e.toolCalls != nil {
+			if recs := ExtractToolCallsFromResponse(resp); len(recs) > 0 {
+				go func(requestID string, recs []ToolCallRecord) {
+					defer func() { _ = recover() }()
+					if err := e.toolCalls.CreateBatch(context.Background(), requestID, recs); err != nil {
+						fmt.Printf("persist tool invocations: %v\n", err)
+					}
+				}(reqID, recs)
+			}
+		}
+
 		return resp, log, nil
 	}
 
@@ -750,6 +763,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		mw := io.MultiWriter(c.Writer, hasher)
 		scanner := bufio.NewScanner(httpResp.Body)
 		scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+		streamToolAcc := NewStreamToolAccumulator()
 
 		for scanner.Scan() {
 			line := scanner.Bytes()
@@ -792,6 +806,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 					if content, ok := ch.Delta["content"].(string); ok {
 						outputCharCount += len(content)
 					}
+					streamToolAcc.Observe(ch.Delta)
 				}
 			}
 
@@ -822,6 +837,18 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		_, _ = c.Writer.Write([]byte("data: [DONE]\n\n"))
 		c.Writer.Flush()
+
+		if e.toolCalls != nil {
+			if recs := streamToolAcc.Finish(); len(recs) > 0 {
+				go func(requestID string, recs []ToolCallRecord) {
+					defer func() { _ = recover() }()
+					if err := e.toolCalls.CreateBatch(context.Background(), requestID, recs); err != nil {
+						fmt.Printf("persist tool invocations: %v\n", err)
+					}
+				}(reqID, recs)
+			}
+		}
+
 		respHash := hex.EncodeToString(hasher.Sum(nil))
 		respBytes := outputCharCount
 
