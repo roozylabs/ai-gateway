@@ -572,8 +572,8 @@ export interface ApiLogAnalytics {
 }
 
 export async function apiGetLogAnalytics(params?: { days?: number }): Promise<ApiLogAnalytics> {
-  const response = await api.get<ApiLogAnalytics>('/analytics/logs', { params });
-  return response.data;
+  const response = await api.get<any>('/analytics/logs', { params });
+  return response.data?.data || response.data;
 }
 
 export interface ApiRoutingSimulationReq {

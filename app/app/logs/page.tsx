@@ -78,10 +78,16 @@ export default function LogsPage() {
     enabled: activeTab === 'routing',
   });
 
-  const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
+  const { data: rawAnalyticsData, isLoading: analyticsLoading } = useQuery({
     queryKey: ['analytics-logs', timeRangeDays],
     queryFn: () => apiGetLogAnalytics({ days: timeRangeDays }),
   });
+
+  const analyticsData = React.useMemo(() => {
+    if (!rawAnalyticsData) return null;
+    const raw = rawAnalyticsData as any;
+    return raw?.data ? raw.data : raw;
+  }, [rawAnalyticsData]);
 
   const handleExportCSV = React.useCallback(() => {
     const logs = logsData?.data || [];
