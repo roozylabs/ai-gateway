@@ -31,6 +31,12 @@ import {
   RocketOutlined,
   SlidersOutlined,
   PlayCircleOutlined,
+  SafetyCertificateOutlined,
+  WalletOutlined,
+  TrophyOutlined,
+  ArrowRightOutlined,
+  CodeOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader, StatusTag } from '@/components/atoms';
@@ -49,6 +55,7 @@ const { TextArea } = Input;
 
 export default function RoutingPlaygroundPage() {
   const [activeTab, setActiveTab] = useState<'tuner' | 'compare'>('tuner');
+  const [activePipelineStep, setActivePipelineStep] = useState<number>(0);
 
   // Input states
   const [prompt, setPrompt] = useState<string>(
@@ -135,12 +142,11 @@ export default function RoutingPlaygroundPage() {
     enabled: activeTab === 'compare' && policies.length > 0,
   });
 
-  const safeStr = (v: any) => (v ? String(v) : '');
-
   const columnsCandidates = [
     {
       title: 'Rank',
       key: 'rank',
+      width: 70,
       render: (_: any, __: any, index: number) => (
         <Tag color={index === 0 ? 'gold' : 'default'} style={{ fontWeight: 'bold' }}>
           #{index + 1}
@@ -151,9 +157,14 @@ export default function RoutingPlaygroundPage() {
       title: 'Candidate Model',
       dataIndex: 'displayName',
       key: 'displayName',
+      width: 180,
       render: (name: string, record: ApiModelScoreDetail) => (
-        <Space direction="vertical" size={0}>
-          <Text strong style={{ color: record.slug === simResult?.selectedModel ? '#1677ff' : undefined }}>
+        <Space direction="vertical" size={0} style={{ maxWidth: 160 }}>
+          <Text
+            ellipsis={{ tooltip: name || record.slug }}
+            strong
+            style={{ color: record.slug === simResult?.selectedModel ? '#1677ff' : undefined, display: 'block' }}
+          >
             {name || record.slug}
           </Text>
           <Text type="secondary" style={{ fontSize: 11 }}>
@@ -166,8 +177,9 @@ export default function RoutingPlaygroundPage() {
       title: 'Final Score',
       dataIndex: 'score',
       key: 'score',
-      render: (score: number, record: ApiModelScoreDetail) => (
-        <div style={{ width: 140 }}>
+      width: 150,
+      render: (score: number) => (
+        <div style={{ width: 130 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
             <Text strong style={{ color: score >= 0.8 ? '#52c41a' : score >= 0.5 ? '#faad14' : '#ff4d4f' }}>
               {(score * 100).toFixed(1)}%
@@ -185,8 +197,9 @@ export default function RoutingPlaygroundPage() {
     {
       title: 'Price / 1M',
       key: 'price',
+      width: 140,
       render: (_: any, record: ApiModelScoreDetail) => (
-        <Text style={{ fontSize: 11 }}>
+        <Text style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
           ${record.inputPrice1M.toFixed(2)} in / ${record.outputPrice1M.toFixed(2)} out
         </Text>
       ),
@@ -197,15 +210,58 @@ export default function RoutingPlaygroundPage() {
       key: 'reasons',
       render: (reasons: string[]) => (
         <Space wrap size={[2, 2]}>
-          {reasons && reasons.length > 0
-            ? reasons.map((r, i) => (
-                <Tag key={i} color={r.includes('penalty') ? 'volcano' : 'blue'} style={{ fontSize: 10 }}>
-                  {r}
-                </Tag>
-              ))
-            : <Text type="secondary" style={{ fontSize: 11 }}>Optimal match</Text>}
+          {reasons && reasons.length > 0 ? (
+            reasons.map((r, i) => (
+              <Tag key={i} color={r.includes('penalty') ? 'volcano' : 'blue'} style={{ fontSize: 10 }}>
+                {r}
+              </Tag>
+            ))
+          ) : (
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              Optimal match
+            </Text>
+          )}
         </Space>
       ),
+    },
+  ];
+
+  // Steps definition for Behind-the-Scenes Pipeline Diagram
+  const pipelineSteps = [
+    {
+      id: 1,
+      title: '1. Request Classifier',
+      icon: <CodeOutlined style={{ fontSize: 18, color: '#1890ff' }} />,
+      badge: `Task: ${simResult?.taskType || 'coding'} | ${simResult?.complexity || 'low'}`,
+      description: 'Parses prompt to classify task type, required reasoning capability, and estimated context tokens.',
+    },
+    {
+      id: 2,
+      title: '2. Active Pool Filter',
+      icon: <SafetyCertificateOutlined style={{ fontSize: 18, color: '#52c41a' }} />,
+      badge: `${simResult?.candidates?.length || 0} Models Active`,
+      description: 'Filters candidate models against active credentials pool (only providers with valid API keys survive).',
+    },
+    {
+      id: 3,
+      title: '3. Policy Scorer',
+      icon: <SlidersOutlined style={{ fontSize: 18, color: '#faad14' }} />,
+      badge: `Policy: ${simResult?.policyName || 'balanced'}`,
+      description: 'Calculates weighted multi-criteria score matrix combining Task Match, Quality, Cost, and Speed weights.',
+    },
+    {
+      id: 4,
+      title: '4. Budget Safeguard',
+      icon: <WalletOutlined style={{ fontSize: 18, color: '#eb2f96' }} />,
+      badge: `Status: ${simResult?.budgetStatus || 'healthy'}`,
+      description: 'Applies real-time spend limits & price penalties if budget is in Warning, Critical, or Exceeded state.',
+    },
+    {
+      id: 5,
+      title: '5. Winner Selection',
+      icon: <TrophyOutlined style={{ fontSize: 18, color: '#722ed1' }} />,
+      badge: simResult?.selectedModel || 'Winner',
+      description: 'Selects top-scoring model and assigns request route with instant zero-delay rotation fallback.',
     },
   ];
 
@@ -215,6 +271,97 @@ export default function RoutingPlaygroundPage() {
         title="Routing Simulation & Playground"
         description="Interactive playground to test prompts, simulate policy weights, compare routing strategies, and inspect decision traces in real-time"
       />
+
+      {/* Behind The Scenes Smart Routing Pipeline Header */}
+      <Card
+        style={{
+          marginBottom: 20,
+          borderRadius: 12,
+          background: 'linear-gradient(135deg, rgba(16, 24, 40, 0.95) 0%, rgba(24, 34, 54, 0.95) 100%)',
+          border: '1px solid rgba(22, 119, 255, 0.3)',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+        }}
+        bodyStyle={{ padding: 20 }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Space>
+            <BranchesOutlined style={{ fontSize: 20, color: '#1677ff' }} />
+            <Text strong style={{ fontSize: 15, color: '#fff' }}>
+              BEHIND THE SCENES: Smart Routing Pipeline Flow
+            </Text>
+          </Space>
+          <Tag color="blue" style={{ borderRadius: 10 }}>
+            Real-Time Engine Visualizer
+          </Tag>
+        </div>
+
+        {/* Animated Flow Nodes Grid */}
+        <Row gutter={[12, 12]} align="middle" justify="space-between">
+          {pipelineSteps.map((step, idx) => (
+            <React.Fragment key={step.id}>
+              <Col flex="1" style={{ minWidth: 170 }}>
+                <div
+                  onClick={() => setActivePipelineStep(idx)}
+                  style={{
+                    background: activePipelineStep === idx ? 'rgba(22, 119, 255, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                    border: `1px solid ${activePipelineStep === idx ? '#1677ff' : 'rgba(255, 255, 255, 0.1)'}`,
+                    borderRadius: 10,
+                    padding: '12px 14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: activePipelineStep === idx ? '0 0 12px rgba(22, 119, 255, 0.4)' : undefined,
+                  }}
+                >
+                  <Space style={{ marginBottom: 6 }}>
+                    {step.icon}
+                    <Text strong style={{ fontSize: 12, color: activePipelineStep === idx ? '#fff' : '#d9d9d9' }}>
+                      {step.title}
+                    </Text>
+                  </Space>
+                  <div>
+                    <Tag
+                      color={
+                        step.id === 1
+                          ? 'purple'
+                          : step.id === 2
+                          ? 'green'
+                          : step.id === 3
+                          ? 'gold'
+                          : step.id === 4
+                          ? 'magenta'
+                          : 'blue'
+                      }
+                      style={{ fontSize: 10, margin: 0 }}
+                    >
+                      {step.badge}
+                    </Tag>
+                  </div>
+                </div>
+              </Col>
+              {idx < pipelineSteps.length - 1 && (
+                <Col style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <ArrowRightOutlined style={{ color: '#1677ff', fontSize: 14, opacity: 0.7 }} />
+                </Col>
+              )}
+            </React.Fragment>
+          ))}
+        </Row>
+
+        {/* Active Step Detailed Explanation */}
+        <div
+          style={{
+            marginTop: 14,
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: 'rgba(0, 0, 0, 0.3)',
+            borderLeft: '3px solid #1677ff',
+          }}
+        >
+          <Text style={{ fontSize: 12, color: '#e6f4ff' }}>
+            <strong>{pipelineSteps[activePipelineStep].title}:</strong> {pipelineSteps[activePipelineStep].description}
+          </Text>
+        </div>
+      </Card>
 
       {/* Mode Switcher */}
       <Card bodyStyle={{ padding: 16 }} style={{ marginBottom: 20, borderRadius: 8 }}>
@@ -302,29 +449,53 @@ export default function RoutingPlaygroundPage() {
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                       <div>
                         <Row justify="space-between">
-                          <Col><Text style={{ fontSize: 12 }}>Task Match Weight:</Text></Col>
-                          <Col><Text strong style={{ fontSize: 12, color: '#722ed1' }}>{taskWeight}%</Text></Col>
+                          <Col>
+                            <Text style={{ fontSize: 12 }}>Task Match Weight:</Text>
+                          </Col>
+                          <Col>
+                            <Text strong style={{ fontSize: 12, color: '#722ed1' }}>
+                              {taskWeight}%
+                            </Text>
+                          </Col>
                         </Row>
                         <Slider value={taskWeight} onChange={(v) => setTaskWeight(v)} min={0} max={100} />
                       </div>
                       <div>
                         <Row justify="space-between">
-                          <Col><Text style={{ fontSize: 12 }}>Quality Weight:</Text></Col>
-                          <Col><Text strong style={{ fontSize: 12, color: '#faad14' }}>{qualityWeight}%</Text></Col>
+                          <Col>
+                            <Text style={{ fontSize: 12 }}>Quality Weight:</Text>
+                          </Col>
+                          <Col>
+                            <Text strong style={{ fontSize: 12, color: '#faad14' }}>
+                              {qualityWeight}%
+                            </Text>
+                          </Col>
                         </Row>
                         <Slider value={qualityWeight} onChange={(v) => setQualityWeight(v)} min={0} max={100} />
                       </div>
                       <div>
                         <Row justify="space-between">
-                          <Col><Text style={{ fontSize: 12 }}>Cost Efficiency Weight:</Text></Col>
-                          <Col><Text strong style={{ fontSize: 12, color: '#52c41a' }}>{costWeight}%</Text></Col>
+                          <Col>
+                            <Text style={{ fontSize: 12 }}>Cost Efficiency Weight:</Text>
+                          </Col>
+                          <Col>
+                            <Text strong style={{ fontSize: 12, color: '#52c41a' }}>
+                              {costWeight}%
+                            </Text>
+                          </Col>
                         </Row>
                         <Slider value={costWeight} onChange={(v) => setCostWeight(v)} min={0} max={100} />
                       </div>
                       <div>
                         <Row justify="space-between">
-                          <Col><Text style={{ fontSize: 12 }}>Speed / TTFT Weight:</Text></Col>
-                          <Col><Text strong style={{ fontSize: 12, color: '#13c2c2' }}>{speedWeight}%</Text></Col>
+                          <Col>
+                            <Text style={{ fontSize: 12 }}>Speed / TTFT Weight:</Text>
+                          </Col>
+                          <Col>
+                            <Text strong style={{ fontSize: 12, color: '#13c2c2' }}>
+                              {speedWeight}%
+                            </Text>
+                          </Col>
                         </Row>
                         <Slider value={speedWeight} onChange={(v) => setSpeedWeight(v)} min={0} max={100} />
                       </div>
@@ -400,9 +571,7 @@ export default function RoutingPlaygroundPage() {
                     <Space direction="vertical" align="end" size={2}>
                       <Tag color="purple">Task: {simResult?.taskType || 'general'}</Tag>
                       <Tag color="geekblue">Complexity: {simResult?.complexity || 'standard'}</Tag>
-                      {simResult?.downgradeReason && (
-                        <Tag color="volcano">{simResult.downgradeReason}</Tag>
-                      )}
+                      {simResult?.downgradeReason && <Tag color="volcano">{simResult.downgradeReason}</Tag>}
                     </Space>
                   </Col>
                 </Row>
@@ -460,14 +629,30 @@ export default function RoutingPlaygroundPage() {
                   <Descriptions.Item label="Complexity">{compareBalanced?.complexity || '-'}</Descriptions.Item>
                 </Descriptions>
 
-                <Text strong style={{ fontSize: 12 }}>Candidate Model Scores:</Text>
+                <Text strong style={{ fontSize: 12 }}>
+                  Candidate Model Scores:
+                </Text>
                 <Table
                   dataSource={compareBalanced?.candidates || []}
                   pagination={false}
                   size="small"
                   columns={[
-                    { title: 'Model', dataIndex: 'slug', key: 'slug', render: (s: string) => <Text style={{ fontSize: 11 }}>{s}</Text> },
-                    { title: 'Score', dataIndex: 'score', key: 'score', render: (s: number) => <Text strong style={{ fontSize: 11 }}>{(s * 100).toFixed(0)}%</Text> },
+                    {
+                      title: 'Model',
+                      dataIndex: 'slug',
+                      key: 'slug',
+                      render: (s: string) => <Text style={{ fontSize: 11 }}>{s}</Text>,
+                    },
+                    {
+                      title: 'Score',
+                      dataIndex: 'score',
+                      key: 'score',
+                      render: (s: number) => (
+                        <Text strong style={{ fontSize: 11 }}>
+                          {(s * 100).toFixed(0)}%
+                        </Text>
+                      ),
+                    },
                   ]}
                 />
               </Space>
@@ -498,14 +683,30 @@ export default function RoutingPlaygroundPage() {
                   <Descriptions.Item label="Complexity">{compareCheap?.complexity || '-'}</Descriptions.Item>
                 </Descriptions>
 
-                <Text strong style={{ fontSize: 12 }}>Candidate Model Scores:</Text>
+                <Text strong style={{ fontSize: 12 }}>
+                  Candidate Model Scores:
+                </Text>
                 <Table
                   dataSource={compareCheap?.candidates || []}
                   pagination={false}
                   size="small"
                   columns={[
-                    { title: 'Model', dataIndex: 'slug', key: 'slug', render: (s: string) => <Text style={{ fontSize: 11 }}>{s}</Text> },
-                    { title: 'Score', dataIndex: 'score', key: 'score', render: (s: number) => <Text strong style={{ fontSize: 11 }}>{(s * 100).toFixed(0)}%</Text> },
+                    {
+                      title: 'Model',
+                      dataIndex: 'slug',
+                      key: 'slug',
+                      render: (s: string) => <Text style={{ fontSize: 11 }}>{s}</Text>,
+                    },
+                    {
+                      title: 'Score',
+                      dataIndex: 'score',
+                      key: 'score',
+                      render: (s: number) => (
+                        <Text strong style={{ fontSize: 11 }}>
+                          {(s * 100).toFixed(0)}%
+                        </Text>
+                      ),
+                    },
                   ]}
                 />
               </Space>
@@ -536,14 +737,30 @@ export default function RoutingPlaygroundPage() {
                   <Descriptions.Item label="Complexity">{compareQuality?.complexity || '-'}</Descriptions.Item>
                 </Descriptions>
 
-                <Text strong style={{ fontSize: 12 }}>Candidate Model Scores:</Text>
+                <Text strong style={{ fontSize: 12 }}>
+                  Candidate Model Scores:
+                </Text>
                 <Table
                   dataSource={compareQuality?.candidates || []}
                   pagination={false}
                   size="small"
                   columns={[
-                    { title: 'Model', dataIndex: 'slug', key: 'slug', render: (s: string) => <Text style={{ fontSize: 11 }}>{s}</Text> },
-                    { title: 'Score', dataIndex: 'score', key: 'score', render: (s: number) => <Text strong style={{ fontSize: 11 }}>{(s * 100).toFixed(0)}%</Text> },
+                    {
+                      title: 'Model',
+                      dataIndex: 'slug',
+                      key: 'slug',
+                      render: (s: string) => <Text style={{ fontSize: 11 }}>{s}</Text>,
+                    },
+                    {
+                      title: 'Score',
+                      dataIndex: 'score',
+                      key: 'score',
+                      render: (s: number) => (
+                        <Text strong style={{ fontSize: 11 }}>
+                          {(s * 100).toFixed(0)}%
+                        </Text>
+                      ),
+                    },
                   ]}
                 />
               </Space>
