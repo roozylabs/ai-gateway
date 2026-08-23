@@ -296,7 +296,7 @@ func (r *Router) ResolveSemantic(
 	// Filter by active credentials, gateway key allowed models & provider restriction
 	var candidates []*models.Model
 	for _, m := range allModels {
-		if activeProviderIDs != nil && len(activeProviderIDs) > 0 {
+		if len(activeProviderIDs) > 0 {
 			if !activeProviderIDs[m.ProviderID] {
 				continue
 			}
