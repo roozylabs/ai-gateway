@@ -111,6 +111,10 @@ func (r *RoutingPolicyRepository) Create(ctx context.Context, p *models.RoutingP
 		return err
 	}
 
+	if p.IsDefault {
+		_, _ = r.db.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1 OR user_id IS NULL OR user_id = ''`, p.UserID)
+	}
+
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO routing_policies (id, user_id, name, weights, constraints, enabled, is_default, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
@@ -125,6 +129,10 @@ func (r *RoutingPolicyRepository) Update(ctx context.Context, p *models.RoutingP
 
 	if err := marshalPolicyJSON(p); err != nil {
 		return err
+	}
+
+	if p.IsDefault {
+		_, _ = r.db.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1 OR user_id IS NULL OR user_id = ''`, p.UserID)
 	}
 
 	_, err := r.db.ExecContext(ctx,
@@ -146,12 +154,14 @@ func (r *RoutingPolicyRepository) SetDefault(ctx context.Context, id, userID str
 		_ = tx.Rollback()
 	}()
 
-	_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1`, userID)
+	// Reset default for all policies belonging to user or global system
+	_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1 OR user_id IS NULL OR user_id = ''`, userID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = true, enabled = true, updated_at = NOW() WHERE id = $1 AND user_id = $2`, id, userID)
+	// Set selected policy as default
+	_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = true, enabled = true, updated_at = NOW() WHERE id = $1`, id)
 	if err != nil {
 		return err
 	}
