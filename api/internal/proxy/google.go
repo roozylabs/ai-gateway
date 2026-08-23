@@ -39,6 +39,9 @@ func (a *GoogleAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 		"messages": req.Messages,
 		"stream":   req.Stream,
 	}
+	if len(req.Tools) > 0 {
+		body["tools"] = ConvertGenericToolsToOpenAI(req.Tools)
+	}
 	if req.Stream {
 		body["stream_options"] = map[string]interface{}{
 			"include_usage": true,

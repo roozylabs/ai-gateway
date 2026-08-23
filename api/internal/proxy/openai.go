@@ -20,6 +20,12 @@ func (a *OpenAIAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 		"messages": req.Messages,
 		"stream":   req.Stream,
 	}
+	if len(req.Tools) > 0 {
+		body["tools"] = ConvertGenericToolsToOpenAI(req.Tools)
+	}
+	if req.ToolChoice != nil {
+		body["tool_choice"] = req.ToolChoice
+	}
 	if req.Stream {
 		body["stream_options"] = map[string]interface{}{
 			"include_usage": true,

@@ -51,6 +51,9 @@ export default function SandboxPage() {
   const [systemPrompt, setSystemPrompt] = useState<string>('You are a helpful AI coding assistant.');
   const [userPrompt, setUserPrompt] = useState<string>('Explain Server-Sent Events (SSE) streaming in 2 paragraphs.');
   const [isStreaming, setIsStreaming] = useState<boolean>(true);
+  const [enableTools, setEnableTools] = useState<boolean>(false);
+  const [enableWebSearch, setEnableWebSearch] = useState<boolean>(false);
+  const [detectedToolCalls, setDetectedToolCalls] = useState<any[]>([]);
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [streamedText, setStreamedText] = useState<string>('');
@@ -177,11 +180,55 @@ export default function SandboxPage() {
 
     setIsGenerating(true);
     setStreamedText('');
+    setDetectedToolCalls([]);
     setLatencyMs(null);
     setTtftMs(null);
 
     const startTime = performance.now();
     let firstTokenTime: number | null = null;
+
+    const requestBody: any = {
+      model: selectedModel,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      stream: isStreaming,
+    };
+
+    if (enableTools) {
+      const toolsList: any[] = [];
+      if (enableWebSearch) {
+        toolsList.push({
+          type: 'function',
+          function: {
+            name: 'web_search',
+            description: 'Search Google real-time search engine for fresh query info',
+            parameters: {
+              type: 'object',
+              properties: { query: { type: 'string' } },
+              required: ['query'],
+            },
+          },
+        });
+      }
+      toolsList.push({
+        type: 'function',
+        function: {
+          name: 'get_exchange_rate',
+          description: 'Get real-time exchange rate for target currency pair',
+          parameters: {
+            type: 'object',
+            properties: {
+              base_currency: { type: 'string' },
+              target_currency: { type: 'string' },
+            },
+            required: ['base_currency', 'target_currency'],
+          },
+        },
+      });
+      requestBody.tools = toolsList;
+    }
 
     try {
       // Send request to Gateway proxy endpoint /api/v1/chat/completions
@@ -191,14 +238,7 @@ export default function SandboxPage() {
           'Content-Type': 'application/json',
           'X-Sandbox-Key-Prefix': activeKeyPrefix || '',
         },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          stream: isStreaming,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -383,6 +423,24 @@ export default function SandboxPage() {
                   placeholder="Enter your prompt here..."
                 />
               </Form.Item>
+
+              <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <Typography.Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8, color: '#1677ff' }}>
+                  🛠️ Tool Gateway & Function Calling:
+                </Typography.Text>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography.Text style={{ fontSize: 12 }}>Enable Tool Gateway (Function Calling):</Typography.Text>
+                    <Switch size="small" checked={enableTools} onChange={(val) => setEnableTools(val)} />
+                  </div>
+                  {enableTools ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography.Text style={{ fontSize: 12 }}>Include Built-in Web Search Tool:</Typography.Text>
+                      <Switch size="small" checked={enableWebSearch} onChange={(val) => setEnableWebSearch(val)} />
+                    </div>
+                  ) : null}
+                </Space>
+              </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <Space>

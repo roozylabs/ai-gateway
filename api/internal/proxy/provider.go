@@ -8,6 +8,8 @@ import (
 type ProviderRequest struct {
 	Model       string
 	Messages    []map[string]interface{}
+	Tools       []interface{}
+	ToolChoice  interface{}
 	Stream      bool
 	MaxTokens   int
 	Temperature float64

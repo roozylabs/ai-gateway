@@ -33,6 +33,10 @@ func (a *AnthropicAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReq
 		"messages": messages,
 		"stream":   req.Stream,
 	}
+	if len(req.Tools) > 0 {
+		openAiTools := ConvertGenericToolsToOpenAI(req.Tools)
+		body["tools"] = ConvertOpenAIToolsToAnthropic(openAiTools)
+	}
 	if systemPrompt != "" {
 		body["system"] = systemPrompt
 	}
@@ -65,13 +69,10 @@ func (a *AnthropicAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReq
 
 func (a *AnthropicAdapter) ParseResponse(body io.Reader) (*ProviderResponse, error) {
 	var raw struct {
-		ID    string `json:"id"`
-		Model string `json:"model"`
-		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-		StopReason string `json:"stop_reason"`
+		ID         string        `json:"id"`
+		Model      string        `json:"model"`
+		Content    []interface{} `json:"content"`
+		StopReason string        `json:"stop_reason"`
 		Usage      struct {
 			InputTokens  int `json:"input_tokens"`
 			OutputTokens int `json:"output_tokens"`
@@ -105,18 +106,29 @@ func (a *AnthropicAdapter) ParseResponse(body io.Reader) (*ProviderResponse, err
 	}
 
 	var textContent string
-	for _, c := range raw.Content {
-		if c.Type == "text" {
-			textContent += c.Text
+	for _, block := range raw.Content {
+		if blockMap, ok := block.(map[string]interface{}); ok {
+			if blockType, _ := blockMap["type"].(string); blockType == "text" {
+				if t, ok := blockMap["text"].(string); ok {
+					textContent += t
+				}
+			}
 		}
 	}
 
+	toolCalls := NormalizeAnthropicToolUse(raw.Content)
+
+	msgMap := map[string]interface{}{
+		"role":    "assistant",
+		"content": textContent,
+	}
+	if len(toolCalls) > 0 {
+		msgMap["tool_calls"] = toolCalls
+	}
+
 	resp.Choices = append(resp.Choices, Choice{
-		Index: 0,
-		Message: map[string]interface{}{
-			"role":    "assistant",
-			"content": textContent,
-		},
+		Index:        0,
+		Message:      msgMap,
 		FinishReason: raw.StopReason,
 	})
 
