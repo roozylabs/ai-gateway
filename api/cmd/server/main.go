@@ -74,9 +74,10 @@ func main() {
 
 	// Proxy
 	cooldown := goredis.NewCooldownStore(rdb)
+	telemetry := goredis.NewModelTelemetryStore(rdb)
 	budgetMgr := proxy.NewBudgetManager(budgetRepo)
 	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo, settingRepo)
-	engine := proxy.NewEngine(router, credentialRepo, cooldown, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo)
+	engine := proxy.NewEngine(router, credentialRepo, cooldown, telemetry, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -97,7 +98,7 @@ func main() {
 	budgetHandler := handlers.NewBudgetHandler(budgetRepo)
 	budgetStatusHandler := handlers.NewBudgetStatusHandler(budgetMgr)
 	routingDecisionHandler := handlers.NewRoutingDecisionHandler(decisionRepo)
-	simulateHandler := handlers.NewSimulateHandler(modelRepo, providerRepo, credentialRepo, routingPolicyRepo)
+	simulateHandler := handlers.NewSimulateHandler(modelRepo, providerRepo, credentialRepo, routingPolicyRepo, telemetry)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)

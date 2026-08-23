@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/models"
 	"github.com/roozylabs/ai-gateway/internal/proxy"
+	goredis "github.com/roozylabs/ai-gateway/internal/redis"
 	"github.com/roozylabs/ai-gateway/internal/repository"
 )
 
@@ -14,6 +15,7 @@ type SimulateHandler struct {
 	providers *repository.ProviderRepository
 	creds     *repository.CredentialRepository
 	policies  *repository.RoutingPolicyRepository
+	telemetry *goredis.ModelTelemetryStore
 }
 
 func NewSimulateHandler(
@@ -21,12 +23,14 @@ func NewSimulateHandler(
 	providers *repository.ProviderRepository,
 	creds *repository.CredentialRepository,
 	policies *repository.RoutingPolicyRepository,
+	telemetry *goredis.ModelTelemetryStore,
 ) *SimulateHandler {
 	return &SimulateHandler{
 		models:    models,
 		providers: providers,
 		creds:     creds,
 		policies:  policies,
+		telemetry: telemetry,
 	}
 }
 
@@ -153,8 +157,17 @@ func (h *SimulateHandler) Simulate(c *gin.Context) {
 		candidates = append(candidates, &m)
 	}
 
-	// 4. Calculate scores
-	scores := proxy.ScoreCandidatesWithBudget(candidates, chars, policy, req.BudgetStatus)
+	// 4. Calculate scores with dynamic latency feedback telemetry
+	var telemetryMap map[string]*goredis.ModelMetrics
+	if h.telemetry != nil && len(candidates) > 0 {
+		var candidateSlugs []string
+		for _, m := range candidates {
+			candidateSlugs = append(candidateSlugs, m.Slug)
+		}
+		telemetryMap, _ = h.telemetry.GetMultipleModelMetrics(c.Request.Context(), candidateSlugs)
+	}
+
+	scores := proxy.ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, req.BudgetStatus, telemetryMap)
 
 	var scoreDetails []ModelScoreDetail
 	selectedModel := ""

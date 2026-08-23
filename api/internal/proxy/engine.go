@@ -38,13 +38,14 @@ type Engine struct {
 	budgetMgr    *BudgetManager
 	policyRepo   *repository.RoutingPolicyRepository
 	decisionRepo *repository.RoutingDecisionRepository
+	telemetry    *goredis.ModelTelemetryStore
 	encKey       string
 	maxRetries   int
 	cooldownSecs int
 	client       *http.Client
 }
 
-func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int, budgetMgr *BudgetManager, policyRepo *repository.RoutingPolicyRepository, decisionRepo *repository.RoutingDecisionRepository) *Engine {
+func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, telemetry *goredis.ModelTelemetryStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int, budgetMgr *BudgetManager, policyRepo *repository.RoutingPolicyRepository, decisionRepo *repository.RoutingDecisionRepository) *Engine {
 	proxyFunc := http.ProxyFromEnvironment
 	if customProxy := os.Getenv("GLOBAL_PROXY_URL"); customProxy != "" {
 		if proxyURL, err := url.Parse(customProxy); err == nil {
@@ -68,6 +69,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		router:       router,
 		creds:        creds,
 		cooldown:     cooldown,
+		telemetry:    telemetry,
 		publisher:    publisher,
 		oauthMgr:     NewOAuthTokenManager(cooldown),
 		throttler:    NewProviderThrottler(),
@@ -166,7 +168,7 @@ func (e *Engine) resolveRoutes(c *gin.Context, req *ProxyRequest, gatewayKey *mo
 			}
 		}
 
-		routes, decision, err := e.router.ResolveSemantic(ctx, req, gatewayKey, e.cooldown, sPolicy, budgetStatus)
+		routes, decision, err := e.router.ResolveSemantic(ctx, req, gatewayKey, e.cooldown, e.telemetry, sPolicy, budgetStatus)
 		if err == nil && decision != nil {
 			decision.RequestID = c.GetString("requestID")
 			// Log routing decision asynchronously
@@ -441,6 +443,12 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		}
 
 		latency := int(time.Since(start).Milliseconds())
+
+		if e.telemetry != nil {
+			go func(mSlug string, lat int) {
+				_ = e.telemetry.RecordModelLatency(context.Background(), mSlug, lat, lat)
+			}(route.Model.Slug, latency)
+		}
 
 		modelName := req.Model
 		if modelName == "roozy-auto" || modelName == "" {
@@ -775,6 +783,12 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		}
 
 		latency := int(time.Since(start).Milliseconds())
+
+		if e.telemetry != nil {
+			go func(mSlug string, ttft int, lat int) {
+				_ = e.telemetry.RecordModelLatency(context.Background(), mSlug, ttft, lat)
+			}(route.Model.Slug, ttftMs, latency)
+		}
 
 		modelName := req.Model
 		if modelName == "roozy-auto" || modelName == "" {

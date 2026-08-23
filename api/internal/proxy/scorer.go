@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/ai-gateway/internal/redis"
 )
 
 type RoutingPolicy struct {
@@ -34,6 +35,10 @@ type RoutingDecision struct {
 }
 
 func ScoreCandidates(candidates []*models.Model, chars RequestCharacteristics, policy *RoutingPolicy) []*ModelScore {
+	return ScoreCandidatesWithTelemetry(candidates, chars, policy, nil)
+}
+
+func ScoreCandidatesWithTelemetry(candidates []*models.Model, chars RequestCharacteristics, policy *RoutingPolicy, telemetryMap map[string]*redis.ModelMetrics) []*ModelScore {
 	if len(candidates) == 0 || policy == nil {
 		return nil
 	}
@@ -97,8 +102,26 @@ func ScoreCandidates(candidates []*models.Model, chars RequestCharacteristics, p
 		}
 		costWeight := policy.Weights["cost"]
 
-		// Speed score (already 0-1)
+		// Speed score (dynamic empirical adjustment if telemetry sample available)
 		speedScore := m.SpeedScore
+		if telemetryMap != nil {
+			if metrics, ok := telemetryMap[m.Slug]; ok && metrics != nil && metrics.SampleCount > 0 {
+				if metrics.AvgTTFTMs > 1000.0 {
+					penalty := 1.0 - ((metrics.AvgTTFTMs - 1000.0) / 10000.0)
+					if penalty < 0.15 {
+						penalty = 0.15
+					}
+					speedScore *= penalty
+					reasons = append(reasons, fmt.Sprintf("latency_penalty(ttft=%.0fms)", metrics.AvgTTFTMs))
+				} else if metrics.AvgTTFTMs < 400.0 && metrics.AvgTTFTMs > 0 {
+					speedScore *= 1.15
+					if speedScore > 1.0 {
+						speedScore = 1.0
+					}
+					reasons = append(reasons, fmt.Sprintf("latency_bonus(ttft=%.0fms)", metrics.AvgTTFTMs))
+				}
+			}
+		}
 		speedWeight := policy.Weights["speed"]
 
 		score := taskScore*taskWeight + qualityScore*qualityWeight + costScore*costWeight + speedScore*speedWeight
@@ -160,7 +183,11 @@ const expensiveModelInputPrice = 2.00 // USD per 1M input tokens
 //   - critical → filter out expensive models, ×0.6 penalty for all remaining
 //   - exceeded → cheapest model only; if hardLimit, only free models survive
 func ScoreCandidatesWithBudget(candidates []*models.Model, chars RequestCharacteristics, policy *RoutingPolicy, budgetStatus string) []*ModelScore {
-	scores := ScoreCandidates(candidates, chars, policy)
+	return ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, budgetStatus, nil)
+}
+
+func ScoreCandidatesWithBudgetAndTelemetry(candidates []*models.Model, chars RequestCharacteristics, policy *RoutingPolicy, budgetStatus string, telemetryMap map[string]*redis.ModelMetrics) []*ModelScore {
+	scores := ScoreCandidatesWithTelemetry(candidates, chars, policy, telemetryMap)
 	if len(scores) == 0 {
 		return nil
 	}

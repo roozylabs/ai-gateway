@@ -255,6 +255,7 @@ func (r *Router) ResolveSemantic(
 	req *ProxyRequest,
 	gatewayKey *models.GatewayAPIKey,
 	cooldown *goredis.CooldownStore,
+	telemetry *goredis.ModelTelemetryStore,
 	policy *RoutingPolicy,
 	budgetStatus string,
 ) ([]*Route, *RoutingDecision, error) {
@@ -321,7 +322,16 @@ func (r *Router) ResolveSemantic(
 		candidates = append(candidates, &m)
 	}
 
-	scores := ScoreCandidatesWithBudget(candidates, chars, policy, budgetStatus)
+	var telemetryMap map[string]*goredis.ModelMetrics
+	if telemetry != nil && len(candidates) > 0 {
+		var candidateSlugs []string
+		for _, m := range candidates {
+			candidateSlugs = append(candidateSlugs, m.Slug)
+		}
+		telemetryMap, _ = telemetry.GetMultipleModelMetrics(ctx, candidateSlugs)
+	}
+
+	scores := ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, budgetStatus, telemetryMap)
 	if len(scores) == 0 {
 		return nil, nil, ErrModelNotFound
 	}
