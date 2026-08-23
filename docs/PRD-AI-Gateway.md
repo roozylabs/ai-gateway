@@ -13,6 +13,7 @@
 | 1.6 | 19 August 2026, 21:12 WIB | Added Google Gemini & Cloud OAuth 2.0 Token Refresh Flow Specs |
 | 1.7 | 21 August 2026, 22:56 WIB | Updated V1 Scope with AI Budget Manager & Semantic Router (`roozy-auto`), Cost Pipeline, and Debugging Headers |
 | 1.8 | 23 August 2026, 12:44 WIB | Added Default Active Policy Selection (`PUT /policies/:id/default`), Smart Router Prompt Preview & Score Breakdown Observability, Active Credentials Pre-filtering, and Responsive UI Layout specs |
+| 1.9 | 23 August 2026, 21:00 WIB | Added Circuit Breaker & 50x Quarantine, FinOps Cost Recommendations Engine, Dynamic Latency Feedback Loop, Routing Playground & Interactive Simulator, Web Sandbox, Provider Abstraction Layer, Google OAuth 2.0 Credential Flow; renumbered all sections sequentially |
 
 ---
 
@@ -272,11 +273,17 @@ Pada **V2 Roadmap**, Gateway akan mendukung **Multi-Auth Type System** untuk men
 
 ---
 
-## 10. Client Configuration & Integration Guide Modal
+## 9. Client Configuration & Integration Guide Modal
+
+Client hanya mengetahui:
+- **Base URL:** `https://api.example.com/v1`
+- **API Key:** `gw_sk_xxxxxxxxx`
+
+Client **tidak pernah** mengetahui credential asli seperti `sk-ant-xxxx`, `sk-proj-xxxx`, atau `AIza...`.
 
 Pada modal **Integration Guide** di halaman Gateway API Keys, sistem menyediakan potongan konfigurasi yang disesuaikan secara otomatis berdasarkan provider target:
 
-### 10.1 Interactive Model Picker & Format OpenCode CLI (`opencode.jsonc`)
+### 9.1 Interactive Model Picker & Format OpenCode CLI (`opencode.jsonc`)
 
 Modal Integrasi dilengkapi dengan **Interactive Model Selector** (Dropdown Multi-Select) yang secara otomatis mengambil daftar model aktif terdaftar untuk provider tersebut. Pengguna dapat memilih model mana saja yang ingin disertakan ke dalam konfigurasi `opencode.jsonc`.
 
@@ -317,17 +324,7 @@ Ketika model dipilih atau dihapus pada dropdown, struktur JSON `opencode.jsonc` 
 
 ---
 
-## 10. Client Configuration
-
-Contoh konfigurasi pada client tool:
-- **Base URL:** `https://api.example.com/v1`
-- **API Key:** `gw_sk_xxxxxxxxx`
-
-Client **tidak pernah** mengetahui credential asli seperti `sk-ant-xxxx`, `sk-proj-xxxx`, atau `AIza...`.
-
----
-
-## 11. Request Flow
+## 10. Request Flow
 
 ```text
 Client
@@ -353,11 +350,11 @@ Record usage
 
 ---
 
-## 12. Credential Rotation & Routing Strategies
+## 11. Credential Rotation & Routing Strategies
 
 AI Gateway mendukung tiga jenis **Routing & Credential Allocation Strategies** untuk memilih API Key aktif dari pool provider:
 
-### 12.1 Supported Strategies
+### 11.1 Supported Strategies
 
 1. **Round Robin (Equal)** — *Default Rotation*
    - Request dibagi secara bergiliran (*rotation*) secara merata ke seluruh credential aktif.
@@ -374,7 +371,7 @@ AI Gateway mendukung tiga jenis **Routing & Credential Allocation Strategies** u
 
 ---
 
-### 12.2 Strategy Hierarchy & Scope
+### 11.2 Strategy Hierarchy & Scope
 
 Strategi alokasi credential bekerja secara **per-Provider** dengan hirarki berikut:
 
@@ -393,7 +390,7 @@ Global Strategy Setting (Default)
 
 ---
 
-### 12.3 Implementation & Roadmap Status
+### 11.3 Implementation & Roadmap Status
 
 | Layer | Status | Keterangan |
 |---|---|---|
@@ -403,7 +400,7 @@ Global Strategy Setting (Default)
 
 ---
 
-## 13. Rate Limit Handling
+## 12. Rate Limit Handling
 
 Jika provider mengembalikan `HTTP 429`:
 
@@ -417,7 +414,7 @@ Success (User tetap menerima response normal tanpa error)
 
 ---
 
-## 14. Credential State
+## 13. Credential State
 
 | State | Deskripsi |
 | :--- | :--- |
@@ -428,7 +425,7 @@ Success (User tetap menerima response normal tanpa error)
 
 ---
 
-## 15. Retry Policy
+## 14. Retry Policy
 
 - **Default:** `max retries = 2`
 
@@ -442,37 +439,59 @@ Credential A (429) ──→ Credential B (429) ──→ Credential C (Success 
 
 ---
 
-## 16. Provider Architecture
+## 15. Provider Architecture
 
-Backend menggunakan pattern Provider Abstraction Interface:
+Backend menggunakan pattern Provider Abstraction Interface dengan adapter khusus per provider:
 
 ```text
-       Provider Interface
+       ProviderAdapter Interface
                │
    ┌───────────┼───────────┐
    ↓           ↓           ↓
 OpenAI     Anthropic     Google
+Adapter    Adapter       Adapter
+   │
+   ├── OpenAI Responses Adapter (GPT-4o, Grok, Muse)
+   │
+   └── OpenCode Meta-Adapter (auto-detects sub-adapter by model prefix)
+       ├── gpt-*, grok-*, muse-* → OpenAI Responses Adapter
+       ├── claude-*, qwen3*      → Anthropic Adapter
+       └── default               → OpenAI Adapter
 ```
 
 Setiap provider adapter bertanggung jawab terhadap:
-- Authentication
-- Request transformation
-- Response transformation
-- Streaming handling
-- Error normalization
+- Authentication (Header injection: `Authorization: Bearer`, `x-api-key`, `anthropic-version`)
+- Request transformation (model name mapping, system prompt extraction, tool format conversion)
+- Response transformation (content block parsing, tool_use/tool_calls normalization)
+- Streaming handling (SSE chunk parsing, `choices` array normalization)
+- Error normalization (upstream error mapping to unified `ProviderError`)
+
+### 15.1 Supported Provider Types
+
+| Provider Type | Auth Header | Adapter |
+|---|---|---|
+| `openai` | `Authorization: Bearer <key>` | `OpenAIAdapter` |
+| `anthropic` | `x-api-key: <key>` + `anthropic-version: 2023-06-01` | `AnthropicAdapter` |
+| `google` | `Authorization: Bearer <key>` (OpenAI-compatible) | `GoogleAdapter` |
+| `opencode` | User-Agent `opencode-cli/1.0` + auto-detect | `OpenCodeAdapter` (meta) |
+| `openrouter` | `Authorization: Bearer <key>` | Reuses OpenAI adapter |
+| `groq` | `Authorization: Bearer <key>` | Reuses OpenAI adapter |
+| `deepseek` | `Authorization: Bearer <key>` | Reuses OpenAI adapter |
 
 ---
 
-## 17. Model Routing
+## 16. Model Routing
 
 Mapping model ke provider default & fallback:
 - `claude-sonnet` ──→ Anthropic
 - `gpt-5` ──→ OpenAI
 - `gemini` ──→ Google
 
+> *Catatan: Mapping lengkap tersedia di tabel `models` database dan dapat dikonfigurasi melalui Dashboard UI.*
+
 ---
 
-## 18. Routing Strategy
+## 17. Routing Strategy
 
 - **V1 (MVP):** Round Robin (`A → B → C → A → B → C`)
 - **V1.1:** Least Recently Used (LRU - credential paling lama idle diprioritaskan)
@@ -480,7 +499,7 @@ Mapping model ke provider default & fallback:
 
 ---
 
-## 19. Dashboard Mockup
+## 18. Dashboard Mockup
 
 ```text
 ┌──────────────────────────────────────────────┐
@@ -508,7 +527,7 @@ Mapping model ke provider default & fallback:
 
 ---
 
-## 20. Dashboard Navigation
+## 19. Dashboard Navigation
 
 ```text
 Dashboard
@@ -535,7 +554,7 @@ Settings
 
 ---
 
-## 21. Credentials Table & Actions
+## 20. Credentials Table & Actions
 
 ### Table Schema
 
@@ -549,7 +568,7 @@ Settings
 
 ---
 
-## 22. Request Logs Schema
+## 21. Request Logs Schema
 
 Setiap request mencatat payload log terstruktur:
 - `Request ID`
@@ -581,7 +600,7 @@ Retry: 1
 
 ---
 
-## 23. Security
+## 22. Security
 
 Keamanan adalah aspek paling kritikal karena aplikasi menyimpan private API credentials.
 
@@ -595,7 +614,7 @@ Keamanan adalah aspek paling kritikal karena aplikasi menyimpan private API cred
 
 ---
 
-## 24. Database Schema & Relationships
+## 23. Database Schema & Relationships
 
 ### Core Tables
 - `users`
@@ -631,21 +650,56 @@ request_logs
 
 ---
 
-## 25. Backend Architecture (Go + Gin)
+## 24. Backend Architecture (Go + Gin)
 
 ```text
 internal/
 ├── auth/
 ├── api/
-├── credentials/
-├── providers/
-├── routing/
+├── config/
+├── database/
+├── handlers/
+│   ├── health.go
+│   ├── auth.go
+│   ├── oauth_handler.go
+│   ├── provider.go
+│   ├── credential.go
+│   ├── model.go
+│   ├── gateway_key.go
+│   ├── gateway.go
+│   ├── logs.go
+│   ├── dashboard.go
+│   ├── activeStreams.go
+│   ├── settings.go
+│   ├── sse.go
+│   ├── policy.go
+│   ├── routingRule.go
+│   ├── routingDecision.go
+│   ├── budget.go
+│   ├── finops.go
+│   └── simulate.go
+├── middleware/
+├── models/
 ├── proxy/
-├── retry/
-├── ratelimit/
-├── usage/
-├── logging/
-└── health/
+│   ├── engine.go
+│   ├── router.go
+│   ├── classifier.go
+│   ├── scorer.go
+│   ├── provider.go
+│   ├── tools.go
+│   ├── openai.go
+│   ├── anthropic.go
+│   ├── google.go
+│   ├── opencode.go
+│   ├── openai_responses.go
+│   ├── concurrency.go
+│   ├── throttler.go
+│   ├── oauth.go
+│   └── budget_manager.go
+├── redis/
+├── repository/
+├── service/
+└── utils/
 ```
 
 ### Request Lifecycle
@@ -673,7 +727,7 @@ Usage Recorder
 
 ---
 
-## 26. Redis Responsibilities
+## 25. Redis Responsibilities
 
 Redis dialokasikan untuk state dengan kebutuhan latency sangat rendah:
 - **Credential Cooldown:** `credential:{id}:cooldown`
@@ -685,7 +739,7 @@ Redis dialokasikan untuk state dengan kebutuhan latency sangat rendah:
 
 ---
 
-## 27. Frontend Architecture (Next.js)
+## 26. Frontend Architecture (Next.js)
 
 ```text
 Next.js
@@ -710,47 +764,86 @@ Next.js
 
 ---
 
-## 28. API Design
+## 27. API Design
 
 ### Authentication
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `GET /api/auth/google/login`
+- `GET /api/auth/google/callback`
 
 ### Providers
 - `GET /api/providers`
 - `POST /api/providers`
 - `GET /api/providers/:id`
-- `PATCH /api/providers/:id`
+- `PUT /api/providers/:id`
 - `DELETE /api/providers/:id`
 
 ### Credentials
 - `GET /api/credentials`
-- `POST /api/credentials`
-- `GET /api/credentials/:id`
-- `PATCH /api/credentials/:id`
-- `DELETE /api/credentials/:id`
-- `POST /api/credentials/:id/test`
+- `POST /api/providers/:id/credentials`
+- `GET /api/providers/:id/credentials/:credId`
+- `PUT /api/providers/:id/credentials/:credId`
+- `DELETE /api/credentials/:credId`
+- `POST /api/providers/:id/credentials/:credId/test`
+- `POST /api/providers/:id/credentials/:credId/reveal`
+- `POST /api/providers/:id/credentials/:credId/reset-cooldown`
 
-### Routing Policies & Budgets
+### Models
+- `GET /api/models`
+- `POST /api/providers/:id/models`
+- `PUT /api/providers/:id/models/:modelId`
+- `PATCH /api/providers/:id/models/:modelId/capabilities`
+- `DELETE /api/providers/:id/models/:modelId`
+
+### Gateway Keys
+- `GET /api/gateway-keys`
+- `POST /api/gateway-keys`
+- `DELETE /api/gateway-keys/:id`
+
+### Routing Policies & Rules
 - `GET /api/policies`
 - `POST /api/policies`
 - `PUT /api/policies/:id`
 - `DELETE /api/policies/:id`
+- `PUT /api/policies/:id/default`
+- `POST /api/routing/simulate`
+
+### Budgets
 - `GET /api/budgets`
 - `POST /api/budgets`
 - `PUT /api/budgets/:id`
 - `DELETE /api/budgets/:id`
+- `GET /api/budgets/status`
+
+### Logs & Analytics
+- `GET /api/logs`
+- `GET /api/analytics/logs`
+- `GET /api/analytics/finops`
 - `GET /api/routing/decisions`
+
+### Dashboard & SSE
+- `GET /api/dashboard/stats`
+- `GET /api/dashboard/usage`
+- `GET /api/dashboard/health`
+- `GET /api/dashboard/active-streams`
+- `GET /api/sse`
+
+### Settings
+- `GET /api/settings`
+- `PUT /api/settings`
+
+### Sandbox
+- `POST /api/sandbox/chat/completions`
 
 ### Gateway (OpenAI Compatible)
 - `GET /v1/models`
 - `POST /v1/chat/completions`
-- `POST /v1/responses`
 
 ---
 
-## 29. API Key Authentication Pipeline
+## 28. API Key Authentication Pipeline
 
 ```text
 Gateway Request (Authorization: Bearer gw_sk_xxxxxxxxx)
@@ -768,7 +861,7 @@ Gateway Request (Authorization: Bearer gw_sk_xxxxxxxxx)
 
 ---
 
-## 30. Observability & Monitoring
+## 29. Observability & Monitoring
 
 ### Metrics Utama:
 - Requests per second (RPS)
@@ -786,7 +879,7 @@ Gateway Request (Authorization: Bearer gw_sk_xxxxxxxxx)
 
 ---
 
-## 31. Cost Tracking
+## 30. Cost Tracking
 
 - **V1:** Menyimpan volume token usage (Input/Output).
 - **V1.1:** Estimasi Biaya Otomatis:
@@ -797,7 +890,7 @@ Gateway Request (Authorization: Bearer gw_sk_xxxxxxxxx)
 
 ---
 
-## 32. Error Normalization
+## 31. Error Normalization
 
 Gateway menormalisasi respons error provider agar client menerima interface error yang konsisten.
 
@@ -816,14 +909,14 @@ Content-Type: application/json
 
 ---
 
-## 33. Rate Limiting Multi-tier
+## 32. Rate Limiting Multi-tier
 
 1. **Gateway Level:** Dibatasi per Gateway API Key (e.g. `100 requests/minute`).
 2. **Provider Credential Level:** Mengikuti batas rate limit provider asli dengan automatic cooldown.
 
 ---
 
-## 34. Health Check Validation Flow
+## 33. Health Check Validation Flow
 
 ```text
 Dashboard [Test Credential] ──→ Provider API Ping ──→ HTTP 200 [✓ Credential is valid (342ms)]
@@ -832,7 +925,7 @@ Dashboard [Test Credential] ──→ Provider API Ping ──→ HTTP 200 [✓ 
 
 ---
 
-## 35. Deployment Topology
+## 34. Deployment Topology
 
 ### Development
 Docker Compose (`Next.js` + `Go` + `PostgreSQL` + `Redis`)
@@ -853,42 +946,182 @@ Docker Compose (`Next.js` + `Go` + `PostgreSQL` + `Redis`)
 
 ---
 
-## 36. Environment Variables
+## 35. Environment Variables
 
 ```env
 DATABASE_URL=postgres://...
 REDIS_URL=redis://...
 JWT_SECRET=...
 ENCRYPTION_KEY=...
-OPENAI_BASE_URL=https://api.openai.com
-ANTHROPIC_BASE_URL=https://api.anthropic.com
-GOOGLE_BASE_URL=https://generativelanguage.googleapis.com
+HASH_KEY=...
+BETTER_AUTH_SECRET=...
+BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
+API_URL=http://api:8080
+APP_PORT=3000
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GLOBAL_PROXY_URL=socks5://proxy:1080
+OPENCODE_MAX_CONCURRENCY=2
+MAX_RETRIES=2
+COOLDOWN_SECONDS=60
+RATE_LIMIT_PER_KEY=100
 ```
 > *Catatan: Provider API credentials tidak disimpan di `.env` melainkan di database via dashboard secara terenkripsi.*
 
 ---
 
-## 37. MVP Scope Checklist
+## 36. Circuit Breaker & 50x Server Outage Quarantine
 
-- [x] **Authentication:** Login, Logout, User session
+Ketika upstream provider mengembalikan error server (`500`, `502`, `503`, `504`) secara berturut-turut, Gateway mengaktifkan **Circuit Breaker** untuk menghindari routing ke server yang sedang down:
+
+```text
+Credential A ──→ 500 (count: 1)
+Credential A ──→ 502 (count: 2)
+Credential A ──→ 503 (count: 3) ──→ QUARANTINED (60s cooldown)
+                                       │
+Credential B ←────────────────── Retry request
+      ↓
+Success (User tetap menerima response normal)
+```
+
+### Mekanisme:
+1. **Counter Tracking:** Setiap 5xx error meningkatkan counter `circuit_breaker:{credential_id}:count` di Redis.
+2. **Threshold:** Jika counter mencapai **3 consecutive 5xx errors**, credential masuk status `QUARANTINED`.
+3. **Cooldown:** Quarantine berlangsung selama **60 detik** (TTL di Redis).
+4. **Auto-Recovery:** Setelah cooldown berakhir, credential kembali ke status `ACTIVE`.
+5. **SSE Event:** Status quarantine dikirimkan via SSE sebagai event `CREDENTIAL_QUARANTINED`.
+
+---
+
+## 37. FinOps Cost Recommendations Engine
+
+Gateway menyediakan analisis biaya real-time dan rekomendasi penghematan melalui endpoint `GET /api/analytics/finops`:
+
+### Data Points:
+- **Daily Spend Velocity:** Rata-rata pengeluaran harian berdasarkan data 7 hari terakhir.
+- **Projected Monthly Cost:** Estimasi total biaya bulanan berdasarkan velocity saat ini.
+- **Budget Exhaustion Forecast:** Perkiraan tanggal habisnya budget berdasarkan current burn rate.
+- **Model Substitution Savings:** Identifikasi model yang bisa diganti dengan alternatif lebih murah tanpa mengorbankan kualitas secara signifikan.
+
+### Response Format:
+```json
+{
+  "dailyVelocity": 2.45,
+  "projectedMonthly": 73.50,
+  "budgetExhaustionDate": "2026-09-15",
+  "savingsRecommendations": [
+    {
+      "currentModel": "claude-sonnet",
+      "suggestedModel": "gemini-3.6-flash",
+      "estimatedSavings": 12.30,
+      "qualityImpact": "minimal"
+    }
+  ]
+}
+```
+
+---
+
+## 38. Dynamic Latency Feedback Loop
+
+Smart Router menggunakan data latensi aktual dari Redis untuk menyesuaikan scoring model secara dinamis:
+
+### Mekanisme:
+1. **Telemetry Collection:** Setiap request yang berhasil mencatat TTFT (Time to First Token) dan total latency ke Redis.
+2. **Rolling Window:** Redis menyimpan 50 sampel latensi terakhir per model dalam window 15 menit.
+3. **Speed Score Adjustment:**
+   - TTFT < 400ms → **Bonus** (+0.1 ke speed score)
+   - TTFT > 1000ms → **Penalty** (-0.1 ke speed score)
+4. **Dynamic Scoring:** Router menggunakan data aktual ini (bukan static capability score) saat menghitung weighted candidate scoring.
+
+### Storage:
+```
+Key:    model:{model_id}:latency
+Type:   Sorted Set (ZSET)
+Score:  timestamp
+Value:  JSON { "ttft": 350, "total": 1200 }
+TTL:    900s (15 minutes)
+```
+
+---
+
+## 39. Routing Playground & Interactive Simulator
+
+Halaman `/playground` memungkinkan pengguna mensimulasikan keputusan Smart Router tanpa mengirim request aktual ke provider.
+
+### Fitur:
+1. **Prompt Input:** Text area untuk memasukkan prompt yang ingin diuji.
+2. **Policy Selector:** Dropdown untuk memilih routing policy (`balanced`, `cheap`, `quality`, `custom`).
+3. **Budget Status Override:** Simulator budget status (`healthy`, `warning`, `critical`, `exceeded`) untuk melihat dampak downgrade.
+4. **Pipeline Visualizer:** Diagram alur step-by-step:
+   ```text
+   Request → Classification → Candidate Filtering → Weighted Scoring → Budget Downgrade → Model Selection
+   ```
+5. **Quick Presets:** Tombol preset untuk prompt coding, reasoning, creative, dan fast Q&A.
+6. **Results Display:** Model yang dipilih, skor breakdown, kandidat yang dievaluasi, dan alasan keputusan.
+
+### Endpoint:
+- `POST /api/routing/simulate` — Menerima prompt dan parameter, mengembalikan simulasi routing tanpa eksekusi.
+
+---
+
+## 40. Web Sandbox Chat Interface
+
+Halaman `/sandbox` menyediakan interface chat berbasis web untuk menguji Gateway API keys secara langsung.
+
+### Fitur:
+1. **Key Selection:** Pilih Gateway API Key yang ingin diuji.
+2. **Model Selection:** Dropdown model yang tersedia dari provider terkait key.
+3. **Streaming Chat:** Real-time SSE streaming response.
+4. **Global Key Support:** Global Gateway Key (tanpa provider binding) menggabungkan model dari semua provider aktif termasuk `roozy-auto`.
+
+---
+
+## 41. Google OAuth 2.0 Credential Flow
+
+Gateway mendukung alur OAuth 2.0 untuk menambahkan Google Gemini credentials tanpa memasukkan API key secara manual.
+
+### Alur:
+1. User mengklik **"Connect Google Account"** di halaman Credentials.
+2. Popup browser membuka Google OAuth consent screen.
+3. Setelah otorisasi, callback ke `/api/auth/google/callback`.
+4. Gateway menukar `authorization_code` dengan `refresh_token` via Google Token Endpoint.
+5. `refresh_token` dienkripsi dan disimpan sebagai credential baru dengan `auth_type = 'gcp_user_oauth'`.
+6. Gateway secara otomatis menukar `refresh_token` → `access_token` saat request diteruskan ke Gemini API.
+
+---
+
+## 42. MVP Scope Checklist
+
+- [x] **Authentication:** Login, Logout, User session, Google OAuth
 - [x] **Provider:** Add, Edit, Enable/Disable provider
-- [x] **Credential:** Add, Edit, Delete, Enable/Disable, Test, Masking, Encryption
+- [x] **Credential:** Add, Edit, Delete, Enable/Disable, Test, Masking, Encryption, OAuth Flow
 - [x] **Gateway:** Gateway API Key, `/v1/models`, `/v1/chat/completions`, Streaming, Auth, Routing
-- [x] **Rotation:** Round robin, 429 detection, Cooldown, Automatic retry, Failover
-- [x] **Monitoring:** Request logs, Usage count, Token tracking, Status health
+- [x] **Rotation:** Round robin, LRU, Fallback Cascade, 429 detection, Cooldown, Automatic retry, Failover
+- [x] **Monitoring:** Request logs, Usage count, Token tracking, Status health, SSE real-time events
+- [x] **Smart Router (`roozy-auto`):** Request classification, complexity heuristics, weighted scoring, policy selection
+- [x] **Budget Manager:** Monthly/daily limits, threshold alerts, auto model downgrade
+- [x] **Cost Pipeline:** Real-time CostUSD calculation, FinOps recommendations engine
+- [x] **Circuit Breaker:** 50x quarantine, auto-recovery, SSE quarantine events
+- [x] **Latency Feedback:** Redis telemetry window, dynamic speed scoring
+- [x] **Playground:** Routing simulation, pipeline visualizer, quick presets
+- [x] **Sandbox:** Web-based chat interface
+- [x] **Routing Decision Audit:** Prompt preview, score breakdown, budget downgrade explanation
+- [x] **Provider Abstraction:** Multi-adapter pattern (OpenAI, Anthropic, Google, OpenCode meta-adapter)
 
 ---
 
-## 38. Roadmap: V1.1
+## 43. Roadmap: V1.1
 
-- [ ] Adapter eksternal lengkap (Anthropic, Google Gemini, OpenRouter)
-- [ ] Weighted routing & fallback cascade
-- [ ] Cost tracking per token
-- [ ] Advanced request filtering & dynamic rate limits
+- [x] Adapter eksternal lengkap (Anthropic, Google Gemini, OpenRouter)
+- [x] Weighted routing & fallback cascade
+- [x] Cost tracking per token
+- [x] Advanced request filtering & dynamic rate limits
 
 ---
 
-## 39. Roadmap: V2 (Multi-Tenant & Teams)
+## 44. Roadmap: V2 (Multi-Tenant & Teams)
 
 ```text
 Organization
@@ -901,7 +1134,7 @@ Organization
 
 ---
 
-## 40. Success Metrics
+## 45. Success Metrics
 
 | Metric | Target |
 | :--- | :--- |
@@ -913,7 +1146,7 @@ Organization
 
 ---
 
-## 41. Critical Technical Requirements
+## 46. Critical Technical Requirements
 
 - **R1 — Streaming:** Wajib mendukung pass-through streaming tanpa buffer utuh.
 - **R2 — Credential Isolation:** Client tidak boleh menerima upstream API key.
@@ -924,7 +1157,7 @@ Organization
 
 ---
 
-## 42. High-Level Architecture
+## 47. High-Level Architecture
 
 ```text
                            INTERNET
@@ -961,7 +1194,7 @@ Organization
 
 ---
 
-## 43. Development Milestones
+## 48. Development Milestones
 
 - **Phase 1 — Foundation (Week 1):** Repo, Next.js, Go/Gin, DB migrations, Docker Compose, Auth.
 - **Phase 2 — Credential Management (Week 2):** Provider & Credential CRUD, Encryption, Test connection, UI.
@@ -972,7 +1205,7 @@ Organization
 
 ---
 
-## 44. Definition of Done — MVP
+## 49. Definition of Done — MVP
 
 MVP dianggap selesai ketika alur end-to-end berikut berjalan sukses:
 
@@ -1032,11 +1265,11 @@ Go Gateway dapat di-scale secara horizontal secara independen di kemudian hari t
 
 ---
 
-## 17. Real-Time Dashboard Data Streaming
+## 50. Real-Time Dashboard Data Streaming
 
 AI Gateway menyediakan endpoint **Server-Sent Events (SSE)** terpusat (`GET /api/v1/sse`) yang memancar data secara real-time dari Go Backend ke Next.js Dashboard.
 
-### 17.1 Real-Time Coverage Matrix
+### 50.1 Real-Time Coverage Matrix
 
 - **`ProvidersPage`**:
   - Live Provider Health Status (`Healthy`, `Degraded`, `Down`)

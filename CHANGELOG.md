@@ -5,6 +5,23 @@ All notable changes to the **AI Gateway** project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-23
+
+### Added
+- **Routing Simulation & Interactive Playground (Pillar 4)**: New `/playground` page with full routing simulation — enter a prompt, select policy and budget status, and see the complete Smart Router classification, candidate scoring breakdown, and model selection without executing a real request.
+- **Behind-the-Scenes Pipeline Visualizer**: Step-by-step flow diagram in the Playground showing Request → Classification → Candidate Filtering → Weighted Scoring → Budget Downgrade → Final Model Selection.
+- **Quick Prompt Presets**: One-click prompt templates for coding, reasoning, creative, and fast Q&A tasks to quickly test routing behavior.
+- **FinOps Cost Recommendations Engine (Pillar 5)**: `GET /api/analytics/finops` endpoint computing daily spend velocity, projected monthly cost, budget exhaustion forecast, and model substitution savings recommendations.
+- **Dynamic Latency Feedback Loop (Pillar 6)**: Redis-backed 15-minute rolling window storing last 50 latency samples per model (TTFT + total latency), feeding dynamic speed scoring penalties (TTFT > 1000ms) and bonuses (TTFT < 400ms) into the Smart Router candidate scorer.
+- **Circuit Breaker & 50x Server Outage Quarantine**: Automatic credential quarantine after 3 consecutive 50x errors with 60-second cooldown, preventing repeated routing to failing upstream servers. Status exposed via SSE as `CREDENTIAL_QUARANTINED` event.
+- **Provider Abstraction Layer**: Unified `ProviderAdapter` interface with dedicated adapters for OpenAI, Anthropic, Google Gemini, OpenAI Responses, and a meta-adapter for OpenCode that auto-detects sub-adapter by model prefix.
+- **Web Sandbox Chat Interface**: `/sandbox` page providing an in-browser chat UI for testing Gateway API keys directly, with model selection and real-time streaming.
+
+### Fixed
+- **Duplicate `/analytics/logs` Route Registration**: Removed duplicate route causing Gin startup panic.
+- **Analytics Response Unpacking**: Safely unpack `response.data` in `apiGetLogAnalytics` to prevent frontend crash on empty analytics data.
+- **Strict Single Default Policy Enforcement**: Enforced `is_default` uniqueness across Create, Update, and SetDefault operations — only one routing policy can be active default at a time.
+
 ## [1.1.0] - 2026-08-21
 
 ### Added
