@@ -247,6 +247,69 @@ func (r *Router) selectByStrategy(ctx context.Context, providerID, strategy stri
 	}
 }
 
+// requestState caches per-request lookups so the ResolveSemantic winner loop
+// avoids redundant DB/Redis roundtrips when multiple candidates share a provider.
+type requestState struct {
+	coolingIDs []string
+	providers  map[string]*models.Provider
+	strategies map[string]string
+	credSets   map[string][]models.Credential
+}
+
+func (r *Router) buildRequestState(ctx context.Context, cooldownStore *goredis.CooldownStore) *requestState {
+	state := &requestState{
+		providers:  make(map[string]*models.Provider),
+		strategies: make(map[string]string),
+		credSets:   make(map[string][]models.Credential),
+	}
+	if cooldownStore != nil {
+		state.coolingIDs, _ = cooldownStore.GetCoolingIDs(ctx)
+	}
+	return state
+}
+
+func (r *Router) getCachedProvider(ctx context.Context, state *requestState, providerID string) (*models.Provider, error) {
+	if p, ok := state.providers[providerID]; ok {
+		return p, nil
+	}
+	p, err := r.providers.FindByID(ctx, providerID)
+	if err != nil {
+		return nil, err
+	}
+	state.providers[providerID] = p
+	return p, nil
+}
+
+func (r *Router) getCachedStrategy(state *requestState, prov *models.Provider) string {
+	if s, ok := state.strategies[prov.ID]; ok {
+		return s
+	}
+	strategy := r.resolveStrategy(prov)
+	state.strategies[prov.ID] = strategy
+	return strategy
+}
+
+func (r *Router) getCachedCredentials(ctx context.Context, state *requestState, providerID, strategy string) ([]models.Credential, error) {
+	if creds, ok := state.credSets[providerID]; ok {
+		return creds, nil
+	}
+	var creds []models.Credential
+	var err error
+	switch strategy {
+	case "lru":
+		creds, err = r.creds.FindLRU(ctx, providerID, state.coolingIDs)
+	case "fallback_cascade":
+		creds, err = r.creds.FindAllActiveByProviderID(ctx, providerID, state.coolingIDs)
+	default:
+		creds, err = r.creds.FindRoundRobin(ctx, providerID, state.coolingIDs)
+	}
+	if err != nil {
+		return nil, err
+	}
+	state.credSets[providerID] = creds
+	return creds, nil
+}
+
 // ResolveSemantic classifies the request, scores all enabled models against the
 // routing policy, and returns routes for the winning model.
 // budgetStatus controls automatic downgrade behavior (empty string = no budget pressure).
@@ -361,6 +424,8 @@ func (r *Router) ResolveSemantic(
 	var winningProvider *models.Provider
 	var lastCoolingErr bool
 
+	state := r.buildRequestState(ctx, cooldown)
+
 	// Iterate scored candidate models in rank order to find the first model with active credentials
 	for _, sc := range scores {
 		candModel := sc.Model
@@ -372,13 +437,13 @@ func (r *Router) ResolveSemantic(
 			}
 		}
 
-		prov, err := r.providers.FindByID(ctx, candModel.ProviderID)
+		prov, err := r.getCachedProvider(ctx, state, candModel.ProviderID)
 		if err != nil || !prov.Enabled {
 			continue
 		}
 
-		strategy := r.resolveStrategy(prov)
-		allCreds, err := r.selectByStrategy(ctx, prov.ID, strategy, cooldown)
+		strategy := r.getCachedStrategy(state, prov)
+		allCreds, err := r.getCachedCredentials(ctx, state, prov.ID, strategy)
 		if err != nil || len(allCreds) == 0 {
 			continue
 		}
