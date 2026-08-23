@@ -142,7 +142,9 @@ func (r *RoutingPolicyRepository) SetDefault(ctx context.Context, id, userID str
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1`, userID)
 	if err != nil {
