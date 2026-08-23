@@ -119,9 +119,31 @@ func (r *RoutingDecisionRepository) ListWithFilter(ctx context.Context, userID s
 	args = append(args, offset)
 	query += fmt.Sprintf(" OFFSET $%d", len(args))
 
+	hasPromptCol := true
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, 0, err
+		// Fallback for VPS before migration 032 columns exist
+		hasPromptCol = false
+		fallbackQuery := `SELECT id, request_id, user_id, task_type, complexity, policy_name,
+			        candidates, selected_model, selected_provider, budget_status,
+			        estimated_cost, actual_cost, downgrade_reason, created_at
+			 FROM routing_decisions WHERE 1=1`
+		if userID != "" {
+			fallbackQuery += fmt.Sprintf(" AND user_id = $%d", 1)
+		}
+		fallbackQuery += " ORDER BY created_at DESC"
+		argsFallback := []interface{}{}
+		if userID != "" {
+			argsFallback = append(argsFallback, userID)
+		}
+		argsFallback = append(argsFallback, limit, offset)
+		fallbackQuery += fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(argsFallback)-1, len(argsFallback))
+
+		var errFallback error
+		rows, errFallback = r.db.QueryContext(ctx, fallbackQuery, argsFallback...)
+		if errFallback != nil {
+			return nil, 0, err
+		}
 	}
 	defer rows.Close()
 
@@ -129,12 +151,24 @@ func (r *RoutingDecisionRepository) ListWithFilter(ctx context.Context, userID s
 	for rows.Next() {
 		var d RoutingDecisionLog
 		var promptPreview, taskType, complexity, policyName, selectedModel, selectedProvider, budgetStatus, downgradeReason sql.NullString
-		if err := rows.Scan(&d.ID, &d.RequestID, &d.UserID, &promptPreview, &taskType, &complexity,
-			&policyName, &d.Candidates, &selectedModel, &selectedProvider,
-			&budgetStatus, &d.EstimatedCost, &d.ActualCost, &downgradeReason, &d.ScoresBreakdown, &d.CreatedAt); err != nil {
-			return nil, 0, err
+		var scoresBreakdown sql.NullString
+		if hasPromptCol {
+			if err := rows.Scan(&d.ID, &d.RequestID, &d.UserID, &promptPreview, &taskType, &complexity,
+				&policyName, &d.Candidates, &selectedModel, &selectedProvider,
+				&budgetStatus, &d.EstimatedCost, &d.ActualCost, &downgradeReason, &scoresBreakdown, &d.CreatedAt); err != nil {
+				return nil, 0, err
+			}
+			d.PromptPreview = promptPreview.String
+			if scoresBreakdown.Valid && scoresBreakdown.String != "" {
+				d.ScoresBreakdown = json.RawMessage(scoresBreakdown.String)
+			}
+		} else {
+			if err := rows.Scan(&d.ID, &d.RequestID, &d.UserID, &taskType, &complexity,
+				&policyName, &d.Candidates, &selectedModel, &selectedProvider,
+				&budgetStatus, &d.EstimatedCost, &d.ActualCost, &downgradeReason, &d.CreatedAt); err != nil {
+				return nil, 0, err
+			}
 		}
-		d.PromptPreview = promptPreview.String
 		d.TaskType = taskType.String
 		d.Complexity = complexity.String
 		d.PolicyName = policyName.String
