@@ -118,12 +118,63 @@ func (s *ModelTelemetryStore) GetMultipleModelMetrics(ctx context.Context, model
 		return result, nil
 	}
 
-	for _, slug := range modelSlugs {
-		metrics, err := s.GetModelMetrics(ctx, slug)
-		if err == nil && metrics != nil {
-			result[slug] = metrics
+	pipe := s.rdb.Pipeline()
+	cmds := make([]*goredis.StringSliceCmd, len(modelSlugs))
+	for i, slug := range modelSlugs {
+		key := fmt.Sprintf("telemetry:model:%s:samples", slug)
+		cmds[i] = pipe.LRange(ctx, key, 0, -1)
+	}
+	if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, goredis.Nil) {
+		return result, err
+	}
+
+	for i, slug := range modelSlugs {
+		items, err := cmds[i].Result()
+		if err != nil && !errors.Is(err, goredis.Nil) {
+			continue
 		}
+		result[slug] = aggregateSamples(slug, items)
 	}
 
 	return result, nil
+}
+
+func aggregateSamples(modelSlug string, items []string) *ModelMetrics {
+	if len(items) == 0 {
+		return &ModelMetrics{ModelSlug: modelSlug}
+	}
+
+	var totalTTFT float64
+	var totalLatency float64
+	var count int64
+	var lastTs int64
+
+	for _, item := range items {
+		var sample LatencySample
+		if err := json.Unmarshal([]byte(item), &sample); err != nil {
+			continue
+		}
+		if sample.TTFTMs > 0 {
+			totalTTFT += float64(sample.TTFTMs)
+		}
+		if sample.LatencyMs > 0 {
+			totalLatency += float64(sample.LatencyMs)
+		}
+		if sample.Timestamp > lastTs {
+			lastTs = sample.Timestamp
+		}
+		count++
+	}
+
+	if count == 0 {
+		return &ModelMetrics{ModelSlug: modelSlug}
+	}
+
+	return &ModelMetrics{
+		ModelSlug:    modelSlug,
+		AvgTTFTMs:    totalTTFT / float64(count),
+		AvgLatencyMs: totalLatency / float64(count),
+		SampleCount:  count,
+		LastUpdated:  lastTs,
+	}
 }
