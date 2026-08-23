@@ -132,6 +132,25 @@ func (r *BudgetRepository) GetTotalDailySpend(ctx context.Context, userID string
 	return spend.Float64, nil
 }
 
+// GetCombinedSpend returns monthly and daily spend in a single query,
+// avoiding two separate aggregate scans of request_logs on the hot path.
+func (r *BudgetRepository) GetCombinedSpend(ctx context.Context, userID string) (monthlySpend float64, dailySpend float64, err error) {
+	var monthly, daily sql.NullFloat64
+	err = r.db.QueryRowContext(ctx,
+		`SELECT
+			COALESCE(SUM(cost_usd) FILTER (WHERE created_at >= date_trunc('month', NOW())), 0),
+			COALESCE(SUM(cost_usd) FILTER (WHERE created_at >= date_trunc('day', NOW())), 0)
+		 FROM request_logs
+		 WHERE gateway_api_key_id IN (
+		     SELECT id FROM gateway_api_keys WHERE user_id = $1
+		 )`, userID,
+	).Scan(&monthly, &daily)
+	if err != nil {
+		return 0, 0, err
+	}
+	return monthly.Float64, daily.Float64, nil
+}
+
 func scanBudget(rows *sql.Rows, budget *models.Budget) error {
 	return rows.Scan(&budget.ID, &budget.UserID, &budget.Name, &budget.MonthlyLimit, &budget.DailyLimit,
 		&budget.HardLimit, &budget.WarningThreshold, &budget.CriticalThreshold,

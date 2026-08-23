@@ -3,13 +3,24 @@ package proxy
 import (
 	"context"
 	"math"
+	"sync"
+	"time"
 
 	"github.com/roozylabs/ai-gateway/internal/models"
 	"github.com/roozylabs/ai-gateway/internal/repository"
 )
 
+const budgetSpendCacheTTL = 10 * time.Second
+
+type budgetSpendCacheEntry struct {
+	monthly   float64
+	daily     float64
+	fetchedAt time.Time
+}
+
 type BudgetManager struct {
 	budgetRepo *repository.BudgetRepository
+	spendCache sync.Map // userID -> budgetSpendCacheEntry
 }
 
 func NewBudgetManager(budgetRepo *repository.BudgetRepository) *BudgetManager {
@@ -30,11 +41,7 @@ func (bm *BudgetManager) GetStatus(ctx context.Context, userID string) (*models.
 		return nil, nil
 	}
 
-	monthlySpent, err := bm.budgetRepo.GetTotalMonthlySpend(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	dailySpent, err := bm.budgetRepo.GetTotalDailySpend(ctx, userID)
+	monthlySpent, dailySpent, err := bm.getSpendCached(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,4 +86,24 @@ func computeBudgetStatus(usagePercent, warningThreshold, criticalThreshold float
 		return "warning"
 	}
 	return "healthy"
+}
+
+func (bm *BudgetManager) getSpendCached(ctx context.Context, userID string) (float64, float64, error) {
+	if v, ok := bm.spendCache.Load(userID); ok {
+		entry := v.(budgetSpendCacheEntry)
+		if time.Since(entry.fetchedAt) < budgetSpendCacheTTL {
+			return entry.monthly, entry.daily, nil
+		}
+		bm.spendCache.Delete(userID)
+	}
+	monthly, daily, err := bm.budgetRepo.GetCombinedSpend(ctx, userID)
+	if err != nil {
+		return 0, 0, err
+	}
+	bm.spendCache.Store(userID, budgetSpendCacheEntry{
+		monthly:   monthly,
+		daily:     daily,
+		fetchedAt: time.Now(),
+	})
+	return monthly, daily, nil
 }
