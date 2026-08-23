@@ -58,6 +58,7 @@ func main() {
 	credentialRepo := repository.NewCredentialRepository(sqlDB)
 	modelRepo := repository.NewModelRepository(sqlDB)
 	gatewayKeyRepo := repository.NewGatewayKeyRepository(sqlDB)
+	gatewayKeyCache := repository.NewGatewayKeyCache(gatewayKeyRepo)
 	requestLogRepo := repository.NewRequestLogRepository(sqlDB)
 	settingRepo := repository.NewSettingRepository(sqlDB)
 	pricingRepo := repository.NewModelPricingRepository(sqlDB)
@@ -231,7 +232,7 @@ func main() {
 
 	// Gateway routes (authenticated with gw_sk_* keys) - accessible at /v1 and /api/v1
 	registerGatewayRoutes := func(rg *gin.RouterGroup) {
-		rg.Use(middleware.GatewayAuthMiddleware(gatewayKeyRepo))
+		rg.Use(middleware.GatewayAuthMiddleware(gatewayKeyCache))
 		rg.Use(middleware.GatewayRateLimitMiddleware(rdb, cfg.RateLimitPerKey))
 		rg.POST("/chat/completions", gatewayHandler.ChatCompletions)
 		rg.GET("/models", gatewayHandler.Models)

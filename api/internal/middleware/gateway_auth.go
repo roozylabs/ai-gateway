@@ -1,16 +1,23 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/ai-gateway/internal/models"
 	"github.com/roozylabs/ai-gateway/internal/utils"
 )
 
-func GatewayAuthMiddleware(keys *repository.GatewayKeyRepository) gin.HandlerFunc {
+// GatewayKeyFinder abstracts gateway key lookup so the middleware can be used
+// with either the raw repository or a cached wrapper.
+type GatewayKeyFinder interface {
+	FindByKeyHash(ctx context.Context, keyHash string) (*models.GatewayAPIKey, error)
+}
+
+func GatewayAuthMiddleware(keys GatewayKeyFinder) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
