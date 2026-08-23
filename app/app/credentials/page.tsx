@@ -792,6 +792,7 @@ export default function CredentialsPage() {
             <Table
               bordered
               pagination={false}
+              scroll={{ x: 'max-content' }}
               size="small"
               dataSource={[
                 {

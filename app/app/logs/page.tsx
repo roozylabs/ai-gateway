@@ -299,6 +299,7 @@ export default function LogsPage() {
                 dataSource={analyticsData?.clientApps || []}
                 rowKey="clientApp"
                 pagination={false}
+                scroll={{ x: 'max-content' }}
                 size="small"
                 columns={[
                   { title: 'Client Application', dataIndex: 'clientApp', key: 'clientApp', render: (app: string) => <Text strong>{app}</Text> },
@@ -315,6 +316,7 @@ export default function LogsPage() {
                 dataSource={analyticsData?.models || []}
                 rowKey="model"
                 pagination={false}
+                scroll={{ x: 'max-content' }}
                 size="small"
                 columns={[
                   { title: 'Model Slug', dataIndex: 'model', key: 'model', render: (m: string) => <Tag color="blue">{m}</Tag> },
@@ -395,6 +397,7 @@ export default function LogsPage() {
                     reason: typeof info === 'object' && Array.isArray(info.reason) ? info.reason.join(', ') : '-',
                   }))}
                   pagination={false}
+                  scroll={{ x: 'max-content' }}
                   size="small"
                   columns={[
                     { title: 'Candidate Model', dataIndex: 'slug', key: 'slug', render: (m: string) => <Tag color={m === selectedDecision.selectedModel ? 'blue' : 'default'}>{m}</Tag> },
