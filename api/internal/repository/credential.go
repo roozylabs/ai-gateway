@@ -337,3 +337,20 @@ func (r *CredentialRepository) CountActiveByProviderID(ctx context.Context, prov
 	return count, err
 }
 
+func (r *CredentialRepository) ListActiveProviderIDs(ctx context.Context) (map[string]bool, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT DISTINCT provider_id FROM credentials WHERE enabled = true AND status != 'invalid'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	activeMap := make(map[string]bool)
+	for rows.Next() {
+		var pid string
+		if err := rows.Scan(&pid); err == nil && pid != "" {
+			activeMap[pid] = true
+		}
+	}
+	return activeMap, rows.Err()
+}
+
