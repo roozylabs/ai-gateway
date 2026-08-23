@@ -608,7 +608,35 @@ export interface ApiRoutingSimulationRes {
   downgradeReason?: string;
 }
 
-export async function apiSimulateRouting(payload: ApiRoutingSimulationReq): Promise<ApiRoutingSimulationRes> {
-  const response = await api.post<ApiRoutingSimulationRes>('/routing/simulate', payload);
-  return response.data;
+export async function apiSimulateRouting(req: ApiRoutingSimulationReq): Promise<ApiRoutingSimulationRes> {
+  const response = await api.post<{ data: ApiRoutingSimulationRes }>('/routing/simulate', req);
+  return response.data?.data || (response.data as any);
+}
+
+export interface ApiCostRecommendation {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  currentModel?: string;
+  suggestedModel?: string;
+  estimatedSavingsUsd: number;
+  qualityImpact: string;
+  actionLabel: string;
+}
+
+export interface ApiFinOpsSummary {
+  dailySpendVelocityUsd: number;
+  projectedMonthlySpend: number;
+  monthlyBudgetUsd: number;
+  budgetUsagePercent: number;
+  daysUntilExhaustion: number;
+  projectedExhaustionDate: string;
+  potentialMonthlySavings: number;
+  recommendations: ApiCostRecommendation[];
+}
+
+export async function apiGetFinOpsSummary(): Promise<ApiFinOpsSummary> {
+  const response = await api.get<any>('/analytics/finops');
+  return response.data?.data || response.data;
 }

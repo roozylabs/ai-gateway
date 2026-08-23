@@ -99,6 +99,7 @@ func main() {
 	budgetStatusHandler := handlers.NewBudgetStatusHandler(budgetMgr)
 	routingDecisionHandler := handlers.NewRoutingDecisionHandler(decisionRepo)
 	simulateHandler := handlers.NewSimulateHandler(modelRepo, providerRepo, credentialRepo, routingPolicyRepo, telemetry)
+	finopsHandler := handlers.NewFinOpsHandler(requestLogRepo, budgetRepo, modelRepo, settingRepo)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -163,8 +164,10 @@ func main() {
 			protected.POST("/gateway-keys", gatewayKeyHandler.Create)
 			protected.DELETE("/gateway-keys/:id", gatewayKeyHandler.Delete)
 
-			// Request Logs
+			// Request Logs & Analytics
 			protected.GET("/logs", logsHandler.List)
+			protected.GET("/analytics/logs", logsHandler.GetAnalytics)
+			protected.GET("/analytics/finops", finopsHandler.GetSummary)
 
 			// Dashboard
 			protected.GET("/dashboard/stats", dashboardHandler.GetStats)

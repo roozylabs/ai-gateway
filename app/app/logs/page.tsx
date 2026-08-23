@@ -12,11 +12,14 @@ import {
   apiGetSettings,
   apiGetRoutingDecisions,
   apiGetLogAnalytics,
+  apiGetFinOpsSummary,
   ApiRequestLog,
   ApiSetting,
   ApiRoutingDecision,
   ApiClientAppStat,
   ApiModelStat,
+  ApiFinOpsSummary,
+  ApiCostRecommendation,
 } from '@/lib/api';
 
 const { Text, Title, Paragraph } = Typography;
@@ -81,6 +84,12 @@ export default function LogsPage() {
   const { data: rawAnalyticsData, isLoading: analyticsLoading } = useQuery({
     queryKey: ['analytics-logs', timeRangeDays],
     queryFn: () => apiGetLogAnalytics({ days: timeRangeDays }),
+  });
+
+  const { data: finopsData, isLoading: finopsLoading } = useQuery({
+    queryKey: ['finops-summary'],
+    queryFn: apiGetFinOpsSummary,
+    enabled: activeTab === 'analytics',
   });
 
   const analyticsData = React.useMemo(() => {
@@ -298,43 +307,157 @@ export default function LogsPage() {
           }}
         />
       ) : (
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={12}>
-            <Card title="Client App Spend & Volume Breakdown" loading={analyticsLoading} style={{ borderRadius: 8 }}>
-              <Table<ApiClientAppStat>
-                dataSource={analyticsData?.clientApps || []}
-                rowKey="clientApp"
-                pagination={false}
-                scroll={{ x: 'max-content' }}
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* FinOps Predictive Forecast & Recommendations */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={8}>
+              <Card
                 size="small"
-                columns={[
-                  { title: 'Client Application', dataIndex: 'clientApp', key: 'clientApp', render: (app: string) => <Text strong>{app}</Text> },
-                  { title: 'Requests', dataIndex: 'requests', key: 'requests', render: (req: number) => req.toLocaleString() },
-                  { title: 'Tokens', dataIndex: 'tokens', key: 'tokens', render: (tok: number) => tok.toLocaleString() },
-                  { title: 'Cost', dataIndex: 'costUsd', key: 'costUsd', render: (cost: number) => <Text code style={{ color: '#52c41a' }}>{formatCost(cost)}</Text> },
-                ]}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} lg={12}>
-            <Card title="Model Performance & SLA Breakdown" loading={analyticsLoading} style={{ borderRadius: 8 }}>
-              <Table<ApiModelStat>
-                dataSource={analyticsData?.models || []}
-                rowKey="model"
-                pagination={false}
-                scroll={{ x: 'max-content' }}
+                title={
+                  <Space>
+                    <AreaChartOutlined style={{ color: '#1677ff' }} />
+                    <span>Predictive Burn-Rate Forecast</span>
+                  </Space>
+                }
+                loading={finopsLoading}
+                style={{ borderRadius: 8, height: '100%' }}
+              >
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Spend Velocity (Daily Average)</Text>
+                    <Title level={4} style={{ margin: 0, color: '#1677ff' }}>
+                      {formatCost(finopsData?.dailySpendVelocityUsd || 0)} <Text type="secondary" style={{ fontSize: 12 }}>/ day</Text>
+                    </Title>
+                  </div>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Projected Monthly Spend</Text>
+                    <Title level={4} style={{ margin: 0, color: '#faad14' }}>
+                      {formatCost(finopsData?.projectedMonthlySpend || 0)}
+                    </Title>
+                    {finopsData?.monthlyBudgetUsd ? (
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        Cap: {formatCost(finopsData.monthlyBudgetUsd)} ({(finopsData.budgetUsagePercent || 0).toFixed(0)}% used)
+                      </Text>
+                    ) : (
+                      <Text type="secondary" style={{ fontSize: 11 }}>No active monthly budget cap set</Text>
+                    )}
+                  </div>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Projected Budget Exhaustion</Text>
+                    <div>
+                      {finopsData?.projectedExhaustionDate && finopsData.projectedExhaustionDate !== 'N/A' ? (
+                        <Tag color={finopsData.daysUntilExhaustion < 7 ? 'volcano' : 'green'} style={{ marginTop: 4, fontWeight: 500 }}>
+                          {finopsData.projectedExhaustionDate === 'Budget Exceeded'
+                            ? '🚨 Budget Exceeded'
+                            : `⏳ Depletes in ~${finopsData.daysUntilExhaustion} days (${finopsData.projectedExhaustionDate})`}
+                        </Tag>
+                      ) : (
+                        <Tag color="blue" style={{ marginTop: 4 }}>Healthy / Unconstrained</Tag>
+                      )}
+                    </div>
+                  </div>
+                </Space>
+              </Card>
+            </Col>
+
+            <Col xs={24} lg={16}>
+              <Card
                 size="small"
-                columns={[
-                  { title: 'Model Slug', dataIndex: 'model', key: 'model', render: (m: string) => <Tag color="blue">{m}</Tag> },
-                  { title: 'Requests', dataIndex: 'requests', key: 'requests', render: (req: number) => req.toLocaleString() },
-                  { title: 'Avg TTFT', dataIndex: 'avgTtftMs', key: 'avgTtftMs', render: (ttft: number) => `${Math.round(ttft)} ms` },
-                  { title: 'Avg Latency', dataIndex: 'avgLatencyMs', key: 'avgLatencyMs', render: (lat: number) => `${Math.round(lat)} ms` },
-                  { title: 'Cost', dataIndex: 'costUsd', key: 'costUsd', render: (cost: number) => <Text code style={{ color: '#52c41a' }}>{formatCost(cost)}</Text> },
-                ]}
-              />
-            </Card>
-          </Col>
-        </Row>
+                title={
+                  <Space>
+                    <ThunderboltOutlined style={{ color: '#52c41a' }} />
+                    <span>Smart Cost Optimization Recommendations</span>
+                    {finopsData?.potentialMonthlySavings ? (
+                      <Tag color="success">
+                        Est. Savings: {formatCost(finopsData.potentialMonthlySavings)} / mo
+                      </Tag>
+                    ) : null}
+                  </Space>
+                }
+                loading={finopsLoading}
+                style={{ borderRadius: 8, height: '100%' }}
+              >
+                {!finopsData?.recommendations || finopsData.recommendations.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                    <Text type="secondary">✨ Excellent! Your gateway is operating at optimal cost efficiency with no high-cost model leaks detected.</Text>
+                  </div>
+                ) : (
+                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    {finopsData.recommendations.map((rec: ApiCostRecommendation) => (
+                      <div
+                        key={rec.id}
+                        style={{
+                          padding: '12px 14px',
+                          borderRadius: 8,
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: 12,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 260 }}>
+                          <Space align="center" style={{ marginBottom: 4 }}>
+                            <Text strong style={{ color: '#e6f4ff' }}>{rec.title}</Text>
+                            <Tag color="cyan" style={{ fontSize: 11 }}>{rec.qualityImpact}</Tag>
+                          </Space>
+                          <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                            {rec.description}
+                          </Text>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <Tag color="gold" style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>
+                            Save {formatCost(rec.estimatedSavingsUsd)} / mo
+                          </Tag>
+                        </div>
+                      </div>
+                    ))}
+                  </Space>
+                )}
+              </Card>
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={12}>
+              <Card title="Client App Spend & Volume Breakdown" loading={analyticsLoading} style={{ borderRadius: 8 }}>
+                <Table<ApiClientAppStat>
+                  dataSource={analyticsData?.clientApps || []}
+                  rowKey="clientApp"
+                  pagination={false}
+                  scroll={{ x: 'max-content' }}
+                  size="small"
+                  columns={[
+                    { title: 'Client Application', dataIndex: 'clientApp', key: 'clientApp', render: (app: string) => <Text strong>{app}</Text> },
+                    { title: 'Requests', dataIndex: 'requests', key: 'requests', render: (req: number) => req.toLocaleString() },
+                    { title: 'Tokens', dataIndex: 'tokens', key: 'tokens', render: (tok: number) => tok.toLocaleString() },
+                    { title: 'Cost', dataIndex: 'costUsd', key: 'costUsd', render: (cost: number) => <Text code style={{ color: '#52c41a' }}>{formatCost(cost)}</Text> },
+                  ]}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} lg={12}>
+              <Card title="Model Performance & SLA Breakdown" loading={analyticsLoading} style={{ borderRadius: 8 }}>
+                <Table<ApiModelStat>
+                  dataSource={analyticsData?.models || []}
+                  rowKey="model"
+                  pagination={false}
+                  scroll={{ x: 'max-content' }}
+                  size="small"
+                  columns={[
+                    { title: 'Model Slug', dataIndex: 'model', key: 'model', render: (m: string) => <Tag color="blue">{m}</Tag> },
+                    { title: 'Requests', dataIndex: 'requests', key: 'requests', render: (req: number) => req.toLocaleString() },
+                    { title: 'Avg TTFT', dataIndex: 'avgTtftMs', key: 'avgTtftMs', render: (ttft: number) => `${Math.round(ttft)} ms` },
+                    { title: 'Avg Latency', dataIndex: 'avgLatencyMs', key: 'avgLatencyMs', render: (lat: number) => `${Math.round(lat)} ms` },
+                    { title: 'Cost', dataIndex: 'costUsd', key: 'costUsd', render: (cost: number) => <Text code style={{ color: '#52c41a' }}>{formatCost(cost)}</Text> },
+                  ]}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </Space>
       )}
 
       <Drawer
