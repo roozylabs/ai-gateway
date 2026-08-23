@@ -572,7 +572,43 @@ export interface ApiLogAnalytics {
 }
 
 export async function apiGetLogAnalytics(params?: { days?: number }): Promise<ApiLogAnalytics> {
-  const response = await api.get<{ data: ApiLogAnalytics }>('/analytics/logs', { params });
-  return response.data.data;
+  const response = await api.get<ApiLogAnalytics>('/analytics/logs', { params });
+  return response.data;
 }
 
+export interface ApiRoutingSimulationReq {
+  prompt?: string;
+  policyId?: string;
+  customWeights?: Record<string, number>;
+  budgetStatus?: string;
+  providerId?: string;
+}
+
+export interface ApiModelScoreDetail {
+  modelId: string;
+  slug: string;
+  displayName: string;
+  providerName: string;
+  score: number;
+  reasons: string[];
+  inputPrice1M: number;
+  outputPrice1M: number;
+}
+
+export interface ApiRoutingSimulationRes {
+  promptPreview: string;
+  taskType: string;
+  complexity: string;
+  policyName: string;
+  weightsUsed: Record<string, number>;
+  budgetStatus: string;
+  selectedModel: string;
+  selectedProvider: string;
+  candidates: ApiModelScoreDetail[];
+  downgradeReason?: string;
+}
+
+export async function apiSimulateRouting(payload: ApiRoutingSimulationReq): Promise<ApiRoutingSimulationRes> {
+  const response = await api.post<ApiRoutingSimulationRes>('/routing/simulate', payload);
+  return response.data;
+}

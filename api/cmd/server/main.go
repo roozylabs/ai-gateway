@@ -97,6 +97,7 @@ func main() {
 	budgetHandler := handlers.NewBudgetHandler(budgetRepo)
 	budgetStatusHandler := handlers.NewBudgetStatusHandler(budgetMgr)
 	routingDecisionHandler := handlers.NewRoutingDecisionHandler(decisionRepo)
+	simulateHandler := handlers.NewSimulateHandler(modelRepo, providerRepo, credentialRepo, routingPolicyRepo)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -205,9 +206,11 @@ func main() {
 			protected.PUT("/routing/policies/:id/default", routingPolicyHandler.SetDefault)
 			protected.DELETE("/routing/policies/:id", routingPolicyHandler.Delete)
 
-			// Routing Decisions Audit Logs
+			// Routing Decisions Audit Logs & Simulation
 			protected.GET("/routing/decisions", routingDecisionHandler.List)
 			protected.GET("/routing-decisions", routingDecisionHandler.List)
+			protected.POST("/routing/simulate", simulateHandler.Simulate)
+			protected.POST("/routing-simulate", simulateHandler.Simulate)
 
 			// Analytics Logs
 			protected.GET("/analytics/logs", logsHandler.GetAnalytics)
