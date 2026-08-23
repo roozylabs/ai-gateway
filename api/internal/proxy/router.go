@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -329,24 +330,7 @@ func (r *Router) ResolveSemantic(
 	chars := ClassifyRequest(req.Messages)
 
 	// Extract prompt preview snippet (last user prompt or last message content)
-	promptPreview := ""
-	for i := len(req.Messages) - 1; i >= 0; i-- {
-		msg := req.Messages[i]
-		if role, ok := msg["role"].(string); ok && role == "user" {
-			if content, ok := msg["content"].(string); ok && content != "" {
-				promptPreview = content
-				break
-			}
-		}
-	}
-	if promptPreview == "" && len(req.Messages) > 0 {
-		if content, ok := req.Messages[len(req.Messages)-1]["content"].(string); ok {
-			promptPreview = content
-		}
-	}
-	if len(promptPreview) > 250 {
-		promptPreview = promptPreview[:250] + "..."
-	}
+	promptPreview := extractLastUserPreview(req)
 
 	// Load all enabled models
 	allModels, err := r.models.ListEnabled(ctx)
@@ -502,4 +486,49 @@ func (r *Router) ResolveSemantic(
 	decision.EstimatedCost = estimateModelCost(winningModel, chars.ContextTokens, OutputRatioByTask(chars.Task))
 
 	return routes, decision, nil
+}
+
+const maxPayloadBytes = 256 * 1024
+
+// extractLastUserPreview returns the existing 250-char preview of the last user message.
+// Behavior must remain IDENTICAL to prior inline logic (string-content-only; multimodal/array content skipped).
+func extractLastUserPreview(req *ProxyRequest) string {
+	promptPreview := ""
+	if req == nil {
+		return promptPreview
+	}
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		msg := req.Messages[i]
+		if role, ok := msg["role"].(string); ok && role == "user" {
+			if content, ok := msg["content"].(string); ok && content != "" {
+				promptPreview = content
+				break
+			}
+		}
+	}
+	if promptPreview == "" && len(req.Messages) > 0 {
+		if content, ok := req.Messages[len(req.Messages)-1]["content"].(string); ok {
+			promptPreview = content
+		}
+	}
+	if len(promptPreview) > 250 {
+		promptPreview = promptPreview[:250] + "..."
+	}
+	return promptPreview
+}
+
+// canonicalMessagesJSON marshals req.Messages to canonical JSON for persistence.
+// Returns (nil, false) if nil/empty or larger than maxPayloadBytes.
+func canonicalMessagesJSON(req *ProxyRequest) ([]byte, bool) {
+	if req == nil || len(req.Messages) == 0 {
+		return nil, false
+	}
+	data, err := json.Marshal(req.Messages)
+	if err != nil {
+		return nil, false
+	}
+	if len(data) > maxPayloadBytes {
+		return nil, false
+	}
+	return data, true
 }

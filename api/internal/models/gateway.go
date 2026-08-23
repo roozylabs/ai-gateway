@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 )
 
@@ -184,4 +185,12 @@ type RoutingRule struct {
 	ProviderType string    `json:"providerType,omitempty" db:"-"`
 	CreatedAt    time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt    time.Time `json:"updatedAt" db:"updated_at"`
+}
+
+type RequestPayload struct {
+	RequestID       string          `json:"requestId" db:"request_id"`
+	GatewayAPIKeyID *string         `json:"gatewayApiKeyId,omitempty" db:"gateway_api_key_id"`
+	Messages        json.RawMessage `json:"messages" db:"messages"`
+	PromptHash      string          `json:"promptHash" db:"prompt_hash"`
+	ByteSize        int             `json:"byteSize" db:"byte_size"`
 }

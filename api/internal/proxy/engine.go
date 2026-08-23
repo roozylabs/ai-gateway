@@ -40,6 +40,7 @@ type Engine struct {
 	budgetMgr    *BudgetManager
 	policyRepo   *repository.RoutingPolicyRepository
 	decisionRepo *repository.RoutingDecisionRepository
+	payloads     *repository.PayloadRepository
 	telemetry    *goredis.ModelTelemetryStore
 	encKey       string
 	maxRetries   int
@@ -47,7 +48,7 @@ type Engine struct {
 	client       *http.Client
 }
 
-func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, telemetry *goredis.ModelTelemetryStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int, budgetMgr *BudgetManager, policyRepo *repository.RoutingPolicyRepository, decisionRepo *repository.RoutingDecisionRepository) *Engine {
+func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, telemetry *goredis.ModelTelemetryStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int, budgetMgr *BudgetManager, policyRepo *repository.RoutingPolicyRepository, decisionRepo *repository.RoutingDecisionRepository, payloads *repository.PayloadRepository) *Engine {
 	proxyFunc := http.ProxyFromEnvironment
 	if customProxy := os.Getenv("GLOBAL_PROXY_URL"); customProxy != "" {
 		if proxyURL, err := url.Parse(customProxy); err == nil {
@@ -79,6 +80,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		budgetMgr:    budgetMgr,
 		policyRepo:   policyRepo,
 		decisionRepo: decisionRepo,
+		payloads:     payloads,
 		encKey:       encKey,
 		maxRetries:   maxRetries,
 		cooldownSecs: cooldownSecs,
@@ -127,6 +129,34 @@ func (r *ProxyRequest) UnmarshalJSON(data []byte) error {
 
 func (e *Engine) resolveRoutes(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) ([]*Route, error) {
 	ctx := c.Request.Context()
+
+	// Persist full conversation payload asynchronously (never blocks the hot path)
+	if e.payloads != nil {
+		requestID := c.GetString("requestID")
+		var keyID *string
+		if gatewayKey != nil {
+			k := gatewayKey.ID
+			keyID = &k
+		}
+		go func() {
+			defer func() { _ = recover() }()
+			payloadJSON, ok := canonicalMessagesJSON(req)
+			if !ok {
+				return
+			}
+			p := &models.RequestPayload{
+				RequestID:       requestID,
+				GatewayAPIKeyID: keyID,
+				Messages:        payloadJSON,
+				PromptHash:      utils.HashSHA256(string(payloadJSON)),
+				ByteSize:        len(payloadJSON),
+			}
+			if err := e.payloads.Create(context.Background(), p); err != nil {
+				log.Printf("persist request payload: %v", err)
+			}
+		}()
+	}
+
 	if req.Model == "roozy-auto" {
 		userID := ""
 		if gatewayKey != nil {

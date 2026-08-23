@@ -66,6 +66,7 @@ func main() {
 	routingPolicyRepo := repository.NewRoutingPolicyRepository(sqlDB)
 	budgetRepo := repository.NewBudgetRepository(sqlDB)
 	decisionRepo := repository.NewRoutingDecisionRepository(sqlDB)
+	payloadRepo := repository.NewPayloadRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -78,7 +79,7 @@ func main() {
 	telemetry := goredis.NewModelTelemetryStore(rdb)
 	budgetMgr := proxy.NewBudgetManager(budgetRepo)
 	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo, settingRepo)
-	engine := proxy.NewEngine(router, credentialRepo, cooldown, telemetry, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo)
+	engine := proxy.NewEngine(router, credentialRepo, cooldown, telemetry, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo, payloadRepo)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
