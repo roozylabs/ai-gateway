@@ -61,6 +61,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		TLSHandshakeTimeout:   10 * time.Second,
 		ResponseHeaderTimeout: 30 * time.Second,
 		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   50,
 		IdleConnTimeout:       90 * time.Second,
 	}
 	return &Engine{

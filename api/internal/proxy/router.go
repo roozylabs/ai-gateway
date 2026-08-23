@@ -270,10 +270,15 @@ func (r *Router) ResolveSemantic(
 		return nil, nil, fmt.Errorf("list enabled models: %w", err)
 	}
 
-	// Filter by gateway key allowed models
+	// Filter by gateway key allowed models & provider restriction
 	var candidates []*models.Model
 	for _, m := range allModels {
-		if len(gatewayKey.AllowedModels) > 0 {
+		if gatewayKey != nil && gatewayKey.ProviderID != nil && *gatewayKey.ProviderID != "" {
+			if m.ProviderID != *gatewayKey.ProviderID {
+				continue
+			}
+		}
+		if gatewayKey != nil && len(gatewayKey.AllowedModels) > 0 {
 			allowed := false
 			for _, a := range gatewayKey.AllowedModels {
 				if a == m.Slug || a == "*" {
