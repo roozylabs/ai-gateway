@@ -118,7 +118,8 @@ func (r *ProxyRequest) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (e *Engine) resolveRoutes(ctx context.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) ([]*Route, error) {
+func (e *Engine) resolveRoutes(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) ([]*Route, error) {
+	ctx := c.Request.Context()
 	if req.Model == "roozy-auto" {
 		userID := ""
 		if gatewayKey != nil {
@@ -166,9 +167,10 @@ func (e *Engine) resolveRoutes(ctx context.Context, req *ProxyRequest, gatewayKe
 
 		routes, decision, err := e.router.ResolveSemantic(ctx, req, gatewayKey, e.cooldown, sPolicy, budgetStatus)
 		if err == nil && decision != nil {
+			decision.RequestID = c.GetString("requestID")
 			// Log routing decision asynchronously
 			if userID != "" {
-				go e.logRoutingDecision(context.Background(), userID, req, decision)
+				go e.logRoutingDecision(context.Background(), userID, decision)
 			}
 		}
 		return routes, err
@@ -176,26 +178,32 @@ func (e *Engine) resolveRoutes(ctx context.Context, req *ProxyRequest, gatewayKe
 	return e.router.ResolveWithFallback(ctx, req.Model, gatewayKey, e.cooldown)
 }
 
-func (e *Engine) logRoutingDecision(ctx context.Context, userID string, req *ProxyRequest, decision *RoutingDecision) {
+func (e *Engine) logRoutingDecision(ctx context.Context, userID string, decision *RoutingDecision) {
+	if decision == nil {
+		return
+	}
+
 	// Publish to Redis for SSE streaming
 	if e.publisher != nil {
 		_ = e.publisher.Publish(ctx, "ROUTING_DECISION", map[string]interface{}{
-			"task":              decision.Task,
-			"complexity":        decision.Complexity,
-			"policy":            decision.PolicyName,
-			"selectedModel":     decision.SelectedModel,
-			"selectedProvider":  decision.SelectedProvider,
-			"budgetStatus":      decision.BudgetStatus,
-			"estimatedCost":     decision.EstimatedCost,
-			"downgradeReason":   decision.DowngradeReason,
+			"requestId":        decision.RequestID,
+			"task":             decision.Task,
+			"complexity":       decision.Complexity,
+			"policy":           decision.PolicyName,
+			"candidates":       decision.Candidates,
+			"selectedModel":    decision.SelectedModel,
+			"selectedProvider": decision.SelectedProvider,
+			"budgetStatus":     decision.BudgetStatus,
+			"estimatedCost":    decision.EstimatedCost,
+			"downgradeReason":  decision.DowngradeReason,
 		})
 	}
 
 	// Persist to database
 	if e.decisionRepo != nil {
-		candidatesJSON, _ := json.Marshal([]string{decision.SelectedModel})
+		candidatesJSON, _ := json.Marshal(decision.Candidates)
 		_ = e.decisionRepo.Create(ctx, &repository.RoutingDecisionLog{
-			RequestID:        req.Model,
+			RequestID:        decision.RequestID,
 			UserID:           userID,
 			TaskType:         decision.Task,
 			Complexity:       decision.Complexity,
@@ -223,7 +231,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		reqID = uuid.New().String()
 	}
 
-	routes, err := e.resolveRoutes(c.Request.Context(), req, gatewayKey)
+	routes, err := e.resolveRoutes(c, req, gatewayKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -451,7 +459,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		reqID = uuid.New().String()
 	}
 
-	routes, err := e.resolveRoutes(c.Request.Context(), req, gatewayKey)
+	routes, err := e.resolveRoutes(c, req, gatewayKey)
 	if err != nil {
 		return nil, err
 	}

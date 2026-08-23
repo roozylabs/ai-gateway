@@ -19,9 +19,11 @@ type ModelScore struct {
 }
 
 type RoutingDecision struct {
+	RequestID       string
 	Task            string
 	Complexity      string
 	PolicyName      string
+	Candidates      []string
 	SelectedModel   string
 	SelectedProvider string
 	BudgetStatus    string

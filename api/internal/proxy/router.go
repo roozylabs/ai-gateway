@@ -299,6 +299,9 @@ func (r *Router) ResolveSemantic(
 		PolicyName:   policy.Name,
 		BudgetStatus: budgetStatus,
 	}
+	for _, s := range scores {
+		decision.Candidates = append(decision.Candidates, s.Model.Slug)
+	}
 
 	var routes []*Route
 	var winningModel *models.Model
