@@ -216,9 +216,6 @@ func main() {
 			protected.POST("/routing/simulate", simulateHandler.Simulate)
 			protected.POST("/routing-simulate", simulateHandler.Simulate)
 
-			// Analytics Logs
-			protected.GET("/analytics/logs", logsHandler.GetAnalytics)
-
 			// Budgets
 			protected.GET("/budgets", budgetHandler.List)
 			protected.GET("/budgets/status", budgetStatusHandler.GetStatus)
