@@ -401,9 +401,46 @@ export default function RoutingPlaygroundPage() {
             >
               <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div>
-                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
-                    Test Prompt Input
-                  </Text>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text strong>Test Prompt Input</Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>Quick Sample Presets:</Text>
+                  </div>
+
+                  {/* Sample Prompt Preset Buttons */}
+                  <Space wrap style={{ marginBottom: 10 }}>
+                    {[
+                      {
+                        label: '💻 Coding',
+                        color: 'purple',
+                        prompt: 'Write an efficient Golang HTTP server with SSE streaming, concurrency limiters, and clean error handling.',
+                      },
+                      {
+                        label: '🧠 Reasoning',
+                        color: 'magenta',
+                        prompt: "Analyze the time and space complexity of Dijkstra's algorithm vs A* search, and derive the mathematical proof for heuristic consistency.",
+                      },
+                      {
+                        label: '💬 General / Creative',
+                        color: 'blue',
+                        prompt: 'Draft a professional product release announcement for AI Gateway v1.1 highlighting enterprise security and cost optimization.',
+                      },
+                      {
+                        label: '⚡ Fast Q&A',
+                        color: 'cyan',
+                        prompt: 'What is the capital of France and what timezone does it use?',
+                      },
+                    ].map((s, idx) => (
+                      <Tag
+                        key={idx}
+                        color={s.color}
+                        style={{ cursor: 'pointer', padding: '2px 8px', borderRadius: 12, fontSize: 11 }}
+                        onClick={() => setPrompt(s.prompt)}
+                      >
+                        {s.label}
+                      </Tag>
+                    ))}
+                  </Space>
+
                   <TextArea
                     rows={4}
                     value={prompt}
