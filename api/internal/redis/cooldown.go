@@ -46,16 +46,23 @@ func (s *CooldownStore) GetCoolingIDs(ctx context.Context) ([]string, error) {
 	if s == nil || s.rdb == nil {
 		return nil, nil
 	}
-	keys, err := s.rdb.Keys(ctx, "credential:*:cooldown").Result()
-	if err != nil && !errors.Is(err, goredis.Nil) {
-		return nil, err
-	}
 	var ids []string
-	for _, key := range keys {
-		// key format: credential:<id>:cooldown
-		parts := strings.Split(key, ":")
-		if len(parts) == 3 && parts[1] != "" {
-			ids = append(ids, parts[1])
+	var cursor uint64
+	for {
+		keys, nextCursor, err := s.rdb.Scan(ctx, cursor, "credential:*:cooldown", 100).Result()
+		if err != nil && !errors.Is(err, goredis.Nil) {
+			return nil, err
+		}
+		for _, key := range keys {
+			// key format: credential:<id>:cooldown
+			parts := strings.Split(key, ":")
+			if len(parts) == 3 && parts[1] != "" {
+				ids = append(ids, parts[1])
+			}
+		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
 		}
 	}
 	return ids, nil
