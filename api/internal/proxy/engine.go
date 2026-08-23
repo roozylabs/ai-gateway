@@ -290,9 +290,18 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		var apiKey string
 		if route.Credential.AuthType == "gcp_user_oauth" {
-			meta, err := e.creds.DecryptMetadata(c.Request.Context(), route.Credential.ID, e.encKey)
+			if !route.Credential.EncryptedMetadata.Valid || route.Credential.EncryptedMetadata.String == "" {
+				lastErr = fmt.Errorf("no encrypted metadata for credential %s", route.Credential.ID)
+				continue
+			}
+			decryptedJSON, err := utils.DecryptAES256GCM(route.Credential.EncryptedMetadata.String, e.encKey)
 			if err != nil {
 				lastErr = fmt.Errorf("decrypt metadata: %w", err)
+				continue
+			}
+			var meta map[string]string
+			if err := json.Unmarshal([]byte(decryptedJSON), &meta); err != nil {
+				lastErr = fmt.Errorf("unmarshal metadata json failed: %w", err)
 				continue
 			}
 			accessToken, err := e.oauthMgr.GetAccessToken(c.Request.Context(), route.Credential.ID, meta)
@@ -303,7 +312,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			apiKey = accessToken
 		} else {
 			var err error
-			apiKey, err = e.creds.DecryptKey(c.Request.Context(), route.Credential.ID, e.encKey)
+			apiKey, err = utils.DecryptAES256GCM(route.Credential.EncryptedKey, e.encKey)
 			if err != nil {
 				lastErr = fmt.Errorf("decrypt credential: %w", err)
 				continue
@@ -548,9 +557,18 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		var apiKey string
 		if route.Credential.AuthType == "gcp_user_oauth" {
-			meta, err := e.creds.DecryptMetadata(c.Request.Context(), route.Credential.ID, e.encKey)
+			if !route.Credential.EncryptedMetadata.Valid || route.Credential.EncryptedMetadata.String == "" {
+				lastErr = fmt.Errorf("no encrypted metadata for credential %s", route.Credential.ID)
+				continue
+			}
+			decryptedJSON, err := utils.DecryptAES256GCM(route.Credential.EncryptedMetadata.String, e.encKey)
 			if err != nil {
 				lastErr = fmt.Errorf("decrypt metadata: %w", err)
+				continue
+			}
+			var meta map[string]string
+			if err := json.Unmarshal([]byte(decryptedJSON), &meta); err != nil {
+				lastErr = fmt.Errorf("unmarshal metadata json failed: %w", err)
 				continue
 			}
 			accessToken, err := e.oauthMgr.GetAccessToken(c.Request.Context(), route.Credential.ID, meta)
@@ -561,7 +579,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			apiKey = accessToken
 		} else {
 			var err error
-			apiKey, err = e.creds.DecryptKey(c.Request.Context(), route.Credential.ID, e.encKey)
+			apiKey, err = utils.DecryptAES256GCM(route.Credential.EncryptedKey, e.encKey)
 			if err != nil {
 				lastErr = fmt.Errorf("decrypt credential: %w", err)
 				continue
