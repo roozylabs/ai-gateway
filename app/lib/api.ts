@@ -488,6 +488,7 @@ export interface ApiRoutingPolicy {
     max_cost_per_request?: number;
   };
   enabled: boolean;
+  isDefault?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -504,6 +505,11 @@ export async function apiCreatePolicy(data: Partial<ApiRoutingPolicy>): Promise<
 
 export async function apiUpdatePolicy(id: string, data: Partial<ApiRoutingPolicy>): Promise<ApiRoutingPolicy> {
   const response = await api.put<ApiRoutingPolicy>(`/policies/${id}`, data);
+  return response.data;
+}
+
+export async function apiSetDefaultPolicy(id: string): Promise<ApiRoutingPolicy> {
+  const response = await api.put<ApiRoutingPolicy>(`/policies/${id}/default`);
   return response.data;
 }
 

@@ -20,10 +20,10 @@ func NewRoutingPolicyRepository(db *sql.DB) *RoutingPolicyRepository {
 
 func (r *RoutingPolicyRepository) ListByUserID(ctx context.Context, userID string) ([]models.RoutingPolicy, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, user_id, name, weights::text, constraints::text, enabled, created_at, updated_at
+		`SELECT id, user_id, name, weights::text, constraints::text, enabled, is_default, created_at, updated_at
 		 FROM routing_policies
 		 WHERE user_id = $1 AND enabled = true
-		 ORDER BY name ASC`, userID,
+		 ORDER BY is_default DESC, name ASC`, userID,
 	)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func (r *RoutingPolicyRepository) ListByUserID(ctx context.Context, userID strin
 	for rows.Next() {
 		var p models.RoutingPolicy
 		if err := rows.Scan(&p.ID, &p.UserID, &p.Name, &p.WeightsJSON, &p.ConstraintsJSON,
-			&p.Enabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			&p.Enabled, &p.IsDefault, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if err := unmarshalPolicyJSON(&p); err != nil {
@@ -48,11 +48,11 @@ func (r *RoutingPolicyRepository) ListByUserID(ctx context.Context, userID strin
 func (r *RoutingPolicyRepository) FindByID(ctx context.Context, id, userID string) (*models.RoutingPolicy, error) {
 	var p models.RoutingPolicy
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, name, weights::text, constraints::text, enabled, created_at, updated_at
+		`SELECT id, user_id, name, weights::text, constraints::text, enabled, is_default, created_at, updated_at
 		 FROM routing_policies
 		 WHERE id = $1 AND user_id = $2`, id, userID,
 	).Scan(&p.ID, &p.UserID, &p.Name, &p.WeightsJSON, &p.ConstraintsJSON,
-		&p.Enabled, &p.CreatedAt, &p.UpdatedAt)
+		&p.Enabled, &p.IsDefault, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +65,11 @@ func (r *RoutingPolicyRepository) FindByID(ctx context.Context, id, userID strin
 func (r *RoutingPolicyRepository) FindByName(ctx context.Context, name, userID string) (*models.RoutingPolicy, error) {
 	var p models.RoutingPolicy
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, name, weights::text, constraints::text, enabled, created_at, updated_at
+		`SELECT id, user_id, name, weights::text, constraints::text, enabled, is_default, created_at, updated_at
 		 FROM routing_policies
 		 WHERE name = $1 AND user_id = $2`, name, userID,
 	).Scan(&p.ID, &p.UserID, &p.Name, &p.WeightsJSON, &p.ConstraintsJSON,
-		&p.Enabled, &p.CreatedAt, &p.UpdatedAt)
+		&p.Enabled, &p.IsDefault, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -82,13 +82,13 @@ func (r *RoutingPolicyRepository) FindByName(ctx context.Context, name, userID s
 func (r *RoutingPolicyRepository) FindByDefault(ctx context.Context, userID string) (*models.RoutingPolicy, error) {
 	var p models.RoutingPolicy
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, name, weights::text, constraints::text, enabled, created_at, updated_at
+		`SELECT id, user_id, name, weights::text, constraints::text, enabled, is_default, created_at, updated_at
 		 FROM routing_policies
 		 WHERE user_id = $1 AND enabled = true
-		 ORDER BY name ASC
+		 ORDER BY is_default DESC, name ASC
 		 LIMIT 1`, userID,
 	).Scan(&p.ID, &p.UserID, &p.Name, &p.WeightsJSON, &p.ConstraintsJSON,
-		&p.Enabled, &p.CreatedAt, &p.UpdatedAt)
+		&p.Enabled, &p.IsDefault, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -112,10 +112,10 @@ func (r *RoutingPolicyRepository) Create(ctx context.Context, p *models.RoutingP
 	}
 
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO routing_policies (id, user_id, name, weights, constraints, enabled, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		`INSERT INTO routing_policies (id, user_id, name, weights, constraints, enabled, is_default, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		p.ID, p.UserID, p.Name, p.WeightsJSON, p.ConstraintsJSON,
-		p.Enabled, p.CreatedAt, p.UpdatedAt,
+		p.Enabled, p.IsDefault, p.CreatedAt, p.UpdatedAt,
 	)
 	return err
 }
@@ -129,12 +129,32 @@ func (r *RoutingPolicyRepository) Update(ctx context.Context, p *models.RoutingP
 
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE routing_policies
-		 SET name = $1, weights = $2, constraints = $3, enabled = $4, updated_at = $5
-		 WHERE id = $6 AND user_id = $7`,
-		p.Name, p.WeightsJSON, p.ConstraintsJSON, p.Enabled,
+		 SET name = $1, weights = $2, constraints = $3, enabled = $4, is_default = $5, updated_at = $6
+		 WHERE id = $7 AND user_id = $8`,
+		p.Name, p.WeightsJSON, p.ConstraintsJSON, p.Enabled, p.IsDefault,
 		p.UpdatedAt, p.ID, p.UserID,
 	)
 	return err
+}
+
+func (r *RoutingPolicyRepository) SetDefault(ctx context.Context, id, userID string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1`, userID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = true, enabled = true, updated_at = NOW() WHERE id = $1 AND user_id = $2`, id, userID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *RoutingPolicyRepository) Delete(ctx context.Context, id, userID string) error {

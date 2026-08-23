@@ -40,6 +40,7 @@ import {
   apiGetPolicies,
   apiCreatePolicy,
   apiUpdatePolicy,
+  apiSetDefaultPolicy,
   apiDeletePolicy,
 } from '@/lib/api';
 
@@ -85,6 +86,17 @@ export default function PoliciesPage() {
     },
     onError: (err: Error) => {
       message.error(err.message || 'Failed to update policy');
+    },
+  });
+
+  const setDefaultMutation = useMutation({
+    mutationFn: (id: string) => apiSetDefaultPolicy(id),
+    onSuccess: () => {
+      message.success('Default Routing Policy updated');
+      queryClient.invalidateQueries({ queryKey: ['policies'] });
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Failed to update default policy');
     },
   });
 
@@ -162,7 +174,7 @@ export default function PoliciesPage() {
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record: ApiRoutingPolicy) => {
-        const isDefault = name === 'balanced';
+        const isDefault = record.isDefault || name === 'balanced';
         return (
           <Space>
             <Text strong>{name}</Text>
@@ -210,14 +222,25 @@ export default function PoliciesPage() {
       title: 'Actions',
       key: 'actions',
       render: (_: any, record: ApiRoutingPolicy) => {
-        const isDefault = record.name === 'balanced';
+        const isDefault = record.isDefault || record.name === 'balanced';
         return (
           <Space size="small">
+            {!isDefault && (
+              <Button
+                type="text"
+                style={{ color: '#1677ff' }}
+                icon={<CheckOutlined />}
+                loading={setDefaultMutation.isPending && setDefaultMutation.variables === record.id}
+                onClick={() => setDefaultMutation.mutate(record.id)}
+              >
+                Set Active
+              </Button>
+            )}
             <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenEdit(record)}>
               Edit
             </Button>
             {isDefault ? (
-              <Tooltip title="Default Policy cannot be deleted. You can edit its weights or create new custom policies.">
+              <Tooltip title="Active Default Policy cannot be deleted. Set another policy as default active first.">
                 <Button type="text" disabled icon={<DeleteOutlined />}>
                   Delete
                 </Button>

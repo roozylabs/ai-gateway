@@ -123,6 +123,21 @@ func (h *RoutingPolicyHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "policy deleted"})
 }
 
+func (h *RoutingPolicyHandler) SetDefault(c *gin.Context) {
+	userID := c.GetString("userId")
+	id := c.Param("id")
+	if err := h.policyRepo.SetDefault(c.Request.Context(), id, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to set policy as default"})
+		return
+	}
+	policy, err := h.policyRepo.FindByID(c.Request.Context(), id, userID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "policy set as default"})
+		return
+	}
+	c.JSON(http.StatusOK, policy)
+}
+
 func (h *RoutingPolicyHandler) FindByName(c *gin.Context) {
 	userID := c.GetString("userId")
 	name := c.Param("name")

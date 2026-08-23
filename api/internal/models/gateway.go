@@ -142,6 +142,7 @@ type RoutingPolicy struct {
 	WeightsJSON     string             `json:"-" db:"weights"`
 	ConstraintsJSON string             `json:"-" db:"constraints"`
 	Enabled         bool               `json:"enabled" db:"enabled"`
+	IsDefault       bool               `json:"isDefault" db:"is_default"`
 	CreatedAt       time.Time          `json:"createdAt" db:"created_at"`
 	UpdatedAt       time.Time          `json:"updatedAt" db:"updated_at"`
 }
