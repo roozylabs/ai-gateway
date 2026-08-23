@@ -225,3 +225,50 @@ func (s *CooldownStore) GetActiveStreams(ctx context.Context) (*ActiveStreamsSum
 
 	return summary, nil
 }
+
+// Circuit Breaker Methods
+
+const (
+	CircuitBreakerThreshold = 3  // 3 consecutive 50x/timeout errors
+	CircuitBreakerTTLSec    = 60 // 60 seconds quarantine
+)
+
+func (s *CooldownStore) RecordServerError(ctx context.Context, credentialID string, statusCode int) (bool, error) {
+	if s == nil || s.rdb == nil || credentialID == "" {
+		return false, nil
+	}
+
+	key := fmt.Sprintf("credential:%s:50x_count", credentialID)
+	count, err := s.rdb.Incr(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+
+	if count == 1 {
+		_ = s.rdb.Expire(ctx, key, time.Duration(CircuitBreakerTTLSec)*time.Second).Err()
+	}
+
+	if count >= int64(CircuitBreakerThreshold) {
+		// Put credential into quarantine cooldown for 60 seconds
+		_ = s.SetCooldown(ctx, credentialID, CircuitBreakerTTLSec)
+		_ = s.rdb.Del(ctx, key).Err()
+
+		// Update quota status to note circuit breaker
+		_ = s.SaveCredentialQuota(ctx, credentialID, &CredentialQuotaInfo{
+			StatusText:  "circuit_breaker_50x",
+			LastUpdated: time.Now().Unix(),
+		})
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (s *CooldownStore) RecordSuccess(ctx context.Context, credentialID string) error {
+	if s == nil || s.rdb == nil || credentialID == "" {
+		return nil
+	}
+	key := fmt.Sprintf("credential:%s:50x_count", credentialID)
+	return s.rdb.Del(ctx, key).Err()
+}

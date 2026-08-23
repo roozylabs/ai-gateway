@@ -98,6 +98,14 @@ function RateLimitQuotaBadge({
   }, [onExpire]);
 
   if (record.isCoolingDown || cooldownSec > 0) {
+    const isCircuitBreaker = record.quota?.statusText === 'circuit_breaker_50x' || record.quota?.statusText?.includes('circuit_breaker');
+    if (isCircuitBreaker) {
+      return (
+        <Tag color="volcano" style={{ fontWeight: 600, padding: '2px 8px', borderRadius: 4 }}>
+          ⚡ QUARANTINED 50x ({formatDuration(cooldownSec)})
+        </Tag>
+      );
+    }
     return (
       <Badge
         status="warning"

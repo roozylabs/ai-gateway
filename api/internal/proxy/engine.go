@@ -337,6 +337,16 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		if err != nil {
 			release()
 			lastErr = fmt.Errorf("execute request: %w", err)
+			if isQuarantined, _ := e.cooldown.RecordServerError(c.Request.Context(), route.Credential.ID, 504); isQuarantined {
+				if e.publisher != nil {
+					_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_QUARANTINED", map[string]interface{}{
+						"credentialId": route.Credential.ID,
+						"reason":       "circuit_breaker_50x",
+						"statusCode":   504,
+						"model":        req.Model,
+					})
+				}
+			}
 			continue
 		}
 
@@ -373,13 +383,25 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			continue
 		}
 
-		// 5xx → retry
+		// 5xx → Circuit Breaker recording and retry
 		if httpResp.StatusCode >= 500 {
+			if isQuarantined, _ := e.cooldown.RecordServerError(c.Request.Context(), route.Credential.ID, httpResp.StatusCode); isQuarantined {
+				if e.publisher != nil {
+					_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_QUARANTINED", map[string]interface{}{
+						"credentialId": route.Credential.ID,
+						"reason":       "circuit_breaker_50x",
+						"statusCode":   httpResp.StatusCode,
+						"model":        req.Model,
+					})
+				}
+			}
 			lastErr = fmt.Errorf("upstream returned %d", httpResp.StatusCode)
+			time.Sleep(calculateBackoff(i))
 			continue
 		}
 
-		// Success
+		// Success → reset 50x error count
+		_ = e.cooldown.RecordSuccess(c.Request.Context(), route.Credential.ID)
 		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
 		_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "active")
 		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
@@ -565,6 +587,16 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		if err != nil {
 			release()
 			lastErr = fmt.Errorf("execute request: %w", err)
+			if isQuarantined, _ := e.cooldown.RecordServerError(c.Request.Context(), route.Credential.ID, 504); isQuarantined {
+				if e.publisher != nil {
+					_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_QUARANTINED", map[string]interface{}{
+						"credentialId": route.Credential.ID,
+						"reason":       "circuit_breaker_50x",
+						"statusCode":   504,
+						"model":        req.Model,
+					})
+				}
+			}
 			continue
 		}
 
@@ -599,11 +631,22 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			continue
 		}
 
-		// 5xx → retry
+		// 5xx → Circuit Breaker recording and retry
 		if httpResp.StatusCode >= 500 {
 			httpResp.Body.Close()
 			release()
+			if isQuarantined, _ := e.cooldown.RecordServerError(c.Request.Context(), route.Credential.ID, httpResp.StatusCode); isQuarantined {
+				if e.publisher != nil {
+					_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_QUARANTINED", map[string]interface{}{
+						"credentialId": route.Credential.ID,
+						"reason":       "circuit_breaker_50x",
+						"statusCode":   httpResp.StatusCode,
+						"model":        req.Model,
+					})
+				}
+			}
 			lastErr = fmt.Errorf("upstream returned %d", httpResp.StatusCode)
+			time.Sleep(calculateBackoff(i))
 			continue
 		}
 
@@ -615,7 +658,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			return nil, fmt.Errorf("upstream error %d: %s", httpResp.StatusCode, string(bodyBytes))
 		}
 
-		// Success → start streaming
+		// Success → start streaming & reset 50x error count
+		_ = e.cooldown.RecordSuccess(c.Request.Context(), route.Credential.ID)
 		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
 		_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "active")
 		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
