@@ -43,15 +43,18 @@ With **AI Gateway**, your AI coding tools (such as **OpenCode**, **Claude Code**
 
 ## ✨ Key Features
 
-- **🧠 Roozy Auto Smart Router (`roozy-auto`)**: Intelligent router that deterministically classifies request characteristics (Task, Complexity, Context Window) and executes weighted candidate scoring to select the most optimal model/provider.
+- **🧠 Roozy Auto Smart Router (`roozy-auto`)**: Intelligent router that deterministically classifies request characteristics (Task, Complexity, Context Window), pre-filters candidate models by active provider credentials, and executes weighted candidate scoring based on the active routing policy (`balanced`, `cheap`, `quality`, or custom).
+- **🎯 Default Active Policy Selection**: Easily set which routing policy (`balanced`, `cheap`, `quality`, or custom) `roozy-auto` uses by default via `PUT /policies/:id/default` or the Next.js `PoliciesPage` UI.
+- **🔍 Smart Router Decision Details & Prompt Observability**: Detailed audit trail (`/api/routing/decisions`) storing request prompt text previews (first 250 chars) and candidate model score breakdowns, viewable via the interactive Decision Details inspector drawer in Next.js `LogsPage`.
 - **💰 AI Budget Manager & Auto Downgrade**: Configurable monthly and daily spend limits, alert thresholds (`healthy`, `warning`, `critical`, `exceeded`), and automatic model downgrade logic before hard cutoffs.
-- **🔑 Centralized Credential Management**: Store and manage multiple provider API keys across accounts in one place with **AES-256-GCM** encryption (*encrypted at rest*).
-- **⚡ Instant Zero-Delay Rotation (Pre-Filtered Ready Pool)**: **Round Robin**, **Least Recently Used (LRU)**, and **Fallback Cascade** allocation strategies pre-filtered against active Redis 429 cooldowns.
+- **🔑 Centralized Credential Management & Auto-Reset**: Store and manage provider API keys with **AES-256-GCM** encryption (*encrypted at rest*). Automatic status recovery to `Normal` (Active) as soon as rate limit cooldown timers or daily 00:00 UTC resets expire.
+- **⚡ Instant Zero-Delay Rotation & HTTP Pooling**: **Round Robin**, **Least Recently Used (LRU)**, and **Fallback Cascade** allocation strategies with HTTP/2 connection pooling (`MaxIdleConnsPerHost: 50`) for low TTFT latency.
 - **🛡️ Clean User-Friendly Error Sanitization**: Isolates raw upstream provider errors (429 rate limits, network timeouts, internal UUIDs) into clean, transparent user-friendly JSON responses.
 - **📊 Complete Audit Trail & Debugging Headers**: Full request logging (for success HTTP 200 and error 429/500/502/504 requests), Smart Router decision audit trail (`/api/routing/decisions`), and response debugging headers (`X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID`).
 - **🛡️ Provider Concurrency Limiter & Cloudflare Evasion**: In-memory Go channel semaphores (default max **2** active streams per provider) & request pacing (`350ms`) to evade WAF concurrency rate limits.
 - **🌐 Outgoing Proxy Support**: Support for `GLOBAL_PROXY_URL` environment variable (SOCKS5 / HTTP Proxy) to route outbound requests through residential IPs or SSH tunnels.
 - **🌊 Pass-Through Real-Time Streaming**: Pass-through Server-Sent Events (SSE) streaming with token usage collection (`stream_options: include_usage`) and real-time cost calculation (`CostUSD`).
+- **📱 Responsive UI Dashboard**: Next.js 15, React 19, & Ant Design dashboard fully responsive across desktop, tablet, and mobile viewports with horizontal scroll containment.
 - **🎯 Unified OpenAI-Compatible API**: OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/models`) for instant compatibility with standard AI client tools.
 
 ---

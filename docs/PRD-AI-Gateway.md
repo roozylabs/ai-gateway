@@ -12,6 +12,7 @@
 | 1.5 | 19 August 2026, 14:55 WIB | Updated Gateway API Key architecture: 1 Gateway Key is bound to 1 Provider |
 | 1.6 | 19 August 2026, 21:12 WIB | Added Google Gemini & Cloud OAuth 2.0 Token Refresh Flow Specs |
 | 1.7 | 21 August 2026, 22:56 WIB | Updated V1 Scope with AI Budget Manager & Semantic Router (`roozy-auto`), Cost Pipeline, and Debugging Headers |
+| 1.8 | 23 August 2026, 12:44 WIB | Added Default Active Policy Selection (`PUT /policies/:id/default`), Smart Router Prompt Preview & Score Breakdown Observability, Active Credentials Pre-filtering, and Responsive UI Layout specs |
 
 ---
 
