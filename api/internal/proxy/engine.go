@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -373,6 +375,9 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			continue
 		}
 
+		respHash := fmt.Sprintf("%x", sha256.Sum256(body))
+		respBytes := len(body)
+
 		// 429 → cooldown and retry
 		if httpResp.StatusCode == http.StatusTooManyRequests {
 			bodyStr := string(body)
@@ -487,6 +492,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			TotalTokens:     resp.Usage.TotalTokens,
 			CostUSD:         inputCost + outputCost,
 			RetryCount:      retryCount,
+			ResponseHash:    respHash,
+			ResponseBytes:   respBytes,
 		}
 
 		if resp.Error != nil {
@@ -709,6 +716,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		var totalTokens Usage
 		var outputCharCount int
+		hasher := sha256.New()
+		mw := io.MultiWriter(c.Writer, hasher)
 		scanner := bufio.NewScanner(httpResp.Body)
 		scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 
@@ -771,9 +780,9 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			}
 
 			jsonChunk, _ := json.Marshal(chunk)
-			_, _ = c.Writer.Write([]byte("data: "))
-			_, _ = c.Writer.Write(jsonChunk)
-			_, _ = c.Writer.Write([]byte("\n\n"))
+			_, _ = mw.Write([]byte("data: "))
+			_, _ = mw.Write(jsonChunk)
+			_, _ = mw.Write([]byte("\n\n"))
 			c.Writer.Flush()
 		}
 
@@ -783,6 +792,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		_, _ = c.Writer.Write([]byte("data: [DONE]\n\n"))
 		c.Writer.Flush()
+		respHash := hex.EncodeToString(hasher.Sum(nil))
+		respBytes := outputCharCount
 
 		if totalTokens.TotalTokens == 0 {
 			inputChars := 0
@@ -836,6 +847,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			CostUSD:         inputCost + outputCost,
 			RetryCount:      retryCount,
 			TTFTMs:          ttftMs,
+			ResponseHash:    respHash,
+			ResponseBytes:   respBytes,
 		}
 
 		return log, nil

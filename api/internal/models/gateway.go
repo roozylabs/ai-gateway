@@ -118,6 +118,8 @@ type RequestLog struct {
 	ClientApp       string         `json:"clientApp,omitempty" db:"client_app"`
 	IsStream        bool           `json:"isStream" db:"is_stream"`
 	TTFTMs          int            `json:"ttftMs" db:"ttft_ms"`
+	ResponseHash    string         `json:"responseHash" db:"response_hash"`
+	ResponseBytes   int            `json:"responseBytes" db:"response_bytes"`
 	CreatedAt       time.Time      `json:"createdAt" db:"created_at"`
 }
 

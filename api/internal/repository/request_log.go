@@ -31,12 +31,12 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 		`INSERT INTO request_logs (id, request_id, gateway_api_key_id, provider_id, credential_id, model,
 		                          status_code, latency_ms, input_tokens, output_tokens, total_tokens,
 		                          cost_usd, error_message, retry_count, client_ip, user_agent, client_app,
-		                          is_stream, ttft_ms, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+		                          is_stream, ttft_ms, response_hash, response_bytes, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
 		log.ID, log.RequestID, log.GatewayAPIKeyID, log.ProviderID, log.CredentialID, log.Model,
 		log.StatusCode, log.LatencyMs, log.InputTokens, log.OutputTokens, log.TotalTokens,
 		log.CostUSD, log.ErrorMessage, log.RetryCount, log.ClientIP, log.UserAgent, log.ClientApp,
-		log.IsStream, log.TTFTMs, log.CreatedAt,
+		log.IsStream, log.TTFTMs, log.ResponseHash, log.ResponseBytes, log.CreatedAt,
 	)
 	return err
 }
