@@ -184,10 +184,18 @@ func (e *Engine) logRoutingDecision(ctx context.Context, userID string, decision
 		return
 	}
 
+	var scoresJSON json.RawMessage
+	if decision.ScoresBreakdown != nil {
+		if b, err := json.Marshal(decision.ScoresBreakdown); err == nil {
+			scoresJSON = b
+		}
+	}
+
 	// Publish to Redis for SSE streaming
 	if e.publisher != nil {
 		_ = e.publisher.Publish(ctx, "ROUTING_DECISION", map[string]interface{}{
 			"requestId":        decision.RequestID,
+			"promptPreview":    decision.PromptPreview,
 			"task":             decision.Task,
 			"complexity":       decision.Complexity,
 			"policy":           decision.PolicyName,
@@ -197,6 +205,7 @@ func (e *Engine) logRoutingDecision(ctx context.Context, userID string, decision
 			"budgetStatus":     decision.BudgetStatus,
 			"estimatedCost":    decision.EstimatedCost,
 			"downgradeReason":  decision.DowngradeReason,
+			"scoresBreakdown":  decision.ScoresBreakdown,
 		})
 	}
 
@@ -206,6 +215,7 @@ func (e *Engine) logRoutingDecision(ctx context.Context, userID string, decision
 		_ = e.decisionRepo.Create(ctx, &repository.RoutingDecisionLog{
 			RequestID:        decision.RequestID,
 			UserID:           userID,
+			PromptPreview:    decision.PromptPreview,
 			TaskType:         decision.Task,
 			Complexity:       decision.Complexity,
 			PolicyName:       decision.PolicyName,
@@ -215,6 +225,7 @@ func (e *Engine) logRoutingDecision(ctx context.Context, userID string, decision
 			BudgetStatus:     decision.BudgetStatus,
 			EstimatedCost:    decision.EstimatedCost,
 			DowngradeReason:  decision.DowngradeReason,
+			ScoresBreakdown:  scoresJSON,
 		})
 	}
 }

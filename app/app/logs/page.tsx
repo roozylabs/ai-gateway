@@ -19,12 +19,13 @@ import {
   ApiModelStat,
 } from '@/lib/api';
 
-const { Text, Title } = Typography;
+const { Text, Title, Paragraph } = Typography;
 
 export default function LogsPage() {
   const { isConnected } = useSSE();
   const [activeTab, setActiveTab] = useState<'logs' | 'routing' | 'analytics'>('logs');
   const [selectedLog, setSelectedLog] = useState<ApiRequestLog | null>(null);
+  const [selectedDecision, setSelectedDecision] = useState<ApiRoutingDecision | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [timeRangeDays, setTimeRangeDays] = useState<number>(30);
@@ -166,6 +167,7 @@ export default function LogsPage() {
       }
     },
     { title: 'Cost USD', dataIndex: 'actualCost', key: 'actualCost', render: (cost: number) => <Text code style={{ color: '#52c41a' }}>{formatCost(cost || 0)}</Text> },
+    { title: 'Action', key: 'action', render: (_: any, record: ApiRoutingDecision) => <Button type="text" icon={<EyeOutlined />} onClick={() => setSelectedDecision(record)}>Details</Button> },
   ], [formatCost, safeStr]);
 
   const extraActions = (
@@ -344,6 +346,65 @@ export default function LogsPage() {
             <Descriptions.Item label="Total Latency">{selectedLog.latencyMs} ms</Descriptions.Item>
             <Descriptions.Item label="Tokens">{selectedLog.inputTokens} / {selectedLog.outputTokens}</Descriptions.Item>
           </Descriptions>
+        )}
+      </Drawer>
+
+      <Drawer
+        title="Smart Router Decision Details"
+        placement="right"
+        width={580}
+        onClose={() => setSelectedDecision(null)}
+        open={!!selectedDecision}
+      >
+        {selectedDecision && (
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            {selectedDecision.promptPreview && (
+              <Card size="small" title="Request Prompt Preview" style={{ borderRadius: 8 }}>
+                <Paragraph copyable style={{ margin: 0, fontFamily: 'monospace', fontSize: 12 }}>
+                  {selectedDecision.promptPreview}
+                </Paragraph>
+              </Card>
+            )}
+
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="Request ID"><Text code>{selectedDecision.requestId || selectedDecision.id}</Text></Descriptions.Item>
+              <Descriptions.Item label="Timestamp">{selectedDecision.createdAt ? new Date(selectedDecision.createdAt).toLocaleString() : '-'}</Descriptions.Item>
+              <Descriptions.Item label="Task Classifier"><Tag color="purple">{safeStr(selectedDecision.taskType) || 'general'}</Tag></Descriptions.Item>
+              <Descriptions.Item label="Complexity"><Tag color="blue">{safeStr(selectedDecision.complexity) || 'standard'}</Tag></Descriptions.Item>
+              <Descriptions.Item label="Active Policy"><Tag color="geekblue">{safeStr(selectedDecision.policyName) || 'balanced'}</Tag></Descriptions.Item>
+              <Descriptions.Item label="Winning Model"><Text strong style={{ color: '#1677ff' }}>{safeStr(selectedDecision.selectedModel)}</Text></Descriptions.Item>
+              <Descriptions.Item label="Winning Provider"><Tag color="cyan">{safeStr(selectedDecision.selectedProvider)}</Tag></Descriptions.Item>
+              <Descriptions.Item label="Budget Status"><Tag color={selectedDecision.budgetStatus === 'healthy' ? 'success' : 'warning'}>{(safeStr(selectedDecision.budgetStatus) || 'healthy').toUpperCase()}</Tag></Descriptions.Item>
+              {selectedDecision.downgradeReason && (
+                <Descriptions.Item label="Downgrade Reason">
+                  <Tag color="volcano">{safeStr(selectedDecision.downgradeReason)}</Tag>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
+                    Model score penalized to protect monthly budget or prioritize cost efficiency.
+                  </Text>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+
+            {selectedDecision.scoresBreakdown && Object.keys(selectedDecision.scoresBreakdown).length > 0 && (
+              <Card size="small" title="Candidate Models Scoring Breakdown" style={{ borderRadius: 8 }}>
+                <Table
+                  dataSource={Object.entries(selectedDecision.scoresBreakdown).map(([slug, info]: [string, any]) => ({
+                    key: slug,
+                    slug,
+                    score: typeof info === 'object' ? info.score : info,
+                    reason: typeof info === 'object' && Array.isArray(info.reason) ? info.reason.join(', ') : '-',
+                  }))}
+                  pagination={false}
+                  size="small"
+                  columns={[
+                    { title: 'Candidate Model', dataIndex: 'slug', key: 'slug', render: (m: string) => <Tag color={m === selectedDecision.selectedModel ? 'blue' : 'default'}>{m}</Tag> },
+                    { title: 'Score', dataIndex: 'score', key: 'score', render: (s: number) => <Text strong style={{ color: typeof s === 'number' && s > 0.7 ? '#52c41a' : '#faad14' }}>{typeof s === 'number' ? s.toFixed(3) : s}</Text> },
+                    { title: 'Notes / Penalties', dataIndex: 'reason', key: 'reason', render: (r: string) => <Text type="secondary" style={{ fontSize: 11 }}>{r}</Text> },
+                  ]}
+                />
+              </Card>
+            )}
+          </Space>
         )}
       </Drawer>
     </div>

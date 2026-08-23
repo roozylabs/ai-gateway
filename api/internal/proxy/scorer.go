@@ -19,16 +19,18 @@ type ModelScore struct {
 }
 
 type RoutingDecision struct {
-	RequestID       string
-	Task            string
-	Complexity      string
-	PolicyName      string
-	Candidates      []string
-	SelectedModel   string
+	RequestID        string
+	PromptPreview    string
+	Task             string
+	Complexity       string
+	PolicyName       string
+	Candidates       []string
+	SelectedModel    string
 	SelectedProvider string
-	BudgetStatus    string
-	EstimatedCost   float64
-	DowngradeReason string
+	BudgetStatus     string
+	EstimatedCost    float64
+	DowngradeReason  string
+	ScoresBreakdown  map[string]interface{}
 }
 
 func ScoreCandidates(candidates []*models.Model, chars RequestCharacteristics, policy *RoutingPolicy) []*ModelScore {

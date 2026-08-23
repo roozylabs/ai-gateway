@@ -521,6 +521,7 @@ export async function apiDeletePolicy(id: string): Promise<void> {
 export interface ApiRoutingDecision {
   id: string;
   requestId: string;
+  promptPreview?: string;
   taskType: string;
   complexity: string;
   policyName: string;
@@ -531,6 +532,7 @@ export interface ApiRoutingDecision {
   estimatedCost: number;
   actualCost: number;
   downgradeReason?: string;
+  scoresBreakdown?: Record<string, any>;
   createdAt: string;
 }
 

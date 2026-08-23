@@ -14,6 +14,7 @@ type RoutingDecisionLog struct {
 	ID               string          `json:"id" db:"id"`
 	RequestID        string          `json:"requestId" db:"request_id"`
 	UserID           string          `json:"userId" db:"user_id"`
+	PromptPreview    string          `json:"promptPreview,omitempty" db:"prompt_preview"`
 	TaskType         string          `json:"taskType,omitempty" db:"task_type"`
 	Complexity       string          `json:"complexity,omitempty" db:"complexity"`
 	PolicyName       string          `json:"policyName,omitempty" db:"policy_name"`
@@ -24,6 +25,7 @@ type RoutingDecisionLog struct {
 	EstimatedCost    float64         `json:"estimatedCost" db:"estimated_cost"`
 	ActualCost       float64         `json:"actualCost" db:"actual_cost"`
 	DowngradeReason  string          `json:"downgradeReason,omitempty" db:"downgrade_reason"`
+	ScoresBreakdown  json.RawMessage `json:"scoresBreakdown,omitempty" db:"scores_breakdown"`
 	CreatedAt        time.Time       `json:"createdAt" db:"created_at"`
 }
 
@@ -50,12 +52,20 @@ func (r *RoutingDecisionRepository) Create(ctx context.Context, decision *Routin
 		candidates = nil
 	}
 
+	var scoresBreakdown interface{}
+	if len(decision.ScoresBreakdown) > 0 {
+		scoresBreakdown = []byte(decision.ScoresBreakdown)
+	} else {
+		scoresBreakdown = nil
+	}
+
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO routing_decisions (id, request_id, user_id, task_type, complexity, policy_name,
+		`INSERT INTO routing_decisions (id, request_id, user_id, prompt_preview, task_type, complexity, policy_name,
 		     candidates, selected_model, selected_provider, budget_status, estimated_cost, actual_cost,
-		     downgrade_reason, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+		     downgrade_reason, scores_breakdown, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
 		decision.ID, decision.RequestID, decision.UserID,
+		sql.NullString{String: decision.PromptPreview, Valid: decision.PromptPreview != ""},
 		sql.NullString{String: decision.TaskType, Valid: decision.TaskType != ""},
 		sql.NullString{String: decision.Complexity, Valid: decision.Complexity != ""},
 		sql.NullString{String: decision.PolicyName, Valid: decision.PolicyName != ""},
@@ -65,6 +75,7 @@ func (r *RoutingDecisionRepository) Create(ctx context.Context, decision *Routin
 		sql.NullString{String: decision.BudgetStatus, Valid: decision.BudgetStatus != ""},
 		decision.EstimatedCost, decision.ActualCost,
 		sql.NullString{String: decision.DowngradeReason, Valid: decision.DowngradeReason != ""},
+		scoresBreakdown,
 		decision.CreatedAt,
 	)
 	return err
@@ -78,9 +89,9 @@ func (r *RoutingDecisionRepository) ListWithFilter(ctx context.Context, userID s
 		offset = 0
 	}
 
-	query := `SELECT id, request_id, user_id, task_type, complexity, policy_name,
+	query := `SELECT id, request_id, user_id, prompt_preview, task_type, complexity, policy_name,
 		        candidates, selected_model, selected_provider, budget_status,
-		        estimated_cost, actual_cost, downgrade_reason, created_at
+		        estimated_cost, actual_cost, downgrade_reason, scores_breakdown, created_at
 		 FROM routing_decisions WHERE 1=1`
 	countQuery := `SELECT COUNT(*) FROM routing_decisions WHERE 1=1`
 
@@ -117,12 +128,13 @@ func (r *RoutingDecisionRepository) ListWithFilter(ctx context.Context, userID s
 	var decisions []RoutingDecisionLog
 	for rows.Next() {
 		var d RoutingDecisionLog
-		var taskType, complexity, policyName, selectedModel, selectedProvider, budgetStatus, downgradeReason sql.NullString
-		if err := rows.Scan(&d.ID, &d.RequestID, &d.UserID, &taskType, &complexity,
+		var promptPreview, taskType, complexity, policyName, selectedModel, selectedProvider, budgetStatus, downgradeReason sql.NullString
+		if err := rows.Scan(&d.ID, &d.RequestID, &d.UserID, &promptPreview, &taskType, &complexity,
 			&policyName, &d.Candidates, &selectedModel, &selectedProvider,
-			&budgetStatus, &d.EstimatedCost, &d.ActualCost, &downgradeReason, &d.CreatedAt); err != nil {
+			&budgetStatus, &d.EstimatedCost, &d.ActualCost, &downgradeReason, &d.ScoresBreakdown, &d.CreatedAt); err != nil {
 			return nil, 0, err
 		}
+		d.PromptPreview = promptPreview.String
 		d.TaskType = taskType.String
 		d.Complexity = complexity.String
 		d.PolicyName = policyName.String

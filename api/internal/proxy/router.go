@@ -264,6 +264,26 @@ func (r *Router) ResolveSemantic(
 
 	chars := ClassifyRequest(req.Messages)
 
+	// Extract prompt preview snippet (last user prompt or last message content)
+	promptPreview := ""
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		msg := req.Messages[i]
+		if role, ok := msg["role"].(string); ok && role == "user" {
+			if content, ok := msg["content"].(string); ok && content != "" {
+				promptPreview = content
+				break
+			}
+		}
+	}
+	if promptPreview == "" && len(req.Messages) > 0 {
+		if content, ok := req.Messages[len(req.Messages)-1]["content"].(string); ok {
+			promptPreview = content
+		}
+	}
+	if len(promptPreview) > 250 {
+		promptPreview = promptPreview[:250] + "..."
+	}
+
 	// Load all enabled models
 	allModels, err := r.models.ListEnabled(ctx)
 	if err != nil {
@@ -298,11 +318,21 @@ func (r *Router) ResolveSemantic(
 		return nil, nil, ErrModelNotFound
 	}
 
+	scoresBreakdown := make(map[string]interface{})
+	for _, sc := range scores {
+		scoresBreakdown[sc.Model.Slug] = map[string]interface{}{
+			"score":  sc.Score,
+			"reason": sc.Reason,
+		}
+	}
+
 	decision := &RoutingDecision{
-		Task:         string(chars.Task),
-		Complexity:   string(chars.Complexity),
-		PolicyName:   policy.Name,
-		BudgetStatus: budgetStatus,
+		PromptPreview:   promptPreview,
+		Task:            string(chars.Task),
+		Complexity:      string(chars.Complexity),
+		PolicyName:      policy.Name,
+		BudgetStatus:    budgetStatus,
+		ScoresBreakdown: scoresBreakdown,
 	}
 	for _, s := range scores {
 		decision.Candidates = append(decision.Candidates, s.Model.Slug)
