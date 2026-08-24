@@ -80,11 +80,8 @@ func (a *GoogleAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	if strings.HasPrefix(apiKey, "AIzaSy") || strings.HasPrefix(apiKey, "AQ.") || !strings.Contains(apiKey, ".") {
-		httpReq.Header.Set("x-goog-api-key", apiKey)
-	} else {
-		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
-	}
+	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+	httpReq.Header.Set("x-goog-api-key", apiKey)
 	return httpReq, nil
 }
 
