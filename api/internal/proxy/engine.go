@@ -1106,6 +1106,20 @@ func (e *Engine) extractAndSaveQuota(ctx context.Context, credID string, headers
 var retryInRegex = regexp.MustCompile(`(?i)(?:retry|try again|wait|in)\s+(\d+)\s*(?:s|sec|seconds?)`)
 
 func determineCooldownDuration(header http.Header, bodyStr string) int {
+	bodyLower := strings.ToLower(bodyStr)
+	if strings.Contains(bodyLower, "daily free usage limit") ||
+		strings.Contains(bodyLower, "daily limit") ||
+		strings.Contains(bodyLower, "reset automatically at 00:00 utc") ||
+		strings.Contains(bodyLower, "quota exceeded") {
+		now := time.Now().UTC()
+		nextUTC := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.UTC)
+		secondsUntilUTC := int(nextUTC.Sub(now).Seconds())
+		if secondsUntilUTC < 300 {
+			secondsUntilUTC = 300
+		}
+		return secondsUntilUTC
+	}
+
 	// 1. Check upstream Retry-After header (seconds)
 	if h := header.Get("Retry-After"); h != "" {
 		if sec, err := strconv.Atoi(h); err == nil && sec > 0 {

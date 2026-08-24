@@ -459,21 +459,22 @@ func (r *Router) ResolveSemantic(
 		}
 
 		if len(activeRoutes) > 0 {
-			routes = activeRoutes
-			winningModel = candModel
-			winningProvider = prov
+			if winningModel == nil {
+				winningModel = candModel
+				winningProvider = prov
 
-			// Detect downgrade reason if candidate score was penalized
-			if sc.Score < 0.5 {
-				decision.DowngradeReason = "low_score_under_budget_pressure"
-			}
-			for _, reason := range sc.Reason {
-				if reason == "budget_critical_penalty" || reason == "budget_exceeded_cheapest_only" {
-					decision.DowngradeReason = reason
-					break
+				// Detect downgrade reason if candidate score was penalized
+				if sc.Score < 0.5 {
+					decision.DowngradeReason = "low_score_under_budget_pressure"
+				}
+				for _, reason := range sc.Reason {
+					if reason == "budget_critical_penalty" || reason == "budget_exceeded_cheapest_only" {
+						decision.DowngradeReason = reason
+						break
+					}
 				}
 			}
-			break
+			routes = append(routes, activeRoutes...)
 		}
 
 		if coolingCount > 0 {
