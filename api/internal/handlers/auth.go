@@ -50,7 +50,7 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) (bool, string)
 	formData.Set("secret", secretKey)
 	formData.Set("response", token)
 
-	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v1/siteverify", formData)
+	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v0/siteverify", formData)
 	if err != nil {
 		log.Printf("[Turnstile Auth] HTTP PostForm failed: %v", err)
 		return false, err.Error()
