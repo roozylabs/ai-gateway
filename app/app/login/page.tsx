@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
-import Turnstile from '@marsidev/react-turnstile';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { LoginRequest } from '@/lib/api';
