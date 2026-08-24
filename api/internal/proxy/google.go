@@ -35,8 +35,8 @@ func (a *GoogleAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 	}
 
 	targetModel := req.Model
-	if targetModel == "gemini-3.6-flash" || targetModel == "gemini-3.7-flash" || targetModel == "roozy-auto" || strings.HasPrefix(targetModel, "gemini-3.") {
-		targetModel = "gemini-2.0-flash"
+	if targetModel == "" || targetModel == "roozy-auto" || targetModel == "gemini-2.0-flash" {
+		targetModel = "gemini-3.6-flash"
 	}
 
 	body := map[string]interface{}{
