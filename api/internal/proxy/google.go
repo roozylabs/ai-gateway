@@ -34,8 +34,13 @@ func (a *GoogleAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 		u.Path = path.Join(u.Path, "chat", "completions")
 	}
 
+	targetModel := req.Model
+	if targetModel == "gemini-3.6-flash" || targetModel == "gemini-3.7-flash" || targetModel == "roozy-auto" || strings.HasPrefix(targetModel, "gemini-3.") {
+		targetModel = "gemini-2.0-flash"
+	}
+
 	body := map[string]interface{}{
-		"model":    req.Model,
+		"model":    targetModel,
 		"messages": sanitizeMessagesForGoogle(req.Messages),
 		"stream":   req.Stream,
 	}
@@ -62,13 +67,24 @@ func (a *GoogleAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 		return nil, err
 	}
 
+	// For API Keys (e.g. starting with AIzaSy or AQ.), append key query parameter & x-goog-api-key
+	if strings.HasPrefix(apiKey, "AIzaSy") || strings.HasPrefix(apiKey, "AQ.") || !strings.Contains(apiKey, ".") {
+		q := u.Query()
+		q.Set("key", apiKey)
+		u.RawQuery = q.Encode()
+	}
+
 	httpReq, err := http.NewRequest("POST", u.String(), bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, err
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+	if strings.HasPrefix(apiKey, "AIzaSy") || strings.HasPrefix(apiKey, "AQ.") || !strings.Contains(apiKey, ".") {
+		httpReq.Header.Set("x-goog-api-key", apiKey)
+	} else {
+		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+	}
 	return httpReq, nil
 }
 
