@@ -227,7 +227,7 @@ export default function LoginPage() {
           </div>
 
           {siteKey && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'start', marginBottom: 16 }}>
               <Turnstile
                 siteKey={siteKey}
                 options={{ theme: isDark ? 'dark' : 'light' }}
