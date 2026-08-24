@@ -106,19 +106,23 @@ func ScoreCandidatesWithTelemetry(candidates []*models.Model, chars RequestChara
 		speedScore := m.SpeedScore
 		if telemetryMap != nil {
 			if metrics, ok := telemetryMap[m.Slug]; ok && metrics != nil && metrics.SampleCount > 0 {
-				if metrics.AvgTTFTMs > 1000.0 {
-					penalty := 1.0 - ((metrics.AvgTTFTMs - 1000.0) / 10000.0)
+				if metrics.P95TTFTMs > 2000.0 {
+					penalty := 1.0 - ((metrics.P95TTFTMs - 2000.0) / 20000.0)
 					if penalty < 0.15 {
 						penalty = 0.15
 					}
 					speedScore *= penalty
-					reasons = append(reasons, fmt.Sprintf("latency_penalty(ttft=%.0fms)", metrics.AvgTTFTMs))
-				} else if metrics.AvgTTFTMs < 400.0 && metrics.AvgTTFTMs > 0 {
-					speedScore *= 1.15
+					reasons = append(reasons, fmt.Sprintf("p95_latency_penalty(p95=%.0fms)", metrics.P95TTFTMs))
+				} else if metrics.P95TTFTMs > 0 && metrics.P95TTFTMs < 600.0 {
+					speedScore *= 1.10
 					if speedScore > 1.0 {
 						speedScore = 1.0
 					}
-					reasons = append(reasons, fmt.Sprintf("latency_bonus(ttft=%.0fms)", metrics.AvgTTFTMs))
+					reasons = append(reasons, fmt.Sprintf("p95_latency_bonus(p95=%.0fms)", metrics.P95TTFTMs))
+				}
+				if metrics.SuccessRate < 0.95 && metrics.SampleCount >= 10 {
+					speedScore *= metrics.SuccessRate
+					reasons = append(reasons, fmt.Sprintf("success_rate_penalty(%.0f%%)", metrics.SuccessRate*100))
 				}
 			}
 		}

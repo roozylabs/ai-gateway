@@ -505,7 +505,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		if e.telemetry != nil {
 			go func(mSlug string, lat int) {
-				_ = e.telemetry.RecordModelLatency(context.Background(), mSlug, lat, lat)
+				_ = e.telemetry.RecordModelLatency(context.Background(), mSlug, lat, lat, true)
 			}(route.Model.Slug, latency)
 		}
 
@@ -921,7 +921,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		if e.telemetry != nil {
 			go func(mSlug string, ttft int, lat int) {
-				_ = e.telemetry.RecordModelLatency(context.Background(), mSlug, ttft, lat)
+				_ = e.telemetry.RecordModelLatency(context.Background(), mSlug, ttft, lat, true)
 			}(route.Model.Slug, ttftMs, latency)
 		}
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
@@ -14,7 +15,10 @@ type ModelMetrics struct {
 	ModelSlug    string  `json:"modelSlug"`
 	AvgTTFTMs    float64 `json:"avgTtftMs"`
 	AvgLatencyMs float64 `json:"avgLatencyMs"`
+	P95TTFTMs    float64 `json:"p95TtftMs"`
 	SampleCount  int64   `json:"sampleCount"`
+	SuccessCount int64   `json:"successCount"`
+	SuccessRate  float64 `json:"successRate"`
 	LastUpdated  int64   `json:"lastUpdated"`
 }
 
@@ -35,9 +39,10 @@ type LatencySample struct {
 	TTFTMs    int   `json:"ttftMs"`
 	LatencyMs int   `json:"latencyMs"`
 	Timestamp int64 `json:"ts"`
+	Success   bool  `json:"success"`
 }
 
-func (s *ModelTelemetryStore) RecordModelLatency(ctx context.Context, modelSlug string, ttftMs int, latencyMs int) error {
+func (s *ModelTelemetryStore) RecordModelLatency(ctx context.Context, modelSlug string, ttftMs int, latencyMs int, success bool) error {
 	if s == nil || s.rdb == nil || modelSlug == "" {
 		return nil
 	}
@@ -46,6 +51,7 @@ func (s *ModelTelemetryStore) RecordModelLatency(ctx context.Context, modelSlug 
 		TTFTMs:    ttftMs,
 		LatencyMs: latencyMs,
 		Timestamp: time.Now().Unix(),
+		Success:   success,
 	}
 
 	raw, err := json.Marshal(sample)
@@ -79,8 +85,10 @@ func (s *ModelTelemetryStore) GetModelMetrics(ctx context.Context, modelSlug str
 
 	var totalTTFT float64
 	var totalLatency float64
+	var successCount int64
 	var count int64
 	var lastTs int64
+	var ttfts []float64
 
 	for _, item := range items {
 		var sample LatencySample
@@ -89,6 +97,7 @@ func (s *ModelTelemetryStore) GetModelMetrics(ctx context.Context, modelSlug str
 		}
 		if sample.TTFTMs > 0 {
 			totalTTFT += float64(sample.TTFTMs)
+			ttfts = append(ttfts, float64(sample.TTFTMs))
 		}
 		if sample.LatencyMs > 0 {
 			totalLatency += float64(sample.LatencyMs)
@@ -96,18 +105,26 @@ func (s *ModelTelemetryStore) GetModelMetrics(ctx context.Context, modelSlug str
 		if sample.Timestamp > lastTs {
 			lastTs = sample.Timestamp
 		}
+		if sample.Success {
+			successCount++
+		}
 		count++
 	}
 
 	if count == 0 {
-		return &ModelMetrics{ModelSlug: modelSlug}, nil
+		return &ModelMetrics{ModelSlug: modelSlug, SuccessRate: 1.0}, nil
 	}
+
+	p95 := percentile(ttfts, 0.95)
 
 	return &ModelMetrics{
 		ModelSlug:    modelSlug,
 		AvgTTFTMs:    totalTTFT / float64(count),
 		AvgLatencyMs: totalLatency / float64(count),
+		P95TTFTMs:    p95,
 		SampleCount:  count,
+		SuccessCount: successCount,
+		SuccessRate:  float64(successCount) / float64(count),
 		LastUpdated:  lastTs,
 	}, nil
 }
@@ -141,13 +158,15 @@ func (s *ModelTelemetryStore) GetMultipleModelMetrics(ctx context.Context, model
 
 func aggregateSamples(modelSlug string, items []string) *ModelMetrics {
 	if len(items) == 0 {
-		return &ModelMetrics{ModelSlug: modelSlug}
+		return &ModelMetrics{ModelSlug: modelSlug, SuccessRate: 1.0}
 	}
 
 	var totalTTFT float64
 	var totalLatency float64
+	var successCount int64
 	var count int64
 	var lastTs int64
+	var ttfts []float64
 
 	for _, item := range items {
 		var sample LatencySample
@@ -156,6 +175,7 @@ func aggregateSamples(modelSlug string, items []string) *ModelMetrics {
 		}
 		if sample.TTFTMs > 0 {
 			totalTTFT += float64(sample.TTFTMs)
+			ttfts = append(ttfts, float64(sample.TTFTMs))
 		}
 		if sample.LatencyMs > 0 {
 			totalLatency += float64(sample.LatencyMs)
@@ -163,18 +183,39 @@ func aggregateSamples(modelSlug string, items []string) *ModelMetrics {
 		if sample.Timestamp > lastTs {
 			lastTs = sample.Timestamp
 		}
+		if sample.Success {
+			successCount++
+		}
 		count++
 	}
 
 	if count == 0 {
-		return &ModelMetrics{ModelSlug: modelSlug}
+		return &ModelMetrics{ModelSlug: modelSlug, SuccessRate: 1.0}
 	}
+
+	p95 := percentile(ttfts, 0.95)
 
 	return &ModelMetrics{
 		ModelSlug:    modelSlug,
 		AvgTTFTMs:    totalTTFT / float64(count),
 		AvgLatencyMs: totalLatency / float64(count),
+		P95TTFTMs:    p95,
 		SampleCount:  count,
+		SuccessCount: successCount,
+		SuccessRate:  float64(successCount) / float64(count),
 		LastUpdated:  lastTs,
 	}
+}
+
+func percentile(sorted []float64, p float64) float64 {
+	n := len(sorted)
+	if n == 0 {
+		return 0
+	}
+	// Make a copy and sort
+	pts := make([]float64, n)
+	copy(pts, sorted)
+	sort.Float64s(pts)
+	idx := int(p * float64(n-1))
+	return pts[idx]
 }
