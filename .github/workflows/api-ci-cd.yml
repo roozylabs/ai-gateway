@@ -142,6 +142,9 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: vps-deployment
+      cancel-in-progress: false
 
     steps:
       - name: SSH and Deploy to VPS
@@ -164,7 +167,6 @@ jobs:
               git pull origin main || git pull origin master || true
             fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker rm -f prism-backend-api prism-frontend-dashboard prism-postgres-database prism-redis-cache ai-gateway-backend-api ai-gateway-frontend-dashboard || true
             docker compose pull || true
             docker compose up -d --remove-orphans
             docker image prune -f || true
