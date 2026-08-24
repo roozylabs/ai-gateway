@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -44,18 +44,13 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 		return false
 	}
 
-	payload := map[string]string{
-		"secret":   secretKey,
-		"response": token,
-	}
-	jsonBytes, err := json.Marshal(payload)
-	if err != nil {
-		return false
-	}
+	formData := url.Values{}
+	formData.Set("secret", secretKey)
+	formData.Set("response", token)
 
-	resp, err := http.Post("https://challenges.cloudflare.com/turnstile/v1/siteverify", "application/json", bytes.NewBuffer(jsonBytes))
+	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v1/siteverify", formData)
 	if err != nil {
-		log.Printf("[Turnstile Auth] HTTP Post failed: %v", err)
+		log.Printf("[Turnstile Auth] HTTP PostForm failed: %v", err)
 		return false
 	}
 	defer resp.Body.Close()
