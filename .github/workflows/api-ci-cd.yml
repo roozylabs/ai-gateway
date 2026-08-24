@@ -164,7 +164,8 @@ jobs:
               git pull origin main || git pull origin master || true
             fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose down --remove-orphans || true
             docker system prune -f || true
             docker compose pull api
-            docker compose up -d --no-build api
+            docker compose up -d --remove-orphans --no-build api
             docker image prune -f
