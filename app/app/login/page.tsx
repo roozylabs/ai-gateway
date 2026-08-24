@@ -172,6 +172,7 @@ export default function LoginPage() {
                   {...field}
                   size="large"
                   autoComplete="off"
+                  disabled={!siteKey ? false : !turnstileToken || loading}
                   prefix={<UserOutlined style={{ color: '#64748b' }} />}
                   placeholder="Email Address"
                   status={errors.email ? 'error' : ''}
@@ -201,6 +202,7 @@ export default function LoginPage() {
                   {...field}
                   size="large"
                   autoComplete="new-password"
+                  disabled={!siteKey ? false : !turnstileToken || loading}
                   prefix={<LockOutlined style={{ color: '#64748b' }} />}
                   placeholder="Password"
                   status={errors.password ? 'error' : ''}
@@ -233,6 +235,7 @@ export default function LoginPage() {
                 options={{ theme: isDark ? 'dark' : 'light' }}
                 onSuccess={(token) => setTurnstileToken(token)}
                 onExpire={() => setTurnstileToken('')}
+                onError={() => setTurnstileToken('')}
               />
             </div>
           )}
@@ -243,6 +246,7 @@ export default function LoginPage() {
               htmlType="submit"
               block
               loading={loading}
+              disabled={!siteKey ? false : !turnstileToken || loading}
               style={{
                 height: 46,
                 borderRadius: 10,
