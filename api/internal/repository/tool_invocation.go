@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/roozylabs/ai-gateway/internal/models"
 )
@@ -57,4 +58,12 @@ func (r *ToolInvocationRepository) CreateBatch(ctx context.Context, requestID st
 	}
 
 	return tx.Commit()
+}
+
+func (r *ToolInvocationRepository) DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM tool_invocations WHERE created_at < $1`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

@@ -76,6 +76,7 @@ func main() {
 	toolInvocationRepo := repository.NewToolInvocationRepository(sqlDB)
 	anomalyRepo := repository.NewCostAnomalyRepository(sqlDB)
 	budgetAlertRepo := repository.NewBudgetAlertRepository(sqlDB)
+	modelLatencyRepo := repository.NewModelLatencyHourlyRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -121,6 +122,8 @@ func main() {
 	workerMgr := workers.NewManager()
 	workerMgr.Register("cost-anomaly", 15*time.Minute, anomalyWorker(anomalyRepo, eventPublisher))
 	workerMgr.Register("budget-alert", 2*time.Minute, budgetAlertWorker(budgetRepo, budgetAlertRepo, eventPublisher))
+	workerMgr.Register("latency-flush", 1*time.Hour, latencyFlushWorker(telemetry, modelRepo, modelLatencyRepo))
+	workerMgr.Register("retention-cleanup", 1*time.Hour, retentionWorker(payloadRepo, toolInvocationRepo))
 	workerMgr.Start(workerCtx)
 
 	if cfg.AppEnv == "production" {
@@ -285,4 +288,14 @@ func anomalyWorker(anomalies *repository.CostAnomalyRepository, publisher *gored
 func budgetAlertWorker(budgets *repository.BudgetRepository, alerts *repository.BudgetAlertRepository, publisher *goredis.EventPublisher) func(context.Context) {
 	s := workers.NewBudgetAlertScanner(budgets, alerts, publisher)
 	return s.Run
+}
+
+func latencyFlushWorker(telemetry *goredis.ModelTelemetryStore, models *repository.ModelRepository, latency *repository.ModelLatencyHourlyRepository) func(context.Context) {
+	w := workers.NewLatencyFlushWorker(telemetry, models, latency)
+	return w.Run
+}
+
+func retentionWorker(payloads *repository.PayloadRepository, toolCalls *repository.ToolInvocationRepository) func(context.Context) {
+	w := workers.NewPayloadRetentionWorker(payloads, toolCalls)
+	return w.Run
 }
