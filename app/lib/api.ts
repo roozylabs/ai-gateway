@@ -328,15 +328,15 @@ export async function apiRevealCredential(
   return response.data;
 }
 
-export const GLOBAL_SMART_ROUTER_MODEL = 'roozy-auto';
+export const GLOBAL_SMART_ROUTER_MODEL = 'prism-auto';
 
 export const GLOBAL_SMART_ROUTER_ITEM: ApiModel = {
-  id: 'roozy-auto',
+  id: 'prism-auto',
   providerId: 'global',
   providerName: 'Roozy Labs',
-  name: 'roozy-auto',
-  slug: 'roozy-auto',
-  displayName: 'roozy-auto (Smart Routing)',
+  name: 'prism-auto',
+  slug: 'prism-auto',
+  displayName: 'prism-auto (Smart Routing)',
   enabled: true,
   supportsTools: true,
   supportsVision: true,
@@ -350,8 +350,8 @@ export async function apiGetModels(
   const response = await api.get<PaginatedResult<ApiModel>>(`/providers/${providerId}/models`, { params });
   const result = response.data;
 
-  // Global injection of roozy-auto smart router item across all provider model queries
-  if (!params?.search || 'roozy-auto'.includes(params.search.toLowerCase()) || 'smart routing'.includes(params.search.toLowerCase())) {
+  // Global injection of prism-auto smart router item across all provider model queries
+  if (!params?.search || 'prism-auto'.includes(params.search.toLowerCase()) || 'roozy-auto'.includes(params.search.toLowerCase()) || 'smart routing'.includes(params.search.toLowerCase())) {
     const exists = result.data?.some((m) => m.slug === GLOBAL_SMART_ROUTER_MODEL || m.name === GLOBAL_SMART_ROUTER_MODEL);
     if (!exists && result.data) {
       result.data = [GLOBAL_SMART_ROUTER_ITEM, ...result.data];

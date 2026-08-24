@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const SmartRouterModel = "roozy-auto"
+const SmartRouterModel = "prism-auto"
 
 type Provider struct {
 	ID               string    `json:"id" db:"id"`

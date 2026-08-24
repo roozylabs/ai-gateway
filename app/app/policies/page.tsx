@@ -266,7 +266,7 @@ export default function PoliciesPage() {
     <div>
       <PageHeader
         title="Routing Policies"
-        description="Configure scoring weights (Task Match, Quality, Cost, Speed) and max request cost constraints for Roozy Auto Smart Routing"
+        description="Configure scoring weights (Task Match, Quality, Cost, Speed) and max request cost constraints for Prism Auto Smart Routing"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenAdd}>
             Add Policy

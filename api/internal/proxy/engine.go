@@ -160,6 +160,9 @@ func (e *Engine) resolveRoutes(c *gin.Context, req *ProxyRequest, gatewayKey *mo
 	}
 
 	if req.Model == "roozy-auto" {
+		req.Model = "prism-auto"
+	}
+	if req.Model == "prism-auto" {
 		userID := ""
 		if gatewayKey != nil {
 			userID = gatewayKey.UserID
@@ -510,7 +513,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		}
 
 		modelName := req.Model
-		if modelName == "roozy-auto" || modelName == "" {
+		if modelName == "prism-auto" || modelName == "roozy-auto" || modelName == "" {
 			modelName = route.Model.Slug
 		}
 
@@ -926,7 +929,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		}
 
 		modelName := req.Model
-		if modelName == "roozy-auto" || modelName == "" {
+		if modelName == "prism-auto" || modelName == "roozy-auto" || modelName == "" {
 			modelName = route.Model.Slug
 		}
 

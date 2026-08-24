@@ -35,7 +35,7 @@ func (a *GoogleAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 	}
 
 	targetModel := req.Model
-	if targetModel == "" || targetModel == "roozy-auto" || targetModel == "gemini-2.0-flash" {
+	if targetModel == "" || targetModel == "prism-auto" || targetModel == "roozy-auto" || targetModel == "gemini-2.0-flash" {
 		targetModel = "gemini-3.6-flash"
 	}
 

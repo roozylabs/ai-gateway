@@ -158,7 +158,7 @@ export default function SandboxPage() {
 
   // Auto-select first model when availableModels change
   useEffect(() => {
-    if (selectedModel === 'roozy-auto') return;
+    if (selectedModel === 'prism-auto' || selectedModel === 'roozy-auto') return;
     if (availableModels.length > 0) {
       const exists = availableModels.some((m) => m.slug === selectedModel || m.name === selectedModel);
       if (!exists) {
@@ -401,7 +401,7 @@ export default function SandboxPage() {
                           label: `${m.displayName || m.name} (${m.slug})`,
                           value: m.slug || m.name,
                         }))
-                      : [{ label: '✨ roozy-auto (Smart Routing)', value: 'roozy-auto' }]
+                      : [{ label: '✨ prism-auto (Smart Routing)', value: 'prism-auto' }]
                   }
                 />
               </Form.Item>

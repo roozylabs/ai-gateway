@@ -396,7 +396,7 @@ export default function GatewayKeysPage() {
             <Form.Item
               name="providerId"
               label="Access Scope & Target Provider"
-              tooltip="Global Keys can access all active providers and the roozy-auto Smart Router with a single key. Restricted Keys lock access to a single provider."
+              tooltip="Global Keys can access all active providers and the prism-auto Smart Router with a single key. Restricted Keys lock access to a single provider."
             >
               <Select
                 placeholder="Select Access Scope"
@@ -643,7 +643,7 @@ function IntegrationModalContent({
                             label: `${m.displayName || m.name} (${m.slug})`,
                             value: m.slug || m.name,
                           }))
-                        : [{ label: '✨ roozy-auto (Smart Routing)', value: 'roozy-auto' }]
+                        : [{ label: '✨ prism-auto (Smart Routing)', value: 'prism-auto' }]
                     }
                   />
                 </div>
