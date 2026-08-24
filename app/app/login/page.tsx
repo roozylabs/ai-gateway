@@ -6,7 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import api, { LoginRequest } from '@/lib/api';
+import { api, LoginRequest } from '@/lib/api';
 import { Card, Input, Button, Checkbox, Typography, Space, Tag, Tooltip, App } from 'antd';
 import { UserOutlined, LockOutlined, ThunderboltFilled, SafetyOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
 
