@@ -790,9 +790,10 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		var outputCharCount int
 		hasher := sha256.New()
 		mw := io.MultiWriter(c.Writer, hasher)
-		scanner := bufio.NewScanner(httpResp.Body)
+		scanner := bufio.NewScanner(newIdleTimeoutReader(httpResp.Body, 60*time.Second))
 		scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 		streamToolAcc := NewStreamToolAccumulator()
+		forwardedAny := false
 
 		for scanner.Scan() {
 			line := scanner.Bytes()
@@ -858,10 +859,23 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			_, _ = mw.Write(jsonChunk)
 			_, _ = mw.Write([]byte("\n\n"))
 			c.Writer.Flush()
+			if !forwardedAny {
+				forwardedAny = true
+			}
 		}
 
 		if err := scanner.Err(); err != nil {
-			log.Printf("stream scan error: %v", err)
+			if !forwardedAny {
+				log.Printf("stream pre-token error, retrying next route: %v", err)
+				lastErr = fmt.Errorf("stream interrupted before first token: %w", err)
+				if httpResp.StatusCode >= 429 {
+					_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, 0)
+				}
+				time.Sleep(calculateBackoff(i))
+				continue
+			}
+			log.Printf("stream interrupted mid-response: %v", err)
+			_, _ = c.Writer.Write([]byte("data: {\"error\":{\"message\":\"stream interrupted upstream\",\"type\":\"stream_error\",\"partial\":true}}\n\n"))
 		}
 
 		_, _ = c.Writer.Write([]byte("data: [DONE]\n\n"))
@@ -1141,4 +1155,34 @@ func calculateBackoff(attempt int) time.Duration {
 	}
 	jitter := rand.Intn(100)
 	return time.Duration(baseMs+jitter) * time.Millisecond
+}
+
+type idleTimeoutReader struct {
+	r       io.Reader
+	timeout time.Duration
+	n       chan int
+	err     chan error
+}
+
+func newIdleTimeoutReader(r io.Reader, timeout time.Duration) *idleTimeoutReader {
+	return &idleTimeoutReader{
+		r:       r,
+		timeout: timeout,
+		n:       make(chan int, 1),
+		err:     make(chan error, 1),
+	}
+}
+
+func (r *idleTimeoutReader) Read(p []byte) (int, error) {
+	go func() {
+		n, err := r.r.Read(p)
+		r.n <- n
+		r.err <- err
+	}()
+	select {
+	case n := <-r.n:
+		return n, <-r.err
+	case <-time.After(r.timeout):
+		return 0, fmt.Errorf("idle timeout: no data received for %v", r.timeout)
+	}
 }
