@@ -144,6 +144,7 @@ func main() {
 		// Public API routes
 		api.GET("/health", healthHandler.Check)
 		api.POST("/auth/login", authHandler.Login)
+		api.GET("/auth/turnstile-config", authHandler.GetTurnstileConfig)
 		api.GET("/auth/google/login", googleOAuthHandler.Login)
 		api.GET("/auth/google/callback", googleOAuthHandler.Callback)
 

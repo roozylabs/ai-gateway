@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import { LoginRequest } from '@/lib/api';
+import api, { LoginRequest } from '@/lib/api';
 import { Card, Input, Button, Checkbox, Typography, Space, Tag, Tooltip, App } from 'antd';
 import { UserOutlined, LockOutlined, ThunderboltFilled, SafetyOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
 
@@ -19,8 +19,19 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const [siteKey, setSiteKey] = useState<string>(process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY || '');
 
-  const siteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY;
+  useEffect(() => {
+    if (!siteKey) {
+      api.get('/auth/turnstile-config')
+        .then(res => {
+          if (res.data?.siteKey) {
+            setSiteKey(res.data.siteKey);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [siteKey]);
 
   const {
     control,

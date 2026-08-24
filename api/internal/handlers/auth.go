@@ -49,6 +49,16 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 	return result.Success
 }
 
+func (h *AuthHandler) GetTurnstileConfig(c *gin.Context) {
+	siteKey := os.Getenv("NEXT_PUBLIC_CLOUDFLARE_SITE_KEY")
+	if siteKey == "" {
+		siteKey = os.Getenv("CLOUDFLARE_SITE_KEY")
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"siteKey": siteKey,
+	})
+}
+
 // Login godoc
 // @Summary      Login
 // @Description  Authenticate user with email and password
