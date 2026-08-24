@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/roozylabs/ai-gateway/internal/service"
+	"github.com/roozylabs/prism/internal/service"
 )
 
 type AuthHandler struct {

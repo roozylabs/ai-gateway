@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/roozylabs/ai-gateway/internal/models"
-	goredis "github.com/roozylabs/ai-gateway/internal/redis"
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/prism/internal/models"
+	goredis "github.com/roozylabs/prism/internal/redis"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 var (

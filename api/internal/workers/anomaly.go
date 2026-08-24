@@ -6,8 +6,8 @@ import (
 	"log"
 	"math"
 
-	goredis "github.com/roozylabs/ai-gateway/internal/redis"
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	goredis "github.com/roozylabs/prism/internal/redis"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 type AnomalyDetector struct {

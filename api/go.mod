@@ -1,4 +1,4 @@
-module github.com/roozylabs/ai-gateway
+module github.com/roozylabs/prism
 
 go 1.24.0
 

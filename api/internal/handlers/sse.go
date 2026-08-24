@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	goredis "github.com/roozylabs/ai-gateway/internal/redis"
+	goredis "github.com/roozylabs/prism/internal/redis"
 )
 
 type SSEHandler struct {

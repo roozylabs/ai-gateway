@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/prism/internal/models"
 )
 
 type gwKeyCacheEntry struct {

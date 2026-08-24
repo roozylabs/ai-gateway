@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 // DefaultProviderHealthScore is applied when a provider has no observed

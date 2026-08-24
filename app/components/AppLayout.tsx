@@ -311,8 +311,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           bottom: 0,
           zIndex: 10,
           boxShadow: '2px 0 8px 0 rgba(29,35,41,.05)',
-          background: mode === 'dark' ? '#141414' : '#ffffff',
-          borderRight: mode === 'light' ? `1px solid ${token.colorBorderSecondary}` : 'none',
+          background: mode === 'dark' ? '#0F1115' : '#ffffff',
+          borderRight: `1px solid ${token.colorBorderSecondary}`,
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -324,15 +324,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             alignItems: 'center',
             justifyContent: collapsed ? 'center' : 'flex-start',
             padding: '0 20px',
-            background: mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : '#ffffff',
+            background: mode === 'dark' ? '#08090A' : '#ffffff',
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
             flexShrink: 0,
           }}
         >
-          <ThunderboltFilled style={{ fontSize: 24, color: '#1677ff', marginRight: collapsed ? 0 : 12 }} />
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #8B5CF6 0%, #3B82F6 50%, #06B6D4 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: collapsed ? 0 : 12,
+              boxShadow: '0 2px 10px rgba(139, 92, 246, 0.3)',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: 16,
+            }}
+          >
+            ◇
+          </div>
           {!collapsed && (
-            <Title level={4} style={{ color: mode === 'dark' ? '#fff' : '#0f172a', margin: 0, letterSpacing: '0.5px' }}>
-              AI Gateway
+            <Title level={4} style={{ color: mode === 'dark' ? '#F5F7FA' : '#0f172a', margin: 0, letterSpacing: '0.5px', fontWeight: 700 }}>
+              Prism
             </Title>
           )}
         </div>

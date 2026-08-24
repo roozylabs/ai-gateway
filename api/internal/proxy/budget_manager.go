@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/roozylabs/ai-gateway/internal/models"
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 const budgetSpendCacheTTL = 10 * time.Second

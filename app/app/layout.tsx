@@ -11,8 +11,8 @@ import { App as AntdApp } from 'antd';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'AI Gateway Dashboard',
-  description: 'Centralized AI API Gateway & Credential Pool Management',
+  title: 'Prism — Universal AI Control Plane',
+  description: 'Centralized AI Infrastructure, Multi-Model Routing & Token Governance',
 };
 
 import { SSEProvider } from '@/context/SSEContext';

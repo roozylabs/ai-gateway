@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/prism/internal/models"
 )
 
 type ToolCallRecord = models.ToolCallRecord

@@ -3,7 +3,7 @@ package handlers
 import (
 	"math"
 
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 type SpendForecast struct {

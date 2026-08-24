@@ -10,11 +10,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/roozylabs/ai-gateway/internal/models"
-	"github.com/roozylabs/ai-gateway/internal/proxy"
-	goredis "github.com/roozylabs/ai-gateway/internal/redis"
-	"github.com/roozylabs/ai-gateway/internal/repository"
-	"github.com/roozylabs/ai-gateway/internal/utils"
+	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/proxy"
+	goredis "github.com/roozylabs/prism/internal/redis"
+	"github.com/roozylabs/prism/internal/repository"
+	"github.com/roozylabs/prism/internal/utils"
 )
 
 type GatewayHandler struct {

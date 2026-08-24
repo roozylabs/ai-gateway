@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/roozylabs/ai-gateway/internal/models"
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 type RoutingPolicyHandler struct {

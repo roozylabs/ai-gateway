@@ -9,7 +9,7 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
-	"github.com/roozylabs/ai-gateway/internal/utils"
+	"github.com/roozylabs/prism/internal/utils"
 )
 
 type CooldownStore struct {

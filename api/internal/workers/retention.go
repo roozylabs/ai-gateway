@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/roozylabs/ai-gateway/internal/redis"
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/prism/internal/redis"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 type LatencyFlushWorker struct {

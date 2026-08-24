@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	goredis "github.com/redis/go-redis/v9"
-	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/prism/internal/models"
 )
 
 func GatewayRateLimitMiddleware(rdb *goredis.Client, limit int) gin.HandlerFunc {

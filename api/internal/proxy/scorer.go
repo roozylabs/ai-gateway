@@ -3,8 +3,8 @@ package proxy
 import (
 	"fmt"
 
-	"github.com/roozylabs/ai-gateway/internal/models"
-	"github.com/roozylabs/ai-gateway/internal/redis"
+	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/redis"
 )
 
 type RoutingPolicy struct {

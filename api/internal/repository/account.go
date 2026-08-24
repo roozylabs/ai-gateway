@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/prism/internal/models"
 )
 
 type AccountRepository struct {

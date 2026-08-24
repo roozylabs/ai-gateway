@@ -12,7 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/prism/internal/models"
 )
 
 const (

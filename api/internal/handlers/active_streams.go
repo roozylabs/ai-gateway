@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/roozylabs/ai-gateway/internal/redis"
+	"github.com/roozylabs/prism/internal/redis"
 )
 
 type ActiveStreamsHandler struct {

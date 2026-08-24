@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 func AuthMiddleware(sessions *repository.SessionRepository) gin.HandlerFunc {

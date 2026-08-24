@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ConfigProvider, theme } from 'antd';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
+import { prismTheme } from '@/theme/prismTheme';
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -42,8 +43,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setMode(newMode);
   };
 
-  // Keep SSR and initial client hydration pass identical ('dark') to avoid React Hydration Error.
-  // After hydration completes (mounted = true), sync to active stored mode with smooth fade-in.
   const activeMode = mounted ? mode : 'dark';
   const currentAlgorithm = activeMode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm;
 
@@ -52,21 +51,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       <AntdRegistry>
         <ConfigProvider
           theme={{
+            ...prismTheme,
             algorithm: currentAlgorithm,
             token: {
-              colorPrimary: '#1677ff',
-              borderRadius: 8,
-              colorBgContainer: activeMode === 'dark' ? '#141414' : '#ffffff',
-              colorBgLayout: activeMode === 'dark' ? '#0b0f19' : '#f5f5f5',
+              ...prismTheme.token,
+              colorBgBase: activeMode === 'dark' ? '#08090A' : '#ffffff',
+              colorBgContainer: activeMode === 'dark' ? '#0F1115' : '#ffffff',
+              colorBgLayout: activeMode === 'dark' ? '#08090A' : '#f8fafc',
             },
             components: {
+              ...prismTheme.components,
               Menu: {
+                ...prismTheme.components?.Menu,
                 darkItemBg: 'transparent',
                 darkSubMenuItemBg: 'transparent',
-                darkPopupBg: '#141414',
+                darkPopupBg: '#0F1115',
               },
               Layout: {
-                siderBg: activeMode === 'dark' ? '#141414' : '#ffffff',
+                siderBg: activeMode === 'dark' ? '#0F1115' : '#ffffff',
+                headerBg: activeMode === 'dark' ? '#08090A' : '#ffffff',
+                bodyBg: activeMode === 'dark' ? '#08090A' : '#f8fafc',
               },
             },
           }}
@@ -76,6 +80,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
               opacity: mounted ? 1 : 0,
               transition: 'opacity 0.2s ease-in-out',
               minHeight: '100vh',
+              backgroundColor: activeMode === 'dark' ? '#08090A' : '#f8fafc',
             }}
           >
             {children}

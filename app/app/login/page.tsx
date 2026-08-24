@@ -146,9 +146,9 @@ export default function LoginPage() {
           <div>
             <Space align="center" size="small">
               <Title level={3} style={{ color: isDark ? '#f8fafc' : '#0f172a', margin: 0, fontWeight: 700, letterSpacing: '-0.5px' }}>
-                AI Gateway
+                Prism
               </Title>
-              <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600, fontSize: 11 }}>
+              <Tag color="purple" style={{ borderRadius: 6, fontWeight: 600, fontSize: 11 }}>
                 v1.0
               </Tag>
             </Space>
@@ -156,7 +156,7 @@ export default function LoginPage() {
 
           <div style={{ marginTop: 4 }}>
             <Text style={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: 13 }}>
-              Centralized API & Credential Management Pool
+              Universal AI Control Plane & Model Router
             </Text>
           </div>
         </div>
@@ -265,7 +265,7 @@ export default function LoginPage() {
       <div style={{ position: 'absolute', bottom: 16, textAlign: 'center' }}>
         <Space size={4} style={{ color: isDark ? '#64748b' : '#94a3b8', fontSize: 12 }}>
           <SafetyOutlined />
-          <span>Encrypted Session • AI Gateway ©{new Date().getFullYear()} RoozyLabs</span>
+          <span>Encrypted Session • RoozyLabs Prism ©{new Date().getFullYear()}</span>
         </Space>
       </div>
     </div>

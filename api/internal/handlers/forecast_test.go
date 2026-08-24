@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	"github.com/roozylabs/ai-gateway/internal/repository"
+	"github.com/roozylabs/prism/internal/repository"
 	"github.com/stretchr/testify/assert"
 )
 

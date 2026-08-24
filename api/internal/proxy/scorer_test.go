@@ -3,7 +3,7 @@ package proxy
 import (
 	"testing"
 
-	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/prism/internal/models"
 )
 
 func makeModel(slug string, inputPrice, outputPrice, quality, coding, speed, contextWindow float64) *models.Model {

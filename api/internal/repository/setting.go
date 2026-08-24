@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/roozylabs/ai-gateway/internal/models"
+	"github.com/roozylabs/prism/internal/models"
 )
 
 type SettingRepository struct {

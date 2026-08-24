@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	goredis "github.com/roozylabs/ai-gateway/internal/redis"
+	goredis "github.com/roozylabs/prism/internal/redis"
 )
 
 type OAuthTokenManager struct {
