@@ -23,6 +23,7 @@ type GatewayHandler struct {
 	requestLogs   *repository.RequestLogRepository
 	eventPublisher *goredis.EventPublisher
 	pricingRepo   *repository.ModelPricingRepository
+	idemStore     *proxy.IdempotencyStore
 }
 
 func NewGatewayHandler(
@@ -31,6 +32,7 @@ func NewGatewayHandler(
 	requestLogs *repository.RequestLogRepository,
 	eventPublisher *goredis.EventPublisher,
 	pricingRepo *repository.ModelPricingRepository,
+	idemStore *proxy.IdempotencyStore,
 ) *GatewayHandler {
 	return &GatewayHandler{
 		engine:        engine,
@@ -38,6 +40,7 @@ func NewGatewayHandler(
 		requestLogs:   requestLogs,
 		eventPublisher: eventPublisher,
 		pricingRepo:   pricingRepo,
+		idemStore:     idemStore,
 	}
 }
 
@@ -45,6 +48,10 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	gatewayKey := c.MustGet("gatewayKey").(*models.GatewayAPIKey)
 	requestID := uuid.New().String()
 	c.Set("requestID", requestID)
+
+	if _, hasIdem := c.Get("_idem_key"); hasIdem {
+		proxy.WrapBufferedWriter(c)
+	}
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -90,6 +97,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			c.Header("X-Roozy-Model", log.Model)
 			c.Header("X-Roozy-Provider", log.ProviderType)
 		}
+		proxy.SaveIdempotencyResult(c, h.idemStore)
 		return
 	}
 
@@ -129,6 +137,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+	proxy.SaveIdempotencyResult(c, h.idemStore)
 }
 
 func (h *GatewayHandler) publishEvents(c *gin.Context, requestID string, log *models.RequestLog, key *models.GatewayAPIKey) {

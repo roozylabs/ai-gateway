@@ -81,6 +81,7 @@ func main() {
 	telemetry := goredis.NewModelTelemetryStore(rdb)
 	budgetMgr := proxy.NewBudgetManager(budgetRepo)
 	healthStore := proxy.NewProviderHealthStore(requestLogRepo, 30*time.Second)
+	idemStore := proxy.NewIdempotencyStore(rdb)
 	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo, settingRepo, healthStore)
 	engine := proxy.NewEngine(router, credentialRepo, cooldown, telemetry, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo, payloadRepo, toolInvocationRepo)
 
@@ -91,7 +92,7 @@ func main() {
 	credentialHandler := handlers.NewCredentialHandler(credentialRepo, providerRepo, gatewayKeyRepo, cooldown, eventPublisher, cfg.EncryptionKey)
 	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo, gatewayKeyRepo, cooldown)
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo, credentialRepo)
-	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo)
+	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, idemStore)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo, healthStore)
 	activeStreamsHandler := handlers.NewActiveStreamsHandler(cooldown)
@@ -238,6 +239,7 @@ func main() {
 	registerGatewayRoutes := func(rg *gin.RouterGroup) {
 		rg.Use(middleware.GatewayAuthMiddleware(gatewayKeyCache))
 		rg.Use(middleware.GatewayRateLimitMiddleware(rdb, cfg.RateLimitPerKey))
+		rg.Use(proxy.IdempotencyMiddleware(idemStore))
 		rg.POST("/chat/completions", gatewayHandler.ChatCompletions)
 		rg.GET("/models", gatewayHandler.Models)
 	}
