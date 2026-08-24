@@ -185,6 +185,15 @@ export const api = axios.create({
   },
 });
 
+// Axios request interceptor to attach auth token header
+api.interceptors.request.use((config) => {
+  const token = Cookies.get('auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Axios response interceptor for unified error formatting
 api.interceptors.response.use(
   (response) => response,

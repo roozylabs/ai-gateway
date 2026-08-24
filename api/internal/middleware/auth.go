@@ -10,19 +10,34 @@ import (
 
 func AuthMiddleware(sessions *repository.SessionRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var token string
+
+		// 1. Try Authorization header
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+		if authHeader != "" {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+				token = parts[1]
+			}
+		}
+
+		// 2. Try Cookie fallback
+		if token == "" {
+			if cookie, err := c.Cookie("auth_token"); err == nil && cookie != "" {
+				token = cookie
+			}
+		}
+
+		// 3. Try Query param fallback (for SSE EventSource)
+		if token == "" {
+			token = c.Query("token")
+		}
+
+		if token == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization token"})
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
-			return
-		}
-
-		token := parts[1]
 		session, err := sessions.FindValidByToken(c.Request.Context(), token)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
