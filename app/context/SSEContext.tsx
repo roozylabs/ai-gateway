@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePathname } from 'next/navigation';
+import Cookies from 'js-cookie';
 
 export interface SSEMessageEvent {
   type: string;
@@ -21,16 +23,30 @@ const SSEContext = createContext<SSEContextType>({
 
 export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
+  const pathname = usePathname();
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<SSEMessageEvent | null>(null);
 
   useEffect(() => {
+    const token = Cookies.get('auth_token');
+    if (pathname === '/login' || !token) {
+      setIsConnected(false);
+      return;
+    }
+
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout | null = null;
 
     const connect = () => {
+      const currentToken = Cookies.get('auth_token');
+      if (pathname === '/login' || !currentToken) {
+        setIsConnected(false);
+        return;
+      }
+
       try {
-        eventSource = new EventSource('/api/sse');
+        const sseUrl = `/api/sse?token=${encodeURIComponent(currentToken)}`;
+        eventSource = new EventSource(sseUrl);
 
         eventSource.onopen = () => {
           setIsConnected(true);
@@ -78,12 +94,18 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (eventSource) {
             eventSource.close();
           }
-          reconnectTimeout = setTimeout(connect, 3000);
+          const activeToken = Cookies.get('auth_token');
+          if (pathname !== '/login' && activeToken) {
+            reconnectTimeout = setTimeout(connect, 5000);
+          }
         };
       } catch (err) {
         console.error('[SSE Initialization Error]', err);
         setIsConnected(false);
-        reconnectTimeout = setTimeout(connect, 3000);
+        const activeToken = Cookies.get('auth_token');
+        if (pathname !== '/login' && activeToken) {
+          reconnectTimeout = setTimeout(connect, 5000);
+        }
       }
     };
 
@@ -95,7 +117,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         eventSource.close();
       }
     };
-  }, [queryClient]);
+  }, [queryClient, pathname]);
 
   return (
     <SSEContext.Provider value={{ isConnected, lastEvent }}>
