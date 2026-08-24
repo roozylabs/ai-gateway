@@ -24,8 +24,8 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginRequest>({
     defaultValues: {
-      email: 'admin@roozylabs.com',
-      password: 'Z4s#171[G1.5',
+      email: '',
+      password: '',
     },
   });
 
@@ -146,7 +146,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
           <div style={{ marginBottom: 16 }}>
             <Controller
               name="email"
@@ -156,6 +156,7 @@ export default function LoginPage() {
                 <Input
                   {...field}
                   size="large"
+                  autoComplete="off"
                   prefix={<UserOutlined style={{ color: '#64748b' }} />}
                   placeholder="Email Address"
                   status={errors.email ? 'error' : ''}
@@ -184,6 +185,7 @@ export default function LoginPage() {
                 <Input.Password
                   {...field}
                   size="large"
+                  autoComplete="new-password"
                   prefix={<LockOutlined style={{ color: '#64748b' }} />}
                   placeholder="Password"
                   status={errors.password ? 'error' : ''}
