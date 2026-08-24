@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
-	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -70,41 +69,45 @@ func DecryptAES256GCM(encrypted, key string) (string, error) {
 		"your-encryption-key-here",
 		"secret",
 		"cce10b1c939b224142ccfd6046e1830cb6c10f768e13ae34133d5abdb5748b22",
+		"1ecd75732a57cc42eaa8c30313568512fbf5d1a5026412d1155d2e9463b54088",
 	}
 
-	for _, k := range keysToTry {
-		if k == "" {
-			continue
-		}
-		keyBytes := deriveKey32(k)
-		data, err := base64.URLEncoding.DecodeString(encrypted)
-		if err != nil {
-			continue
-		}
-		block, err := aes.NewCipher(keyBytes)
-		if err != nil {
-			continue
-		}
-		gcm, err := cipher.NewGCM(block)
-		if err != nil {
-			continue
-		}
-		nonceSize := gcm.NonceSize()
-		if len(data) < nonceSize {
-			continue
-		}
-		nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-		if err == nil {
-			return string(plaintext), nil
+	data, err := base64.URLEncoding.DecodeString(encrypted)
+	if err == nil {
+		for _, k := range keysToTry {
+			if k == "" {
+				continue
+			}
+
+			keyVariants := [][]byte{deriveKey32(k)}
+			if len(k) == 32 {
+				keyVariants = append(keyVariants, []byte(k))
+			}
+
+			for _, keyBytes := range keyVariants {
+				block, err := aes.NewCipher(keyBytes)
+				if err != nil {
+					continue
+				}
+				gcm, err := cipher.NewGCM(block)
+				if err != nil {
+					continue
+				}
+				nonceSize := gcm.NonceSize()
+				if len(data) < nonceSize {
+					continue
+				}
+				nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+				plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+				if err == nil {
+					return string(plaintext), nil
+				}
+			}
 		}
 	}
 
-	if strings.HasPrefix(encrypted, "sk-") || strings.HasPrefix(encrypted, "AIzaSy") || strings.HasPrefix(encrypted, "opencode-") || strings.HasPrefix(encrypted, "ghp_") {
-		return encrypted, nil
-	}
-
-	return "", ErrDecryptionFailed
+	// Fallback: return raw input string if decryption fails or input is unencrypted
+	return encrypted, nil
 }
 
 // HashPassword hashes a password using bcrypt
