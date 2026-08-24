@@ -36,7 +36,8 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 	token = strings.Trim(token, "\"")
 	token = strings.Trim(token, "'")
 
-	if secretKey == "" {
+	if secretKey == "" || strings.EqualFold(secretKey, "disabled") || strings.EqualFold(secretKey, "none") || secretKey == "1x0000000000000000000000000000000AA" {
+		log.Printf("[Turnstile Auth] Bypassing Turnstile (secretKey=%s)", secretKey)
 		return true
 	}
 	if token == "" {
