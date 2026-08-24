@@ -12,10 +12,11 @@ import (
 )
 
 type FinOpsHandler struct {
-	logs     *repository.RequestLogRepository
-	budgets  *repository.BudgetRepository
-	models   *repository.ModelRepository
-	settings *repository.SettingRepository
+	logs        *repository.RequestLogRepository
+	budgets     *repository.BudgetRepository
+	models      *repository.ModelRepository
+	settings    *repository.SettingRepository
+	forecastRepo *repository.CostAnomalyRepository
 }
 
 func NewFinOpsHandler(
@@ -23,12 +24,14 @@ func NewFinOpsHandler(
 	budgets *repository.BudgetRepository,
 	models *repository.ModelRepository,
 	settings *repository.SettingRepository,
+	forecastRepo *repository.CostAnomalyRepository,
 ) *FinOpsHandler {
 	return &FinOpsHandler{
-		logs:     logs,
-		budgets:  budgets,
-		models:   models,
-		settings: settings,
+		logs:        logs,
+		budgets:     budgets,
+		models:      models,
+		settings:    settings,
+		forecastRepo: forecastRepo,
 	}
 }
 
@@ -52,6 +55,7 @@ type FinOpsSummaryResponse struct {
 	DaysUntilExhaustion     int                  `json:"daysUntilExhaustion"`
 	ProjectedExhaustionDate string               `json:"projectedExhaustionDate"`
 	PotentialMonthlySavings float64              `json:"potentialMonthlySavings"`
+	Forecast                *SpendForecast       `json:"forecast,omitempty"`
 	Recommendations         []CostRecommendation `json:"recommendations"`
 }
 
@@ -84,6 +88,14 @@ func (h *FinOpsHandler) GetSummary(c *gin.Context) {
 	}
 
 	projectedMonthly := dailyVelocity * 30.0
+
+	var forecast *SpendForecast
+	if h.forecastRepo != nil {
+		if series, err := h.forecastRepo.GetDailySpendSeries(c.Request.Context(), 28); err == nil && len(series) > 0 {
+			f := ComputeForecast(series)
+			forecast = &f
+		}
+	}
 
 	// Fetch active user budget
 	monthlyBudgetUsd := 0.0
@@ -196,6 +208,7 @@ func (h *FinOpsHandler) GetSummary(c *gin.Context) {
 		DaysUntilExhaustion:     daysUntilExhaustion,
 		ProjectedExhaustionDate: projectedExhaustionDate,
 		PotentialMonthlySavings: totalPotentialSavings,
+		Forecast:                forecast,
 		Recommendations:         recommendations,
 	})
 }
