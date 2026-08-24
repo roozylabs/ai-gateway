@@ -1,51 +1,51 @@
-# AI Gateway 🚀
+# RoozyLabs Prism 💎
 
 [![Go Version](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat&logo=go)](https://golang.org)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat&logo=docker)](https://www.docker.com/)
-[![CI/CD Pipeline](https://github.com/roozylabs/ai-gateway/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/roozylabs/ai-gateway/actions/workflows/ci-cd.yml)
+[![CI/CD Pipeline](https://github.com/roozylabs/prism/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/roozylabs/prism/actions/workflows/ci-cd.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**AI Gateway** is a high-performance *centralized AI API Gateway* that allows you to manage multiple AI providers (OpenAI, Anthropic, Google Gemini, OpenRouter, OpenCode) and numerous API credentials in one place.
+**RoozyLabs Prism** is a high-performance, infrastructure-grade **Universal AI Control Plane** and intelligent model gateway that unifies multiple AI providers (OpenAI, Anthropic, Google Gemini, OpenRouter, OpenCode) and credential pools into a single resilient execution layer.
 
-With **AI Gateway**, your AI coding tools (such as **OpenCode**, **Claude Code**, **Antigravity**, or custom applications) simply connect to a single **Gateway API Key** and **Gateway URL**.
+With **RoozyLabs Prism**, your client applications and AI coding tools (such as **OpenCode**, **Claude Code**, **Antigravity**, or custom agents) connect to a single **Gateway API Key** and **Prism Gateway Endpoint**.
 
 ---
 
 ## 📐 System Architecture
 
 ```text
-                         CLIENTS
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-     OpenCode          Claude Code          Antigravity
-        │                   │                   │
-        └───────────────────┼───────────────────┘
-                            │ (Authorization: Bearer gw_sk_xxx)
-                            ▼
-                   ┌─────────────────┐
-                   │  Next.js Admin  │
-                   │    Dashboard    │
-                   │  (Port :3000)   │
-                   └────────┬────────┘
-                            │ (/api proxy)
-                            ▼
-                   ┌─────────────────┐
-                   │   AI Gateway    │
-                   │  (Go API :8080) │
-                   │                 │
-                   │  • Auth         │
-                   │  • Smart Router │
-                   │  • Budget Mgr   │
-                   │  • Rotation     │
-                   │  • Retry (429)  │
-                   │  • Circuit Brkr │
-                   │  • Streaming    │
-                   │  • Observability│
-                   └────────┬────────┘
-                            │
-          ┌─────────────────┼─────────────────┐
-          ▼                 ▼                 ▼
-    OpenAI API        Anthropic API      Google Gemini
+                                CLIENTS
+               ┌───────────────────┼───────────────────┐
+               │                   │                   │
+            OpenCode          Claude Code          Antigravity
+               │                   │                   │
+               └───────────────────┼───────────────────┘
+                                   │ (Authorization: Bearer gw_sk_xxx)
+                                   ▼
+                          ┌─────────────────┐
+                          │  Next.js Admin  │
+                          │ Dashboard (App) │
+                          │  (Port :3000)   │
+                          └────────┬────────┘
+                                   │ (/api proxy)
+                                   ▼
+                          ┌─────────────────┐
+                          │ RoozyLabs Prism │
+                          │ (Go API :8080)  │
+                          │                 │
+                          │ • Auth          │
+                          │ • Smart Router  │
+                          │ • Budget Mgr    │
+                          │ • Credential Pool│
+                          │ • Retry (429/500)│
+                          │ • Circuit Breaker│
+                          │ • Streaming SSE │
+                          │ • Observability │
+                          └────────┬────────┘
+                                   │
+                 ┌─────────────────┼─────────────────┐
+                 ▼                 ▼                 ▼
+           OpenAI API        Anthropic API      Google Gemini
 ```
 
 ---
@@ -53,24 +53,14 @@ With **AI Gateway**, your AI coding tools (such as **OpenCode**, **Claude Code**
 ## ✨ Key Features
 
 - **🧠 Roozy Auto Smart Router (`roozy-auto`)**: Intelligent router that deterministically classifies request characteristics (Task, Complexity, Context Window), pre-filters candidate models by active provider credentials, and executes weighted candidate scoring based on the active routing policy (`balanced`, `cheap`, `quality`, or custom).
-- **🎯 Default Active Policy Selection**: Easily set which routing policy (`balanced`, `cheap`, `quality`, or custom) `roozy-auto` uses by default via `PUT /policies/:id/default` or the Next.js `PoliciesPage` UI.
-- **🔍 Smart Router Decision Details & Prompt Observability**: Detailed audit trail (`/api/routing/decisions`) storing request prompt text previews (first 250 chars) and candidate model score breakdowns, viewable via the interactive Decision Details inspector drawer in Next.js `LogsPage`.
-- **💰 AI Budget Manager & Auto Downgrade**: Configurable monthly and daily spend limits, alert thresholds (`healthy`, `warning`, `critical`, `exceeded`), and automatic model downgrade logic before hard cutoffs.
-- **🔑 Centralized Credential Management & Auto-Reset**: Store and manage provider API keys with **AES-256-GCM** encryption (*encrypted at rest*). Automatic status recovery to `Normal` (Active) as soon as rate limit cooldown timers or daily 00:00 UTC resets expire.
-- **⚡ Instant Zero-Delay Rotation & HTTP Pooling**: **Round Robin**, **Least Recently Used (LRU)**, and **Fallback Cascade** allocation strategies with HTTP/2 connection pooling (`MaxIdleConnsPerHost: 50`) for low TTFT latency.
-- **🛡️ Clean User-Friendly Error Sanitization**: Isolates raw upstream provider errors (429 rate limits, network timeouts, internal UUIDs) into clean, transparent user-friendly JSON responses.
-- **📊 Complete Audit Trail & Debugging Headers**: Full request logging (for success HTTP 200 and error 429/500/502/504 requests), Smart Router decision audit trail (`/api/routing/decisions`), and response debugging headers (`X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID`).
-- **🛡️ Provider Concurrency Limiter & Cloudflare Evasion**: In-memory Go channel semaphores (default max **2** active streams per provider) & request pacing (`350ms`) to evade WAF concurrency rate limits.
-- **🌐 Outgoing Proxy Support**: Support for `GLOBAL_PROXY_URL` environment variable (SOCKS5 / HTTP Proxy) to route outbound requests through residential IPs or SSH tunnels.
-- **🌊 Pass-Through Real-Time Streaming**: Pass-through Server-Sent Events (SSE) streaming with token usage collection (`stream_options: include_usage`) and real-time cost calculation (`CostUSD`).
-- **📱 Responsive UI Dashboard**: Next.js 15, React 19, & Ant Design dashboard fully responsive across desktop, tablet, and mobile viewports with horizontal scroll containment.
-- **🎯 Unified OpenAI-Compatible API**: OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/models`) for instant compatibility with standard AI client tools.
-- **🛡️ Circuit Breaker & 50x Quarantine**: Automatic credential quarantine after 3 consecutive 50x server errors with 60-second cooldown, preventing repeated routing to failing upstream servers. Quarantine events broadcast via SSE.
-- **⚡ Dynamic Latency Feedback Loop**: Redis-backed 15-minute rolling window tracking last 50 latency samples per model (TTFT + total). Feeds dynamic speed scoring penalties for high-latency models and bonuses for fast-responding models into the Smart Router candidate scorer.
-- **📊 FinOps Cost Recommendations Engine**: Real-time cost analysis with daily spend velocity, projected monthly cost, budget exhaustion forecast, and model substitution savings recommendations (`GET /api/analytics/finops`).
-- **🧪 Routing Playground**: Interactive simulation page (`/playground`) to test Smart Router behavior — enter a prompt, select routing policy and budget status, and visualize the complete classification → filtering → scoring → selection pipeline without executing a real request.
-- **💬 Web Sandbox**: In-browser chat interface (`/sandbox`) for testing Gateway API keys directly with model selection and real-time streaming.
-- **🌓 Dark/Light Theme**: Full dark and light theme toggle across the entire dashboard, persisted via local storage.
+- **🎨 RoozyLabs Prism Design System**: Built strictly according to the **Prism Design System** ([`docs/DESIGN_SYSTEM.md`](file:///c:/me/projects/ai-gateway/docs/DESIGN_SYSTEM.md)) featuring a high-density, dark-first UI palette (`#08090A` canvas, `#0F1115` cards, `#8B5CF6` violet signature accent, and `Geist Mono`/`JetBrains Mono` typography for all metrics).
+- **🛡️ High Availability & Circuit Breaker**: Automatic 50x error detection, 60-second credential quarantine, and instant fallback cascades to ensure zero downtime.
+- **🛡️ Bot Protection & Security**: Integrated **Cloudflare Turnstile** bot protection on dashboard authentication endpoints and AES-256-GCM encrypted credential vaults.
+- **💰 AI FinOps & Budget Manager**: Configurable spend limits, velocity alert thresholds (`healthy`, `warning`, `critical`, `exceeded`), burn-rate forecasting, and automatic model substitution cost recommendations.
+- **⚡ Instant Zero-Delay Rotation & HTTP Pooling**: **Round Robin**, **LRU**, and **Fallback Cascade** allocation strategies with HTTP/2 connection pooling (`MaxIdleConnsPerHost: 50`) for ultra-low TTFT latency.
+- **📊 Complete Audit Trail & Debugging**: Full request logging, Smart Router decision audit log (`/api/routing/decisions`), and response debugging headers (`X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID`).
+- **🧪 Routing Simulation & Playground**: Interactive simulation page (`/playground`) to test Smart Router behavior and inspect classification → scoring → selection pipelines in real-time.
+- **💬 Web AI Sandbox**: In-browser chat interface (`/sandbox`) for testing Gateway API keys directly with real-time SSE streaming.
 - **🔐 Google OAuth 2.0 Credential Flow**: Popup-based OAuth for Google Gemini credentials — automatically exchanges refresh tokens, encrypts and stores them, and auto-creates the credential entry.
 
 ---
@@ -78,7 +68,7 @@ With **AI Gateway**, your AI coding tools (such as **OpenCode**, **Claude Code**
 ## 🛠️ Technology Stack
 
 - **Backend**: Go (Golang 1.24), Gin Web Framework, SQLx
-- **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Ant Design, Tailwind CSS
+- **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Ant Design v5, Prism Design System Theme
 - **Database**: PostgreSQL 15 (Single Source of Truth)
 - **Cache & State Store**: Redis 7 (Rate Limiting, Cooldown, Events, State)
 - **Containerization**: Multi-stage Dockerfile, Docker Compose
@@ -96,19 +86,19 @@ With **AI Gateway**, your AI coding tools (such as **OpenCode**, **Claude Code**
 
 Clone the repository and copy the environment file:
 ```bash
-git clone https://github.com/roozylabs/ai-gateway.git
-cd ai-gateway
+git clone https://github.com/roozylabs/prism.git
+cd prism
 cp .env.example .env
 ```
 
-Start all services (Go API + Next.js Dashboard + PostgreSQL + Redis):
+Start all services (Prism Go API + Next.js Dashboard + PostgreSQL + Redis):
 ```bash
 docker compose up -d --build
 ```
 
 The application stack will be available at:
 - **Dashboard UI**: `http://localhost:3000`
-- **API Gateway**: `http://localhost:8080`
+- **Prism API Gateway**: `http://localhost:8080`
 
 Verify service health:
 ```bash
@@ -126,7 +116,7 @@ If you want to run the Go backend directly on your local machine:
    docker compose up -d postgres redis
    ```
 
-2. **Run API Gateway**:
+2. **Run Prism API**:
    ```bash
    cd api
    go run cmd/server/main.go
@@ -154,30 +144,14 @@ The `.env` file configures backend infrastructure settings:
 | `JWT_SECRET` | Secret key for signing JWT Session | `your-jwt-secret-here` |
 | `ENCRYPTION_KEY` | 32-byte AES-256-GCM encryption key for provider credentials | `your-encryption-key-here` |
 | `HASH_KEY` | Key for hashing Gateway API Keys | `your-hash-key-here` |
-| `BETTER_AUTH_SECRET` | Secret for Better Auth session management (frontend) | *(required)* |
+| `CLOUDFLARE_SECRET_KEY` | Cloudflare Turnstile Secret Key for bot verification | *(optional)* |
+| `NEXT_PUBLIC_CLOUDFLARE_SITE_KEY` | Cloudflare Turnstile Site Key for frontend widget | *(optional)* |
 | `GOOGLE_CLIENT_ID` | Google OAuth 2.0 Client ID (Gemini credential flow) | *(optional)* |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 Client Secret | *(optional)* |
 | `GLOBAL_PROXY_URL` | Outgoing SOCKS5 / HTTP proxy URL for upstream provider requests | *(optional)* |
 | `OPENCODE_MAX_CONCURRENCY` | Max concurrent streams per OpenCode provider | `2` |
-| `MAX_RETRIES` | Max credential rotation retries on failure | `2` |
-| `COOLDOWN_SECONDS` | Default 429 rate-limit cooldown duration | `60` |
-| `RATE_LIMIT_PER_KEY` | Per Gateway API Key request rate limit | `100` |
 
 > 🔒 *Note: AI Provider API Credentials (such as OpenAI or Anthropic keys) are **not stored** in `.env`. They are securely managed and encrypted in PostgreSQL via the Dashboard API.*
-
----
-
-## 🔄 CI/CD Pipeline & Deployment
-
-This project uses a unified **GitHub Actions** pipeline ([ci-cd.yml](file:///.github/workflows/ci-cd.yml)):
-
-1. **Continuous Integration (CI)**:
-   - Go code linting using `golangci-lint`.
-   - Automated testing (`go test ./...`) with PostgreSQL 15 & Redis 7 service containers.
-   - Go binary compilation & Docker build verification.
-2. **Continuous Deployment (CD)**:
-   - Build & Push Docker image to **GitHub Container Registry** (`ghcr.io/roozylabs/ai-gateway-api:latest`).
-   - Automated SSH deployment to VPS executing `git pull`, `docker compose pull`, and `docker compose up -d`.
 
 ---
 
@@ -187,7 +161,8 @@ This project uses a unified **GitHub Actions** pipeline ([ci-cd.yml](file:///.gi
 | :--- | :--- | :--- | :--- |
 | **Health & Auth** | | | |
 | `GET` | `/health` | Healthcheck API, DB, & Redis status | Public |
-| `POST` | `/api/auth/login` | User Login (email/password) | Public |
+| `POST` | `/api/auth/login` | User Login (email/password + Turnstile) | Public |
+| `GET` | `/api/auth/turnstile-config` | Public Turnstile Site Key config | Public |
 | `GET` | `/api/auth/me` | Current session user | Session |
 | `POST` | `/api/auth/logout` | Destroy session | Session |
 | **Providers** | | | |
