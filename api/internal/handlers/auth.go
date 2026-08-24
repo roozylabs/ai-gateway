@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/service"
@@ -27,6 +28,14 @@ type TurnstileResponse struct {
 }
 
 func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
+	secretKey = strings.TrimSpace(secretKey)
+	secretKey = strings.Trim(secretKey, "\"")
+	secretKey = strings.Trim(secretKey, "'")
+
+	token = strings.TrimSpace(token)
+	token = strings.Trim(token, "\"")
+	token = strings.Trim(token, "'")
+
 	if secretKey == "" {
 		return true
 	}
@@ -34,13 +43,19 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 		log.Printf("[Turnstile Auth] Verification failed: turnstile token is empty")
 		return false
 	}
-	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v1/siteverify",
-		url.Values{
-			"secret":   {secretKey},
-			"response": {token},
-		})
+
+	payload := map[string]string{
+		"secret":   secretKey,
+		"response": token,
+	}
+	jsonBytes, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[Turnstile Auth] HTTP PostForm failed: %v", err)
+		return false
+	}
+
+	resp, err := http.Post("https://challenges.cloudflare.com/turnstile/v1/siteverify", "application/json", bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		log.Printf("[Turnstile Auth] HTTP Post failed: %v", err)
 		return false
 	}
 	defer resp.Body.Close()
@@ -54,6 +69,8 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 
 	if !result.Success {
 		log.Printf("[Turnstile Auth] Verification failed. ErrorCodes: %v, Response: %s", result.ErrorCodes, string(bodyBytes))
+	} else {
+		log.Printf("[Turnstile Auth] Verification SUCCESS!")
 	}
 	return result.Success
 }
@@ -63,6 +80,9 @@ func (h *AuthHandler) GetTurnstileConfig(c *gin.Context) {
 	if siteKey == "" {
 		siteKey = os.Getenv("CLOUDFLARE_SITE_KEY")
 	}
+	siteKey = strings.TrimSpace(siteKey)
+	siteKey = strings.Trim(siteKey, "\"")
+	siteKey = strings.Trim(siteKey, "'")
 	c.JSON(http.StatusOK, gin.H{
 		"siteKey": siteKey,
 	})
