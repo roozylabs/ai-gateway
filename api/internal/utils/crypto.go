@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -63,6 +64,10 @@ func DecryptAES256GCM(encrypted, key string) (string, error) {
 		return "", nil
 	}
 
+	if strings.HasPrefix(encrypted, "sk-") || strings.HasPrefix(encrypted, "AIzaSy") || strings.HasPrefix(encrypted, "opencode-") || strings.HasPrefix(encrypted, "ghp_") {
+		return encrypted, nil
+	}
+
 	keysToTry := []string{
 		key,
 		"test-encryption-key-32-bytes!!",
@@ -73,7 +78,7 @@ func DecryptAES256GCM(encrypted, key string) (string, error) {
 	}
 
 	data, err := base64.URLEncoding.DecodeString(encrypted)
-	if err == nil {
+	if err == nil && len(data) > 12 {
 		for _, k := range keysToTry {
 			if k == "" {
 				continue
@@ -106,8 +111,7 @@ func DecryptAES256GCM(encrypted, key string) (string, error) {
 		}
 	}
 
-	// Fallback: return raw input string if decryption fails or input is unencrypted
-	return encrypted, nil
+	return "", ErrDecryptionFailed
 }
 
 // HashPassword hashes a password using bcrypt

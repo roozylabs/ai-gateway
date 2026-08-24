@@ -353,8 +353,12 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			var err error
 			apiKey, err = utils.DecryptAES256GCM(route.Credential.EncryptedKey, e.encKey)
 			if err != nil {
-				lastErr = fmt.Errorf("decrypt credential: %w", err)
-				continue
+				if route.Credential.EncryptedKey != "" {
+					apiKey = route.Credential.EncryptedKey
+				} else {
+					lastErr = fmt.Errorf("decrypt credential: %w", err)
+					continue
+				}
 			}
 		}
 
@@ -656,8 +660,12 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			var err error
 			apiKey, err = utils.DecryptAES256GCM(route.Credential.EncryptedKey, e.encKey)
 			if err != nil {
-				lastErr = fmt.Errorf("decrypt credential: %w", err)
-				continue
+				if route.Credential.EncryptedKey != "" {
+					apiKey = route.Credential.EncryptedKey
+				} else {
+					lastErr = fmt.Errorf("decrypt credential: %w", err)
+					continue
+				}
 			}
 		}
 
