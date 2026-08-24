@@ -58,13 +58,13 @@ func (h *GoogleOAuthHandler) Login(c *gin.Context) {
 	}
 
 	state := providerID
-	scopes := "https://www.googleapis.com/auth/cloud-platform email profile"
+	scopes := "https://www.googleapis.com/auth/generative-language openid email profile"
 
 	authURL := fmt.Sprintf(
 		"https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&access_type=offline&prompt=consent&state=%s",
 		url.QueryEscape(clientID),
 		url.QueryEscape(redirectURI),
-		url.QueryEscape(scopes),
+		strings.ReplaceAll(url.QueryEscape(scopes), "+", "%20"),
 		url.QueryEscape(state),
 	)
 
