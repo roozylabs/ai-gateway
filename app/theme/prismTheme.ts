@@ -36,9 +36,9 @@ export const prismTheme: ThemeConfig = {
     },
     Table: {
       colorBgContainer: '#0F1115',
-      colorHeaderBg: '#151820',
-      colorHeaderTxt: '#8B93A1',
-      colorBorderSecondary: '#242832',
+      headerBg: '#151820',
+      headerColor: '#8B93A1',
+      headerSplitColor: '#242832',
       borderRadius: 8,
     },
     Button: {
