@@ -30,12 +30,27 @@ func NewGoogleOAuthHandler(credentials *repository.CredentialRepository, provide
 	}
 }
 
-func (h *GoogleOAuthHandler) getOAuthEnv() (clientID, clientSecret, redirectURI string) {
+func (h *GoogleOAuthHandler) getOAuthEnv(c *gin.Context) (clientID, clientSecret, redirectURI string) {
 	clientID = os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
 	baseURL := os.Getenv("BETTER_AUTH_URL")
 	if baseURL == "" {
-		baseURL = os.Getenv("API_URL")
+		baseURL = os.Getenv("PUBLIC_URL")
+	}
+	if baseURL == "" && c != nil {
+		scheme := "https"
+		if c.Request.TLS == nil && c.GetHeader("X-Forwarded-Proto") != "https" {
+			if strings.HasPrefix(c.Request.Host, "localhost") || strings.HasPrefix(c.Request.Host, "127.0.0.1") {
+				scheme = "http"
+			}
+		}
+		host := c.GetHeader("X-Forwarded-Host")
+		if host == "" {
+			host = c.Request.Host
+		}
+		if host != "" {
+			baseURL = fmt.Sprintf("%s://%s", scheme, host)
+		}
 	}
 	if baseURL == "" {
 		baseURL = "http://localhost:3000"
@@ -51,7 +66,7 @@ func (h *GoogleOAuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	clientID, _, redirectURI := h.getOAuthEnv()
+	clientID, _, redirectURI := h.getOAuthEnv(c)
 	if clientID == "" {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "GOOGLE_CLIENT_ID is not configured in environment"})
 		return
@@ -86,7 +101,7 @@ func (h *GoogleOAuthHandler) Callback(c *gin.Context) {
 		return
 	}
 
-	clientID, clientSecret, redirectURI := h.getOAuthEnv()
+	clientID, clientSecret, redirectURI := h.getOAuthEnv(c)
 
 	// 1. Exchange code for tokens
 	form := url.Values{}
