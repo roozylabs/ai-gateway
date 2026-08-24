@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
 
-  const siteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY || '0x4AAAAAAEaK1BwT35HAWxpj';
+  const siteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY;
 
   const {
     control,
