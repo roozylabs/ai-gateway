@@ -167,4 +167,4 @@ jobs:
             docker rm -f prism-backend-api prism-frontend-dashboard prism-postgres-database prism-redis-cache ai-gateway-backend-api ai-gateway-frontend-dashboard || true
             docker compose pull || true
             docker compose up -d --remove-orphans
-            docker image prune -f
+            docker image prune -f || true
