@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +31,7 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 		return true
 	}
 	if token == "" {
+		log.Printf("[Turnstile Auth] Verification failed: turnstile token is empty")
 		return false
 	}
 	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v1/siteverify",
@@ -37,13 +40,20 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 			"response": {token},
 		})
 	if err != nil {
+		log.Printf("[Turnstile Auth] HTTP PostForm failed: %v", err)
 		return false
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, _ := io.ReadAll(resp.Body)
 	var result TurnstileResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		log.Printf("[Turnstile Auth] JSON unmarshal failed: %v, raw: %s", err, string(bodyBytes))
 		return false
+	}
+
+	if !result.Success {
+		log.Printf("[Turnstile Auth] Verification failed. ErrorCodes: %v, Response: %s", result.ErrorCodes, string(bodyBytes))
 	}
 	return result.Success
 }
