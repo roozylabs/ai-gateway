@@ -46,3 +46,6 @@ app/next-env.d.ts
 opencode.json
 
 .agents/plugins/antd/
+
+.superpowers
+*/superpowers

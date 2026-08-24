@@ -183,13 +183,32 @@ const expensiveModelInputPrice = 2.00 // USD per 1M input tokens
 //   - critical → filter out expensive models, ×0.6 penalty for all remaining
 //   - exceeded → cheapest model only; if hardLimit, only free models survive
 func ScoreCandidatesWithBudget(candidates []*models.Model, chars RequestCharacteristics, policy *RoutingPolicy, budgetStatus string) []*ModelScore {
-	return ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, budgetStatus, nil)
+	return ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, budgetStatus, nil, nil)
 }
 
-func ScoreCandidatesWithBudgetAndTelemetry(candidates []*models.Model, chars RequestCharacteristics, policy *RoutingPolicy, budgetStatus string, telemetryMap map[string]*redis.ModelMetrics) []*ModelScore {
+// ScoreCandidatesWithBudgetAndTelemetry scores candidates with telemetry and
+// budget-aware rules, then multiplies each final score by a provider health
+// factor: 0.5 + 0.5*healthScore (missing providers default to
+// DefaultProviderHealthScore). Candidates with multiplier < 0.9 get a
+// "health_penalty" reason note.
+func ScoreCandidatesWithBudgetAndTelemetry(candidates []*models.Model, chars RequestCharacteristics, policy *RoutingPolicy, budgetStatus string, telemetryMap map[string]*redis.ModelMetrics, healthScores map[string]float64) []*ModelScore {
 	scores := ScoreCandidatesWithTelemetry(candidates, chars, policy, telemetryMap)
 	if len(scores) == 0 {
 		return nil
+	}
+
+	if len(healthScores) > 0 {
+		for _, s := range scores {
+			hs := DefaultProviderHealthScore
+			if v, ok := healthScores[s.Model.ProviderID]; ok {
+				hs = v
+			}
+			multiplier := 0.5 + 0.5*hs
+			s.Score *= multiplier
+			if multiplier < 0.9 {
+				s.Reason = append(s.Reason, "health_penalty")
+			}
+		}
 	}
 
 	switch budgetStatus {

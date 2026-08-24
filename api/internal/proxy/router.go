@@ -24,6 +24,7 @@ type Router struct {
 	providers *repository.ProviderRepository
 	creds     *repository.CredentialRepository
 	settings  *repository.SettingRepository
+	health    *ProviderHealthStore
 }
 
 func NewRouter(
@@ -31,12 +32,14 @@ func NewRouter(
 	providers *repository.ProviderRepository,
 	creds *repository.CredentialRepository,
 	settings *repository.SettingRepository,
+	health *ProviderHealthStore,
 ) *Router {
 	return &Router{
 		models:    models,
 		providers: providers,
 		creds:     creds,
 		settings:  settings,
+		health:    health,
 	}
 }
 
@@ -378,7 +381,12 @@ func (r *Router) ResolveSemantic(
 		telemetryMap, _ = telemetry.GetMultipleModelMetrics(ctx, candidateSlugs)
 	}
 
-	scores := ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, budgetStatus, telemetryMap)
+	var healthScores map[string]float64
+	if r.health != nil {
+		healthScores = r.health.Scores(ctx)
+	}
+
+	scores := ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, budgetStatus, telemetryMap, healthScores)
 	if len(scores) == 0 {
 		return nil, nil, ErrModelNotFound
 	}

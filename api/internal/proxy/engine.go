@@ -120,7 +120,7 @@ func (r *ProxyRequest) UnmarshalJSON(data []byte) error {
 	r.Extra = make(map[string]interface{})
 	for k, v := range rawMap {
 		switch k {
-		case "model", "messages", "stream", "max_tokens", "temperature":
+		case "model", "messages", "tools", "tool_choice", "stream", "max_tokens", "temperature":
 			// Known struct fields
 		default:
 			r.Extra[k] = v

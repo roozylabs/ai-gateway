@@ -38,13 +38,8 @@ func ConvertGenericToolsToOpenAI(rawTools []interface{}) []map[string]interface{
 
 		// Check if already in OpenAI format { type: "function", function: { ... } }
 		if t, hasType := toolMap["type"].(string); hasType && t == "function" {
-			if fn, hasFn := toolMap["function"].(map[string]interface{}); hasFn {
-				result = append(result, map[string]interface{}{
-					"type":     "function",
-					"function": fn,
-				})
-				continue
-			}
+			result = append(result, toolMap)
+			continue
 		}
 
 		// Check if in Anthropic format { name: "...", description: "...", input_schema: { ... } }

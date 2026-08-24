@@ -255,3 +255,91 @@ func TestScoreCandidatesWithBudget_ExceededPicksCheapest(t *testing.T) {
 		t.Errorf("expected cheap model, got %s", scores[0].Model.Slug)
 	}
 }
+
+func TestScoreCandidatesWithBudget_HealthPenaltyDegradesUnhealthy(t *testing.T) {
+	healthy := makeModel("healthy-provider-model", 1.50, 5.00, 0.80, 0.75, 0.80, 128000)
+	unhealthy := makeModel("unhealthy-provider-model", 1.50, 5.00, 0.80, 0.75, 0.80, 128000)
+	healthy.ProviderID = "prov-healthy"
+	unhealthy.ProviderID = "prov-unhealthy"
+
+	candidates := []*models.Model{healthy, unhealthy}
+	policy := &RoutingPolicy{
+		Name:    "balanced",
+		Weights: map[string]float64{"task_match": 0.35, "quality": 0.35, "cost": 0.15, "speed": 0.15},
+	}
+	chars := RequestCharacteristics{Task: TaskCoding, ContextTokens: 500, EstimatedTokens: 675}
+
+	scores := ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, "healthy", nil, map[string]float64{
+		"prov-healthy":   0.98,
+		"prov-unhealthy": 0.10,
+	})
+
+	if len(scores) == 0 {
+		t.Fatal("expected scores")
+	}
+	if scores[0].Model.Slug != "healthy-provider-model" {
+		t.Errorf("expected healthy provider model to win, got %s (score=%.4f)", scores[0].Model.Slug, scores[0].Score)
+	}
+
+	var unhealthyScore *ModelScore
+	for _, s := range scores {
+		if s.Model.Slug == "unhealthy-provider-model" {
+			unhealthyScore = s
+		}
+	}
+	if unhealthyScore == nil {
+		t.Fatal("unhealthy provider model missing from scores")
+	}
+	hasNote := false
+	for _, r := range unhealthyScore.Reason {
+		if r == "health_penalty" {
+			hasNote = true
+		}
+	}
+	if !hasNote {
+		t.Errorf("expected health_penalty note on degraded candidate, got %v", unhealthyScore.Reason)
+	}
+
+	healthyHasNote := false
+	for _, s := range scores {
+		if s.Model.Slug == "healthy-provider-model" {
+			for _, r := range s.Reason {
+				if r == "health_penalty" {
+					healthyHasNote = true
+				}
+			}
+		}
+	}
+	if healthyHasNote {
+		t.Error("healthy candidate should not receive health_penalty note (multiplier >= 0.9)")
+	}
+}
+
+func TestScoreCandidatesWithBudget_MissingHealthDefaultsToHealthy(t *testing.T) {
+	a := makeModel("model-a", 1.50, 5.00, 0.80, 0.75, 0.80, 128000)
+	b := makeModel("model-b", 1.50, 5.00, 0.80, 0.75, 0.80, 128000)
+
+	candidates := []*models.Model{a, b}
+	policy := &RoutingPolicy{
+		Name:    "balanced",
+		Weights: map[string]float64{"task_match": 0.35, "quality": 0.35, "cost": 0.15, "speed": 0.15},
+	}
+	chars := RequestCharacteristics{Task: TaskCoding, ContextTokens: 500, EstimatedTokens: 675}
+
+	withHealth := ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, "healthy", nil, map[string]float64{"other-prov": 0.99})
+	withoutHealth := ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, "healthy", nil, nil)
+
+	if len(withHealth) != len(withoutHealth) || len(withHealth) == 0 {
+		t.Fatalf("unexpected score counts: %d vs %d", len(withHealth), len(withoutHealth))
+	}
+	for i := range withHealth {
+		if withHealth[i].Model.Slug != withoutHealth[i].Model.Slug {
+			t.Errorf("rank %d changed: %s vs %s", i, withHealth[i].Model.Slug, withoutHealth[i].Model.Slug)
+		}
+		for _, r := range withHealth[i].Reason {
+			if r == "health_penalty" {
+				t.Errorf("missing health key should default to 0.95 (no penalty), got note on %s", withHealth[i].Model.Slug)
+			}
+		}
+	}
+}

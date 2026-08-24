@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/config"
@@ -79,7 +80,8 @@ func main() {
 	cooldown := goredis.NewCooldownStore(rdb)
 	telemetry := goredis.NewModelTelemetryStore(rdb)
 	budgetMgr := proxy.NewBudgetManager(budgetRepo)
-	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo, settingRepo)
+	healthStore := proxy.NewProviderHealthStore(requestLogRepo, 30*time.Second)
+	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo, settingRepo, healthStore)
 	engine := proxy.NewEngine(router, credentialRepo, cooldown, telemetry, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo, payloadRepo, toolInvocationRepo)
 
 	// Handlers
@@ -91,7 +93,7 @@ func main() {
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo, credentialRepo)
 	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
-	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo)
+	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo, healthStore)
 	activeStreamsHandler := handlers.NewActiveStreamsHandler(cooldown)
 	settingsHandler := handlers.NewSettingsHandler(settingRepo)
 	sseHandler := handlers.NewSSEHandler(eventPublisher)

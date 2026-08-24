@@ -167,7 +167,7 @@ func (h *SimulateHandler) Simulate(c *gin.Context) {
 		telemetryMap, _ = h.telemetry.GetMultipleModelMetrics(c.Request.Context(), candidateSlugs)
 	}
 
-	scores := proxy.ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, req.BudgetStatus, telemetryMap)
+	scores := proxy.ScoreCandidatesWithBudgetAndTelemetry(candidates, chars, policy, req.BudgetStatus, telemetryMap, nil)
 
 	var scoreDetails []ModelScoreDetail
 	selectedModel := ""

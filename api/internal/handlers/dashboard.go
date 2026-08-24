@@ -5,15 +5,17 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/ai-gateway/internal/proxy"
 	"github.com/roozylabs/ai-gateway/internal/repository"
 )
 
 type DashboardHandler struct {
 	requestLogs *repository.RequestLogRepository
+	health      *proxy.ProviderHealthStore
 }
 
-func NewDashboardHandler(requestLogs *repository.RequestLogRepository) *DashboardHandler {
-	return &DashboardHandler{requestLogs: requestLogs}
+func NewDashboardHandler(requestLogs *repository.RequestLogRepository, health *proxy.ProviderHealthStore) *DashboardHandler {
+	return &DashboardHandler{requestLogs: requestLogs, health: health}
 }
 
 func (h *DashboardHandler) GetStats(c *gin.Context) {
@@ -61,5 +63,18 @@ func (h *DashboardHandler) GetProviderHealth(c *gin.Context) {
 	if data == nil {
 		data = []repository.ProviderHealth{}
 	}
+
+	var scores map[string]float64
+	if h.health != nil {
+		scores = h.health.Scores(c.Request.Context())
+	}
+	for i := range data {
+		score, ok := scores[data[i].ID]
+		if !ok {
+			score = proxy.DefaultProviderHealthScore
+		}
+		data[i].HealthScore = score
+	}
+
 	c.JSON(http.StatusOK, data)
 }

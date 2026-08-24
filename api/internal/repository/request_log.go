@@ -302,15 +302,17 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 }
 
 type ProviderHealth struct {
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	Status    string `json:"status"`
-	CredCount int    `json:"credCount"`
+	ID          string  `json:"-"`
+	Name        string  `json:"name"`
+	Type        string  `json:"type"`
+	Status      string  `json:"status"`
+	CredCount   int     `json:"credCount"`
+	HealthScore float64 `json:"health_score"`
 }
 
 func (r *RequestLogRepository) GetProviderHealth(ctx context.Context, userID string) ([]ProviderHealth, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT p.name, p.type, p.enabled,
+		`SELECT p.id, p.name, p.type, p.enabled,
 		        (SELECT COUNT(*) FROM credentials c WHERE c.provider_id = p.id AND c.enabled = true AND c.status = 'active') as cred_count
 		 FROM providers p
 		 WHERE p.user_id = $1
@@ -325,7 +327,7 @@ func (r *RequestLogRepository) GetProviderHealth(ctx context.Context, userID str
 	for rows.Next() {
 		var ph ProviderHealth
 		var enabled bool
-		if err := rows.Scan(&ph.Name, &ph.Type, &enabled, &ph.CredCount); err != nil {
+		if err := rows.Scan(&ph.ID, &ph.Name, &ph.Type, &enabled, &ph.CredCount); err != nil {
 			return nil, err
 		}
 		if enabled && ph.CredCount > 0 {
