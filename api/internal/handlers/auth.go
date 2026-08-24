@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -27,7 +28,7 @@ type TurnstileResponse struct {
 	ErrorCodes []string `json:"error-codes"`
 }
 
-func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
+func verifyCloudflareTurnstile(token, secretKey, remoteIP string) (bool, string) {
 	secretKey = strings.TrimSpace(secretKey)
 	secretKey = strings.Trim(secretKey, "\"")
 	secretKey = strings.Trim(secretKey, "'")
@@ -38,11 +39,11 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 
 	if secretKey == "" || strings.EqualFold(secretKey, "disabled") || strings.EqualFold(secretKey, "none") || secretKey == "1x0000000000000000000000000000000AA" {
 		log.Printf("[Turnstile Auth] Bypassing Turnstile (secretKey=%s)", secretKey)
-		return true
+		return true, ""
 	}
 	if token == "" {
 		log.Printf("[Turnstile Auth] Verification failed: turnstile token is empty")
-		return false
+		return false, "Turnstile token is empty. Please complete the captcha."
 	}
 
 	formData := url.Values{}
@@ -52,7 +53,7 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v1/siteverify", formData)
 	if err != nil {
 		log.Printf("[Turnstile Auth] HTTP PostForm failed: %v", err)
-		return false
+		return false, err.Error()
 	}
 	defer resp.Body.Close()
 
@@ -60,15 +61,17 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 	var result TurnstileResponse
 	if err := json.Unmarshal(bodyBytes, &result); err != nil {
 		log.Printf("[Turnstile Auth] JSON unmarshal failed: %v, raw: %s", err, string(bodyBytes))
-		return false
+		return false, string(bodyBytes)
 	}
 
 	if !result.Success {
-		log.Printf("[Turnstile Auth] Verification failed. ErrorCodes: %v, Response: %s", result.ErrorCodes, string(bodyBytes))
-	} else {
-		log.Printf("[Turnstile Auth] Verification SUCCESS!")
+		errMsg := fmt.Sprintf("Cloudflare siteverify rejected token. ErrorCodes: %v", result.ErrorCodes)
+		log.Printf("[Turnstile Auth] %s", errMsg)
+		return false, errMsg
 	}
-	return result.Success
+
+	log.Printf("[Turnstile Auth] Verification SUCCESS!")
+	return true, ""
 }
 
 func (h *AuthHandler) GetTurnstileConfig(c *gin.Context) {
@@ -103,8 +106,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	secretKey := os.Getenv("CLOUDFLARE_SECRET_KEY")
 	if secretKey != "" {
-		if !verifyCloudflareTurnstile(req.TurnstileToken, secretKey, c.ClientIP()) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Security verification failed (Cloudflare Turnstile)"})
+		if ok, detail := verifyCloudflareTurnstile(req.TurnstileToken, secretKey, c.ClientIP()); !ok {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":  "Security verification failed (Cloudflare Turnstile)",
+				"detail": detail,
+			})
 			return
 		}
 	}
