@@ -43,6 +43,28 @@ func (r *BudgetRepository) ListByUserID(ctx context.Context, userID string) ([]m
 	return budgets, rows.Err()
 }
 
+func (r *BudgetRepository) ListAllEnabled(ctx context.Context) ([]models.Budget, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT `+budgetColumns+`
+		 FROM budgets
+		 WHERE enabled = true
+		 ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var budgets []models.Budget
+	for rows.Next() {
+		var budget models.Budget
+		if err := scanBudget(rows, &budget); err != nil {
+			return nil, err
+		}
+		budgets = append(budgets, budget)
+	}
+	return budgets, rows.Err()
+}
+
 func (r *BudgetRepository) FindByID(ctx context.Context, id, userID string) (*models.Budget, error) {
 	var budget models.Budget
 	err := r.db.QueryRowContext(ctx,

@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +17,7 @@ import (
 	goredis "github.com/roozylabs/ai-gateway/internal/redis"
 	"github.com/roozylabs/ai-gateway/internal/repository"
 	"github.com/roozylabs/ai-gateway/internal/service"
+	"github.com/roozylabs/ai-gateway/internal/workers"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -69,6 +74,8 @@ func main() {
 	decisionRepo := repository.NewRoutingDecisionRepository(sqlDB)
 	payloadRepo := repository.NewPayloadRepository(sqlDB)
 	toolInvocationRepo := repository.NewToolInvocationRepository(sqlDB)
+	anomalyRepo := repository.NewCostAnomalyRepository(sqlDB)
+	budgetAlertRepo := repository.NewBudgetAlertRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -106,6 +113,15 @@ func main() {
 	routingDecisionHandler := handlers.NewRoutingDecisionHandler(decisionRepo)
 	simulateHandler := handlers.NewSimulateHandler(modelRepo, providerRepo, credentialRepo, routingPolicyRepo, telemetry)
 	finopsHandler := handlers.NewFinOpsHandler(requestLogRepo, budgetRepo, modelRepo, settingRepo)
+	finopsAnomaliesHandler := handlers.NewFinOpsAnomaliesHandler(anomalyRepo, budgetAlertRepo)
+
+	// Background workers
+	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer workerStop()
+	workerMgr := workers.NewManager()
+	workerMgr.Register("cost-anomaly", 15*time.Minute, anomalyWorker(anomalyRepo, eventPublisher))
+	workerMgr.Register("budget-alert", 2*time.Minute, budgetAlertWorker(budgetRepo, budgetAlertRepo, eventPublisher))
+	workerMgr.Start(workerCtx)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -174,6 +190,9 @@ func main() {
 			protected.GET("/logs", logsHandler.List)
 			protected.GET("/analytics/logs", logsHandler.GetAnalytics)
 			protected.GET("/analytics/finops", finopsHandler.GetSummary)
+			protected.GET("/analytics/finops/anomalies", finopsAnomaliesHandler.ListAnomalies)
+			protected.GET("/analytics/finops/budget-alerts", finopsAnomaliesHandler.ListBudgetAlerts)
+			protected.POST("/analytics/finops/budget-alerts/:id/acknowledge", finopsAnomaliesHandler.AcknowledgeAlert)
 
 			// Dashboard
 			protected.GET("/dashboard/stats", dashboardHandler.GetStats)
@@ -256,4 +275,14 @@ func main() {
 	if err := r.Run(":" + cfg.ServerPort); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
+}
+
+func anomalyWorker(anomalies *repository.CostAnomalyRepository, publisher *goredis.EventPublisher) func(context.Context) {
+	d := workers.NewAnomalyDetector(anomalies, publisher)
+	return d.Run
+}
+
+func budgetAlertWorker(budgets *repository.BudgetRepository, alerts *repository.BudgetAlertRepository, publisher *goredis.EventPublisher) func(context.Context) {
+	s := workers.NewBudgetAlertScanner(budgets, alerts, publisher)
+	return s.Run
 }
