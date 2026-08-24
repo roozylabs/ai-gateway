@@ -80,7 +80,7 @@ func TestExtractLastUserPreview_LastUserTruncated(t *testing.T) {
 func TestExtractLastUserPreview_ShortMessageUntouched(t *testing.T) {
 	req := &ProxyRequest{
 		Messages: []map[string]interface{}{
-			{"role": "user", "content": fmt.Sprintf("%s", "short but clear question")},
+			{"role": "user", "content": "short but clear question"},
 			{"role": "assistant", "content": "answer"},
 			{"role": "user", "content": "final question"},
 		},

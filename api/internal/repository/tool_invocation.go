@@ -26,7 +26,9 @@ func (r *ToolInvocationRepository) CreateBatch(ctx context.Context, requestID st
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	stmt := &strings.Builder{}
 	stmt.WriteString("INSERT INTO tool_invocations (request_id, tool_name, call_id, arguments) VALUES ")
