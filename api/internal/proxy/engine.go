@@ -440,8 +440,20 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			continue
 		}
 
-		// 401/403 → mark invalid, retry
+		// 401/403 → check if quota/rate limit error vs invalid key
 		if httpResp.StatusCode == http.StatusUnauthorized || httpResp.StatusCode == http.StatusForbidden {
+			bodyStr := string(body)
+			bodyLower := strings.ToLower(bodyStr)
+			if strings.Contains(bodyLower, "quota") || strings.Contains(bodyLower, "limit") || strings.Contains(bodyLower, "exhausted") || strings.Contains(bodyLower, "too many") || strings.Contains(bodyLower, "resource_exhausted") {
+				retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
+				e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
+				_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+				lastErr = fmt.Errorf("upstream rate/quota limit (%d) on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
+				lastAttemptStatus = httpResp.StatusCode
+				attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
+				continue
+			}
+
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
 			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
 			lastAttemptStatus = httpResp.StatusCode
@@ -740,10 +752,23 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			continue
 		}
 
-		// 401/403 → mark invalid, retry
+		// 401/403 → check if quota/rate limit error vs invalid key
 		if httpResp.StatusCode == http.StatusUnauthorized || httpResp.StatusCode == http.StatusForbidden {
+			bodyBytes, _ := io.ReadAll(httpResp.Body)
 			httpResp.Body.Close()
 			release()
+			bodyStr := string(bodyBytes)
+			bodyLower := strings.ToLower(bodyStr)
+			if strings.Contains(bodyLower, "quota") || strings.Contains(bodyLower, "limit") || strings.Contains(bodyLower, "exhausted") || strings.Contains(bodyLower, "too many") || strings.Contains(bodyLower, "resource_exhausted") {
+				retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
+				e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
+				_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+				lastErr = fmt.Errorf("upstream rate/quota limit (%d) on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
+				lastAttemptStatus = httpResp.StatusCode
+				attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
+				continue
+			}
+
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
 			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
 			lastAttemptStatus = httpResp.StatusCode
@@ -1167,10 +1192,10 @@ func determineCooldownDuration(header http.Header, bodyStr string) int {
 		}
 	}
 
-	// 5. If upstream did not provide a specific duration, use a minimal 5-second backoff
-	// so the current request can immediately try the next key in the pool,
-	// without locking out this key for minutes or days.
-	return 5
+	// 5. Default rate-limit cooldown: 300 seconds (5 minutes)
+	// so subsequent requests for the next 5 minutes immediately skip this key
+	// without wasting time making failed HTTP roundtrips.
+	return 300
 }
 
 func calculateBackoff(attempt int) time.Duration {
