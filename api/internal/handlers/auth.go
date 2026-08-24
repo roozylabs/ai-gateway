@@ -35,7 +35,6 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
 		url.Values{
 			"secret":   {secretKey},
 			"response": {token},
-			"remoteip": {remoteIP},
 		})
 	if err != nil {
 		return false
