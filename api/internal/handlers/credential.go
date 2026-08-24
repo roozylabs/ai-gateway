@@ -486,10 +486,36 @@ func (h *CredentialHandler) Test(c *gin.Context) {
 		return
 	}
 
-	apiKey, err := utils.DecryptAES256GCM(cred.EncryptedKey, h.encKey)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to decrypt key"})
-		return
+	var apiKey string
+	if cred.AuthType == "gcp_user_oauth" {
+		if !cred.EncryptedMetadata.Valid || cred.EncryptedMetadata.String == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing encrypted oauth metadata"})
+			return
+		}
+		metaStr, err := utils.DecryptAES256GCM(cred.EncryptedMetadata.String, h.encKey)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to decrypt oauth metadata"})
+			return
+		}
+		var meta map[string]string
+		if err := json.Unmarshal([]byte(metaStr), &meta); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse oauth metadata"})
+			return
+		}
+		tokenMgr := proxy.NewOAuthTokenManager(h.cooldownStore)
+		token, err := tokenMgr.GetAccessToken(c.Request.Context(), cred.ID, meta)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "oauth token refresh failed: " + err.Error()})
+			return
+		}
+		apiKey = token
+	} else {
+		var err error
+		apiKey, err = utils.DecryptAES256GCM(cred.EncryptedKey, h.encKey)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to decrypt key"})
+			return
+		}
 	}
 
 	start := time.Now()
@@ -500,7 +526,7 @@ func (h *CredentialHandler) Test(c *gin.Context) {
 	case "anthropic":
 		statusCode, errMsg = h.testAnthropic(provider.BaseURL, apiKey)
 	case "google":
-		statusCode, errMsg = h.testGoogle(provider.BaseURL, apiKey)
+		statusCode, errMsg = h.testGoogle(provider.BaseURL, apiKey, cred.AuthType)
 	case "opencode":
 		statusCode, errMsg = h.testOpenCode(provider.BaseURL, apiKey)
 	default:
@@ -582,7 +608,7 @@ func (h *CredentialHandler) testAnthropic(baseURL, apiKey string) (int, string) 
 	return resp.StatusCode, ""
 }
 
-func (h *CredentialHandler) testGoogle(baseURL, apiKey string) (int, string) {
+func (h *CredentialHandler) testGoogle(baseURL, apiKey, authType string) (int, string) {
 	if baseURL == "" {
 		baseURL = "https://generativelanguage.googleapis.com"
 	}
@@ -591,15 +617,23 @@ func (h *CredentialHandler) testGoogle(baseURL, apiKey string) (int, string) {
 		return 0, "invalid base URL"
 	}
 	u.Path = path.Join(u.Path, "v1beta", "models")
-	q := u.Query()
-	q.Set("key", apiKey)
-	u.RawQuery = q.Encode()
+
+	if authType != "gcp_user_oauth" {
+		q := u.Query()
+		q.Set("key", apiKey)
+		u.RawQuery = q.Encode()
+	}
 
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return 0, "failed to create request"
 	}
-	req.Header.Set("x-goog-api-key", apiKey)
+
+	if authType == "gcp_user_oauth" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	} else {
+		req.Header.Set("x-goog-api-key", apiKey)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -608,7 +642,12 @@ func (h *CredentialHandler) testGoogle(baseURL, apiKey string) (int, string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return resp.StatusCode, "authentication failed"
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		errText := string(bodyBytes)
+		if errText == "" {
+			errText = "authentication failed"
+		}
+		return resp.StatusCode, errText
 	}
 	return resp.StatusCode, ""
 }
