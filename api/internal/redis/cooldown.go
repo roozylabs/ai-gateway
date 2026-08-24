@@ -208,8 +208,8 @@ func (s *CooldownStore) GetActiveStreams(ctx context.Context) (*ActiveStreamsSum
 			continue
 		}
 
-		// Clean up any requests older than 15 minutes as stale
-		if rec.StartedAt > 0 && (now-rec.StartedAt) > 900 {
+		// Clean up any requests older than 2 minutes (120s) as stale
+		if rec.StartedAt > 0 && (now-rec.StartedAt) > 120 {
 			staleKeys = append(staleKeys, reqID)
 			continue
 		}
