@@ -75,7 +75,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/ai-gateway-app
+          images: ghcr.io/${{ github.repository_owner }}/prism-app
           tags: |
             type=raw,value=latest
             type=sha,prefix=sha-
