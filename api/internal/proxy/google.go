@@ -36,7 +36,7 @@ func (a *GoogleAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 
 	body := map[string]interface{}{
 		"model":    req.Model,
-		"messages": req.Messages,
+		"messages": sanitizeMessagesForGoogle(req.Messages),
 		"stream":   req.Stream,
 	}
 	if len(req.Tools) > 0 {
@@ -82,4 +82,56 @@ func (a *GoogleAdapter) ParseStreamChunk(line []byte) (*ProviderResponse, bool) 
 
 func (a *GoogleAdapter) SupportsStreaming() bool {
 	return true
+}
+
+func sanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]interface{} {
+	if len(messages) == 0 {
+		return messages
+	}
+
+	result := make([]map[string]interface{}, 0, len(messages))
+	for _, msg := range messages {
+		msgCopy := make(map[string]interface{})
+		for k, v := range msg {
+			msgCopy[k] = v
+		}
+
+		if toolCallsRaw, ok := msgCopy["tool_calls"]; ok && toolCallsRaw != nil {
+			if toolCalls, ok := toolCallsRaw.([]interface{}); ok {
+				newToolCalls := make([]interface{}, 0, len(toolCalls))
+				for _, tcRaw := range toolCalls {
+					if tcMap, ok := tcRaw.(map[string]interface{}); ok {
+						tcCopy := make(map[string]interface{})
+						for k, v := range tcMap {
+							tcCopy[k] = v
+						}
+
+						// Check inner function object
+						if fnRaw, ok := tcCopy["function"]; ok && fnRaw != nil {
+							if fnMap, ok := fnRaw.(map[string]interface{}); ok {
+								fnCopy := make(map[string]interface{})
+								for k, v := range fnMap {
+									fnCopy[k] = v
+								}
+								if sig, hasSig := fnCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
+									fnCopy["thought_signature"] = "skip"
+								}
+								tcCopy["function"] = fnCopy
+							}
+						}
+
+						if sig, hasSig := tcCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
+							tcCopy["thought_signature"] = "skip"
+						}
+						newToolCalls = append(newToolCalls, tcCopy)
+					} else {
+						newToolCalls = append(newToolCalls, tcRaw)
+					}
+				}
+				msgCopy["tool_calls"] = newToolCalls
+			}
+		}
+		result = append(result, msgCopy)
+	}
+	return result
 }
