@@ -14,6 +14,7 @@ export interface User {
 export interface LoginRequest {
   email: string;
   password: string;
+  turnstileToken?: string;
 }
 
 export interface LoginResponse {

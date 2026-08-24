@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
+import Turnstile from '@marsidev/react-turnstile';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { LoginRequest } from '@/lib/api';
@@ -17,6 +18,9 @@ export default function LoginPage() {
   const { mode, toggleTheme } = useTheme();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+
+  const siteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY || '0x4AAAAAAEaK1BwT35HAWxpj';
 
   const {
     control,
@@ -36,7 +40,7 @@ export default function LoginPage() {
     message.loading({ content: 'Authenticating credentials...', key: 'login' });
 
     try {
-      await login(data);
+      await login({ ...data, turnstileToken });
       message.success({ content: 'Welcome back!', key: 'login' });
       router.push('/');
     } catch (err: any) {
@@ -205,11 +209,22 @@ export default function LoginPage() {
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <Checkbox defaultChecked style={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: 13 }}>
               Remember this device
             </Checkbox>
           </div>
+
+          {siteKey && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <Turnstile
+                siteKey={siteKey}
+                options={{ theme: isDark ? 'dark' : 'light' }}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken('')}
+              />
+            </div>
+          )}
 
           <div style={{ marginBottom: 8 }}>
             <Button

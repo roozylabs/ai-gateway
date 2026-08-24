@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/ai-gateway/internal/service"
@@ -14,6 +17,36 @@ type AuthHandler struct {
 
 func NewAuthHandler(auth *service.AuthService) *AuthHandler {
 	return &AuthHandler{auth: auth}
+}
+
+type TurnstileResponse struct {
+	Success    bool     `json:"success"`
+	ErrorCodes []string `json:"error-codes"`
+}
+
+func verifyCloudflareTurnstile(token, secretKey, remoteIP string) bool {
+	if secretKey == "" {
+		return true
+	}
+	if token == "" {
+		return false
+	}
+	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v1/siteverify",
+		url.Values{
+			"secret":   {secretKey},
+			"response": {token},
+			"remoteip": {remoteIP},
+		})
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	var result TurnstileResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return false
+	}
+	return result.Success
 }
 
 // Login godoc
@@ -31,6 +64,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
+	}
+
+	secretKey := os.Getenv("CLOUDFLARE_SECRET_KEY")
+	if secretKey != "" {
+		if !verifyCloudflareTurnstile(req.TurnstileToken, secretKey, c.ClientIP()) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Security verification failed (Cloudflare Turnstile)"})
+			return
+		}
 	}
 
 	resp, err := h.auth.Login(

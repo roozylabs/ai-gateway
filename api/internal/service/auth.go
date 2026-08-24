@@ -37,8 +37,9 @@ func NewAuthService(
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Email          string `json:"email" binding:"required"`
+	Password       string `json:"password" binding:"required"`
+	TurnstileToken string `json:"turnstileToken"`
 }
 
 type LoginResponse struct {
