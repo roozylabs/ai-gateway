@@ -8,17 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0] - 2026-08-24
 
 ### Added
+- **Statistical Spend Forecasting**: Weighted Moving Average (WMA) with trend analysis replaces simple velocity projection in FinOps summary. Displays trend direction (increasing/decreasing/stable) with percentage change.
+- **P95 Latency Scoring**: Smart Router now uses 95th percentile TTFT instead of average for speed scoring — catches tail-latency spikes that averages miss.
+- **Success-Rate Telemetry Tracking**: Redis telemetry now tracks per-model success rates; models with <95% success rate (≥10 samples) are penalized in scoring.
+- **Historical Latency Flush Worker**: Hourly background worker flushes Redis telemetry aggregates into `model_latency_hourly` table for persistent trend analysis.
+- **Payload Retention Cleanup Worker**: Hourly cleanup of `request_payloads` and `tool_invocations` tables older than 30 days to prevent unbounded growth.
+- **Budget Alert Acknowledgment API**: `POST /analytics/finops/budget-alerts/:id/acknowledge` endpoint for managing budget alerts.
 - **Audit Trail — Response Hash & Bytes**: Every proxied request now records SHA-256 response hash and byte count in `request_logs` for integrity verification and audit.
 - **Audit Trail — Full Prompt Persistence**: Complete conversation payloads (all messages, JSONB) stored in new `request_payloads` table with prompt hash for integrity, capped at 256KB per request.
 - **Audit Trail — Tool Invocation Logging**: All tool calls (function name, call ID, arguments) captured in `tool_invocations` table for both streaming and non-streaming paths.
 - **Audit Trail — Failover History**: Failed credential attempts (429/401/403/5xx) recorded as JSONB `attempts` column on `request_logs`; `routing_decisions.actual_cost` backfilled after successful execution.
 - **Provider Health Scoring**: Real-time composite health score (0.0–1.0) per provider computed from last 24h success rate + latency, cached 30s, integrated into Smart Router scoring with health_penalty trace notes.
 - **Idempotency Key Support**: `Idempotency-Key` header on `/v1/chat/completions` enables 24h response replay for non-streaming requests and concurrency dedup via Redis locks.
-- **Streaming Recovery**: Graceful `stream_error` event on mid-stream interruptions; pre-token failover retries next credential if no chunks forwarded; 60s idle-chunk timeout.
-- **Background Worker Infrastructure**: Ticker-based goroutine manager for periodic tasks (anomaly detection every 15min, budget alerts every 2min).
-- **Cost Anomaly Detection**: Hourly spend anomaly detection via z-score analysis (warning ≥3σ, critical ≥4σ) with new `cost_anomalies` table and `GET /analytics/finops/anomalies` endpoint.
-- **Budget Threshold Alerts**: Automatic alert creation when budget usage crosses warning/critical/exceeded thresholds, stored in `budget_alerts` table with daily dedup and SSE notifications.
-- **Budget Alert Acknowledgment**: `POST /analytics/finops/budget-alerts/:id/acknowledge` and `GET /analytics/finops/budget-alerts` endpoints for managing budget alerts.
+- **Cost Anomaly Detection**: Hourly spend anomaly detection via z-score analysis with SSE alerts and REST endpoint.
+- **Budget Threshold Alerts**: Automatic alert creation when budget usage crosses warning/critical/exceeded thresholds with daily dedup.
 
 ### Fixed
 - **Stream Interruption Handling**: Mid-stream provider drops now emit graceful error event instead of abrupt disconnect.
