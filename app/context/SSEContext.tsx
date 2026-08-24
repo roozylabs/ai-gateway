@@ -45,8 +45,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       try {
-        const sseUrl = `/api/sse?token=${encodeURIComponent(currentToken)}`;
-        eventSource = new EventSource(sseUrl);
+        eventSource = new EventSource('/api/sse', { withCredentials: true });
 
         eventSource.onopen = () => {
           setIsConnected(true);
