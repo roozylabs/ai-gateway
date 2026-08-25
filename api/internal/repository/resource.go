@@ -20,8 +20,14 @@ func NewResourceRepository(db *sql.DB) *ResourceRepository {
 const resourceColumns = `id, user_id, name, display_name, description, parameters_schema, enabled, created_at, updated_at`
 
 func (r *ResourceRepository) ListByUserID(ctx context.Context, userID string) ([]models.Resource, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+resourceColumns+` FROM resources WHERE user_id = $1 ORDER BY created_at DESC`, userID)
+	query := `SELECT ` + resourceColumns + ` FROM resources`
+	var args []interface{}
+	if userID != "" {
+		query += ` WHERE user_id = $1 OR user_id = 'user_admin' OR user_id = ''`
+		args = append(args, userID)
+	}
+	query += ` ORDER BY created_at DESC`
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
