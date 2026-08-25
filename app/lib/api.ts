@@ -650,3 +650,89 @@ export async function apiGetFinOpsSummary(): Promise<ApiFinOpsSummary> {
   const response = await api.get<any>('/analytics/finops');
   return response.data?.data || response.data;
 }
+
+export interface ApiTool {
+  id: string;
+  userId: string;
+  name: string;
+  displayName: string;
+  description: string;
+  inputSchema: Record<string, any>;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiToolBackend {
+  id: string;
+  toolId: string;
+  name: string;
+  backendType: string;
+  endpointUrl: string;
+  authHeaderName: string;
+  authHeaderPrefix: string;
+  timeoutMs: number;
+  priority: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiToolWithBackends {
+  tool: ApiTool;
+  backends: ApiToolBackend[];
+}
+
+export interface ApiCreateToolBackend {
+  name: string;
+  endpointUrl: string;
+  authToken?: string;
+  timeoutMs?: number;
+  priority?: number;
+}
+
+export interface ApiCreateToolRequest {
+  name: string;
+  displayName?: string;
+  description?: string;
+  inputSchema?: Record<string, any>;
+  enabled?: boolean;
+  backends?: ApiCreateToolBackend[];
+}
+
+export interface ApiToolExecutionResult {
+  tool: string;
+  backend: string;
+  statusCode: number;
+  result: any;
+  latencyMs: number;
+}
+
+export async function apiGetTools(): Promise<ApiTool[]> {
+  const response = await api.get<ApiTool[]>('/tools');
+  return response.data;
+}
+
+export async function apiGetTool(id: string): Promise<ApiToolWithBackends> {
+  const response = await api.get<ApiToolWithBackends>(`/tools/${id}`);
+  return response.data;
+}
+
+export async function apiCreateTool(data: ApiCreateToolRequest): Promise<ApiToolWithBackends> {
+  const response = await api.post<ApiToolWithBackends>('/tools', data);
+  return response.data;
+}
+
+export async function apiUpdateTool(id: string, data: ApiCreateToolRequest): Promise<ApiToolWithBackends> {
+  const response = await api.put<ApiToolWithBackends>(`/tools/${id}`, data);
+  return response.data;
+}
+
+export async function apiDeleteTool(id: string): Promise<void> {
+  await api.delete(`/tools/${id}`);
+}
+
+export async function apiTestTool(id: string, args: Record<string, any>): Promise<ApiToolExecutionResult> {
+  const response = await api.post<ApiToolExecutionResult>(`/tools/${id}/test`, { args });
+  return response.data;
+}

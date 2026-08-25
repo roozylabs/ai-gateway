@@ -40,6 +40,7 @@ import {
   WalletOutlined,
   BranchesOutlined,
   ExperimentOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 
 function SidebarActivityWidget({ collapsed, mode }: { collapsed: boolean; mode: 'light' | 'dark' }) {
@@ -244,6 +245,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       key: '/policies',
       icon: <BranchesOutlined />,
       label: 'Routing Policies',
+    },
+    {
+      key: '/tools',
+      icon: <ToolOutlined />,
+      label: 'Tool Gateway',
     },
     {
       key: '/playground',
