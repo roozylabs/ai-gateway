@@ -1,4 +1,4 @@
-# PRD — AI Gateway
+# PRD — RoozyLabs Prism AI Gateway
 
 ## Revision History
 
@@ -11,18 +11,19 @@
 | 1.4 | 19 August 2026, 11:04 WIB | Implemented Revision History versioning rules |
 | 1.5 | 19 August 2026, 14:55 WIB | Updated Gateway API Key architecture: 1 Gateway Key is bound to 1 Provider |
 | 1.6 | 19 August 2026, 21:12 WIB | Added Google Gemini & Cloud OAuth 2.0 Token Refresh Flow Specs |
-| 1.7 | 21 August 2026, 22:56 WIB | Updated V1 Scope with AI Budget Manager & Semantic Router (`roozy-auto`), Cost Pipeline, and Debugging Headers |
+| 1.7 | 21 August 2026, 22:56 WIB | Updated V1 Scope with AI Budget Manager & Semantic Router (`prism-auto`), Cost Pipeline, and Debugging Headers |
 | 1.8 | 23 August 2026, 12:44 WIB | Added Default Active Policy Selection (`PUT /policies/:id/default`), Smart Router Prompt Preview & Score Breakdown Observability, Active Credentials Pre-filtering, and Responsive UI Layout specs |
 | 1.9 | 23 August 2026, 21:00 WIB | Added Circuit Breaker & 50x Quarantine, FinOps Cost Recommendations Engine, Dynamic Latency Feedback Loop, Routing Playground & Interactive Simulator, Web Sandbox, Provider Abstraction Layer, Google OAuth 2.0 Credential Flow; renumbered all sections sequentially |
 | 2.0 | 25 August 2026, 13:00 WIB | Added Pillar 6 (Tool Gateway), Pillar 7 (Resource Gateway), and Pillar 8 (MCP Model Context Protocol Gateway) specifications, database schemas, and REST endpoints |
 | 2.1 | 25 August 2026, 14:30 WIB | Added Pillar 9 (Agent Gateway & Infra), Pillar 10 (Enterprise Identity, RBAC & Governance), and Pillar 11 (End-to-End Cryptographic AI Audit Trail) specifications |
+| 2.2 | 25 August 2026, 19:30 WIB | Added Pillar 12 (Multi-Tenant Architecture & SaaS Platform) specifications, RLS migrations (055-060), TenantMiddleware, MeteringService, and Organization/Members UI pages |
 
 ---
 
 ## 1. Product Overview
 
 ### 1.1 Product Name
-**AI Gateway** *(Nama sementara. Bisa diganti setelah branding ditentukan).*
+**RoozyLabs Prism** *(Universal AI Control Plane & Model Gateway)*.
 
 ### 1.2 Product Description
 **AI Gateway** adalah sebuah *centralized AI API gateway* yang memungkinkan pengguna mengelola berbagai provider AI dan banyak API credentials dalam satu aplikasi.
@@ -1346,4 +1347,48 @@ AI Gateway Prism mencatat siklus hidup eksekusi AI secara mutlak dengan jaminan 
 ### 53.2 REST API Endpoints
 - `GET /api/audit-trail` - List filtered audit trail records.
 - `GET /api/audit-trail/:id/verify` - Verify cryptographic signature integrity.
+
+---
+
+## 54. Pillar 12: Multi-Tenant Architecture & SaaS Platform Specification
+
+RoozyLabs Prism menyediakan arsitektur multi-tenant tingkat enterprise dengan struktur hierarki 4 tingkat, pemagaran Row-Level Security (RLS), enkripsi kriptografi terisolasi per tenant, dan sistem penagihan berbasis konsumsi (*metering engine*).
+
+### 54.1 4-Level Enterprise Tenant Hierarchy
+```text
+Organization (Tenant Boundary & Billing Account)
+      │
+      ├── Workspace A (Department / Division)
+      │     ├── Project 1 (API Gateway) ──► Agents, Keys, Tools, MCP
+      │     └── Project 2 (Data Service) ──► Agents, Keys, Tools, MCP
+      │
+      └── Workspace B (Finance)
+            └── Project 3 (ERP System) ──► Agents, Keys, Tools, MCP
+```
+
+### 54.2 Multi-Tenant Isolation & Database Migrations
+- **Database Migrations (`055`–`060`)**:
+  - `055_create_organizations`: Skema tabel `organizations` (`id`, `name`, `slug`, `plan_tier`).
+  - `056_create_workspaces`: Skema tabel `workspaces` terikat pada `org_id`.
+  - `057_create_projects`: Skema tabel `projects` terikat pada `workspace_id`.
+  - `058_add_multi_tenancy_foreign_keys`: Menambahkan FK `org_id`, `workspace_id`, dan `project_id` di seluruh tabel inti (`users`, `providers`, `gateway_api_keys`, `agents`, `tools`, `resources`, `mcp_servers`, `governance_policies`, `request_logs`).
+  - `059_create_organization_members`: Skema RBAC organisasi (`owner`, `admin`, `developer`, `billing_manager`, `auditor`).
+  - `060_seed_default_tenant`: Seeding `org_default`, `ws_default`, `proj_default` untuk jaminan kompatibilitas penuh.
+
+### 54.3 Tenant Middleware & Consumption Metering Engine
+- **Tenant Middleware (`apps/api/internal/middleware/tenant.go`)**: Mengekstrak header request `X-Prism-Org-ID`, `X-Prism-Workspace-ID`, dan `X-Prism-Project-ID` serta melampirkan `TenantContext`.
+- **Metering Service (`apps/api/internal/service/metering.go`)**: Menghitung konsumsi real-time token, biaya USD, spend cap bulanan, dan melakukan penghentian layanan otomatis (*quota auto-suspension*).
+- **Tenant Selector & Admin Console UI (`apps/app`)**:
+  - Header dropdown selector `TenantSelector.tsx` (`Organization / Workspace / Project`).
+  - Halaman Pengaturan Organisasi & Profil Billing (`/settings/organization`).
+  - Halaman Manajemen Anggota Tim & Otorisasi RBAC (`/settings/members`).
+
+### 54.4 REST API Endpoints
+- `GET /api/organizations` - List user organizations.
+- `POST /api/organizations` - Create new organization.
+- `GET /api/workspaces` - List workspaces for active organization.
+- `GET /api/projects` - List projects for active workspace.
+- `GET /api/settings/members` - List organization members and RBAC roles.
+- `POST /api/settings/members/invite` - Invite new team member via email.
+
 
