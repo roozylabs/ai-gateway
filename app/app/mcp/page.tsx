@@ -288,17 +288,12 @@ export default function MCPGatewayPage() {
   ];
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: '24px' }}>
       <Card
         title={
           <Space>
-            <ApiOutlined style={{ fontSize: 20, color: '#1677ff' }} />
-            <div>
-              <Text strong style={{ fontSize: 18 }}>MCP (Model Context Protocol) Gateway</Text>
-              <Paragraph type="secondary" style={{ margin: 0, fontSize: 13 }}>
-                Pillar 8: Centralized control layer for all remote MCP protocol server tools (GitHub, Notion, Databases).
-              </Paragraph>
-            </div>
+            <ApiOutlined style={{ color: '#1677ff' }} />
+            <span>MCP Gateway</span>
           </Space>
         }
         extra={
