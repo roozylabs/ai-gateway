@@ -2,7 +2,8 @@
 
 import React, { useEffect } from 'react';
 import { Typography, Card, Descriptions, Tag, Row, Col, Form, InputNumber, Button, Switch, Select, Space, App, Spin } from 'antd';
-import { SafetyCertificateOutlined, HddOutlined, SettingOutlined, CheckCircleOutlined, DollarOutlined } from '@ant-design/icons';
+import { SafetyCertificateOutlined, HddOutlined, SettingOutlined, CheckCircleOutlined, DollarOutlined, BankOutlined, UserOutlined } from '@ant-design/icons';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGetSettings, apiUpdateSettings, ApiSetting } from '@/lib/api';
 
@@ -54,11 +55,25 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Settings & Security
-        </Title>
-        <Text type="secondary">System parameters, encryption keys state, currency preferences, and rate-limit cooldown settings</Text>
+      <div style={{ marginBottom: 24 }} className="flex items-center justify-between">
+        <div>
+          <Title level={3} style={{ margin: 0 }}>
+            Settings & Security
+          </Title>
+          <Text type="secondary">System parameters, tenant configuration, encryption keys, currency preferences, and rate-limit cooldown settings</Text>
+        </div>
+        <Space>
+          <Link href="/settings/organization">
+            <Button icon={<BankOutlined />} type="default" className="border-purple-500/40 text-purple-400">
+              Organization Profile
+            </Button>
+          </Link>
+          <Link href="/settings/members">
+            <Button icon={<UserOutlined />} type="default" className="border-blue-500/40 text-blue-400">
+              Team RBAC & Members
+            </Button>
+          </Link>
+        </Space>
       </div>
 
       <Row gutter={[16, 16]}>
