@@ -1,22 +1,22 @@
-name: API CI/CD Pipeline
+name: Web (Landing Page) CI/CD Pipeline
 
 on:
   push:
     branches: [ main, master, develop ]
     paths:
-      - 'apps/api/**'
+      - 'apps/web/**'
       - 'docker-compose*.yml'
       - '.dockerignore'
       - '.env.example'
-      - '.github/workflows/api-ci-cd.yml'
+      - '.github/workflows/web-ci-cd.yml'
   pull_request:
     branches: [ main, master, develop ]
     paths:
-      - 'apps/api/**'
+      - 'apps/web/**'
       - 'docker-compose*.yml'
       - '.dockerignore'
       - '.env.example'
-      - '.github/workflows/api-ci-cd.yml'
+      - '.github/workflows/web-ci-cd.yml'
   workflow_dispatch:
 
 permissions:
@@ -24,80 +24,36 @@ permissions:
   packages: write
 
 jobs:
-  lint:
-    name: Lint Go Code
+  lint-and-build-check:
+    name: Lint & Build Astro Web App
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          go-version-file: 'apps/api/go.mod'
-          cache-dependency-path: 'apps/api/go.sum'
+          version: 9
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          working-directory: apps/api
-          args: --timeout=5m
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: 'apps/web/package.json'
 
-  test:
-    name: Run Unit & Integration Tests
-    runs-on: ubuntu-latest
+      - name: Install dependencies
+        working-directory: apps/web
+        run: pnpm install --no-frozen-lockfile
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: ai_gateway_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgrespassword
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: 'apps/api/go.mod'
-          cache-dependency-path: 'apps/api/go.sum'
-
-      - name: Run Tests
-        working-directory: apps/api
-        env:
-          APP_ENV: test
-          SERVER_PORT: "8080"
-          DATABASE_URL: "postgres://postgres:postgrespassword@localhost:5432/ai_gateway_test?sslmode=disable"
-          REDIS_URL: "redis://localhost:6379"
-          JWT_SECRET: "test-jwt-secret-key-minimum-32-bytes!"
-          ENCRYPTION_KEY: "test-encryption-key-32-bytes!!"
-          HASH_KEY: "test-hash-key-here"
-        run: |
-          go test ./... -v -race -coverprofile=coverage.out
+      - name: Build Astro
+        working-directory: apps/web
+        run: pnpm build
 
   build-and-push:
-    name: Build & Push API Docker Image to GHCR
-    needs: [lint, test]
+    name: Build & Push Web Docker Image to GHCR
+    needs: [lint-and-build-check]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
 
@@ -119,7 +75,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/prism-api
+          images: ghcr.io/${{ github.repository_owner }}/prism-web
           tags: |
             type=raw,value=latest
             type=sha,prefix=sha-
@@ -128,8 +84,8 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
-          context: ./apps/api
-          file: ./apps/api/Dockerfile
+          context: ./apps/web
+          file: ./apps/web/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -137,7 +93,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-vps:
-    name: Deploy API to VPS via SSH
+    name: Deploy Web to VPS via SSH
     needs: [build-and-push]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
@@ -167,6 +123,6 @@ jobs:
               git pull origin main || git pull origin master || true
             fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose pull api || true
-            docker compose up -d --force-recreate --remove-orphans api
+            docker compose pull web || true
+            docker compose up -d --force-recreate --remove-orphans web
             docker image prune -f || true
