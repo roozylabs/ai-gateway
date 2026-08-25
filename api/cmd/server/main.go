@@ -83,6 +83,7 @@ func main() {
 	resourceBackendRepo := repository.NewResourceBackendRepository(sqlDB)
 	mcpServerRepo := repository.NewMCPServerRepository(sqlDB)
 	mcpToolRepo := repository.NewMCPToolRepository(sqlDB)
+	agentRepo := repository.NewAgentRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -101,6 +102,7 @@ func main() {
 	toolGateway := proxy.NewToolGateway(toolRepo)
 	resourceGateway := proxy.NewResourceGateway(resourceRepo)
 	mcpGateway := proxy.NewMCPGateway(mcpServerRepo, mcpToolRepo)
+	agentGovernance := proxy.NewAgentGovernanceEngine(agentRepo)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -129,6 +131,7 @@ func main() {
 	resourceHandler := handlers.NewResourceHandler(resourceRepo, resourceBackendRepo, resourceGateway, cfg.EncryptionKey)
 	resourceGatewayHandler := handlers.NewResourceGatewayHandler(resourceGateway, toolInvocationRepo, eventPublisher, cfg.EncryptionKey)
 	mcpHandler := handlers.NewMCPHandler(mcpServerRepo, mcpToolRepo, mcpGateway, cfg.EncryptionKey)
+	agentHandler := handlers.NewAgentHandler(agentRepo, agentGovernance)
 
 	// Background workers
 	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -291,6 +294,13 @@ func main() {
 			protected.DELETE("/mcp/servers/:id", mcpHandler.Delete)
 			protected.POST("/mcp/servers/:id/sync", mcpHandler.Sync)
 			protected.POST("/mcp/servers/:id/test", mcpHandler.TestTool)
+
+			// Agent Gateway & Infrastructure
+			protected.GET("/agents", agentHandler.List)
+			protected.GET("/agents/:id", agentHandler.Get)
+			protected.POST("/agents", agentHandler.Create)
+			protected.PUT("/agents/:id", agentHandler.Update)
+			protected.DELETE("/agents/:id", agentHandler.Delete)
 
 			// Sandbox
 			protected.POST("/sandbox/chat/completions", gatewayHandler.SandboxChatCompletions)

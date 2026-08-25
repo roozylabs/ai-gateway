@@ -362,6 +362,11 @@ export async function apiGetModels(
   return result;
 }
 
+export async function apiGetAllModels(): Promise<ApiModel[]> {
+  const response = await api.get<ApiModel[]>('/models');
+  return response.data;
+}
+
 export async function apiCreateModel(providerId: string, data: Partial<ApiModel>): Promise<ApiModel> {
   const response = await api.post<ApiModel>(`/providers/${providerId}/models`, data);
   return response.data;
@@ -917,3 +922,60 @@ export async function apiTestMCPTool(id: string, tool: string, args: Record<stri
   const response = await api.post<ApiMCPToolExecutionResult>(`/mcp/servers/${id}/test`, { tool, args });
   return response.data;
 }
+
+// Agent Gateway API
+export interface ApiAgent {
+  id: string;
+  userId: string;
+  name: string;
+  displayName: string;
+  description: string;
+  agentType: string;
+  systemPromptOverride: string;
+  allowedModels: string[];
+  allowedTools: string[];
+  allowedResources: string[];
+  maxBudgetCents: number;
+  status: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiCreateAgentRequest {
+  name: string;
+  displayName?: string;
+  description?: string;
+  agentType?: string;
+  systemPromptOverride?: string;
+  allowedModels?: string[];
+  allowedTools?: string[];
+  allowedResources?: string[];
+  maxBudgetCents?: number;
+  enabled?: boolean;
+}
+
+export async function apiGetAgents(): Promise<ApiAgent[]> {
+  const response = await api.get<ApiAgent[]>('/agents');
+  return response.data;
+}
+
+export async function apiGetAgent(id: string): Promise<ApiAgent> {
+  const response = await api.get<ApiAgent>(`/agents/${id}`);
+  return response.data;
+}
+
+export async function apiCreateAgent(data: ApiCreateAgentRequest): Promise<ApiAgent> {
+  const response = await api.post<ApiAgent>('/agents', data);
+  return response.data;
+}
+
+export async function apiUpdateAgent(id: string, data: ApiCreateAgentRequest): Promise<ApiAgent> {
+  const response = await api.put<ApiAgent>(`/agents/${id}`, data);
+  return response.data;
+}
+
+export async function apiDeleteAgent(id: string): Promise<void> {
+  await api.delete(`/agents/${id}`);
+}
+

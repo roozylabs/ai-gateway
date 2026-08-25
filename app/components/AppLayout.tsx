@@ -42,6 +42,7 @@ import {
   ExperimentOutlined,
   ToolOutlined,
   DatabaseOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 
 function SidebarActivityWidget({ collapsed, mode }: { collapsed: boolean; mode: 'light' | 'dark' }) {
@@ -261,6 +262,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       key: '/mcp',
       icon: <ApiOutlined />,
       label: 'MCP Gateway',
+    },
+    {
+      key: '/agents',
+      icon: <RobotOutlined />,
+      label: 'Agent Gateway',
     },
     {
       key: '/playground',
