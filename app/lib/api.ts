@@ -736,3 +736,101 @@ export async function apiTestTool(id: string, args: Record<string, any>): Promis
   const response = await api.post<ApiToolExecutionResult>(`/tools/${id}/test`, { args });
   return response.data;
 }
+
+export interface ApiResource {
+  id: string;
+  userId: string;
+  name: string;
+  displayName: string;
+  description: string;
+  parametersSchema: Record<string, any>;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiResourceBackend {
+  id: string;
+  resourceId: string;
+  name: string;
+  backendType: string;
+  endpointUrl?: string;
+  httpMethod: string;
+  authHeaderName: string;
+  authHeaderPrefix: string;
+  queryTemplate?: string;
+  sqlQuery?: string;
+  paramNames?: string[];
+  timeoutMs: number;
+  priority: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiResourceWithBackends {
+  resource: ApiResource;
+  backends: ApiResourceBackend[];
+}
+
+export interface ApiCreateResourceBackend {
+  name: string;
+  backendType: string;
+  endpointUrl?: string;
+  httpMethod?: string;
+  authToken?: string;
+  queryTemplate?: string;
+  connectionString?: string;
+  sqlQuery?: string;
+  paramNames?: string[];
+  timeoutMs?: number;
+  priority?: number;
+}
+
+export interface ApiCreateResourceRequest {
+  name: string;
+  displayName?: string;
+  description?: string;
+  parametersSchema?: Record<string, any>;
+  enabled?: boolean;
+  backends?: ApiCreateResourceBackend[];
+}
+
+export interface ApiResourceExecutionResult {
+  resource: string;
+  backend: string;
+  backendType: string;
+  statusCode: number;
+  data: any;
+  rowCount: number;
+  latencyMs: number;
+}
+
+export async function apiGetResources(): Promise<ApiResource[]> {
+  const response = await api.get<ApiResource[]>('/resources');
+  return response.data;
+}
+
+export async function apiGetResource(id: string): Promise<ApiResourceWithBackends> {
+  const response = await api.get<ApiResourceWithBackends>(`/resources/${id}`);
+  return response.data;
+}
+
+export async function apiCreateResource(data: ApiCreateResourceRequest): Promise<ApiResourceWithBackends> {
+  const response = await api.post<ApiResourceWithBackends>('/resources', data);
+  return response.data;
+}
+
+export async function apiUpdateResource(id: string, data: ApiCreateResourceRequest): Promise<ApiResourceWithBackends> {
+  const response = await api.put<ApiResourceWithBackends>(`/resources/${id}`, data);
+  return response.data;
+}
+
+export async function apiDeleteResource(id: string): Promise<void> {
+  await api.delete(`/resources/${id}`);
+}
+
+export async function apiTestResource(id: string, args: Record<string, any>): Promise<ApiResourceExecutionResult> {
+  const response = await api.post<ApiResourceExecutionResult>(`/resources/${id}/test`, { args });
+  return response.data;
+}

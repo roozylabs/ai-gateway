@@ -24,8 +24,14 @@ func scanTool(row interface{ Scan(...interface{}) error }, t *models.Tool) error
 }
 
 func (r *ToolRepository) ListByUserID(ctx context.Context, userID string) ([]models.Tool, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+toolColumns+` FROM tools WHERE user_id = $1 ORDER BY created_at DESC`, userID)
+	query := `SELECT ` + toolColumns + ` FROM tools`
+	var args []interface{}
+	if userID != "" {
+		query += ` WHERE user_id = $1 OR user_id = 'user_admin' OR user_id = ''`
+		args = append(args, userID)
+	}
+	query += ` ORDER BY created_at DESC`
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

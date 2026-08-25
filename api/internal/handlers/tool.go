@@ -45,7 +45,7 @@ func (h *ToolHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	tools, err := h.tools.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list tools"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list tools: " + err.Error()})
 		return
 	}
 	if tools == nil {
