@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0] - 2026-08-24
 
 ### Added
+- **Resource Gateway (Pillar 8)**: Centralized data-layer abstraction supporting REST APIs, GraphQL, and PostgreSQL (Supabase) backends. Agents call generic data intents (`get_customer`) resolved to real data sources with priority-based failover, encrypted credentials, and read-only SQL enforcement. Admin CRUD UI with per-type configuration forms, gateway execution endpoint (`POST /v1/resources/:resourceName/query`), and audit logging.
 - **Tool Gateway (Pillar 7)**: Provider-agnostic tool execution layer — register tools with input schemas and HTTP backends, gateway resolves and executes with automatic failover across priority-ordered backends. Admin CRUD UI, gateway execution endpoint (`POST /v1/tools/:toolName/execute`), full audit logging to `tool_invocations` table.
 - **Statistical Spend Forecasting**: Weighted Moving Average (WMA) with trend analysis replaces simple velocity projection in FinOps summary. Displays trend direction (increasing/decreasing/stable) with percentage change.
 - **P95 Latency Scoring**: Smart Router now uses 95th percentile TTFT instead of average for speed scoring — catches tail-latency spikes that averages miss.
