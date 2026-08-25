@@ -25,7 +25,9 @@ func (a *OpenCodeAdapter) detectAdapter(model, baseURL string) ProviderAdapter {
 		return NewOpenAIResponsesAdapter()
 
 	case strings.HasPrefix(lower, "claude-") ||
-		strings.HasPrefix(lower, "qwen3"):
+		strings.HasPrefix(lower, "qwen3") ||
+		strings.HasPrefix(lower, "big-pickle") ||
+		strings.Contains(lower, "pickle"):
 		return NewAnthropicAdapter()
 
 	case strings.HasPrefix(lower, "minimax-"):
