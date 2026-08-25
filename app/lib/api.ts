@@ -1054,3 +1054,61 @@ export async function apiEvaluateRBAC(data: ApiRBACEvaluationRequest): Promise<A
   return response.data;
 }
 
+// End-to-End AI Audit Trail API
+export interface ApiAIAuditTrail {
+  id: string;
+  requestId: string;
+  userId: string;
+  gatewayKeyId?: string;
+  agentId?: string;
+  agentName?: string;
+  userRole: string;
+  modelSlug: string;
+  failoverChain?: string[];
+  toolsInvoked?: string[];
+  resourcesAccessed?: string[];
+  mcpServersCalled?: string[];
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  totalCostUsd: number;
+  statusCode: number;
+  latencyMs: number;
+  ttftMs: number;
+  promptHash: string;
+  responseHash: string;
+  complianceStatus: 'compliant' | 'flagged' | 'denied';
+  signatureHash: string;
+  createdAt: string;
+}
+
+export interface ApiAuditVerificationResult {
+  auditId: string;
+  requestId: string;
+  valid: boolean;
+  signatureHash: string;
+  expectedHash: string;
+  message: string;
+}
+
+export async function apiGetAuditTrails(params?: {
+  agentName?: string;
+  modelSlug?: string;
+  complianceStatus?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedResult<ApiAIAuditTrail>> {
+  const response = await api.get<PaginatedResult<ApiAIAuditTrail>>('/audit-trail', { params });
+  return response.data;
+}
+
+export async function apiGetAuditTrail(id: string): Promise<ApiAIAuditTrail> {
+  const response = await api.get<ApiAIAuditTrail>(`/audit-trail/${id}`);
+  return response.data;
+}
+
+export async function apiVerifyAuditIntegrity(id: string): Promise<ApiAuditVerificationResult> {
+  const response = await api.post<ApiAuditVerificationResult>(`/audit-trail/${id}/verify`);
+  return response.data;
+}
+

@@ -25,6 +25,7 @@ import {
   ApiOutlined,
   KeyOutlined,
   SafetyCertificateOutlined,
+  AuditOutlined,
   AppstoreOutlined,
   FileTextOutlined,
   SettingOutlined,
@@ -272,6 +273,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       key: '/governance',
       icon: <SafetyCertificateOutlined />,
       label: 'Governance & RBAC',
+    },
+    {
+      key: '/audit-trail',
+      icon: <AuditOutlined />,
+      label: 'AI Audit Trail',
     },
     {
       key: '/playground',

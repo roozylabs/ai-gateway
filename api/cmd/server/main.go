@@ -85,6 +85,7 @@ func main() {
 	mcpToolRepo := repository.NewMCPToolRepository(sqlDB)
 	agentRepo := repository.NewAgentRepository(sqlDB)
 	governancePolicyRepo := repository.NewGovernancePolicyRepository(sqlDB)
+	auditTrailRepo := repository.NewAuditTrailRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -105,6 +106,7 @@ func main() {
 	mcpGateway := proxy.NewMCPGateway(mcpServerRepo, mcpToolRepo)
 	agentGovernance := proxy.NewAgentGovernanceEngine(agentRepo)
 	rbacEngine := proxy.NewRBACEngine(governancePolicyRepo)
+	auditRecorder := proxy.NewAuditRecorder(auditTrailRepo)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -135,6 +137,7 @@ func main() {
 	mcpHandler := handlers.NewMCPHandler(mcpServerRepo, mcpToolRepo, mcpGateway, cfg.EncryptionKey)
 	agentHandler := handlers.NewAgentHandler(agentRepo, agentGovernance)
 	governancePolicyHandler := handlers.NewGovernancePolicyHandler(governancePolicyRepo, rbacEngine)
+	auditTrailHandler := handlers.NewAuditTrailHandler(auditTrailRepo, auditRecorder)
 
 	// Background workers
 	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -312,6 +315,11 @@ func main() {
 			protected.PUT("/governance/policies/:id", governancePolicyHandler.Update)
 			protected.DELETE("/governance/policies/:id", governancePolicyHandler.Delete)
 			protected.POST("/governance/evaluate", governancePolicyHandler.Evaluate)
+
+			// End-to-End AI Audit Trail
+			protected.GET("/audit-trail", auditTrailHandler.List)
+			protected.GET("/audit-trail/:id", auditTrailHandler.Get)
+			protected.POST("/audit-trail/:id/verify", auditTrailHandler.Verify)
 
 			// Sandbox
 			protected.POST("/sandbox/chat/completions", gatewayHandler.SandboxChatCompletions)
