@@ -7,3 +7,29 @@ html, body {
 *, *::before, *::after {
   box-sizing: border-box;
 }
+
+/* Custom Prism Scrollbar Styling - Design System Compliant */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #242832;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8B5CF6;
+}
+
+/* Firefox Scrollbar Styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #242832 transparent;
+}
+

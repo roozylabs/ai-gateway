@@ -388,18 +388,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: 2 }}>
           <Menu
             theme={mode}
             mode="inline"
             selectedKeys={[pathname]}
             items={menuItems}
             onClick={({ key }) => router.push(key)}
-            style={{ padding: '12px 0', borderRight: 0, background: 'transparent' }}
+            style={{ padding: '8px 0', borderRight: 0, background: 'transparent' }}
           />
         </div>
 
-        <div style={{ flexShrink: 0 }}>
+        <div
+          style={{
+            flexShrink: 0,
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 10,
+            background: mode === 'dark' ? '#0F1115' : '#ffffff',
+            borderTop: `1px solid ${token.colorBorderSecondary}`,
+            padding: '4px 0 8px',
+          }}
+        >
           <SidebarActivityWidget collapsed={collapsed} mode={mode} />
         </div>
       </Sider>
