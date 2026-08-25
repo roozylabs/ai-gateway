@@ -15,6 +15,7 @@
 | 1.8 | 23 August 2026, 12:44 WIB | Added Default Active Policy Selection (`PUT /policies/:id/default`), Smart Router Prompt Preview & Score Breakdown Observability, Active Credentials Pre-filtering, and Responsive UI Layout specs |
 | 1.9 | 23 August 2026, 21:00 WIB | Added Circuit Breaker & 50x Quarantine, FinOps Cost Recommendations Engine, Dynamic Latency Feedback Loop, Routing Playground & Interactive Simulator, Web Sandbox, Provider Abstraction Layer, Google OAuth 2.0 Credential Flow; renumbered all sections sequentially |
 | 2.0 | 25 August 2026, 13:00 WIB | Added Pillar 6 (Tool Gateway), Pillar 7 (Resource Gateway), and Pillar 8 (MCP Model Context Protocol Gateway) specifications, database schemas, and REST endpoints |
+| 2.1 | 25 August 2026, 14:30 WIB | Added Pillar 9 (Agent Gateway & Infra), Pillar 10 (Enterprise Identity, RBAC & Governance), and Pillar 11 (End-to-End Cryptographic AI Audit Trail) specifications |
 
 ---
 
@@ -1287,3 +1288,62 @@ AI Gateway menyediakan endpoint **Server-Sent Events (SSE)** terpusat (`GET /api
   - Live Gateway Activity Feed.
 - **`LogsPage`**:
   - Real-Time Request Audit Logs Stream (pengalaman layaknya `tail -f` pada terminal).
+
+---
+
+## 51. Pillar 9: Agent Gateway & Infrastructure Specification
+
+AI Gateway Prism menyediakan registri dan tata kelola identitas agen mandiri via header `X-Prism-Agent-ID`.
+
+### 51.1 Agent Registry & Boundaries (`agents` table)
+- **Model Permissioning**: `allowed_models` (Daftar model yang diizinkan untuk digunakan oleh agen).
+- **Tool Access Permissioning**: `allowed_tools` (Daftar tool yang boleh diakses oleh agen).
+- **Budget Caps**: `budget_cap_usd` (Batas anggaran belanja USD khusus agen).
+
+### 51.2 REST API Endpoints
+- `GET /api/agents` - List registered AI agents.
+- `POST /api/agents` - Register a new AI agent identity.
+- `GET /api/agents/:id` - Fetch agent details and allowed permissions.
+- `PUT /api/agents/:id` - Update agent boundaries and permitted models/tools.
+- `DELETE /api/agents/:id` - Remove registered agent.
+
+---
+
+## 52. Pillar 10: Enterprise Identity, Permissions & Governance (RBAC) Specification
+
+AI Gateway Prism menyediakan **Declarative RBAC Engine** dengan presedensi **`DENY` mendominasi `ALLOW`**.
+
+### 52.1 Declarative Policy Engine (`governance_policies` table)
+- **Role-Based Access**: Multi-role support (`developer`, `finance`, `auditor`, `admin`).
+- **Policy Rules Schema**:
+  ```json
+  {
+    "allow": { "developer": ["code_*", "claude-*"] },
+    "deny": { "developer": ["payroll_db", "erp_api"] }
+  }
+  ```
+- **Wildcard Pattern Matching**: Mendukung pola wildcard seperti `code_*` dan `finance_*`.
+
+### 52.2 REST API Endpoints
+- `GET /api/governance/policies` - List active governance policies.
+- `POST /api/governance/policies` - Create a new RBAC governance policy rule.
+- `POST /api/governance/evaluate` - Test/evaluate policy resolution against target agent, role, and model/tool.
+
+---
+
+## 53. Pillar 11: End-to-End Cryptographic AI Audit Trail Specification
+
+AI Gateway Prism mencatat siklus hidup eksekusi AI secara mutlak dengan jaminan **Cryptographic Verification**.
+
+### 53.1 Multi-Dimensional Audit Record (`ai_audit_trails` table)
+- **WHO**: `user_id`, `agent_name`, `user_role`.
+- **REQUEST**: `prompt_hash` (SHA-256 hash dari input prompt).
+- **MODEL USED**: `model_slug`, `failover_chain` (Riwayat urutan model fallback).
+- **EXTENSIONS**: `tools_invoked`, `resources_accessed`, `mcp_servers_called`.
+- **FINANCIAL COST & PERFORMANCE**: `total_cost_usd`, `prompt_tokens`, `completion_tokens`, `latency_ms`, `ttft_ms`.
+- **OUTCOME & SIGNATURE**: `response_hash` dan `signature_hash` (`SHA256(request_id:user_id:prompt_hash:response_hash:model_slug)`).
+
+### 53.2 REST API Endpoints
+- `GET /api/audit-trail` - List filtered audit trail records.
+- `GET /api/audit-trail/:id/verify` - Verify cryptographic signature integrity.
+

@@ -55,6 +55,9 @@ With **RoozyLabs Prism**, your client applications and AI coding tools (such as 
 ## ✨ Key Features
 
 - **🧠 Roozy Auto Smart Router (`roozy-auto`)**: Intelligent router that deterministically classifies request characteristics (Task, Complexity, Context Window), pre-filters candidate models by active provider credentials, and executes weighted candidate scoring based on the active routing policy (`balanced`, `cheap`, `quality`, or custom).
+- **🤖 Agent Gateway & Infrastructure**: Identifies and governs autonomous AI agents (`X-Prism-Agent-ID`) with granular permitted models, allowed tools, resource boundaries, and budget caps (`/agents`).
+- **🛡️ Enterprise Identity, Permissions & Governance (RBAC)**: Declarative Policy Engine with **`DENY` precedence** and wildcard matching (`allow`/`deny` rules) enforcing strict cross-domain authorization (`/governance`).
+- **📜 End-to-End Cryptographic AI Audit Trail**: SHA-256 tamper-proof hash signature calculation logging 6-dimensional execution trails (WHO, REQUEST, MODEL, TOOLS/RESOURCES, COST, OUTCOME) with real-time verification (`/audit-trail`).
 - **🧰 Tool Gateway**: High-performance control plane for custom function calling and external REST API tools with priority failover routing, custom headers, and test sandbox execution (`/tools`).
 - **🗄️ Resource Gateway**: Dynamic data fetching layer supporting REST API resources and direct PostgreSQL relational database querying with parameterized SQL templates (`/resources`).
 - **🔌 MCP (Model Context Protocol) Gateway**: Centralized protocol gateway for remote HTTP and SSE Model Context Protocol servers (GitHub MCP, Notion MCP, custom agent servers) featuring automatic JSON-RPC 2.0 `tools/list` discovery and `tools/call` execution (`/mcp`).
