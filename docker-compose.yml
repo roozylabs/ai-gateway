@@ -5,7 +5,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: prism-backend-api
+    container_name: prism-api
     restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV:-production}
@@ -44,7 +44,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
-    container_name: prism-frontend-dashboard
+    container_name: prism-app
     restart: unless-stopped
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
