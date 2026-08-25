@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [siteKey, setSiteKey] = useState<string>(process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY || '');
+  const turnstileRef = React.useRef<any>(null);
 
   useEffect(() => {
     if (!siteKey) {
@@ -56,6 +57,10 @@ export default function LoginPage() {
       router.push('/');
     } catch (err: any) {
       message.error({ content: err.message || 'Invalid email or password', key: 'login' });
+      setTurnstileToken('');
+      if (turnstileRef.current?.reset) {
+        turnstileRef.current.reset();
+      }
     } finally {
       setLoading(false);
     }
@@ -231,6 +236,7 @@ export default function LoginPage() {
           {siteKey && (
             <div style={{ display: 'flex', justifyContent: 'start', marginBottom: 16 }}>
               <Turnstile
+                ref={turnstileRef}
                 siteKey={siteKey}
                 options={{ theme: isDark ? 'dark' : 'light' }}
                 onSuccess={(token) => setTurnstileToken(token)}
