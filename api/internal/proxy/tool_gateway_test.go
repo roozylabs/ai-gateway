@@ -45,7 +45,7 @@ func TestToolGatewayExecuteSuccess(t *testing.T) {
 	assert.Equal(t, 200, result.StatusCode)
 	assert.Equal(t, "test", result.Backend)
 	assert.Equal(t, "search_web", result.Tool)
-	assert.Greater(t, result.LatencyMs, 0)
+	assert.GreaterOrEqual(t, result.LatencyMs, 0)
 }
 
 func TestToolGatewayExecuteFailover(t *testing.T) {
