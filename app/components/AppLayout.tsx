@@ -41,6 +41,7 @@ import {
   BranchesOutlined,
   ExperimentOutlined,
   ToolOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons';
 
 function SidebarActivityWidget({ collapsed, mode }: { collapsed: boolean; mode: 'light' | 'dark' }) {
@@ -250,6 +251,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       key: '/tools',
       icon: <ToolOutlined />,
       label: 'Tool Gateway',
+    },
+    {
+      key: '/resources',
+      icon: <DatabaseOutlined />,
+      label: 'Resource Gateway',
     },
     {
       key: '/playground',
