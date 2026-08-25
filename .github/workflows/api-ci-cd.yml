@@ -167,7 +167,7 @@ jobs:
               git pull origin main || git pull origin master || true
             fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker rm -f prism-backend-api || true
+            docker rm -f prism-backend-api prism-frontend-dashboard prism-postgres-database prism-redis-cache || true
             docker compose pull api || true
             docker compose up -d --force-recreate --remove-orphans api
             docker image prune -f || true
