@@ -14,6 +14,7 @@
 | 1.7 | 21 August 2026, 22:56 WIB | Updated V1 Scope with AI Budget Manager & Semantic Router (`roozy-auto`), Cost Pipeline, and Debugging Headers |
 | 1.8 | 23 August 2026, 12:44 WIB | Added Default Active Policy Selection (`PUT /policies/:id/default`), Smart Router Prompt Preview & Score Breakdown Observability, Active Credentials Pre-filtering, and Responsive UI Layout specs |
 | 1.9 | 23 August 2026, 21:00 WIB | Added Circuit Breaker & 50x Quarantine, FinOps Cost Recommendations Engine, Dynamic Latency Feedback Loop, Routing Playground & Interactive Simulator, Web Sandbox, Provider Abstraction Layer, Google OAuth 2.0 Credential Flow; renumbered all sections sequentially |
+| 2.0 | 25 August 2026, 13:00 WIB | Added Pillar 6 (Tool Gateway), Pillar 7 (Resource Gateway), and Pillar 8 (MCP Model Context Protocol Gateway) specifications, database schemas, and REST endpoints |
 
 ---
 
@@ -1109,6 +1110,9 @@ Gateway mendukung alur OAuth 2.0 untuk menambahkan Google Gemini credentials tan
 - [x] **Sandbox:** Web-based chat interface
 - [x] **Routing Decision Audit:** Prompt preview, score breakdown, budget downgrade explanation
 - [x] **Provider Abstraction:** Multi-adapter pattern (OpenAI, Anthropic, Google, OpenCode meta-adapter)
+- [x] **Tool Gateway (Pillar 6):** Custom function calling, HTTP tool backends, priority failover, sandbox execution
+- [x] **Resource Gateway (Pillar 7):** Data fetching layer, REST API & direct PostgreSQL database querying, SQL parameterization
+- [x] **MCP Gateway (Pillar 8):** Model Context Protocol JSON-RPC 2.0 / SSE server registration, automated tool discovery, execution sandbox, multi-tenant & key isolation
 
 ---
 

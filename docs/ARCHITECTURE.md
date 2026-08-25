@@ -9,6 +9,7 @@
 | 1.2 | 19 August 2026, 11:03 WIB | Implemented Revision History versioning rules |
 | 1.3 | 19 August 2026, 14:58 WIB | Updated Gateway API Key architecture: 1 Gateway Key is bound to 1 Provider |
 | 1.4 | 21 August 2026, 22:56 WIB | Added AI Budget Manager, Smart Router Engine (`roozy-auto`), Cost Pipeline, and UI Guardrails |
+| 2.0 | 25 August 2026, 13:00 WIB | Added Tool Gateway, Resource Gateway, and MCP Model Context Protocol Gateway architecture and JSON-RPC 2.0 engine specs |
 
 ---
 

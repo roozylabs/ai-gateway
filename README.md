@@ -35,17 +35,19 @@ With **RoozyLabs Prism**, your client applications and AI coding tools (such as 
                           │                 │
                           │ • Auth          │
                           │ • Smart Router  │
+                          │ • Tool Gateway  │
+                          │ • Resource Gwy  │
+                          │ • MCP Gateway   │
                           │ • Budget Mgr    │
-                          │ • Credential Pool│
                           │ • Retry (429/500)│
-                          │ • Circuit Breaker│
+                          │ • CircuitBreaker│
                           │ • Streaming SSE │
-                          │ • Observability │
                           └────────┬────────┘
                                    │
                  ┌─────────────────┼─────────────────┐
                  ▼                 ▼                 ▼
-           OpenAI API        Anthropic API      Google Gemini
+           OpenAI / Gemini   Tool/Resource Gwy    MCP Protocol
+             Inference          (REST/SQL)       (JSON-RPC 2.0)
 ```
 
 ---
@@ -53,6 +55,9 @@ With **RoozyLabs Prism**, your client applications and AI coding tools (such as 
 ## ✨ Key Features
 
 - **🧠 Roozy Auto Smart Router (`roozy-auto`)**: Intelligent router that deterministically classifies request characteristics (Task, Complexity, Context Window), pre-filters candidate models by active provider credentials, and executes weighted candidate scoring based on the active routing policy (`balanced`, `cheap`, `quality`, or custom).
+- **🧰 Tool Gateway**: High-performance control plane for custom function calling and external REST API tools with priority failover routing, custom headers, and test sandbox execution (`/tools`).
+- **🗄️ Resource Gateway**: Dynamic data fetching layer supporting REST API resources and direct PostgreSQL relational database querying with parameterized SQL templates (`/resources`).
+- **🔌 MCP (Model Context Protocol) Gateway**: Centralized protocol gateway for remote HTTP and SSE Model Context Protocol servers (GitHub MCP, Notion MCP, custom agent servers) featuring automatic JSON-RPC 2.0 `tools/list` discovery and `tools/call` execution (`/mcp`).
 - **🎨 RoozyLabs Prism Design System**: Built strictly according to the **Prism Design System** ([`docs/DESIGN_SYSTEM.md`](file:///c:/me/projects/ai-gateway/docs/DESIGN_SYSTEM.md)) featuring a high-density, dark-first UI palette (`#08090A` canvas, `#0F1115` cards, `#8B5CF6` violet signature accent, and `Geist Mono`/`JetBrains Mono` typography for all metrics).
 - **🛡️ High Availability & Circuit Breaker**: Automatic 50x error detection, 60-second credential quarantine, and instant fallback cascades to ensure zero downtime.
 - **🛡️ Bot Protection & Security**: Integrated **Cloudflare Turnstile** bot protection on dashboard authentication endpoints and AES-256-GCM encrypted credential vaults.
