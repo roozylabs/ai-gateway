@@ -45,6 +45,7 @@ async function proxyV1Handler(request: NextRequest, { params }: { params: Promis
     const isNoBodyStatus = backendResponse.status === 204 || backendResponse.status === 304;
 
     if (isEventStream) {
+      responseHeaders.set('Content-Type', 'text/event-stream');
       responseHeaders.set('Cache-Control', 'no-cache, no-transform');
       responseHeaders.set('Connection', 'keep-alive');
       responseHeaders.set('X-Accel-Buffering', 'no');
