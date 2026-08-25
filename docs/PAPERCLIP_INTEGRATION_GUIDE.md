@@ -49,7 +49,40 @@ git ls-files
 
 ---
 
-## 🎯 3. Verification & Observability in Prism
+## 💬 4. Resolving "Run completed. Agent did not post a summary comment" Notice
+
+### Problem:
+Paperclip Board displays:
+`Run completed. Agent did not post a summary comment this run (transcript withheld — see run log).`
+
+### Cause in Paperclip (`heartbeat-run-summary.ts`):
+When a stateless adapter (like `prism-roozylabs`) returns a summary, Paperclip inspects `resultJson.summary`. Paperclip withholds the summary if:
+1. **Length > 1,200 characters** (`MAX_FALLBACK_COMMENT_CHARS`).
+2. **Starts with Narration Openers** (e.g. `Let me...`, `I'll...`, `First,...`, `Checking...`).
+
+### Recommended Solutions:
+
+#### Solution A: Add Prompt Rule for Concise Output Format
+Add this rule to your Agent System Prompt / Skill instructions:
+```text
+Formatting Rule for Task Completion:
+- Always format your final response as a concise summary under 1,000 characters.
+- Do NOT start your final response with narration openers like "Let me...", "First,...", "I'll...", or "Checking...".
+- Start directly with key result bullets (e.g. "### Summary of Work Completed:").
+```
+
+#### Solution B: Explicit Comment API Tool Call
+Instruct Paperclip agents to invoke Paperclip's comment API before ending the run:
+```bash
+POST /api/issues/:issue_id/comments
+Content-Type: application/json
+
+{ "body": "### Run Summary\n- Task completed successfully.\n- Updated PRD and skills." }
+```
+
+---
+
+## 🎯 5. Verification & Observability in Prism
 
 Once configured:
 1. Every task execution triggered by Paperclip agents will hit `https://api.prism.roozylabs.com/v1/chat/completions` with `"model": "prism-auto"`.
