@@ -126,13 +126,34 @@ func (a *AnthropicAdapter) ParseResponse(body io.Reader) (*ProviderResponse, err
 		msgMap["tool_calls"] = toolCalls
 	}
 
+	finishReason := mapAnthropicStopReasonToOpenAI(raw.StopReason)
+	if len(toolCalls) > 0 && (finishReason == "" || finishReason == "stop") {
+		finishReason = "tool_calls"
+	}
+
 	resp.Choices = append(resp.Choices, Choice{
 		Index:        0,
 		Message:      msgMap,
-		FinishReason: raw.StopReason,
+		FinishReason: finishReason,
 	})
 
 	return resp, nil
+}
+
+func mapAnthropicStopReasonToOpenAI(reason string) string {
+	switch reason {
+	case "end_turn", "stop_sequence":
+		return "stop"
+	case "tool_use":
+		return "tool_calls"
+	case "max_tokens":
+		return "length"
+	default:
+		if reason != "" {
+			return reason
+		}
+		return "stop"
+	}
 }
 
 func (a *AnthropicAdapter) ParseStreamChunk(line []byte) (*ProviderResponse, bool) {
@@ -190,7 +211,7 @@ func (a *AnthropicAdapter) ParseStreamChunk(line []byte) (*ProviderResponse, boo
 		return &ProviderResponse{
 			Choices: []Choice{{
 				Index:        0,
-				FinishReason: delta.StopReason,
+				FinishReason: mapAnthropicStopReasonToOpenAI(delta.StopReason),
 			}},
 			Usage: Usage{CompletionTokens: delta.Usage.OutputTokens},
 		}, false
