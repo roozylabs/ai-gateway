@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/lib/pq"
 	"github.com/roozylabs/prism/internal/models"
@@ -84,29 +85,33 @@ func (r *AuditTrailRepository) ListWithFilter(ctx context.Context, filter models
 	paramIdx := 1
 
 	if filter.UserID != "" {
-		query += ` AND (user_id = $` + string(rune('0'+paramIdx)) + ` OR user_id = 'user_admin' OR user_id = '')`
-		countQuery += ` AND (user_id = $` + string(rune('0'+paramIdx)) + ` OR user_id = 'user_admin' OR user_id = '')`
+		clause := fmt.Sprintf(" AND (user_id = $%d OR user_id = 'user_admin' OR user_id = '')", paramIdx)
+		query += clause
+		countQuery += clause
 		args = append(args, filter.UserID)
 		paramIdx++
 	}
 
 	if filter.AgentName != "" {
-		query += ` AND agent_name = $` + string(rune('0'+paramIdx))
-		countQuery += ` AND agent_name = $` + string(rune('0'+paramIdx))
+		clause := fmt.Sprintf(" AND agent_name = $%d", paramIdx)
+		query += clause
+		countQuery += clause
 		args = append(args, filter.AgentName)
 		paramIdx++
 	}
 
 	if filter.ModelSlug != "" {
-		query += ` AND model_slug = $` + string(rune('0'+paramIdx))
-		countQuery += ` AND model_slug = $` + string(rune('0'+paramIdx))
+		clause := fmt.Sprintf(" AND model_slug = $%d", paramIdx)
+		query += clause
+		countQuery += clause
 		args = append(args, filter.ModelSlug)
 		paramIdx++
 	}
 
 	if filter.ComplianceStatus != "" {
-		query += ` AND compliance_status = $` + string(rune('0'+paramIdx))
-		countQuery += ` AND compliance_status = $` + string(rune('0'+paramIdx))
+		clause := fmt.Sprintf(" AND compliance_status = $%d", paramIdx)
+		query += clause
+		countQuery += clause
 		args = append(args, filter.ComplianceStatus)
 		paramIdx++
 	}
@@ -118,7 +123,7 @@ func (r *AuditTrailRepository) ListWithFilter(ctx context.Context, filter models
 
 	query += ` ORDER BY created_at DESC`
 	if filter.Limit > 0 {
-		query += ` LIMIT $` + string(rune('0'+paramIdx))
+		query += fmt.Sprintf(" LIMIT $%d", paramIdx)
 		args = append(args, filter.Limit)
 		paramIdx++
 	} else {
@@ -126,9 +131,8 @@ func (r *AuditTrailRepository) ListWithFilter(ctx context.Context, filter models
 	}
 
 	if filter.Offset > 0 {
-		query += ` OFFSET $` + string(rune('0'+paramIdx))
+		query += fmt.Sprintf(" OFFSET $%d", paramIdx)
 		args = append(args, filter.Offset)
-		paramIdx++
 	}
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
