@@ -1,16 +1,16 @@
-# 📎 Paperclip Agent Integration Guide for RoozyLabs Prism
+# 🚀 Paperclip Agent Integration Guide for RoozyLabs Prism
 
 This guide explains how to configure **Paperclip** agents (**Roozy**, **Eleana**, **Developer Agents**) to connect seamlessly to **RoozyLabs Prism** using the **`prism-auto`** Smart Router and avoid common workspace path execution errors on Windows.
 
 ---
 
-## 🛠️ 1. Paperclip Adapter Configuration
+## 1. Paperclip Adapter Configuration
 
 In your Paperclip Console (`http://localhost:3100 > Agents > [Agent Name] > Configuration > Adapter`):
 
 | Setting | Value | Description |
 | :--- | :--- | :--- |
-| **Adapter Type** | `Roozy AI Gateway` (or `OpenAI Compatible`) | Standard OpenAI API protocol |
+| **Adapter Type** | `Prism RoozyLabs` (`prism_roozylabs`) | Standard OpenAI API protocol with Prism extension headers |
 | **Gateway URL** | `https://api.prism.roozylabs.com` | Live Prism Model Gateway API Proxy |
 | **Gateway API Key** | `gw_sk_prism_...` | Your Prism Gateway API Key |
 | **Model** | **`prism-auto`** | Dynamic Smart Router model |
@@ -18,9 +18,9 @@ In your Paperclip Console (`http://localhost:3100 > Agents > [Agent Name] > Conf
 
 ---
 
-## ⚠️ 2. Resolving Missing Disposition & Workspace Path Errors
+## 2. Resolving Missing Disposition & Workspace Path Errors
 
-### Problem in Screenshot:
+### Problem:
 An agent attempted `find /workspace/prism -maxdepth 4 ...`, resulting in:
 `Paperclip could not resolve this issue's missing disposition automatically.`
 
@@ -49,16 +49,43 @@ git ls-files
 
 ---
 
-## 💬 4. Resolving "Run completed. Agent did not post a summary comment" Notice
+## 3. Resolving Tool Call XML Output in Stateless Adapters
+
+### Problem:
+An agent outputs raw `<tool_call>` XML tags like:
+```xml
+<tool_call>
+<function=paperclip>
+<parameter=action>list_agents</parameter>
+</function>
+</tool_call>
+```
+resulting in `Missing disposition recovery blocked`.
+
+### Cause:
+In Phase 1 stateless LLM adapters (`prism-roozylabs`), direct tool execution is not supported. When the LLM outputs raw `<tool_call>` XML tags, no tool is executed and no issue disposition is updated.
+
+### Solution:
+Add this rule to your Agent System Prompt / Skill instructions:
+```text
+Stateless Execution Rule:
+- Tool call XML tags (such as <tool_call> or <function>) cannot be executed by this stateless adapter.
+- Do NOT output <tool_call> or <function> XML tags.
+- Write your complete response, updates, and findings directly in Markdown text.
+```
+
+---
+
+## 4. Resolving "Run completed. Agent did not post a summary comment" Notice
 
 ### Problem:
 Paperclip Board displays:
 `Run completed. Agent did not post a summary comment this run (transcript withheld — see run log).`
 
 ### Cause in Paperclip (`heartbeat-run-summary.ts`):
-When a stateless adapter (like `prism-roozylabs`) returns a summary, Paperclip inspects `resultJson.summary`. Paperclip withholds the summary if:
+When a stateless adapter (like `prism-roozylabs`) returns a run summary, Paperclip inspects `resultJson.summary`. Paperclip withholds the summary transcript from the board comment if:
 1. **Length > 1,200 characters** (`MAX_FALLBACK_COMMENT_CHARS`).
-2. **Starts with Narration Openers** (e.g. `Let me...`, `I'll...`, `First,...`, `Checking...`).
+2. **Starts with Narration Openers** (e.g. `Let me...`, `I'll...`, `First,...`, `Checking...`, `Looking at...`).
 
 ### Recommended Solutions:
 
@@ -71,7 +98,7 @@ Formatting Rule for Task Completion:
 - Start directly with key result bullets (e.g. "### Summary of Work Completed:").
 ```
 
-#### Solution B: Explicit Comment API Tool Call
+#### Solution B: Explicit Comment API Call
 Instruct Paperclip agents to invoke Paperclip's comment API before ending the run:
 ```bash
 POST /api/issues/:issue_id/comments
@@ -82,7 +109,7 @@ Content-Type: application/json
 
 ---
 
-## 🎯 5. Verification & Observability in Prism
+## 5. Verification & Observability in Prism
 
 Once configured:
 1. Every task execution triggered by Paperclip agents will hit `https://api.prism.roozylabs.com/v1/chat/completions` with `"model": "prism-auto"`.
