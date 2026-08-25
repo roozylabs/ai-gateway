@@ -9,4 +9,4 @@ CREATE TABLE IF NOT EXISTS budget_alerts (
   acknowledged_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_budget_alerts_dedupe ON budget_alerts(budget_id, alert_type, (created_at::date));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_budget_alerts_dedupe ON budget_alerts(budget_id, alert_type, ((created_at AT TIME ZONE 'UTC')::date));
