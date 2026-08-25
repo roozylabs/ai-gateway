@@ -77,6 +77,8 @@ func main() {
 	anomalyRepo := repository.NewCostAnomalyRepository(sqlDB)
 	budgetAlertRepo := repository.NewBudgetAlertRepository(sqlDB)
 	modelLatencyRepo := repository.NewModelLatencyHourlyRepository(sqlDB)
+	toolRepo := repository.NewToolRepository(sqlDB)
+	toolBackendRepo := repository.NewToolBackendRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -92,6 +94,7 @@ func main() {
 	idemStore := proxy.NewIdempotencyStore(rdb)
 	router := proxy.NewRouter(modelRepo, providerRepo, credentialRepo, settingRepo, healthStore)
 	engine := proxy.NewEngine(router, credentialRepo, cooldown, telemetry, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo, payloadRepo, toolInvocationRepo)
+	toolGateway := proxy.NewToolGateway(toolRepo)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -115,6 +118,8 @@ func main() {
 	simulateHandler := handlers.NewSimulateHandler(modelRepo, providerRepo, credentialRepo, routingPolicyRepo, telemetry)
 	finopsHandler := handlers.NewFinOpsHandler(requestLogRepo, budgetRepo, modelRepo, settingRepo, anomalyRepo)
 	finopsAnomaliesHandler := handlers.NewFinOpsAnomaliesHandler(anomalyRepo, budgetAlertRepo)
+	toolHandler := handlers.NewToolHandler(toolRepo, toolBackendRepo, toolGateway, cfg.EncryptionKey)
+	toolGatewayHandler := handlers.NewToolGatewayHandler(toolGateway, toolInvocationRepo, eventPublisher, cfg.EncryptionKey)
 
 	// Background workers
 	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -252,6 +257,14 @@ func main() {
 			protected.POST("/budgets", budgetHandler.Create)
 			protected.PUT("/budgets/:id", budgetHandler.Update)
 			protected.DELETE("/budgets/:id", budgetHandler.Delete)
+
+			// Tool Gateway (admin CRUD)
+			protected.GET("/tools", toolHandler.List)
+			protected.POST("/tools", toolHandler.Create)
+			protected.GET("/tools/:id", toolHandler.Get)
+			protected.PUT("/tools/:id", toolHandler.Update)
+			protected.DELETE("/tools/:id", toolHandler.Delete)
+			protected.POST("/tools/:id/test", toolHandler.TestTool)
 			
 			// Sandbox
 			protected.POST("/sandbox/chat/completions", gatewayHandler.SandboxChatCompletions)
@@ -265,6 +278,7 @@ func main() {
 		rg.Use(proxy.IdempotencyMiddleware(idemStore))
 		rg.POST("/chat/completions", gatewayHandler.ChatCompletions)
 		rg.GET("/models", gatewayHandler.Models)
+		rg.POST("/tools/:toolName/execute", toolGatewayHandler.ExecuteTool)
 	}
 
 	registerGatewayRoutes(r.Group("/v1"))
