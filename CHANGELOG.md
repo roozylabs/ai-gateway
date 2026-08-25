@@ -1,9 +1,31 @@
 # Changelog
 
-All notable changes to the **AI Gateway** project will be documented in this file.
+All notable changes to the **RoozyLabs Prism** project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.1.0] - 2026-08-25
+
+### Added
+- **Multi-Tenant Architecture & SaaS Platform (Pillar 12)**:
+  - 4-level enterprise tenant hierarchy (`Organization` ──► `Workspace` ──► `Project` ──► `Agents`).
+  - Database Row-Level Security (RLS) & schema migrations (`055_create_organizations`, `056_create_workspaces`, `057_create_projects`, `058_add_multi_tenancy_foreign_keys`, `059_create_organization_members`, `060_seed_default_tenant`).
+  - `TenantMiddleware` in Go backend extracting `X-Prism-Org-ID`, `X-Prism-Workspace-ID`, and `X-Prism-Project-ID` request headers.
+  - `MeteringService` backend component calculating real-time token consumption, spend limits, and hard quota auto-suspension.
+  - Next.js Dashboard header component `TenantSelector.tsx` for seamless switching between Organizations, Workspaces, and Projects.
+  - Organization & Billing Profile page (`/settings/organization`) with plan tier selection, spend caps, and SAML/OIDC SSO configuration.
+  - Team Members & RBAC management page (`/settings/members`) for inviting team members and assigning RBAC roles (`owner`, `admin`, `developer`, `billing_manager`, `auditor`).
+- **Ecosystem Marketplace Roadmap Specification (Pillar 13)**: Detailed technical specifications and hub catalog architecture for plug-and-play Agents, Custom Tools, MCP Servers, Providers, and Security Policies.
+- **Agent Gateway & Infrastructure (Pillar 9)**: Identity registration (`X-Prism-Agent-ID`) and granular governance boundaries for autonomous AI agents (`/agents`).
+- **Enterprise Identity, Permissions & Governance RBAC (Pillar 10)**: Declarative Policy Engine with **`DENY` precedence** and wildcard rule matching (`/governance`).
+- **Cryptographic AI Audit Trail (Pillar 11)**: SHA-256 tamper-proof hash signature calculation logging 6-dimensional execution trails (`/audit-trail`).
+- **Astro 5.0 Landing Page (`apps/web`)**: Modern, high-fidelity responsive marketing landing page with interactive mobile navigation drawer, live terminal preview, client tool ribbon, complexity crisis matrix, and 11 pillars grid.
+- **Brand Alignment & Smart Router Model Naming**: Standardized primary project name to **Prism** / **RoozyLabs Prism** and Smart Router model name to **`prism-auto`** across code, API responses, docs, landing page, and CLI configs.
+
+### Fixed
+- **Docker GHCR Runner Build Failure**: Fixed missing `/app/public` error during `COPY --from=builder /app/public ./public` by creating `apps/app/public/.gitkeep` and adding `RUN mkdir -p public` to builder stage in `apps/app/Dockerfile`.
+- **Mobile Responsive Drawer Layout**: Added responsive mobile drawer navigation and code snippet overflow wrapping in `apps/web` for screens < 768px.
 
 ## [1.3.0] - 2026-08-24
 
@@ -49,12 +71,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-08-21
 
 ### Added
-- **Global Gateway Keys Architecture (Hybrid Access Scope)**: Enabled default `provider_id = NULL` for Gateway API Keys, allowing a single API key to access all registered providers and the `roozy-auto` Smart Router without provider isolation restrictions.
+- **Global Gateway Keys Architecture (Hybrid Access Scope)**: Enabled default `provider_id = NULL` for Gateway API Keys, allowing a single API key to access all registered providers and the `prism-auto` Smart Router without provider isolation restrictions.
 - **Logs Observability & Analytics Hub**: Added `GET /api/analytics/logs` backend endpoint and interactive analytics dashboard in `LogsPage()`.
 - **Smart Router Savings Estimator**: Calculates estimated cost savings vs flagship model baseline (`cost_usd` saved).
 - **Client App & Model SLA Breakdown**: Visual breakdown of spend, token volume, average TTFT (Time to First Token), and latency across client apps (OpenCode, Claude Code, Antigravity) and models.
 - **1-Click CSV Log Export**: Export filtered log data directly to downloadable `.csv` spreadsheet files.
-- **Roozy Auto Smart Router (`roozy-auto`)**: Deterministic task classification (7 categories), request complexity heuristics, model capability registry scoring weights (Task, Quality, Cost, Speed), and weighted candidate scoring.
+- **Roozy Auto Smart Router (`prism-auto`)**: Deterministic task classification (7 categories), request complexity heuristics, model capability registry scoring weights (Task, Quality, Cost, Speed), and weighted candidate scoring.
 - **AI Budget Manager**: User-level monthly and daily expenditure limits, alert thresholds (`healthy`, `warning`, `critical`, `exceeded`), and automatic model downgrade logic before hard cutoffs.
 - **Real-Time Cost Pipeline**: Automatic post-request calculation of `CostUSD` based on actual token usage and model pricing stored in `request_logs`.
 - **Response Debugging Headers**: Injected `X-Roozy-Model`, `X-Roozy-Provider`, and `X-Request-ID` headers in all HTTP responses.
@@ -65,11 +87,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Smart Router Decision Details & Prompt Snippets**: Added migration `032_add_prompt_and_reasoning_to_routing_decisions.up.sql` (`prompt_preview` & `scores_breakdown` columns), extracted prompt preview snippets and scoring reasoning in `ResolveSemantic()`, and added `Details` action drawer in Next.js `LogsPage()` (`Smart Router Decisions` tab) to display request prompt text, candidate model scoring breakdown, and budget downgrade explanation.
-- **Default Active Routing Policy Selection**: Added `is_default` column migration (`031_add_is_default_to_routing_policies.up.sql`), `SetDefault()` repository & handler endpoints (`PUT /policies/:id/default`), and `Set Active` action button in Next.js `PoliciesPage()` so users can switch which policy (`balanced`, `cheap`, `quality`, or custom) `roozy-auto` uses by default.
+- **Default Active Routing Policy Selection**: Added `is_default` column migration (`031_add_is_default_to_routing_policies.up.sql`), `SetDefault()` repository & handler endpoints (`PUT /policies/:id/default`), and `Set Active` action button in Next.js `PoliciesPage()` so users can switch which policy (`balanced`, `cheap`, `quality`, or custom) `prism-auto` uses by default.
 
 ### Fixed
-- **Routing Decision Logging**: Fixed `RequestID` logging bug in `logRoutingDecision()` (`engine.go`) where model slug `"roozy-auto"` was recorded instead of actual UUID request ID, and updated `Candidates` list to record all evaluated candidate models instead of single winning model.
-- **Streaming Sandbox Global Key Model Resolution**: Fixed model resolution logic in `SandboxPage()` so selecting a Global Gateway Key dynamically combines models across all active providers and includes `roozy-auto` Smart Router in the Target Model Alias dropdown.
+- **Routing Decision Logging**: Fixed `RequestID` logging bug in `logRoutingDecision()` (`engine.go`) where model slug `"prism-auto"` was recorded instead of actual UUID request ID, and updated `Candidates` list to record all evaluated candidate models instead of single winning model.
+- **Streaming Sandbox Global Key Model Resolution**: Fixed model resolution logic in `SandboxPage()` so selecting a Global Gateway Key dynamically combines models across all active providers and includes `prism-auto` Smart Router in the Target Model Alias dropdown.
 - **Automatic Credential Quota & Cooldown Reset**: Added `enrichCredentialQuota` backend logic and updated frontend `RateLimitQuotaBadge` so credentials automatically return to `Normal` (Active) status as soon as countdown timers / daily midnight reset finishes, eliminating manual API hit requirements.
 - **VPS Deployment Error (`docker compose up -d --no-build`)**: Forced `--no-build` flag and added `docker system prune` in CI/CD workflows (`api-ci-cd.yml`, `app-ci-cd.yml`) to prevent VPS from building from source or failing due to containerd storage corruption.
 - **React Audit Log Crash (Minified Error #31)**: Fixed primitive string serialization for NullString fields in routing decision logs.
