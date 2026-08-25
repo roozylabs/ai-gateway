@@ -269,6 +269,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       label: 'Agent Gateway',
     },
     {
+      key: '/governance',
+      icon: <SafetyCertificateOutlined />,
+      label: 'Governance & RBAC',
+    },
+    {
       key: '/playground',
       icon: <ExperimentOutlined />,
       label: 'Routing Playground',

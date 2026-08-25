@@ -979,3 +979,78 @@ export async function apiDeleteAgent(id: string): Promise<void> {
   await api.delete(`/agents/${id}`);
 }
 
+// Enterprise Governance & RBAC API
+export interface ApiGovernancePolicy {
+  id: string;
+  userId: string;
+  name: string;
+  description: string;
+  role: string;
+  effect: 'allow' | 'deny';
+  agentPattern: string;
+  modelPattern: string;
+  toolPattern: string;
+  resourcePattern: string;
+  priority: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiCreateGovernancePolicyRequest {
+  name: string;
+  description?: string;
+  role?: string;
+  effect?: 'allow' | 'deny';
+  agentPattern?: string;
+  modelPattern?: string;
+  toolPattern?: string;
+  resourcePattern?: string;
+  priority?: number;
+  enabled?: boolean;
+}
+
+export interface ApiRBACEvaluationRequest {
+  role?: string;
+  agentName?: string;
+  modelSlug?: string;
+  toolName?: string;
+  resourceName?: string;
+}
+
+export interface ApiRBACEvaluationResult {
+  allowed: boolean;
+  matchedPolicy?: ApiGovernancePolicy;
+  reason: string;
+  evaluatedCount: number;
+}
+
+export async function apiGetGovernancePolicies(): Promise<ApiGovernancePolicy[]> {
+  const response = await api.get<ApiGovernancePolicy[]>('/governance/policies');
+  return response.data;
+}
+
+export async function apiGetGovernancePolicy(id: string): Promise<ApiGovernancePolicy> {
+  const response = await api.get<ApiGovernancePolicy>(`/governance/policies/${id}`);
+  return response.data;
+}
+
+export async function apiCreateGovernancePolicy(data: ApiCreateGovernancePolicyRequest): Promise<ApiGovernancePolicy> {
+  const response = await api.post<ApiGovernancePolicy>('/governance/policies', data);
+  return response.data;
+}
+
+export async function apiUpdateGovernancePolicy(id: string, data: ApiCreateGovernancePolicyRequest): Promise<ApiGovernancePolicy> {
+  const response = await api.put<ApiGovernancePolicy>(`/governance/policies/${id}`, data);
+  return response.data;
+}
+
+export async function apiDeleteGovernancePolicy(id: string): Promise<void> {
+  await api.delete(`/governance/policies/${id}`);
+}
+
+export async function apiEvaluateRBAC(data: ApiRBACEvaluationRequest): Promise<ApiRBACEvaluationResult> {
+  const response = await api.post<ApiRBACEvaluationResult>('/governance/evaluate', data);
+  return response.data;
+}
+

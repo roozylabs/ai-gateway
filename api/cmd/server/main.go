@@ -84,6 +84,7 @@ func main() {
 	mcpServerRepo := repository.NewMCPServerRepository(sqlDB)
 	mcpToolRepo := repository.NewMCPToolRepository(sqlDB)
 	agentRepo := repository.NewAgentRepository(sqlDB)
+	governancePolicyRepo := repository.NewGovernancePolicyRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -103,6 +104,7 @@ func main() {
 	resourceGateway := proxy.NewResourceGateway(resourceRepo)
 	mcpGateway := proxy.NewMCPGateway(mcpServerRepo, mcpToolRepo)
 	agentGovernance := proxy.NewAgentGovernanceEngine(agentRepo)
+	rbacEngine := proxy.NewRBACEngine(governancePolicyRepo)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -132,6 +134,7 @@ func main() {
 	resourceGatewayHandler := handlers.NewResourceGatewayHandler(resourceGateway, toolInvocationRepo, eventPublisher, cfg.EncryptionKey)
 	mcpHandler := handlers.NewMCPHandler(mcpServerRepo, mcpToolRepo, mcpGateway, cfg.EncryptionKey)
 	agentHandler := handlers.NewAgentHandler(agentRepo, agentGovernance)
+	governancePolicyHandler := handlers.NewGovernancePolicyHandler(governancePolicyRepo, rbacEngine)
 
 	// Background workers
 	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -301,6 +304,14 @@ func main() {
 			protected.POST("/agents", agentHandler.Create)
 			protected.PUT("/agents/:id", agentHandler.Update)
 			protected.DELETE("/agents/:id", agentHandler.Delete)
+
+			// Enterprise Governance & RBAC
+			protected.GET("/governance/policies", governancePolicyHandler.List)
+			protected.GET("/governance/policies/:id", governancePolicyHandler.Get)
+			protected.POST("/governance/policies", governancePolicyHandler.Create)
+			protected.PUT("/governance/policies/:id", governancePolicyHandler.Update)
+			protected.DELETE("/governance/policies/:id", governancePolicyHandler.Delete)
+			protected.POST("/governance/evaluate", governancePolicyHandler.Evaluate)
 
 			// Sandbox
 			protected.POST("/sandbox/chat/completions", gatewayHandler.SandboxChatCompletions)
