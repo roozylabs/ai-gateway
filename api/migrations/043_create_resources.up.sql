@@ -12,6 +12,3 @@ CREATE TABLE IF NOT EXISTS resources (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_user_name ON resources(user_id, name);
 CREATE INDEX IF NOT EXISTS idx_resources_user_id ON resources(user_id);
-
--- down
-DROP TABLE IF EXISTS resources;

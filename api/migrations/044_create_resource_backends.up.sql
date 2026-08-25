@@ -20,6 +20,3 @@ CREATE TABLE IF NOT EXISTS resource_backends (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_resource_backends_resource_id ON resource_backends(resource_id);
-
--- down
-DROP TABLE IF EXISTS resource_backends;

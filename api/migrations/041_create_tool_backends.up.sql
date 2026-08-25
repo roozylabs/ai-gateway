@@ -15,6 +15,3 @@ CREATE TABLE IF NOT EXISTS tool_backends (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_tool_backends_tool_id ON tool_backends(tool_id);
-
--- down
-DROP TABLE IF EXISTS tool_backends;

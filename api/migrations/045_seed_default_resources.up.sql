@@ -31,13 +31,13 @@ VALUES (
   true
 ) ON CONFLICT (user_id, name) DO NOTHING;
 
-INSERT INTO resource_backends (resource_id, name, backend_type, query_template, parameter_names, timeout_ms, priority, enabled)
+INSERT INTO resource_backends (resource_id, name, backend_type, query_template, param_names, timeout_ms, priority, enabled)
 VALUES (
   '44444444-4444-4444-4444-444444444444',
   'PostgreSQL Primary Cluster',
   'postgres',
   'SELECT id, email, name, plan FROM users WHERE id = $1',
-  '{"id"}',
+  ARRAY['id'],
   10000,
   1,
   true

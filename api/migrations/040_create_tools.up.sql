@@ -12,6 +12,3 @@ CREATE TABLE IF NOT EXISTS tools (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tools_user_name ON tools(user_id, name);
 CREATE INDEX IF NOT EXISTS idx_tools_user_id ON tools(user_id);
-
--- down
-DROP TABLE IF EXISTS tools;
