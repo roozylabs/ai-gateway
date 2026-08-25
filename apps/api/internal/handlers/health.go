@@ -19,12 +19,16 @@ func NewHealthHandler(db *sqlx.DB, rdb *redis.Client) *HealthHandler {
 
 type HealthResponse struct {
 	Status   string `json:"status"`
+	Version  string `json:"version"`
 	Database string `json:"database"`
 	Redis    string `json:"redis"`
 }
 
 func (h *HealthHandler) Check(c *gin.Context) {
-	resp := HealthResponse{Status: "ok"}
+	resp := HealthResponse{
+		Status:  "ok",
+		Version: "2.1.0",
+	}
 
 	// Check database
 	if err := h.db.PingContext(c.Request.Context()); err != nil {

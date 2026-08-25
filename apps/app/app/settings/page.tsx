@@ -100,7 +100,7 @@ export default function SettingsPage() {
           <Card title={<Space><HddOutlined style={{ color: '#1677ff' }} /> System & Infrastructure</Space>} variant="borderless" style={{ borderRadius: 8 }}>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Gateway Backend Version">
-                <Text code>v1.0.0</Text>
+                <Text code>v2.1.0</Text>
               </Descriptions.Item>
               <Descriptions.Item label="Database Storage">
                 PostgreSQL 15 (Single Source of Truth)

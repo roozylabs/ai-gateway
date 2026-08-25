@@ -443,7 +443,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <Space size="large">
             <Text type="secondary" style={{ fontSize: 13 }}>
-              v1.0.0
+              v2.1.0
             </Text>
 
             <Tooltip title={`Switch to ${mode === 'dark' ? 'Light' : 'Dark'} Mode`}>

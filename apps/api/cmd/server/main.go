@@ -22,8 +22,8 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// @title           AI Gateway API
-// @version         1.0
+// @title           RoozyLabs Prism AI Gateway API
+// @version         2.1.0
 // @description     Centralized AI API Gateway
 // @host            localhost:8080
 // @BasePath        /api/v1
