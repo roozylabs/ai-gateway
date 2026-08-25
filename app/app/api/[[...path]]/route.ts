@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 function getBackendApiUrl(): string {
-  const url = process.env.API_URL || 'http://localhost:8080';
+  const url = process.env.API_URL || 'http://api:8080';
   return url.replace(/\/+$/, '');
 }
 
