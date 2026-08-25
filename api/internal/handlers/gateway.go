@@ -18,12 +18,15 @@ import (
 )
 
 type GatewayHandler struct {
-	engine        *proxy.Engine
-	gatewayKeys   *repository.GatewayKeyRepository
-	requestLogs   *repository.RequestLogRepository
-	eventPublisher *goredis.EventPublisher
-	pricingRepo   *repository.ModelPricingRepository
-	idemStore     *proxy.IdempotencyStore
+	engine          *proxy.Engine
+	gatewayKeys     *repository.GatewayKeyRepository
+	requestLogs     *repository.RequestLogRepository
+	eventPublisher  *goredis.EventPublisher
+	pricingRepo     *repository.ModelPricingRepository
+	idemStore       *proxy.IdempotencyStore
+	agentGovernance *proxy.AgentGovernanceEngine
+	rbacEngine      *proxy.RBACEngine
+	auditRecorder   *proxy.AuditRecorder
 }
 
 func NewGatewayHandler(
@@ -33,14 +36,20 @@ func NewGatewayHandler(
 	eventPublisher *goredis.EventPublisher,
 	pricingRepo *repository.ModelPricingRepository,
 	idemStore *proxy.IdempotencyStore,
+	agentGovernance *proxy.AgentGovernanceEngine,
+	rbacEngine *proxy.RBACEngine,
+	auditRecorder *proxy.AuditRecorder,
 ) *GatewayHandler {
 	return &GatewayHandler{
-		engine:        engine,
-		gatewayKeys:   gatewayKeys,
-		requestLogs:   requestLogs,
-		eventPublisher: eventPublisher,
-		pricingRepo:   pricingRepo,
-		idemStore:     idemStore,
+		engine:          engine,
+		gatewayKeys:     gatewayKeys,
+		requestLogs:     requestLogs,
+		eventPublisher:  eventPublisher,
+		pricingRepo:     pricingRepo,
+		idemStore:       idemStore,
+		agentGovernance: agentGovernance,
+		rbacEngine:      rbacEngine,
+		auditRecorder:   auditRecorder,
 	}
 }
 
