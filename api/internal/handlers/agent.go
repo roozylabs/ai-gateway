@@ -25,9 +25,14 @@ type CreateAgentRequest struct {
 	AgentType            string   `json:"agentType"`
 	SystemPromptOverride string   `json:"systemPromptOverride"`
 	AllowedModels        []string `json:"allowedModels"`
+	AllowedModelsSnake   []string `json:"allowed_models"`
 	AllowedTools         []string `json:"allowedTools"`
+	AllowedToolsSnake    []string `json:"allowed_tools"`
 	AllowedResources     []string `json:"allowedResources"`
+	AllowedResourcesSnake []string `json:"allowed_resources"`
 	MaxBudgetCents       int      `json:"maxBudgetCents"`
+	MaxBudgetCentsSnake  int      `json:"max_budget_cents"`
+	BudgetCapUSD         float64  `json:"budget_cap_usd"`
 	Status               string   `json:"status"`
 	Enabled              *bool    `json:"enabled"`
 }
@@ -69,6 +74,27 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		enabled = *req.Enabled
 	}
 
+	allowedModels := req.AllowedModels
+	if len(allowedModels) == 0 && len(req.AllowedModelsSnake) > 0 {
+		allowedModels = req.AllowedModelsSnake
+	}
+	allowedTools := req.AllowedTools
+	if len(allowedTools) == 0 && len(req.AllowedToolsSnake) > 0 {
+		allowedTools = req.AllowedToolsSnake
+	}
+	allowedResources := req.AllowedResources
+	if len(allowedResources) == 0 && len(req.AllowedResourcesSnake) > 0 {
+		allowedResources = req.AllowedResourcesSnake
+	}
+
+	maxBudgetCents := req.MaxBudgetCents
+	if maxBudgetCents == 0 && req.MaxBudgetCentsSnake > 0 {
+		maxBudgetCents = req.MaxBudgetCentsSnake
+	}
+	if maxBudgetCents == 0 && req.BudgetCapUSD > 0 {
+		maxBudgetCents = int(req.BudgetCapUSD * 100)
+	}
+
 	agent := &models.Agent{
 		UserID:               userID,
 		Name:                 req.Name,
@@ -76,10 +102,10 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		Description:          req.Description,
 		AgentType:            req.AgentType,
 		SystemPromptOverride: req.SystemPromptOverride,
-		AllowedModels:        req.AllowedModels,
-		AllowedTools:         req.AllowedTools,
-		AllowedResources:     req.AllowedResources,
-		MaxBudgetCents:       req.MaxBudgetCents,
+		AllowedModels:        allowedModels,
+		AllowedTools:         allowedTools,
+		AllowedResources:     allowedResources,
+		MaxBudgetCents:       maxBudgetCents,
 		Status:               "active",
 		Enabled:              enabled,
 	}
@@ -112,10 +138,41 @@ func (h *AgentHandler) Update(c *gin.Context) {
 		existing.AgentType = req.AgentType
 	}
 	existing.SystemPromptOverride = req.SystemPromptOverride
-	existing.AllowedModels = req.AllowedModels
-	existing.AllowedTools = req.AllowedTools
-	existing.AllowedResources = req.AllowedResources
-	existing.MaxBudgetCents = req.MaxBudgetCents
+
+	allowedModels := req.AllowedModels
+	if len(allowedModels) == 0 && len(req.AllowedModelsSnake) > 0 {
+		allowedModels = req.AllowedModelsSnake
+	}
+	if len(allowedModels) > 0 {
+		existing.AllowedModels = allowedModels
+	}
+
+	allowedTools := req.AllowedTools
+	if len(allowedTools) == 0 && len(req.AllowedToolsSnake) > 0 {
+		allowedTools = req.AllowedToolsSnake
+	}
+	if len(allowedTools) > 0 {
+		existing.AllowedTools = allowedTools
+	}
+
+	allowedResources := req.AllowedResources
+	if len(allowedResources) == 0 && len(req.AllowedResourcesSnake) > 0 {
+		allowedResources = req.AllowedResourcesSnake
+	}
+	if len(allowedResources) > 0 {
+		existing.AllowedResources = allowedResources
+	}
+
+	maxBudgetCents := req.MaxBudgetCents
+	if maxBudgetCents == 0 && req.MaxBudgetCentsSnake > 0 {
+		maxBudgetCents = req.MaxBudgetCentsSnake
+	}
+	if maxBudgetCents == 0 && req.BudgetCapUSD > 0 {
+		maxBudgetCents = int(req.BudgetCapUSD * 100)
+	}
+	if maxBudgetCents > 0 {
+		existing.MaxBudgetCents = maxBudgetCents
+	}
 	if req.Enabled != nil {
 		existing.Enabled = *req.Enabled
 	}
