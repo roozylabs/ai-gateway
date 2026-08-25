@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0] - 2026-08-24
 
 ### Added
+- **Tool Gateway (Pillar 7)**: Provider-agnostic tool execution layer — register tools with input schemas and HTTP backends, gateway resolves and executes with automatic failover across priority-ordered backends. Admin CRUD UI, gateway execution endpoint (`POST /v1/tools/:toolName/execute`), full audit logging to `tool_invocations` table.
 - **Statistical Spend Forecasting**: Weighted Moving Average (WMA) with trend analysis replaces simple velocity projection in FinOps summary. Displays trend direction (increasing/decreasing/stable) with percentage change.
 - **P95 Latency Scoring**: Smart Router now uses 95th percentile TTFT instead of average for speed scoring — catches tail-latency spikes that averages miss.
 - **Success-Rate Telemetry Tracking**: Redis telemetry now tracks per-model success rates; models with <95% success rate (≥10 samples) are penalized in scoring.
