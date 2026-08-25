@@ -1,5 +1,5 @@
 ---
-name: ai-gateway-business-metrics
+name: prism-business-metrics
 description: Guide for analyzing token usage, request logs, latency (TTFT), error rates, provider SLA performance, Multi-Tenant metering, and cost analytics in RoozyLabs Prism (v2.1.0). Use when creating reporting specs, analyzing token costs, evaluating LLM provider performance, or setting rate limits and gateway key quotas.
 ---
 

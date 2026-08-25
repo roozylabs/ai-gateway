@@ -1,5 +1,5 @@
 ---
-name: ai-gateway-database-migrations
+name: prism-database-migrations
 description: Guide for creating PostgreSQL migrations and updating repository models in RoozyLabs Prism (apps/api/migrations). Use when altering database schema, seeding new LLM models or providers, or updating repository sqlx queries.
 ---
 

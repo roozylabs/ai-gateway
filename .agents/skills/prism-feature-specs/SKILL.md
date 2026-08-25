@@ -1,5 +1,5 @@
 ---
-name: ai-gateway-feature-specs
+name: prism-feature-specs
 description: Guide for writing product requirements, user stories, acceptance criteria, and system workflow specifications for RoozyLabs Prism (v2.1.0) features. Use when planning new LLM providers, routing policies, billing tiers, dashboard enhancements, or API integrations.
 ---
 

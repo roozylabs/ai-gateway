@@ -1,5 +1,5 @@
 ---
-name: ai-gateway-guide
+name: prism-guide
 description: Master knowledge base and developer guide for RoozyLabs Prism (v2.1.0). Details architecture, Go proxy engine, adapters (OpenAI, Anthropic, Google, OpenCode), database migrations, Next.js dashboard, Astro landing page, Multi-Tenancy, and developer workflows. Use when modifying proxy logic, adding providers, updating schemas, or building AI agent integrations.
 ---
 

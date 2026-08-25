@@ -1,5 +1,5 @@
 ---
-name: ai-gateway-proxy-adapters
+name: prism-proxy-adapters
 description: Guide for creating, modifying, and debugging LLM provider adapters in RoozyLabs Prism (apps/api/internal/proxy). Use when adding support for new AI providers, modifying request payloads, fixing SSE streaming chunks, or adjusting HTTP headers.
 ---
 
