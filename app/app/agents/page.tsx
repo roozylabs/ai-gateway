@@ -55,15 +55,17 @@ export default function AgentsPage() {
     queryFn: apiGetAgents,
   });
 
-  const { data: availableModels } = useQuery({
+  const { data: modelsRes } = useQuery({
     queryKey: ['models'],
     queryFn: apiGetAllModels,
   });
+  const availableModels = Array.isArray(modelsRes) ? modelsRes : (modelsRes?.data || []);
 
-  const { data: availableTools } = useQuery({
+  const { data: toolsRes } = useQuery({
     queryKey: ['tools'],
     queryFn: apiGetTools,
   });
+  const availableTools = Array.isArray(toolsRes) ? toolsRes : [];
 
   const createMutation = useMutation({
     mutationFn: (values: ApiCreateAgentRequest) => apiCreateAgent(values),

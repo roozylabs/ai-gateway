@@ -362,8 +362,8 @@ export async function apiGetModels(
   return result;
 }
 
-export async function apiGetAllModels(): Promise<ApiModel[]> {
-  const response = await api.get<ApiModel[]>('/models');
+export async function apiGetAllModels(): Promise<PaginatedResult<ApiModel>> {
+  const response = await api.get<PaginatedResult<ApiModel>>('/models', { params: { limit: 100 } });
   return response.data;
 }
 
