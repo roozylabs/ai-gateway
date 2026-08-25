@@ -10,13 +10,7 @@ import (
 
 func CORSMiddleware() gin.HandlerFunc {
 	allowedOriginsEnv := os.Getenv("ALLOWED_ORIGINS")
-	allowedOrigins := []string{
-		"https://app.prism.roozylabs.com",
-		"https://prism.roozylabs.com",
-		"https://api.prism.roozylabs.com",
-		"http://localhost:3000",
-		"http://127.0.0.1:3000",
-	}
+	var allowedOrigins []string
 
 	if allowedOriginsEnv != "" {
 		for _, o := range strings.Split(allowedOriginsEnv, ",") {
@@ -24,6 +18,14 @@ func CORSMiddleware() gin.HandlerFunc {
 			if o != "" {
 				allowedOrigins = append(allowedOrigins, o)
 			}
+		}
+	} else {
+		allowedOrigins = []string{
+			"https://app.prism.roozylabs.com",
+			"https://prism.roozylabs.com",
+			"https://api.prism.roozylabs.com",
+			"http://localhost:3000",
+			"http://127.0.0.1:3000",
 		}
 	}
 
@@ -37,7 +39,7 @@ func CORSMiddleware() gin.HandlerFunc {
 					return true
 				}
 			}
-			return true
+			return false
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Prism-Agent-ID", "X-Prism-Role", "X-Request-ID"},

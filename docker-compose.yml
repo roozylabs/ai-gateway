@@ -20,6 +20,7 @@ services:
       CLOUDFLARE_SECRET_KEY: ${CLOUDFLARE_SECRET_KEY:-}
       NEXT_PUBLIC_CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
       CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://app.prism.roozylabs.com,https://prism.roozylabs.com,https://api.prism.roozylabs.com,http://localhost:3000}
     ports:
       - "${SERVER_PORT:-8080}:8080"
     depends_on:
