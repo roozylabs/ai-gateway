@@ -1,5 +1,5 @@
 -- up
-CREATE TABLE tools (
+CREATE TABLE IF NOT EXISTS tools (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id VARCHAR(255) NOT NULL,
   name VARCHAR(100) NOT NULL,
@@ -10,8 +10,8 @@ CREATE TABLE tools (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE UNIQUE INDEX idx_tools_user_name ON tools(user_id, name);
-CREATE INDEX idx_tools_user_id ON tools(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tools_user_name ON tools(user_id, name);
+CREATE INDEX IF NOT EXISTS idx_tools_user_id ON tools(user_id);
 
 -- down
-DROP TABLE tools;
+DROP TABLE IF EXISTS tools;

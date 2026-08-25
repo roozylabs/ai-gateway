@@ -1,5 +1,5 @@
 -- up
-CREATE TABLE resource_backends (
+CREATE TABLE IF NOT EXISTS resource_backends (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   resource_id UUID NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE resource_backends (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_resource_backends_resource_id ON resource_backends(resource_id);
+CREATE INDEX IF NOT EXISTS idx_resource_backends_resource_id ON resource_backends(resource_id);
 
 -- down
-DROP TABLE resource_backends;
+DROP TABLE IF EXISTS resource_backends;

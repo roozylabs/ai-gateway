@@ -1,5 +1,5 @@
 -- up
-CREATE TABLE tool_backends (
+CREATE TABLE IF NOT EXISTS tool_backends (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tool_id UUID NOT NULL REFERENCES tools(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE tool_backends (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_tool_backends_tool_id ON tool_backends(tool_id);
+CREATE INDEX IF NOT EXISTS idx_tool_backends_tool_id ON tool_backends(tool_id);
 
 -- down
-DROP TABLE tool_backends;
+DROP TABLE IF EXISTS tool_backends;

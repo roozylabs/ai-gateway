@@ -1,5 +1,5 @@
 -- up
-CREATE TABLE resources (
+CREATE TABLE IF NOT EXISTS resources (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id VARCHAR(255) NOT NULL,
   name VARCHAR(100) NOT NULL,
@@ -10,8 +10,8 @@ CREATE TABLE resources (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE UNIQUE INDEX idx_resources_user_name ON resources(user_id, name);
-CREATE INDEX idx_resources_user_id ON resources(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_user_name ON resources(user_id, name);
+CREATE INDEX IF NOT EXISTS idx_resources_user_id ON resources(user_id);
 
 -- down
-DROP TABLE resources;
+DROP TABLE IF EXISTS resources;
