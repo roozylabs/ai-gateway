@@ -1,5 +1,5 @@
 -- up
-CREATE TABLE cost_anomalies (
+CREATE TABLE IF NOT EXISTS cost_anomalies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   window_start TIMESTAMPTZ NOT NULL,
   metric VARCHAR(50) NOT NULL,
@@ -11,7 +11,4 @@ CREATE TABLE cost_anomalies (
   details JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_cost_anomalies_created_at ON cost_anomalies(created_at);
-
--- down
-DROP TABLE cost_anomalies;
+CREATE INDEX IF NOT EXISTS idx_cost_anomalies_created_at ON cost_anomalies(created_at);

@@ -15,6 +15,3 @@ CREATE TABLE IF NOT EXISTS mcp_servers (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_servers_user_name ON mcp_servers(user_id, name);
 CREATE INDEX IF NOT EXISTS idx_mcp_servers_user_id ON mcp_servers(user_id);
-
--- down
-DROP TABLE IF EXISTS mcp_servers;

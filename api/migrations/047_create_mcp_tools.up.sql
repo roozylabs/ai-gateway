@@ -11,6 +11,3 @@ CREATE TABLE IF NOT EXISTS mcp_tools (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_tools_server_name ON mcp_tools(mcp_server_id, name);
 CREATE INDEX IF NOT EXISTS idx_mcp_tools_server_id ON mcp_tools(mcp_server_id);
-
--- down
-DROP TABLE IF EXISTS mcp_tools;
