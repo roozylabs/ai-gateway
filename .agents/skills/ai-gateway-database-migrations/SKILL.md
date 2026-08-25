@@ -1,13 +1,13 @@
 ---
 name: ai-gateway-database-migrations
-description: Guide for creating PostgreSQL migrations and updating repository models in AI Gateway (/api/migrations). Use when altering database schema, seeding new LLM models or providers, or updating repository sqlx queries.
+description: Guide for creating PostgreSQL migrations and updating repository models in RoozyLabs Prism (apps/api/migrations). Use when altering database schema, seeding new LLM models or providers, or updating repository sqlx queries.
 ---
 
-# AI Gateway Database & Migrations Guide
+# RoozyLabs Prism — Database & Migrations Guide
 
 ## 1. Migration Naming Convention
 
-Migration files are stored sequentially in `/api/migrations/` using 3-digit numeric prefixes:
+Migration files are stored sequentially in `apps/api/migrations/` using 3-digit numeric prefixes (currently `001` through `060` for Multi-Tenancy):
 
 - `0XX_<description>.up.sql` (Forward migration)
 - `0XX_<description>.down.sql` (Rollback migration)

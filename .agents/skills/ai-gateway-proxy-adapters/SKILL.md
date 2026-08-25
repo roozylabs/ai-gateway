@@ -1,9 +1,9 @@
 ---
 name: ai-gateway-proxy-adapters
-description: Guide for creating, modifying, and debugging LLM provider adapters in AI Gateway (/api/internal/proxy). Use when adding support for new AI providers, modifying request payloads, fixing SSE streaming chunks, or adjusting HTTP headers.
+description: Guide for creating, modifying, and debugging LLM provider adapters in RoozyLabs Prism (apps/api/internal/proxy). Use when adding support for new AI providers, modifying request payloads, fixing SSE streaming chunks, or adjusting HTTP headers.
 ---
 
-# AI Gateway Provider Adapters Guide
+# RoozyLabs Prism — Provider Adapters Guide
 
 ## 1. Adapter Interface Specification (`provider.go`)
 

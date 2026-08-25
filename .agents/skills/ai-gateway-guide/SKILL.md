@@ -1,36 +1,38 @@
 ---
 name: ai-gateway-guide
-description: Master knowledge base and developer guide for AI Gateway (RoozyLabs). Details architecture, Go proxy engine, adapters (OpenAI, Anthropic, Google, OpenCode), database migrations, Next.js dashboard, and developer workflows. Use when modifying proxy logic, adding providers, updating schemas, or building AI agent integrations.
+description: Master knowledge base and developer guide for RoozyLabs Prism (v2.1.0). Details architecture, Go proxy engine, adapters (OpenAI, Anthropic, Google, OpenCode), database migrations, Next.js dashboard, Astro landing page, Multi-Tenancy, and developer workflows. Use when modifying proxy logic, adding providers, updating schemas, or building AI agent integrations.
 ---
 
-# RoozyLabs AI Gateway - Master Knowledge Base & Developer Guide
+# RoozyLabs Prism — Master Knowledge Base & Developer Guide (v2.1.0)
 
 ## 1. Project Overview & System Architecture
 
-AI Gateway is a centralized, high-performance LLM API Gateway and Model Router. It consolidates multiple LLM upstream providers (OpenAI, Anthropic, Google Gemini, OpenCode Zen, etc.) into a unified, OpenAI-compatible endpoint (`/v1/chat/completions`).
+**RoozyLabs Prism** is a centralized, high-performance Universal AI Control Plane and Model Router. It consolidates multiple LLM upstream providers (OpenAI, Anthropic, Google Gemini, OpenRouter, OpenCode Free, etc.) into a unified, OpenAI-compatible endpoint (`/v1/chat/completions`) with `prism-auto` dynamic routing.
 
-```
-[Client / OpenCode CLI / App]
+```text
+[Client / OpenCode CLI / App / Agent]
             │ (HTTP Bearer gw_sk_*)
+            │ (Header: X-Prism-Org-ID / X-Prism-Agent-ID)
             ▼
 ┌────────────────────────────────────────────────────────┐
-│ Next.js 15 Dashboard / API Proxy (Port 3000)          │
+│ Next.js 15 Dashboard & Astro Web App (apps/app & web)  │
 │ Routes /api/v1 -> Backend (Port 8080)                  │
 └───────────────────────────┬────────────────────────────┘
                             │
                             ▼
 ┌────────────────────────────────────────────────────────┐
 │ Go API Gateway Engine (Port 8080)                      │
-│ ├── Middleware (Auth, Rate Limiter)                    │
-│ ├── Router (ResolveWithFallback)                       │
-│ └── Proxy Engine (Proxy, ProxyStream)                  │
+│ ├── Middleware (Auth, TenantContext, Rate Limiter)     │
+│ ├── Router (ResolveSemantic with prism-auto)           │
+│ ├── Gateways (Tool, Resource, MCP Gateways)            │
+│ └── Proxy Engine (Circuit Breaker, Metering, SSE)      │
 └───────────┬────────────────────────────┬───────────────┘
             │                            │
             ▼                            ▼
 ┌───────────────────────┐   ┌────────────────────────────┐
-│ PostgreSQL 16 DB      │   │ Redis Store                │
-│ (Models, Credentials, │   │ (Cooldown TTLs, Events,    │
-│ Gateway Keys, Logs)   │   │ Rate Limit Counters)       │
+│ PostgreSQL 15 DB      │   │ Redis 7 Store              │
+│ (001-060 Migrations,  │   │ (Cooldown TTLs, Tenant     │
+│ Multi-Tenant RLS)     │   │ Keyspaces, Rate Limits)    │
 └───────────────────────┘   └────────────────────────────┘
             │
             ▼ (Upstream Adapters: OpenAI, Anthropic, Google, OpenCode)
@@ -41,111 +43,57 @@ AI Gateway is a centralized, high-performance LLM API Gateway and Model Router. 
 
 ---
 
-## 2. Directory Structure
+## 2. Monorepo Directory Structure
 
-- `/api`: Go Backend Source Code
-  - `/cmd/server/main.go`: Application entrypoint, route registration (`/v1` and `/api/v1`).
-  - `/internal/proxy`: Core proxy engine (`engine.go`), router (`router.go`), and provider adapters (`openai.go`, `anthropic.go`, `google.go`, `opencode.go`).
-  - `/internal/handlers`: HTTP handlers for Gateway, Credentials, Models, Keys, Logs, and Dashboard.
-  - `/internal/repository`: Data access repositories with PostgreSQL `sqlx`.
-  - `/internal/redis`: Redis cooldown store (`cooldown.go`) and pub/sub event publisher.
-  - `/migrations`: Sequential SQL database migration files.
-- `/app`: Next.js 15 Frontend Dashboard
-  - `/app`: Next.js App Router pages (`logs`, `gateway-keys`, `models`, `credentials`, `sandbox`).
-  - `/components/atoms`: Reusable UI components (`DataTable.tsx`, `PageHeader.tsx`, `StatusTag.tsx`).
-  - `/lib/api.ts`: API client layer with `PaginatedResult<T>` interfaces.
-
----
-
-## 3. Critical Backend Engine & Proxy Rules (`/api/internal/proxy`)
-
-### 3.1. Upstream Model Mapping
-- **`req.Model` vs `route.Model.Name`**: `engine.go` resolves model aliases from the database. If `route.Model.Name` (Upstream Model Name) is non-empty, it overrides `req.Model` before sending the payload upstream.
-- **Google Gemini Rule**: Official Google OpenAI-compatible endpoint deprecated legacy 1.5/2.0 model names. Upstream model name in the database MUST be set to `gemini-3.6-flash` or `gemini-flash-latest`.
-
-### 3.2. Provider Adapter Requirements
-- **OpenCode Zen (`opencode.go`)**: OpenCode Zen API blocks requests without an OpenCode CLI user-agent. `OpenCodeAdapter.BuildRequest` MUST explicitly set `httpReq.Header.Set("User-Agent", "opencode-cli/1.0")`.
-- **SSE Stream JSON Casing**: `ProviderResponse` and `Choice` structs in `provider.go` MUST have exact JSON tags (`json:"id"`, `json:"model"`, `json:"choices"`, `json:"usage"`, `json:"delta"`, `json:"finish_reason"`).
-- **No `omitempty` on `Choices`**: `Choices` field MUST NOT use `omitempty` (`json:"choices"`). `engine.go` MUST initialize `chunk.Choices = []Choice{}` when `nil` so every SSE line contains `"choices": [...]` to pass client Zod validation.
-
-### 3.3. HTTP Transport & Cooldown Engine
-- **HTTP Transport**: `NewEngine` configures `http.Transport` with `ResponseHeaderTimeout: 30 * time.Second`, `TLSHandshakeTimeout: 10 * time.Second`, `DialTimeout: 10 * time.Second`, and `MaxIdleConns: 100` for fast connection pooling.
-- **Smart 429 Quota Detection**: When 429 occurs, if response contains `FreeUsageLimitError` or daily quota messages, set Redis Cooldown TTL to 86,400s (24 hours) and update status to `rate_limited`.
-
-### 3.4. Multi-Auth Type Architecture (Enterprise Cloud OAuth & IAM)
-- **Supported Authentication Types (`auth_type`)**:
-  - `api_key` (Default V1): Direct plaintext API Key (`sk-...`, `AIza...`).
-  - `gcp_user_oauth` (V2): Google Gemini OAuth 2.0 (`client_id`, `client_secret`, `refresh_token`).
-  - `gcp_service_account` (V2): Google Cloud Vertex AI Service Account JSON.
-  - `azure_oauth` (V2): Azure OpenAI Service Microsoft Entra ID (Azure AD) OAuth 2.0 (`client_id`, `client_secret`, `tenant_id`).
-  - `aws_iam` (V2): AWS Bedrock Anthropic Claude via AWS SigV4 Request Signing / STS.
-  - `github_oauth` (V2): GitHub Models & Copilot User Access Tokens.
-- **OAuth Token Refresh Flow**:
-  1. Proxy Engine checks Redis cache: `credential:{id}:access_token`.
-  2. If expired or missing, Gateway calls `https://oauth2.googleapis.com/token` with `refresh_token`.
-  3. Receives new `access_token` and caches it in Redis with 55-minute TTL (3,300s).
-  4. Injects `Authorization: Bearer <access_token>` into upstream request payload.
-
-### 3.5. Concurrency Limiter & Cloudflare Evasion Engine (`concurrency.go`, `throttler.go`)
-- **`ProviderConcurrencyLimiter`**: Caps maximum active parallel streams (default = `2` for `opencode`, configurable via `OPENCODE_MAX_CONCURRENCY`) using Go `chan struct{}` semaphores.
-- **Provider Throttler**: Paces outgoing requests per provider with minimum spacing (350ms) to prevent WAF burst rate limits.
-- **Outgoing Proxy Support**: Respects `GLOBAL_PROXY_URL` environment variable (SOCKS5/HTTP) for routing traffic through residential proxies / SSH tunnels.
-
-### 3.6. Precision Token Tracking & Fallback Estimator
-- **Streaming Usage (`stream_options`)**: Injects `"stream_options": {"include_usage": true}` into OpenAI and Google Gemini payloads to force providers to return final stream usage.
-- **Fallback Token Estimator**: If provider returns 0 tokens, `engine.go` calculates an accurate estimate ($\approx 4\text{ chars/token}$) from request prompt & accumulated stream response characters.
-- **Auto-Clear Quota**: On successful 200 OK request or manual connection test, stale 429 error status in Redis is automatically deleted and updated to `Normal`.
+- `apps/api`: Go Backend Source Code (Golang 1.24)
+  - `cmd/server/main.go`: Application entrypoint, route registration (`/v1` and `/api/v1`).
+  - `internal/proxy`: Core proxy engine (`engine.go`), router (`router.go`), and provider adapters (`openai.go`, `anthropic.go`, `google.go`, `opencode.go`).
+  - `internal/middleware`: Middleware (`tenant.go`, `auth.go`, `ratelimit.go`).
+  - `internal/service`: Services (`metering.go`, `auth.go`).
+  - `internal/handlers`: HTTP handlers for Gateway, Credentials, Models, Keys, Logs, Settings, and Dashboard.
+  - `internal/repository`: Data access repositories with PostgreSQL `sqlx`.
+  - `internal/redis`: Redis cooldown store (`cooldown.go`) and pub/sub event publisher.
+  - `migrations`: Sequential SQL database migration files (001–060).
+- `apps/app`: Next.js 15 Admin Console & Control Dashboard
+  - `app`: Next.js App Router pages (`logs`, `gateway-keys`, `models`, `credentials`, `playground`, `sandbox`, `settings/organization`, `settings/members`).
+  - `components`: Reusable UI components (`TenantSelector.tsx`, `AppLayout.tsx`).
+  - `lib/api.ts`: API client layer with `PaginatedResult<T>` interfaces.
+- `apps/web`: Astro 5.0 Marketing Landing Page
+  - `src/pages/index.astro`: High-fidelity responsive landing page with mobile drawer UI (`prism-auto` model display).
 
 ---
 
-## 4. API Response & Pagination Standard
+## 3. Critical Backend Engine & Proxy Rules (`apps/api/internal/proxy`)
 
-All list endpoints (`/logs`, `/gateway-keys`, `/models`, `/credentials`) MUST return standard paginated JSON:
+### 3.1. Upstream Model Mapping & Smart Router (`prism-auto`)
+- **`prism-auto` Model**: When client sends `"model": "prism-auto"`, `ResolveSemantic` evaluates prompt task complexity, pre-filters ready credentials, scores candidate models by policy weights (`balanced`, `cheap`, `quality`), and routes dynamically to the winning provider/model.
+- **`req.Model` vs `route.Model.Name`**: `engine.go` resolves model aliases from the database. If `route.Model.Name` (Upstream Model Name) is non-empty, it overrides `req.Model` before sending payload upstream.
 
-```json
-{
-  "data": [...],
-  "total": 39,
-  "page": 1,
-  "pageSize": 10
-}
-```
-
-- **Backend Query Standard**: Repository queries for models and credentials MUST use `LEFT JOIN providers p ON p.id = m.provider_id` to query across all providers when `providerID == "all"` or empty, avoiding client-side `Promise.all` offset bugs.
+### 3.2. Multi-Tenancy & TenantContext (`apps/api/internal/middleware/tenant.go`)
+- **Tenant Isolation**: `TenantMiddleware` extracts `X-Prism-Org-ID`, `X-Prism-Workspace-ID`, and `X-Prism-Project-ID`. If unprovided, fallback bindings to `org_default`, `ws_default`, and `proj_default` ensure 100% backward compatibility.
+- **Consumption Metering**: `MeteringService` calculates token usage, USD cost, spend caps, and hard quota auto-suspension.
 
 ---
 
-## 5. UI Real-time Cooldown & DataTable Rules (`/app`)
+## 4. OpenCode CLI Integration Guide
 
-- **Real-time Cooldown Tag**: `app/app/credentials/page.tsx` uses `<CooldownCountdownTag>` component to decrement TTL second-by-second (`34s -> 33s -> ... -> 0s`) in real time, with `refetchInterval: 5000` to auto-sync with Redis.
-- **DataTable Paginator**: `DataTable.tsx` uses `mergedPagination` supporting page size options (`10`, `20`, `50`, `100`), quick jumper, and total items formatter.
-
----
-
-## 6. OpenCode CLI Integration Guide
-
-To configure OpenCode CLI to use AI Gateway, save to `~/.config/opencode/opencode.jsonc` or `./opencode.jsonc`:
+Save to `~/.config/opencode/opencode.jsonc`:
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
-    "roozylabs-ai-gateway": {
+    "prism": {
       "options": {
-        "baseURL": "http://<SERVER_IP>:8080/v1",
-        "apiKey": "gw_sk_<YOUR_GATEWAY_KEY>"
+        "baseURL": "https://api.prism.roozylabs.com/v1",
+        "apiKey": "gw_sk_prism_<YOUR_KEY>"
       },
       "models": {
-        "gemini-3.6-flash": {
-          "name": "Gemini 3.6 Flash"
-        },
-        "big-pickle": {
-          "name": "Big Pickle"
+        "prism-auto": {
+          "name": "Prism Auto Smart Router"
         }
       }
     }
   }
 }
 ```
-
-*Note: Use singular `"provider"` and `"options"` block in OpenCode config schema.*

@@ -1,9 +1,9 @@
 ---
 name: ai-gateway-feature-specs
-description: Guide for writing product requirements, user stories, acceptance criteria, and system workflow specifications for AI Gateway features. Use when planning new LLM providers, routing policies, billing tiers, dashboard enhancements, or API integrations.
+description: Guide for writing product requirements, user stories, acceptance criteria, and system workflow specifications for RoozyLabs Prism (v2.1.0) features. Use when planning new LLM providers, routing policies, billing tiers, dashboard enhancements, or API integrations.
 ---
 
-# AI Gateway Feature Specification & Business Analysis Guide
+# RoozyLabs Prism — Feature Specification Guide
 
 ## 1. Feature Specification Framework
 
