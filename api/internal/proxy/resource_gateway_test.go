@@ -25,7 +25,7 @@ func TestResourceGatewayRestSuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"name": "test", "id": "123"})
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"name": "test", "id": "123"})
 	}))
 	defer srv.Close()
 	ep := srv.URL
@@ -48,11 +48,11 @@ func TestResourceGatewayGraphqlSuccess(t *testing.T) {
 		body, _ := json.Marshal(r.Header.Get("Content-Type"))
 		_ = body
 		var payload map[string]interface{}
-		json.NewDecoder(r.Body).Decode(&payload)
+		_ = json.NewDecoder(r.Body).Decode(&payload)
 		assert.Contains(t, payload, "query")
 		assert.Contains(t, payload, "variables")
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"data": []map[string]interface{}{{"name": "A"}}})
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": []map[string]interface{}{{"name": "A"}}})
 	}))
 	defer srv.Close()
 	query := "{ customers { name } }"
@@ -80,7 +80,7 @@ func TestResourceGatewayFailover(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok"})
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok"})
 	}))
 	defer srv.Close()
 	ep := srv.URL
