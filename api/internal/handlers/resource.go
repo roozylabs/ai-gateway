@@ -51,7 +51,7 @@ func (h *ResourceHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	resources, err := h.resources.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list resources"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list resources: " + err.Error()})
 		return
 	}
 	if resources == nil {
