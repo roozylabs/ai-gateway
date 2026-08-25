@@ -26,9 +26,9 @@ func TestToolGatewayExecuteSuccess(t *testing.T) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		var args map[string]interface{}
-		json.NewDecoder(r.Body).Decode(&args)
+		_ = json.NewDecoder(r.Body).Decode(&args)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"result": "search results for " + args["query"].(string)})
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"result": "search results for " + args["query"].(string)})
 	}))
 	defer srv.Close()
 
@@ -54,11 +54,11 @@ func TestToolGatewayExecuteFailover(t *testing.T) {
 		callCount++
 		if callCount == 1 {
 			w.WriteHeader(500)
-			w.Write([]byte("server error"))
+			_, _ = w.Write([]byte("server error"))
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok from fallback"})
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok from fallback"})
 	}))
 	defer srv.Close()
 
