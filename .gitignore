@@ -1,51 +1,55 @@
-# Go
-api/bin/
-api/vendor/
+# Node.js / Monorepo Dependencies & Builds
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+dist/
+**/dist/
+.astro/
+**/.astro/
+out/
+**/out/
+*.tsbuildinfo
+**/*.tsbuildinfo
+next-env.d.ts
+**/next-env.d.ts
+.pnpm-debug.log*
+
+# Go Binaries & Vendor
+bin/
+**/bin/
+vendor/
+**/vendor/
 *.exe
-api/server.exe
+server.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 
-# Node.js/Next.js
-app/node_modules/
-app/.next/
-app/out/
-app/.env.local
-*.tsbuildinfo
-
-# Environment files (secrets)
+# Environment secrets
 .env
-api/.env
+**/.env
+**/.env.local
+**/.env*.local
 
-# Docker
+# Docker & Temporary
 docker-compose.override.yml
-
-# IDE/Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Test coverage
+*.log
+*.tmp
 coverage.out
 coverage.html
 
-# Build artifacts
-*.log
-*.tmp
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
 
-app/next-env.d.ts
-
+# Local runtime & plugins
 opencode.json
-
 .agents/plugins/antd/
-
-.superpowers
+.superpowers/
 */superpowers

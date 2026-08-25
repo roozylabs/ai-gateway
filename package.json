@@ -1,0 +1,17 @@
+{
+  "name": "prism-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev:app": "pnpm --filter prism-dashboard dev",
+    "dev:web": "pnpm --filter prism-web dev",
+    "dev:api": "cd apps/api && go run cmd/server/main.go",
+    "build": "pnpm --recursive run build",
+    "test": "cd apps/api && go test ./...",
+    "lint": "pnpm --recursive run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

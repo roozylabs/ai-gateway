@@ -1,0 +1,48 @@
+---
+interface Props {
+	title: string;
+	description?: string;
+}
+
+const { title, description = "Roozy Prism AI Gateway - Enterprise Multi-Provider LLM Router, Agent Infrastructure & Cryptographic Audit Engine." } = Astro.props;
+---
+
+<!dnctype html>
+<html lang="en" class="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content={description} />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+	</head>
+	<body class="bg-[#0B0F17] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] antialiased selection:bg-purple-500 selection:text-white min-h-screen flex flex-col">
+		<slot />
+	</body>
+</html>
+
+<style is:global>
+	:root {
+		--font-sans: 'Plus Jakarta Sans', sans-serif;
+		--font-mono: 'JetBrains Mono', monospace;
+	}
+	
+	/* Custom Prism Glow Scrollbar */
+	::-webkit-scrollbar {
+		width: 8px;
+	}
+	::-webkit-scrollbar-track {
+		background: #0B0F17;
+	}
+	::-webkit-scrollbar-thumb {
+		background: #1E293B;
+		border-radius: 4px;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		background: #8B5CF6;
+	}
+</style>
