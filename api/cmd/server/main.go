@@ -81,6 +81,8 @@ func main() {
 	toolBackendRepo := repository.NewToolBackendRepository(sqlDB)
 	resourceRepo := repository.NewResourceRepository(sqlDB)
 	resourceBackendRepo := repository.NewResourceBackendRepository(sqlDB)
+	mcpServerRepo := repository.NewMCPServerRepository(sqlDB)
+	mcpToolRepo := repository.NewMCPToolRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -98,6 +100,7 @@ func main() {
 	engine := proxy.NewEngine(router, credentialRepo, cooldown, telemetry, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo, payloadRepo, toolInvocationRepo)
 	toolGateway := proxy.NewToolGateway(toolRepo)
 	resourceGateway := proxy.NewResourceGateway(resourceRepo)
+	mcpGateway := proxy.NewMCPGateway(mcpServerRepo, mcpToolRepo)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -125,6 +128,7 @@ func main() {
 	toolGatewayHandler := handlers.NewToolGatewayHandler(toolGateway, toolInvocationRepo, eventPublisher, cfg.EncryptionKey)
 	resourceHandler := handlers.NewResourceHandler(resourceRepo, resourceBackendRepo, resourceGateway, cfg.EncryptionKey)
 	resourceGatewayHandler := handlers.NewResourceGatewayHandler(resourceGateway, toolInvocationRepo, eventPublisher, cfg.EncryptionKey)
+	mcpHandler := handlers.NewMCPHandler(mcpServerRepo, mcpToolRepo, mcpGateway, cfg.EncryptionKey)
 
 	// Background workers
 	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -278,7 +282,16 @@ func main() {
 			protected.PUT("/resources/:id", resourceHandler.Update)
 			protected.DELETE("/resources/:id", resourceHandler.Delete)
 			protected.POST("/resources/:id/test", resourceHandler.TestResource)
-			
+
+			// MCP Gateway
+			protected.GET("/mcp/servers", mcpHandler.List)
+			protected.GET("/mcp/servers/:id", mcpHandler.Get)
+			protected.POST("/mcp/servers", mcpHandler.Create)
+			protected.PUT("/mcp/servers/:id", mcpHandler.Update)
+			protected.DELETE("/mcp/servers/:id", mcpHandler.Delete)
+			protected.POST("/mcp/servers/:id/sync", mcpHandler.Sync)
+			protected.POST("/mcp/servers/:id/test", mcpHandler.TestTool)
+
 			// Sandbox
 			protected.POST("/sandbox/chat/completions", gatewayHandler.SandboxChatCompletions)
 		}

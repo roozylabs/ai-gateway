@@ -258,6 +258,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       label: 'Resource Gateway',
     },
     {
+      key: '/mcp',
+      icon: <ApiOutlined />,
+      label: 'MCP Gateway',
+    },
+    {
       key: '/playground',
       icon: <ExperimentOutlined />,
       label: 'Routing Playground',

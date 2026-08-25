@@ -834,3 +834,86 @@ export async function apiTestResource(id: string, args: Record<string, any>): Pr
   const response = await api.post<ApiResourceExecutionResult>(`/resources/${id}/test`, { args });
   return response.data;
 }
+
+export interface ApiMCPServer {
+  id: string;
+  userId: string;
+  name: string;
+  displayName: string;
+  description: string;
+  transportType: string;
+  endpointUrl: string;
+  hasAuthToken: boolean;
+  status: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiMCPTool {
+  id: string;
+  mcpServerId: string;
+  name: string;
+  description: string;
+  inputSchema: Record<string, any>;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiMCPServerWithTools {
+  server: ApiMCPServer;
+  tools: ApiMCPTool[];
+}
+
+export interface ApiCreateMCPServerRequest {
+  name: string;
+  displayName?: string;
+  description?: string;
+  transportType?: string;
+  endpointUrl: string;
+  authToken?: string;
+  enabled?: boolean;
+}
+
+export interface ApiMCPToolExecutionResult {
+  server: string;
+  tool: string;
+  statusCode: number;
+  result: any;
+  latencyMs: number;
+}
+
+export async function apiGetMCPServers(): Promise<ApiMCPServer[]> {
+  const response = await api.get<ApiMCPServer[]>('/mcp/servers');
+  return response.data;
+}
+
+export async function apiGetMCPServer(id: string): Promise<ApiMCPServerWithTools> {
+  const response = await api.get<ApiMCPServerWithTools>(`/mcp/servers/${id}`);
+  return response.data;
+}
+
+export async function apiCreateMCPServer(data: ApiCreateMCPServerRequest): Promise<ApiMCPServerWithTools> {
+  const response = await api.post<ApiMCPServerWithTools>('/mcp/servers', data);
+  return response.data;
+}
+
+export async function apiUpdateMCPServer(id: string, data: ApiCreateMCPServerRequest): Promise<ApiMCPServerWithTools> {
+  const response = await api.put<ApiMCPServerWithTools>(`/mcp/servers/${id}`, data);
+  return response.data;
+}
+
+export async function apiDeleteMCPServer(id: string): Promise<void> {
+  await api.delete(`/mcp/servers/${id}`);
+}
+
+export async function apiSyncMCPServer(id: string): Promise<ApiMCPServerWithTools> {
+  const response = await api.post<ApiMCPServerWithTools>(`/mcp/servers/${id}/sync`);
+  return response.data;
+}
+
+export async function apiTestMCPTool(id: string, tool: string, args: Record<string, any>): Promise<ApiMCPToolExecutionResult> {
+  const response = await api.post<ApiMCPToolExecutionResult>(`/mcp/servers/${id}/test`, { tool, args });
+  return response.data;
+}
