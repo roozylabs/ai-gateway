@@ -221,22 +221,48 @@ export interface MCPServer {
   tools_count?: number;
 }
 
+export interface CandidateScoreDetail {
+  modelId: string;
+  slug: string;
+  displayName: string;
+  providerName: string;
+  score: number;
+  reasons?: string[];
+  inputPrice1M?: number;
+  outputPrice1M?: number;
+}
+
 export interface RoutingSimulateRequest {
-  model: string;
-  messages: ChatMessage[];
+  prompt?: string;
+  model?: string;
+  messages?: ChatMessage[];
+  policyId?: string;
   policy?: string;
+  customWeights?: Record<string, number>;
+  budgetStatus?: string;
+  providerId?: string;
 }
 
 export interface RoutingDecision {
-  requested_model: string;
-  selected_model: string;
-  selected_provider: string;
-  credential_id?: string;
-  routing_policy: string;
-  score: number;
-  estimated_cost_usd: number;
-  expected_latency_ms: number;
-  fallback_models?: string[];
+  promptPreview: string;
+  taskType: string;
+  complexity: string;
+  policyName: string;
+  weightsUsed?: Record<string, number>;
+  budgetStatus?: string;
+  selectedModel: string;
+  selectedProvider: string;
+  candidates: CandidateScoreDetail[];
+  downgradeReason?: string;
+
+  // Legacy aliases
+  requested_model?: string;
+  selected_model?: string;
+  selected_provider?: string;
+  routing_policy?: string;
+  score?: number;
+  estimated_cost_usd?: number;
+  expected_latency_ms?: number;
 }
 
 export interface HealthCheckResponse {

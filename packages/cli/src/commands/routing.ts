@@ -20,22 +20,26 @@ export function registerRoutingCommand(program: Command) {
       });
 
       try {
+        const prompt = options.prompt || "Explain Server-Sent Events (SSE) streaming in 2 paragraphs.";
         const result = await prism.routing.simulate({
+          prompt: prompt,
           model: options.model,
-          messages: [{ role: "user", content: options.prompt }],
           policy: options.policy,
         });
 
         console.log("\n=== Routing Decision Simulation Result ===");
-        console.log(`Requested Model  : ${result.requested_model}`);
-        console.log(`Selected Model   : ${result.selected_model}`);
-        console.log(`Selected Provider: ${result.selected_provider}`);
-        console.log(`Routing Policy   : ${result.routing_policy || options.policy}`);
-        console.log(`Score            : ${result.score ?? "N/A"}`);
-        console.log(`Est. Cost (USD)  : $${result.estimated_cost_usd ?? 0}`);
-        console.log(`Expected Latency : ${result.expected_latency_ms ?? 0} ms`);
-        if (result.fallback_models && result.fallback_models.length > 0) {
-          console.log(`Fallback Models  : ${result.fallback_models.join(", ")}`);
+        console.log(`Prompt Preview   : ${result.promptPreview || prompt}`);
+        console.log(`Task Type        : ${result.taskType || "N/A"}`);
+        console.log(`Complexity       : ${result.complexity || "N/A"}`);
+        console.log(`Routing Policy   : ${result.policyName || options.policy}`);
+        console.log(`Selected Model   : ${result.selectedModel || result.selected_model || "N/A"}`);
+        console.log(`Selected Provider: ${result.selectedProvider || result.selected_provider || "N/A"}`);
+        if (result.candidates && result.candidates.length > 0) {
+          const top = result.candidates[0];
+          console.log(`Top Score        : ${top.score ? top.score.toFixed(4) : "N/A"} (${top.displayName || top.slug})`);
+        }
+        if (result.downgradeReason) {
+          console.log(`Downgrade Reason : ${result.downgradeReason}`);
         }
         console.log("===========================================\n");
       } catch (err) {

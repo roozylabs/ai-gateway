@@ -5,7 +5,8 @@ export class CredentialsModule {
   constructor(private client: HttpClient) {}
 
   public async list(): Promise<Credential[]> {
-    return this.client.request<Credential[]>("/api/credentials");
+    const res = await this.client.request<any>("/api/credentials");
+    return Array.isArray(res) ? res : res.data || [];
   }
 
   public async delete(id: string): Promise<void> {
