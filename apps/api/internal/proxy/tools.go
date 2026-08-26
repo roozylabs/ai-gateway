@@ -132,14 +132,24 @@ func NormalizeAnthropicToolUse(contentBlocks []interface{}) []map[string]interfa
 				}
 			}
 
-			toolCalls = append(toolCalls, map[string]interface{}{
-				"id":   id,
-				"type": "function",
-				"function": map[string]interface{}{
-					"name":      name,
-					"arguments": argsStr,
-				},
-			})
+			fnMap := map[string]interface{}{
+				"name":      name,
+				"arguments": argsStr,
+			}
+			tcMap := map[string]interface{}{
+				"id":       id,
+				"type":     "function",
+				"function": fnMap,
+			}
+			if sig, ok := block["thought_signature"]; ok && sig != nil && sig != "" {
+				fnMap["thought_signature"] = sig
+				tcMap["thought_signature"] = sig
+			}
+			if sig, ok := block["thoughtSignature"]; ok && sig != nil && sig != "" {
+				fnMap["thoughtSignature"] = sig
+				tcMap["thoughtSignature"] = sig
+			}
+			toolCalls = append(toolCalls, tcMap)
 		}
 	}
 	return toolCalls
@@ -163,14 +173,32 @@ func NormalizeGoogleFunctionCall(parts []interface{}) []map[string]interface{} {
 				}
 			}
 			id := fmt.Sprintf("call_google_%d", idx)
-			toolCalls = append(toolCalls, map[string]interface{}{
-				"id":   id,
-				"type": "function",
-				"function": map[string]interface{}{
-					"name":      name,
-					"arguments": argsStr,
-				},
-			})
+			fnMap := map[string]interface{}{
+				"name":      name,
+				"arguments": argsStr,
+			}
+			tcMap := map[string]interface{}{
+				"id":       id,
+				"type":     "function",
+				"function": fnMap,
+			}
+			if sig, ok := fc["thought_signature"]; ok && sig != nil && sig != "" {
+				fnMap["thought_signature"] = sig
+				tcMap["thought_signature"] = sig
+			}
+			if sig, ok := fc["thoughtSignature"]; ok && sig != nil && sig != "" {
+				fnMap["thoughtSignature"] = sig
+				tcMap["thoughtSignature"] = sig
+			}
+			if sig, ok := part["thought_signature"]; ok && sig != nil && sig != "" {
+				fnMap["thought_signature"] = sig
+				tcMap["thought_signature"] = sig
+			}
+			if sig, ok := part["thoughtSignature"]; ok && sig != nil && sig != "" {
+				fnMap["thoughtSignature"] = sig
+				tcMap["thoughtSignature"] = sig
+			}
+			toolCalls = append(toolCalls, tcMap)
 		}
 	}
 	return toolCalls
