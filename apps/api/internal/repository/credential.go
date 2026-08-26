@@ -22,10 +22,10 @@ func NewCredentialRepository(db *sql.DB) *CredentialRepository {
 
 func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE provider_id = $1 ORDER BY priority ASC`, providerID,
+		 FROM credentials WHERE provider_id = $1 ORDER BY COALESCE(health_score, 100.00) DESC, priority ASC`, providerID,
 	)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 	for rows.Next() {
 		var c models.Credential
 		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
-			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+			&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -49,7 +49,7 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 }
 
 func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, search string, limit, offset int) ([]models.Credential, int64, error) {
-	query := `SELECT c.id, c.provider_id, COALESCE(p.name, ''), c.name, c.encrypted_key, c.key_prefix, c.masked_key, COALESCE(c.auth_type, 'api_key'), c.encrypted_metadata, c.priority, c.enabled, c.status,
+	query := `SELECT c.id, c.provider_id, COALESCE(p.name, ''), c.name, c.encrypted_key, c.key_prefix, c.masked_key, COALESCE(c.auth_type, 'api_key'), c.encrypted_metadata, c.priority, c.enabled, c.status, COALESCE(c.health_score, 100.00),
 		        c.last_used_at, c.request_count, c.error_count, c.last_error, c.last_error_at,
 		        c.created_at, c.updated_at
 		 FROM credentials c LEFT JOIN providers p ON p.id = c.provider_id WHERE 1=1`
@@ -100,7 +100,7 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 	for rows.Next() {
 		var c models.Credential
 		if err := rows.Scan(&c.ID, &c.ProviderID, &c.ProviderName, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
-			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+			&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
@@ -115,12 +115,12 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 func (r *CredentialRepository) FindByID(ctx context.Context, id string) (*models.Credential, error) {
 	c := &models.Credential{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
 		 FROM credentials WHERE id = $1`, id,
 	).Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
-		&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+		&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 		&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -169,13 +169,13 @@ func (r *CredentialRepository) Delete(ctx context.Context, id string) error {
 func (r *CredentialRepository) FindActiveByProviderID(ctx context.Context, providerID string) (*models.Credential, error) {
 	c := &models.Credential{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status = 'active'
-		 ORDER BY priority ASC LIMIT 1`, providerID,
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status NOT IN ('invalid', 'disabled')
+		 ORDER BY COALESCE(health_score, 100.00) DESC, priority ASC LIMIT 1`, providerID,
 	).Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
-		&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+		&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 		&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -185,11 +185,11 @@ func (r *CredentialRepository) FindActiveByProviderID(ctx context.Context, provi
 
 func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, providerID string, excludeIDs []string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status != 'invalid'
-		 ORDER BY priority ASC`, providerID,
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status NOT IN ('invalid', 'disabled')
+		 ORDER BY COALESCE(health_score, 100.00) DESC, priority ASC`, providerID,
 	)
 	if err != nil {
 		return nil, err
@@ -205,7 +205,7 @@ func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, pr
 	for rows.Next() {
 		var c models.Credential
 		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
-			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+			&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -253,13 +253,20 @@ func (r *CredentialRepository) UpdateStatus(ctx context.Context, credentialID, s
 	return err
 }
 
+func (r *CredentialRepository) UpdateHealthAndStatus(ctx context.Context, credentialID string, healthScore float64, status string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE credentials SET health_score = $1, status = $2, updated_at = NOW() WHERE id = $3`,
+		healthScore, status, credentialID)
+	return err
+}
+
 func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID string, excludeIDs []string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status != 'invalid'
-		 ORDER BY request_count ASC, priority ASC`, providerID,
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status NOT IN ('invalid', 'disabled')
+		 ORDER BY COALESCE(health_score, 100.00) DESC, request_count ASC, priority ASC`, providerID,
 	)
 	if err != nil {
 		return nil, err
@@ -275,7 +282,7 @@ func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID st
 	for rows.Next() {
 		var c models.Credential
 		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
-			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+			&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -291,11 +298,11 @@ func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID st
 
 func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string, excludeIDs []string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status,
+		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status != 'invalid'
-		 ORDER BY last_used_at ASC NULLS FIRST, priority ASC`, providerID,
+		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status NOT IN ('invalid', 'disabled')
+		 ORDER BY COALESCE(health_score, 100.00) DESC, last_used_at ASC NULLS FIRST, priority ASC`, providerID,
 	)
 	if err != nil {
 		return nil, err
@@ -311,7 +318,7 @@ func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string, e
 	for rows.Next() {
 		var c models.Credential
 		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
-			&c.Priority, &c.Enabled, &c.Status, &c.LastUsedAt, &c.RequestCount,
+			&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}

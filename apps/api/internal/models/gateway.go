@@ -44,6 +44,7 @@ type Credential struct {
 	Priority          int              `json:"priority" db:"priority"`
 	Enabled           bool             `json:"enabled" db:"enabled"`
 	Status            string           `json:"status" db:"status"`
+	HealthScore       float64          `json:"healthScore" db:"health_score"`
 	LastUsedAt        *time.Time       `json:"lastUsedAt,omitempty" db:"last_used_at"`
 	RequestCount      int64            `json:"requestCount" db:"request_count"`
 	ErrorCount        int64            `json:"errorCount" db:"error_count"`

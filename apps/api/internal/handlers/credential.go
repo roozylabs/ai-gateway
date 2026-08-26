@@ -692,73 +692,79 @@ func (h *CredentialHandler) enrichCredentialQuota(ctx context.Context, cred *mod
 	if ttl > 0 {
 		cred.IsCoolingDown = true
 		cred.CooldownTTL = int(ttl.Seconds())
-	} else if cred.Status == "rate_limited" || cred.Status == "quota_exceeded" {
-		cred.Status = "active"
-		_ = h.credentials.UpdateStatus(ctx, cred.ID, "active")
 	}
 
 	q, err := h.cooldownStore.GetCredentialQuota(ctx, cred.ID)
-	if err != nil || q == nil {
-		return
-	}
+	if err == nil && q != nil {
+		now := time.Now()
+		nowUnix := now.Unix()
+		isExpired := false
 
-	now := time.Now()
-	nowUnix := now.Unix()
-	isExpired := false
-
-	// 1. Check ResetAt timestamp
-	if q.ResetAt != "" {
-		if t, err := time.Parse(time.RFC3339, q.ResetAt); err == nil && now.After(t) {
-			isExpired = true
-		}
-	}
-
-	// 2. Check ResetDurationSec relative to LastUpdated
-	if !isExpired && q.ResetDurationSec > 0 && q.LastUpdated > 0 {
-		if nowUnix >= q.LastUpdated+int64(q.ResetDurationSec) {
-			isExpired = true
-		}
-	}
-
-	// 3. Check Daily Quota Reset (Midnight UTC)
-	if !isExpired && q.LastUpdated > 0 {
-		lowerStatus := strings.ToLower(q.StatusText)
-		if strings.Contains(lowerStatus, "daily") || strings.Contains(lowerStatus, "free") {
-			lastUpdatedUtc := time.Unix(q.LastUpdated, 0).UTC()
-			if now.UTC().Year() > lastUpdatedUtc.Year() || now.UTC().YearDay() > lastUpdatedUtc.YearDay() {
+		// 1. Check ResetAt timestamp
+		if q.ResetAt != "" {
+			if t, err := time.Parse(time.RFC3339, q.ResetAt); err == nil && now.After(t) {
 				isExpired = true
+			}
+		}
+
+		// 2. Check ResetDurationSec relative to LastUpdated
+		if !isExpired && q.ResetDurationSec > 0 && q.LastUpdated > 0 {
+			if nowUnix >= q.LastUpdated+int64(q.ResetDurationSec) {
+				isExpired = true
+			}
+		}
+
+		// 3. Check Daily Quota Reset (Midnight UTC)
+		if !isExpired && q.LastUpdated > 0 {
+			lowerStatus := strings.ToLower(q.StatusText)
+			if strings.Contains(lowerStatus, "daily") || strings.Contains(lowerStatus, "free") {
+				lastUpdatedUtc := time.Unix(q.LastUpdated, 0).UTC()
+				if now.UTC().Year() > lastUpdatedUtc.Year() || now.UTC().YearDay() > lastUpdatedUtc.YearDay() {
+					isExpired = true
+				}
+			}
+		}
+
+		// 4. If cooldown TTL has passed (ttl <= 0) and statusText is a rate limit or daily quota message
+		if !isExpired && ttl <= 0 && q.ResetAt == "" && q.ResetDurationSec == 0 {
+			lowerStatus := strings.ToLower(q.StatusText)
+			if strings.Contains(lowerStatus, "rate limit") || strings.Contains(lowerStatus, "cooldown") {
+				isExpired = true
+			}
+		}
+
+		if isExpired {
+			_ = h.cooldownStore.DeleteCredentialQuota(ctx, cred.ID)
+			cred.Quota = nil
+		} else {
+			cred.Quota = &models.CredentialQuota{
+				RemainingRequests: q.RemainingRequests,
+				LimitRequests:     q.LimitRequests,
+				RemainingTokens:   q.RemainingTokens,
+				LimitTokens:       q.LimitTokens,
+				ResetDurationSec:  q.ResetDurationSec,
+				ResetAt:           q.ResetAt,
+				StatusText:        q.StatusText,
+				LastUpdated:       q.LastUpdated,
 			}
 		}
 	}
 
-	// 4. If cooldown TTL has passed (ttl <= 0) and statusText is a rate limit or daily quota message
-	if !isExpired && ttl <= 0 && q.ResetAt == "" && q.ResetDurationSec == 0 {
-		lowerStatus := strings.ToLower(q.StatusText)
-		if strings.Contains(lowerStatus, "rate limit") || strings.Contains(lowerStatus, "cooldown") {
-			isExpired = true
+	remQuota := int64(0)
+	hasQuotaLimit := false
+	isExhausted := false
+	if cred.Quota != nil {
+		remQuota = cred.Quota.RemainingRequests
+		if cred.Quota.LimitRequests > 0 {
+			hasQuotaLimit = true
+			if cred.Quota.RemainingRequests <= 0 {
+				isExhausted = true
+			}
 		}
 	}
 
-	if isExpired {
-		_ = h.cooldownStore.DeleteCredentialQuota(ctx, cred.ID)
-		if cred.Status == "rate_limited" || cred.Status == "quota_exceeded" {
-			cred.Status = "active"
-			_ = h.credentials.UpdateStatus(ctx, cred.ID, "active")
-		}
-		cred.Quota = nil
-		return
-	}
-
-	cred.Quota = &models.CredentialQuota{
-		RemainingRequests: q.RemainingRequests,
-		LimitRequests:     q.LimitRequests,
-		RemainingTokens:   q.RemainingTokens,
-		LimitTokens:       q.LimitTokens,
-		ResetDurationSec:  q.ResetDurationSec,
-		ResetAt:           q.ResetAt,
-		StatusText:        q.StatusText,
-		LastUpdated:       q.LastUpdated,
-	}
+	cred.HealthScore = proxy.CalculateCredentialHealthScore(cred.RequestCount, cred.ErrorCount, cred.IsCoolingDown, remQuota, hasQuotaLimit)
+	cred.Status = proxy.DetermineCredentialStatus(cred.Enabled, cred.IsCoolingDown, isExhausted, cred.HealthScore)
 }
 
 

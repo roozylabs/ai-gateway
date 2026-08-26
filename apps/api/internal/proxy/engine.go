@@ -21,8 +21,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/prism/internal/models"
 	goredis "github.com/roozylabs/prism/internal/redis"
 	"github.com/roozylabs/prism/internal/repository"
@@ -427,6 +428,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+			go e.syncCredentialHealth(context.Background(), route.Credential, true, false)
 			if e.publisher != nil {
 				_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_COOLDOWN_STARTED", map[string]interface{}{
 					"credentialId": route.Credential.ID,
@@ -449,6 +451,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 				retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
 				e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 				_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+				go e.syncCredentialHealth(context.Background(), route.Credential, true, true)
 				lastErr = fmt.Errorf("upstream rate/quota limit (%d) on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
 				lastAttemptStatus = httpResp.StatusCode
 				attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
@@ -456,6 +459,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			}
 
 			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
+			go e.syncCredentialHealth(context.Background(), route.Credential, false, false)
 			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
 			lastAttemptStatus = httpResp.StatusCode
 			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
@@ -474,6 +478,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 					})
 				}
 			}
+			go e.syncCredentialHealth(context.Background(), route.Credential, true, false)
 			lastErr = fmt.Errorf("upstream returned %d", httpResp.StatusCode)
 			lastAttemptStatus = httpResp.StatusCode
 			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
@@ -484,8 +489,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		// Success → reset 50x error count
 		_ = e.cooldown.RecordSuccess(c.Request.Context(), route.Credential.ID)
 		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
-		_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "active")
 		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
+		go e.syncCredentialHealth(context.Background(), route.Credential, false, false)
 
 		resp, err := route.Adapter.ParseResponse(bytes.NewReader(body))
 		if err != nil {
@@ -992,10 +997,9 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			OutputTokens:    totalTokens.CompletionTokens,
 			TotalTokens:     totalTokens.TotalTokens,
 			CostUSD:         costUSD,
-			RetryCount:      retryCount,
-			TTFTMs:          ttftMs,
 			ResponseHash:    respHash,
 			ResponseBytes:   respBytes,
+			RetryCount:      retryCount,
 			Attempts:        MarshalAttempts(attempts),
 		}
 
@@ -1247,3 +1251,27 @@ func (r *idleTimeoutReader) Read(p []byte) (int, error) {
 		return 0, fmt.Errorf("idle timeout: no data received for %v", r.timeout)
 	}
 }
+
+func (e *Engine) syncCredentialHealth(ctx context.Context, cred *models.Credential, isCoolingDown bool, isExhausted bool) {
+	if cred == nil || e.creds == nil {
+		return
+	}
+	latest, err := e.creds.FindByID(ctx, cred.ID)
+	if err != nil {
+		latest = cred
+	}
+
+	remainingQuota := int64(0)
+	hasQuotaLimit := false
+	if latest.Quota != nil && latest.Quota.LimitRequests > 0 {
+		hasQuotaLimit = true
+		remainingQuota = latest.Quota.RemainingRequests
+	}
+
+	score := CalculateCredentialHealthScore(latest.RequestCount, latest.ErrorCount, isCoolingDown, remainingQuota, hasQuotaLimit)
+	status := DetermineCredentialStatus(latest.Enabled, isCoolingDown, isExhausted, score)
+
+	_ = e.creds.UpdateHealthAndStatus(ctx, latest.ID, score, status)
+	RecordCredentialHealthTelemetry(ctx, latest.ID, latest.ProviderID, score)
+}
+

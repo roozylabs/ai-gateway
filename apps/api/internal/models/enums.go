@@ -30,6 +30,10 @@ const (
 
 // Credential statuses
 const (
+	CredentialStatusHealthy     = "healthy"
+	CredentialStatusDegraded    = "degraded"
+	CredentialStatusCooldown    = "cooldown"
+	CredentialStatusExhausted   = "exhausted"
 	CredentialStatusActive      = "active"
 	CredentialStatusRateLimited = "rate_limited"
 	CredentialStatusInvalid     = "invalid"
