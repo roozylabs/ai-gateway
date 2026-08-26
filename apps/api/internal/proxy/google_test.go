@@ -216,4 +216,38 @@ func TestSanitizeMessagesForGoogle_Position8Bash(t *testing.T) {
 	}
 }
 
+func TestSanitizeMessagesForGoogle_OverwritesOldSkipSentinel(t *testing.T) {
+	messages := []map[string]interface{}{
+		{
+			"role": "assistant",
+			"tool_calls": []interface{}{
+				map[string]interface{}{
+					"id":                "call_old_skip",
+					"type":              "function",
+					"thought_signature": "skip",
+					"thoughtSignature": "skip",
+					"function": map[string]interface{}{
+						"name":              "default_api:bash",
+						"arguments":         "{}",
+						"thought_signature": "skip",
+						"thoughtSignature": "skip",
+					},
+				},
+			},
+		},
+	}
+
+	sanitized := SanitizeMessagesForGoogle(messages)
+	tcRaw := sanitized[0]["tool_calls"].([]interface{})
+	tcMap := tcRaw[0].(map[string]interface{})
+	if tcMap["thought_signature"] != sentinel || tcMap["thoughtSignature"] != sentinel {
+		t.Errorf("expected old 'skip' to be replaced with sentinel, got %v", tcMap["thought_signature"])
+	}
+
+	fnMap := tcMap["function"].(map[string]interface{})
+	if fnMap["thought_signature"] != sentinel || fnMap["thoughtSignature"] != sentinel {
+		t.Errorf("expected old 'skip' in function to be replaced with sentinel, got %v", fnMap["thought_signature"])
+	}
+}
+
 

@@ -238,6 +238,21 @@ func sanitizeToolCallItem(tcRaw interface{}) interface{} {
 	return tcRaw
 }
 
+func isInvalidSignature(v interface{}) bool {
+	if v == nil {
+		return true
+	}
+	s, ok := v.(string)
+	if !ok {
+		return true
+	}
+	s = strings.TrimSpace(s)
+	if s == "" || s == "skip" || s == "none" || s == "null" || s == "undefined" {
+		return true
+	}
+	return false
+}
+
 func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
 	tcCopy := make(map[string]interface{})
 	for k, v := range tcMap {
@@ -247,10 +262,10 @@ func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
 	const sentinel = "skip_thought_signature_validator"
 
 	setSignature := func(m map[string]interface{}) {
-		if sig, hasSig := m["thought_signature"]; !hasSig || sig == nil || sig == "" {
+		if sig, hasSig := m["thought_signature"]; !hasSig || isInvalidSignature(sig) {
 			m["thought_signature"] = sentinel
 		}
-		if sig, hasSig := m["thoughtSignature"]; !hasSig || sig == nil || sig == "" {
+		if sig, hasSig := m["thoughtSignature"]; !hasSig || isInvalidSignature(sig) {
 			m["thoughtSignature"] = sentinel
 		}
 	}
