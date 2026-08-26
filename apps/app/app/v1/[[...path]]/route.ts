@@ -19,7 +19,7 @@ async function proxyV1Handler(request: NextRequest, { params }: { params: Promis
   const headers = new Headers(request.headers);
   headers.delete('host');
 
-  let body: any = undefined;
+  let body: ArrayBuffer | undefined = undefined;
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
     try {
       body = await request.arrayBuffer();
@@ -42,7 +42,6 @@ async function proxyV1Handler(request: NextRequest, { params }: { params: Promis
 
     const contentType = responseHeaders.get('content-type') || '';
     const isEventStream = contentType.includes('text/event-stream');
-    const isNoBodyStatus = backendResponse.status === 204 || backendResponse.status === 304;
 
     if (isEventStream) {
       responseHeaders.set('Content-Type', 'text/event-stream');
@@ -57,24 +56,17 @@ async function proxyV1Handler(request: NextRequest, { params }: { params: Promis
       });
     }
 
-    if (isNoBodyStatus) {
-      return new NextResponse(null, {
-        status: backendResponse.status,
-        statusText: backendResponse.statusText,
-        headers: responseHeaders,
-      });
-    }
-
     const responseData = await backendResponse.arrayBuffer();
     return new NextResponse(responseData, {
       status: backendResponse.status,
       statusText: backendResponse.statusText,
       headers: responseHeaders,
     });
-  } catch (error: any) {
-    console.error('[V1 API Proxy Error] Failed to proxy to:', targetUrl, error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown connection error';
+    console.error('[V1 Proxy Error] Failed to proxy to:', targetUrl, error);
     return NextResponse.json(
-      { error: 'Failed to connect to API backend', details: error.message, targetUrl },
+      { error: 'Failed to connect to API backend', details: message, targetUrl },
       { status: 502 }
     );
   }

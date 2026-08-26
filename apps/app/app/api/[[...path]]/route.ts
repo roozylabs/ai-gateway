@@ -28,7 +28,7 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
     headers.set('authorization', `Bearer ${token}`);
   }
 
-  let body: any = undefined;
+  let body: ArrayBuffer | undefined = undefined;
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
     try {
       body = await request.arrayBuffer();
@@ -80,10 +80,11 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
       statusText: backendResponse.statusText,
       headers: responseHeaders,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown connection error';
     console.error('[API Proxy Error] Failed to proxy to:', targetUrl, error);
     return NextResponse.json(
-      { error: 'Failed to connect to API backend', details: error.message, targetUrl },
+      { error: 'Failed to connect to API backend', details: message, targetUrl },
       { status: 502 }
     );
   }

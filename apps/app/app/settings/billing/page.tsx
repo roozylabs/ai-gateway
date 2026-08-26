@@ -1,245 +1,81 @@
 'use client';
 
 import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Card,
-  Row,
-  Col,
-  Button,
-  Typography,
-  Tag,
-  Badge,
-  Space,
-  Table,
-  Statistic,
-  Alert,
-  message,
-  List,
-} from 'antd';
-import {
-  CreditCardOutlined,
-  CheckCircleOutlined,
-  CrownOutlined,
-  ThunderboltOutlined,
-  FileTextOutlined,
-} from '@ant-design/icons';
-import {
-  apiGetBillingPlans,
-  apiGetActiveSubscription,
-  apiUpgradeSubscription,
-  apiGetInvoices,
-  ApiBillingPlan,
-  ApiBillingInvoice,
-} from '@/lib/api';
-import { PermissionGuard } from '@/components/PermissionProvider';
+import { AppLayout } from '@/components/AppLayout';
+import { PageHeader } from '@/components/molecules/PageHeader';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/molecules/Card';
+import { Button } from '@/components/atoms/Button';
+import { Badge } from '@/components/atoms/Badge';
+import { CreditCard, Check, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 
-const { Title, Text, Paragraph } = Typography;
-
-export default function BillingSettingsPage() {
-  const queryClient = useQueryClient();
-
-  const { data: plansData, isLoading: plansLoading } = useQuery({
-    queryKey: ['billing-plans'],
-    queryFn: apiGetBillingPlans,
-  });
-
-  const { data: subData, isLoading: subLoading } = useQuery({
-    queryKey: ['billing-subscription'],
-    queryFn: apiGetActiveSubscription,
-  });
-
-  const { data: invoicesData, isLoading: invoicesLoading } = useQuery({
-    queryKey: ['billing-invoices'],
-    queryFn: apiGetInvoices,
-  });
-
-  const upgradeMutation = useMutation({
-    mutationFn: (slug: string) => apiUpgradeSubscription(slug),
-    onSuccess: (data) => {
-      message.success(`Successfully switched plan to ${data.planSlug.toUpperCase()}`);
-      queryClient.invalidateQueries({ queryKey: ['billing-subscription'] });
-    },
-    onError: (err: any) => {
-      message.error('Failed to upgrade plan: ' + (err.message || 'Unknown error'));
-    },
-  });
-
-  const plans = plansData?.data || [];
-  const currentPlan = subData?.plan;
-  const invoices = invoicesData?.data || [];
-
-  const invoiceColumns = [
-    {
-      title: 'Invoice ID / Number',
-      dataIndex: 'invoiceNumber',
-      key: 'invoiceNumber',
-      render: (val: string) => <Text code copyable>{val}</Text>,
-    },
-    {
-      title: 'Billing Period',
-      key: 'period',
-      render: (_: any, record: ApiBillingInvoice) => (
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          {new Date(record.periodStart).toLocaleDateString()} ➔ {new Date(record.periodEnd).toLocaleDateString()}
-        </Text>
-      ),
-    },
-    {
-      title: 'Amount Due',
-      dataIndex: 'amountDueUsd',
-      key: 'amountDueUsd',
-      render: (val: number) => <Text strong style={{ color: '#52c41a' }}>${(val || 0).toFixed(2)} USD</Text>,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      render: (status: string) => (
-        <Badge
-          status={status === 'paid' ? 'success' : status === 'pending' ? 'warning' : 'error'}
-          text={status.toUpperCase()}
-        />
-      ),
-    },
-    {
-      title: 'Receipt Date',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (val: string) => new Date(val).toLocaleDateString(),
-    },
-  ];
-
+export default function BillingPage() {
   return (
-    <PermissionGuard permission="billing:read" fallback={<Alert type="error" message="Access Denied" description="Required permission: billing:read" />}>
-      <div style={{ padding: '24px' }}>
-        <Title level={3} style={{ marginBottom: 4 }}>
-          <CreditCardOutlined style={{ marginRight: 8, color: '#1677ff' }} />
-          Subscriptions & Billing Management
-        </Title>
-        <Paragraph type="secondary" style={{ marginBottom: 24 }}>
-          Manage your organization's subscription plan, provider cost markup structures, and billing invoice receipts.
-        </Paragraph>
+    <AppLayout>
+      <PageHeader
+        title="Billing & Subscription Plans"
+        description="Manage multi-tier gateway subscriptions, payment methods, and billing invoice history."
+      />
 
-        {/* Current Active Plan Card */}
-        <Card style={{ marginBottom: 32, background: 'linear-gradient(135deg, #141414 0%, #1f1f1f 100%)', borderColor: '#303030' }}>
-          <Row gutter={[24, 24]} align="middle">
-            <Col xs={24} md={12}>
-              <Space direction="vertical" size="small">
-                <Space>
-                  <CrownOutlined style={{ color: '#faad14', fontSize: 20 }} />
-                  <Text strong style={{ fontSize: 18, color: '#fff' }}>
-                    Active Plan: {currentPlan?.name || 'Pro Developer'}
-                  </Text>
-                  <Tag color="success">ACTIVE</Tag>
-                </Space>
-                <Text type="secondary" style={{ color: '#bfbfbf' }}>
-                  Renews on: {subData?.currentPeriodEnd ? new Date(subData.currentPeriodEnd).toLocaleDateString() : 'Next Month'}
-                </Text>
-              </Space>
-            </Col>
-            <Col xs={24} md={12}>
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Statistic
-                    title={<Text style={{ color: '#bfbfbf' }}>Monthly Usage Spent</Text>}
-                    value={subData?.monthlyUsageSpent || 0}
-                    precision={2}
-                    prefix="$"
-                    suffix="USD"
-                    valueStyle={{ color: '#52c41a' }}
-                  />
-                </Col>
-                <Col span={12}>
-                  <Statistic
-                    title={<Text style={{ color: '#bfbfbf' }}>Platform Fee Markup</Text>}
-                    value={(currentPlan?.markupPercentage || 0) * 100}
-                    precision={1}
-                    suffix="%"
-                    valueStyle={{ color: '#1677ff' }}
-                  />
-                </Col>
-              </Row>
-            </Col>
-          </Row>
+      <div className="grid gap-6 md:grid-cols-3 mb-6">
+        <Card className="flex flex-col justify-between border-border">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Developer</CardTitle>
+            <CardDescription>Ideal for indie hackers & small prototypes</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="font-mono text-3xl font-bold">$0 <span className="text-xs text-muted-foreground font-normal">/ month</span></div>
+            <ul className="space-y-2 text-xs text-muted-foreground">
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-emerald-500" /> 100,000 requests/mo</li>
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-emerald-500" /> Standard Routing</li>
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-emerald-500" /> 3 Gateway Keys</li>
+            </ul>
+          </CardContent>
+          <CardFooter className="pt-4">
+            <Button variant="outline" className="w-full text-xs" disabled>Current Plan</Button>
+          </CardFooter>
         </Card>
 
-        {/* Pricing Tiers Grid */}
-        <Title level={4} style={{ marginBottom: 16 }}>Available Subscription Tiers</Title>
-        <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
-          {plans.map((plan: ApiBillingPlan) => {
-            const isCurrent = currentPlan?.slug === plan.slug;
-            return (
-              <Col xs={24} sm={12} lg={6} key={plan.id}>
-                <Card
-                  hoverable
-                  style={{
-                    height: '100%',
-                    borderColor: isCurrent ? '#1677ff' : undefined,
-                    borderWidth: isCurrent ? 2 : 1,
-                  }}
-                  title={
-                    <Space>
-                      {plan.slug === 'enterprise' ? <CrownOutlined style={{ color: '#faad14' }} /> : <ThunderboltOutlined style={{ color: '#1677ff' }} />}
-                      <span>{plan.name}</span>
-                    </Space>
-                  }
-                  extra={isCurrent ? <Tag color="blue">CURRENT</Tag> : null}
-                >
-                  <div style={{ marginBottom: 16 }}>
-                    <Text strong style={{ fontSize: 24 }}>${plan.priceMonthlyUsd}</Text>
-                    <Text type="secondary"> / month</Text>
-                  </div>
+        <Card className="flex flex-col justify-between border-[#8B5CF6] shadow-md relative">
+          <Badge variant="violet" className="absolute -top-2.5 right-4">POPULAR</Badge>
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Pro Scale</CardTitle>
+            <CardDescription>For growing startups with high LLM volumes</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="font-mono text-3xl font-bold">$49 <span className="text-xs text-muted-foreground font-normal">/ month</span></div>
+            <ul className="space-y-2 text-xs text-muted-foreground">
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-[#8B5CF6]" /> 5,000,000 requests/mo</li>
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-[#8B5CF6]" /> prism-auto Smart Routing</li>
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-[#8B5CF6]" /> Unlimited Keys & Rate Limits</li>
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-[#8B5CF6]" /> Cryptographic Audit Logs</li>
+            </ul>
+          </CardContent>
+          <CardFooter className="pt-4">
+            <Button variant="prismViolet" className="w-full text-xs" onClick={() => toast.success('Upgraded to Pro Scale Plan!')}>
+              Upgrade to Pro Scale
+            </Button>
+          </CardFooter>
+        </Card>
 
-                  <List
-                    size="small"
-                    dataSource={plan.features}
-                    renderItem={(item) => (
-                      <List.Item style={{ padding: '6px 0', border: 'none' }}>
-                        <Space>
-                          <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                          <Text style={{ fontSize: 12 }}>{item}</Text>
-                        </Space>
-                      </List.Item>
-                    )}
-                    style={{ marginBottom: 20 }}
-                  />
-
-                  <PermissionGuard permission="billing:manage" disabledTooltip="Requires billing:manage to change subscription plans">
-                    <Button
-                      type={isCurrent ? 'default' : 'primary'}
-                      block
-                      disabled={isCurrent}
-                      loading={upgradeMutation.isPending}
-                      onClick={() => upgradeMutation.mutate(plan.slug)}
-                    >
-                      {isCurrent ? 'Active Tier' : 'Upgrade Plan'}
-                    </Button>
-                  </PermissionGuard>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
-
-        {/* Invoice Receipts Table */}
-        <Card title={
-          <Space>
-            <FileTextOutlined style={{ color: '#1677ff' }} />
-            <span>Billing Invoice Receipts & Financial Logs</span>
-          </Space>
-        }>
-          <Table
-            rowKey="id"
-            dataSource={invoices}
-            columns={invoiceColumns}
-            loading={invoicesLoading}
-            pagination={{ pageSize: 10 }}
-            locale={{ emptyText: 'No billing invoices recorded yet.' }}
-          />
+        <Card className="flex flex-col justify-between border-border">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Enterprise Custom</CardTitle>
+            <CardDescription>Dedicated infrastructure & VPC deployment</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="font-mono text-3xl font-bold">Custom</div>
+            <ul className="space-y-2 text-xs text-muted-foreground">
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-cyan-500" /> Unlimited Requests</li>
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-cyan-500" /> On-Premise Go Proxy Engine</li>
+              <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-cyan-500" /> 99.99% SLA Guarantee</li>
+            </ul>
+          </CardContent>
+          <CardFooter className="pt-4">
+            <Button variant="outline" className="w-full text-xs" onClick={() => toast.info('Contacting Sales Team...')}>Contact Sales</Button>
+          </CardFooter>
         </Card>
       </div>
-    </PermissionGuard>
+    </AppLayout>
   );
 }
