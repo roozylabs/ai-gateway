@@ -25,6 +25,7 @@ All initial backend API gaps between the Next.js frontend and Go backend have be
 | **1.6** | Real-Time Cost Pipeline | ✅ **Resolved** | Real-time `CostUSD` calculation per request based on input/output tokens and model pricing stored in `request_logs`. |
 | **1.7** | Instant Failover (Ready Pool) | ✅ **Resolved** | Pre-filtering 429 rate-limited cooling credentials in Redis before strategy rotation (Round Robin/LRU/Fallback). |
 | **1.8** | Error Sanitization & Headers | ✅ **Resolved** | Sanitized user-friendly error responses and `X-Prism-Model`, `X-Prism-Provider`, `X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID` response headers. |
+| **1.9** | Phase 1 Dev Platform (TS SDK & CLI) | ✅ **Resolved** | `@roozylabs/prism` TypeScript SDK, `@roozylabs/prism-cli` (`prism`), OpenAPI 3.0 Spec (`docs/openapi.yaml`), and Dev Docs. |
 
 ---
 
@@ -47,3 +48,11 @@ The following items are planned for future optimization as traffic scales:
 ### 2.4 Multi-Tier Hierarchy Budgets (Project & Environment Scope)
 *   **Current State**: Budgets operate at the User level (`monthly_limit`, `daily_limit`).
 *   **Future Enhancement**: Support Organization → Project → Environment budget hierarchies (Spec §16–§17) with per-project API keys.
+
+### 2.5 Remaining SDK Ecosystem (Python SDK, Go SDK, Rust Crate)
+*   **Current State**: `@roozylabs/prism` (TypeScript SDK) and `@roozylabs/prism-cli` are fully built and operational in `packages/`.
+*   **Future Enhancement**:
+    1. **Python SDK (`roozylabs-prism` / `packages/sdk-python`) [P1]**: PyPI package with sync/async `httpx` client, Pydantic type definitions, SSE streaming generator, and integrations for LangChain, CrewAI, AutoGen, and LlamaIndex.
+    2. **Go SDK (`pkg/prism` / `packages/sdk-go`) [P1]**: High-throughput Go client library for internal microservices, edge proxies, and backend integrations.
+    3. **Rust Crate (`prism-rs`) [P2]**: Zero-overhead Rust client crate for Wasm/Edge agent runtimes.
+
