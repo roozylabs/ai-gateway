@@ -123,6 +123,7 @@ export default function GatewayKeysPage() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Delete key"
           className="h-7 w-7 text-muted-foreground hover:text-destructive"
           onClick={() => handleDelete(record)}
         >
