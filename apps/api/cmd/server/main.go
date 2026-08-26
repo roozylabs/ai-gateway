@@ -95,6 +95,7 @@ func main() {
 	mcpToolRepo := repository.NewMCPToolRepository(sqlDB)
 	mcpRegistryRepo := repository.NewMCPRegistryRepository(sqlDB)
 	agentRepo := repository.NewAgentRepository(sqlDB)
+	agentTemplateRepo := repository.NewAgentTemplateRepository(sqlDB)
 	governancePolicyRepo := repository.NewGovernancePolicyRepository(sqlDB)
 	auditTrailRepo := repository.NewAuditTrailRepository(sqlDB)
 
@@ -150,6 +151,7 @@ func main() {
 	mcpHandler := handlers.NewMCPHandler(mcpServerRepo, mcpToolRepo, mcpGateway, cfg.EncryptionKey)
 	mcpRegistryHandler := handlers.NewMCPRegistryHandler(mcpRegistryRepo)
 	agentHandler := handlers.NewAgentHandler(agentRepo, agentGovernance)
+	agentTemplateHandler := handlers.NewAgentTemplateHandler(agentTemplateRepo, agentRepo)
 	governancePolicyHandler := handlers.NewGovernancePolicyHandler(governancePolicyRepo, rbacEngine)
 	auditTrailHandler := handlers.NewAuditTrailHandler(auditTrailRepo, auditRecorder)
 
@@ -327,6 +329,11 @@ func main() {
 			protected.POST("/agents", agentHandler.Create)
 			protected.PUT("/agents/:id", agentHandler.Update)
 			protected.DELETE("/agents/:id", agentHandler.Delete)
+
+			// Agent Templates Engine
+			protected.GET("/agent-templates", agentTemplateHandler.ListTemplates)
+			protected.POST("/agent-templates", agentTemplateHandler.CreateTemplate)
+			protected.POST("/agent-templates/:id/instantiate", agentTemplateHandler.InstantiateTemplate)
 
 			// Enterprise Governance & RBAC
 			protected.GET("/governance/policies", governancePolicyHandler.List)

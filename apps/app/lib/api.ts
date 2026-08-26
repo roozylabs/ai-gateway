@@ -960,6 +960,34 @@ export async function apiRegisterMCPRegistryServer(data: ApiRegisterMCPRegistryR
   return response.data;
 }
 
+// Agent Templates Engine API
+export interface ApiAgentTemplate {
+  id: string;
+  userId?: string;
+  name: string;
+  slug: string;
+  role: string;
+  description: string;
+  icon: string;
+  allowedModels: any;
+  allowedTools: any;
+  allowedResources: any;
+  maxBudgetCents: number;
+  isPreset: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function apiGetAgentTemplates(): Promise<{ object: string; data: ApiAgentTemplate[] }> {
+  const response = await api.get<{ object: string; data: ApiAgentTemplate[] }>('/agent-templates');
+  return response.data;
+}
+
+export async function apiInstantiateAgentTemplate(id: string, name?: string): Promise<{ message: string; agent: ApiAgent }> {
+  const response = await api.post<{ message: string; agent: ApiAgent }>(`/agent-templates/${id}/instantiate`, { name });
+  return response.data;
+}
+
 // Agent Gateway API
 export interface ApiAgent {
   id: string;

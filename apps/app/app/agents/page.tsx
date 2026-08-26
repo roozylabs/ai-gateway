@@ -19,6 +19,7 @@ import {
   Drawer,
   Badge,
   Descriptions,
+  Tooltip,
 } from 'antd';
 import {
   PlusOutlined,
@@ -28,32 +29,47 @@ import {
   RobotOutlined,
   LockOutlined,
   CodeOutlined,
+  AppstoreAddOutlined,
+  CheckCircleOutlined,
+  SafetyCertificateOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import {
   ApiAgent,
   ApiCreateAgentRequest,
+  ApiAgentTemplate,
   apiGetAgents,
   apiCreateAgent,
   apiUpdateAgent,
   apiDeleteAgent,
   apiGetAllModels,
   apiGetTools,
+  apiGetAgentTemplates,
+  apiInstantiateAgentTemplate,
 } from '@/lib/api';
 
-const { Text, Paragraph } = Typography;
+const { Text, Paragraph, Title } = Typography;
 const { Option } = Select;
 
 export default function AgentsPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<ApiAgent | null>(null);
   const [inspectAgent, setInspectAgent] = useState<ApiAgent | null>(null);
   const [form] = Form.useForm();
 
+  // Queries
   const { data: agents, isLoading } = useQuery<ApiAgent[]>({
     queryKey: ['agents'],
     queryFn: apiGetAgents,
   });
+
+  const { data: templatesRes, isLoading: isTemplatesLoading } = useQuery({
+    queryKey: ['agent-templates'],
+    queryFn: apiGetAgentTemplates,
+  });
+  const templates = templatesRes?.data || [];
 
   const { data: modelsRes } = useQuery({
     queryKey: ['models'],
@@ -67,6 +83,7 @@ export default function AgentsPage() {
   });
   const availableTools = Array.isArray(toolsRes) ? toolsRes : [];
 
+  // Mutations
   const createMutation = useMutation({
     mutationFn: (values: ApiCreateAgentRequest) => apiCreateAgent(values),
     onSuccess: () => {
@@ -76,6 +93,16 @@ export default function AgentsPage() {
       message.success('Agent registered successfully');
     },
     onError: (err: any) => message.error(err.message || 'Failed to register agent'),
+  });
+
+  const instantiateMutation = useMutation({
+    mutationFn: (tmplId: string) => apiInstantiateAgentTemplate(tmplId),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      setIsTemplateModalOpen(false);
+      message.success(`Instantiated agent "${res.agent.displayName || res.agent.name}" from template!`);
+    },
+    onError: (err: any) => message.error(err.message || 'Failed to instantiate agent template'),
   });
 
   const updateMutation = useMutation({
@@ -103,40 +130,33 @@ export default function AgentsPage() {
     setEditingAgent(null);
     form.resetFields();
     form.setFieldsValue({
-      agentType: 'developer',
       enabled: true,
-      allowedModels: ['gpt-4o', 'claude-sonnet'],
-      allowedTools: ['search_web'],
+      agentType: 'developer',
     });
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (agent: ApiAgent) => {
-    setEditingAgent(agent);
+  const handleOpenEdit = (record: ApiAgent) => {
+    setEditingAgent(record);
     form.setFieldsValue({
-      name: agent.name,
-      displayName: agent.displayName,
-      description: agent.description,
-      agentType: agent.agentType,
-      systemPromptOverride: agent.systemPromptOverride,
-      allowedModels: agent.allowedModels,
-      allowedTools: agent.allowedTools,
-      allowedResources: agent.allowedResources,
-      enabled: agent.enabled,
+      name: record.name,
+      displayName: record.displayName,
+      agentType: record.agentType,
+      description: record.description,
+      systemPromptOverride: record.systemPromptOverride,
+      allowedModels: record.allowedModels,
+      allowedTools: record.allowedTools,
+      enabled: record.enabled,
     });
     setIsModalOpen(true);
   };
 
   const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      if (editingAgent) {
-        updateMutation.mutate({ id: editingAgent.id, values });
-      } else {
-        createMutation.mutate(values);
-      }
-    } catch (e) {
-      // validation error
+    const values = await form.validateFields();
+    if (editingAgent) {
+      updateMutation.mutate({ id: editingAgent.id, values });
+    } else {
+      createMutation.mutate(values);
     }
   };
 
@@ -148,52 +168,45 @@ export default function AgentsPage() {
         <Space direction="vertical" size={2}>
           <Space>
             <Text strong style={{ fontSize: 15 }}>{record.displayName || record.name}</Text>
-            <Tag color="blue">{record.name}</Tag>
-            <Tag color="purple">{record.agentType || 'general'}</Tag>
+            <Tag color="purple" style={{ fontFamily: 'monospace' }}>{record.name}</Tag>
           </Space>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {record.description || 'No description provided.'}
+          <Text type="secondary" style={{ fontSize: 13 }}>{record.description || 'No description'}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Specialty / Category',
+      dataIndex: 'agentType',
+      key: 'agentType',
+      render: (type: string) => (
+        <Tag color="geekblue">{type?.toUpperCase() || 'GENERAL'}</Tag>
+      ),
+    },
+    {
+      title: 'Governance Rules',
+      key: 'rules',
+      render: (_: any, record: ApiAgent) => (
+        <Space direction="vertical" size={2}>
+          <Text style={{ fontSize: 12 }}>
+            Models: {record.allowedModels && record.allowedModels.length > 0 ? (
+              record.allowedModels.map((m) => <Tag key={m} color="cyan" style={{ fontSize: 10 }}>{m}</Tag>)
+            ) : <Tag color="default" style={{ fontSize: 10 }}>All (*)</Tag>}
+          </Text>
+          <Text style={{ fontSize: 12 }}>
+            Tools: {record.allowedTools && record.allowedTools.length > 0 ? (
+              record.allowedTools.map((t) => <Tag key={t} color="orange" style={{ fontSize: 10 }}>{t}</Tag>)
+            ) : <Tag color="default" style={{ fontSize: 10 }}>All (*)</Tag>}
           </Text>
         </Space>
       ),
     },
     {
-      title: 'Allowed Models',
-      dataIndex: 'allowedModels',
-      key: 'allowedModels',
-      render: (models: string[]) => (
-        <Space wrap>
-          {models && models.length > 0 ? (
-            models.map((m) => <Tag key={m} color="cyan">{m}</Tag>)
-          ) : (
-            <Tag color="default">All Models (*)</Tag>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'Allowed Tools',
-      dataIndex: 'allowedTools',
-      key: 'allowedTools',
-      render: (tools: string[]) => (
-        <Space wrap>
-          {tools && tools.length > 0 ? (
-            tools.map((t) => <Tag key={t} color="orange">{t}</Tag>)
-          ) : (
-            <Tag color="default">All Tools (*)</Tag>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'Governance Status',
+      title: 'State',
+      dataIndex: 'enabled',
       key: 'enabled',
-      width: 130,
-      render: (_: any, record: ApiAgent) => (
-        <Badge
-          status={record.enabled ? 'success' : 'default'}
-          text={record.enabled ? 'Enforced' : 'Disabled'}
-        />
+      width: 100,
+      render: (enabled: boolean) => (
+        <Badge status={enabled ? 'success' : 'error'} text={enabled ? 'Enforced' : 'Disabled'} />
       ),
     },
     {
@@ -219,18 +232,23 @@ export default function AgentsPage() {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto' }}>
       <Card
         title={
           <Space>
-            <RobotOutlined style={{ color: '#1677ff' }} />
+            <RobotOutlined style={{ color: '#8B5CF6' }} />
             <span>Agent Gateway & Infrastructure</span>
           </Space>
         }
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenAdd}>
-            Register Agent Identity
-          </Button>
+          <Space>
+            <Button icon={<AppstoreAddOutlined />} onClick={() => setIsTemplateModalOpen(true)}>
+              1-Click Role Templates
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenAdd}>
+              Register Agent Identity
+            </Button>
+          </Space>
         }
       >
         <Table
@@ -239,9 +257,62 @@ export default function AgentsPage() {
           columns={columns}
           loading={isLoading}
           pagination={false}
-          locale={{ emptyText: 'No agents registered yet. Click "Register Agent Identity" to set up governance rules.' }}
+          locale={{ emptyText: 'No agents registered yet. Click "1-Click Role Templates" or "Register Agent Identity".' }}
         />
       </Card>
+
+      {/* 1-Click Role Templates Modal */}
+      <Modal
+        title={
+          <Space>
+            <ThunderboltOutlined style={{ color: '#8B5CF6' }} />
+            <span>1-Click Agent Role Templates</span>
+          </Space>
+        }
+        open={isTemplateModalOpen}
+        onCancel={() => setIsTemplateModalOpen(false)}
+        footer={null}
+        width={760}
+      >
+        <Paragraph type="secondary">
+          Instantiate a fully configured agent role with pre-set model permissions, tool boundaries, resource rules, and budget limits.
+        </Paragraph>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))', gap: 16, marginTop: 16 }}>
+          {templates.map((tmpl) => (
+            <Card
+              key={tmpl.id}
+              size="small"
+              hoverable
+              style={{ background: '#0F1115', border: '1px solid #1f242d' }}
+              title={
+                <Space>
+                  <Text strong style={{ color: '#fff' }}>{tmpl.name}</Text>
+                  {tmpl.isPreset && <Tag color="purple">Preset Role</Tag>}
+                </Space>
+              }
+            >
+              <Paragraph type="secondary" style={{ fontSize: 13, minHeight: 38 }}>
+                {tmpl.description}
+              </Paragraph>
+              <div style={{ margin: '8px 0', fontSize: 12 }}>
+                <Text type="secondary">Budget Cap: </Text>
+                <Tag color="green">${((tmpl.maxBudgetCents || 5000) / 100).toFixed(2)}/mo</Tag>
+              </div>
+              <Button
+                type="primary"
+                block
+                icon={<PlusOutlined />}
+                loading={instantiateMutation.isPending}
+                onClick={() => instantiateMutation.mutate(tmpl.id)}
+                style={{ marginTop: 8 }}
+              >
+                Instantiate Agent 1-Click
+              </Button>
+            </Card>
+          ))}
+        </div>
+      </Modal>
 
       {/* Add / Edit Agent Modal */}
       <Modal
@@ -271,8 +342,9 @@ export default function AgentsPage() {
           <Form.Item name="agentType" label="Agent Specialty / Category">
             <Select>
               <Option value="developer">Developer & Coding</Option>
-              <Option value="researcher">Research & Data Analytics</Option>
-              <Option value="finance">Finance & ERP Operations</Option>
+              <Option value="devops">DevOps & Infrastructure</Option>
+              <Option value="qa">QA Automation & Testing</Option>
+              <Option value="analyst">Research & Data Analytics</Option>
               <Option value="general">General Purpose Assistant</Option>
             </Select>
           </Form.Item>
@@ -290,7 +362,7 @@ export default function AgentsPage() {
 
           <Form.Item name="allowedModels" label="Permitted Models (Governance Restriction)">
             <Select mode="tags" placeholder="Select or type allowed model slugs (e.g. gpt-4o, claude-sonnet)">
-              {availableModels?.map((m) => {
+              {availableModels?.map((m: any) => {
                 const slug = m.slug || m.name;
                 return (
                   <Option key={slug} value={slug}>
@@ -303,7 +375,7 @@ export default function AgentsPage() {
 
           <Form.Item name="allowedTools" label="Permitted External Tools">
             <Select mode="tags" placeholder="Select or type permitted tool names (e.g. search_web, execute_code)">
-              {availableTools?.map((t) => (
+              {availableTools?.map((t: any) => (
                 <Option key={t.name} value={t.name}>
                   {t.displayName || t.name}
                 </Option>
