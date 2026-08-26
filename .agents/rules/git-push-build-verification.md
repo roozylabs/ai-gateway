@@ -17,11 +17,11 @@ Sebelum mengeksekusi `git push`:
    Cek lokasi file yang diubah (`git status` atau file change scope).
 
 2. **Eksekusi Build Relevan**:
-   - **Jika menyentuh `api/`**:
+   - **Jika menyentuh `apps/api/`**:
      ```powershell
-     cd api; & "C:\Program Files\Go\bin\go.exe" build -v ./...
+     cd apps/api; go mod tidy; go vet ./...; go build -v ./...
      ```
-     Pastikan kompilasi Go sukses tanpa error dan tanpa warning `sqlrowserr`.
+     Pastikan `go mod tidy` bersih (tanpa perubahan untracked di `go.mod`/`go.sum`), `go vet` 0 error, dan kompilasi Go sukses tanpa error/warning.
 
    - **Jika menyentuh `app/`**:
      ```powershell
