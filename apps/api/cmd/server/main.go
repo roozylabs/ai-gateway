@@ -117,6 +117,7 @@ func main() {
 	agentGovernance := proxy.NewAgentGovernanceEngine(agentRepo)
 	rbacEngine := proxy.NewRBACEngine(governancePolicyRepo)
 	auditRecorder := proxy.NewAuditRecorder(auditTrailRepo)
+	paperclipAdapter := proxy.NewPaperclipAdapter(agentRepo)
 
 	// Handlers
 	healthHandler := handlers.NewHealthHandler(db, rdb)
@@ -126,6 +127,7 @@ func main() {
 	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo, gatewayKeyRepo, cooldown)
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo, credentialRepo)
 	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, idemStore, agentGovernance, rbacEngine, auditRecorder, modelRepo)
+	paperclipHandler := handlers.NewPaperclipHandler(paperclipAdapter, gatewayHandler)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo, healthStore)
 	activeStreamsHandler := handlers.NewActiveStreamsHandler(cooldown)
@@ -347,6 +349,8 @@ func main() {
 		rg.GET("/models", gatewayHandler.Models)
 		rg.POST("/tools/:toolName/execute", toolGatewayHandler.ExecuteTool)
 		rg.POST("/resources/:resourceName/query", resourceGatewayHandler.ExecuteQuery)
+		rg.POST("/adapters/paperclip/agent/register", paperclipHandler.RegisterAgent)
+		rg.POST("/adapters/paperclip/chat/completions", paperclipHandler.ChatCompletions)
 	}
 
 	registerGatewayRoutes(r.Group("/v1"))
