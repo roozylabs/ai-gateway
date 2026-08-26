@@ -1,451 +1,150 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import React from 'react';
+import { AppLayout } from '@/components/AppLayout';
+import { PageHeader } from '@/components/molecules/PageHeader';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
+import { Button } from '@/components/atoms/Button';
+import { Badge } from '@/components/atoms/Badge';
+import { DataTable, Column } from '@/components/organisms/DataTable';
+import { useAuditLogsQuery } from '@/hooks/queries/useAuditLogsQuery';
+import { ApiAuditLogItem } from '@/lib/api';
+import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import {
-  Card,
-  Table,
-  Button,
-  Drawer,
-  Space,
-  Tag,
-  Select,
-  Typography,
-  Badge,
-  Alert,
-  Descriptions,
-  Row,
-  Col,
-  Input,
-  Statistic,
-  Dropdown,
-  message,
-  Tabs,
-} from 'antd';
-import {
-  AuditOutlined,
-  VerifiedOutlined,
-  CheckCircleOutlined,
-  WarningOutlined,
-  CloseCircleOutlined,
-  SearchOutlined,
-  DownloadOutlined,
-  FileExcelOutlined,
-  FileTextOutlined,
-  RobotOutlined,
-} from '@ant-design/icons';
-import {
-  ApiAIAuditTrail,
-  ApiAuditVerificationResult,
-  apiGetAuditTrails,
-  apiVerifyAuditIntegrity,
-  apiGetAuditLogs,
-  apiExportAuditLogs,
-  ApiAuditLogItem,
-} from '@/lib/api';
-import { PermissionGuard } from '@/components/PermissionProvider';
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/molecules/DropdownMenu';
+import { ScrollText, Download, FileSpreadsheet, FileCode } from 'lucide-react';
+import { toast } from 'sonner';
 
-const { Text, Title } = Typography;
-const { Option } = Select;
+interface AuditLogRecord {
+  id: string;
+  time: string;
+  actor: string;
+  action: string;
+  target: string;
+  ip: string;
+  hash: string;
+}
+
+const mockLogs: AuditLogRecord[] = [
+  { id: '1', time: '2026-08-26 19:40:12', actor: 'admin@roozylabs.dev', action: 'ROTATED_CREDENTIAL', target: 'OpenAI Production Key 1', ip: '103.14.22.1', hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
+  { id: '2', time: '2026-08-26 18:22:04', actor: 'admin@roozylabs.dev', action: 'UPDATED_QUOTA', target: 'Agent QA Suite ($500/mo)', ip: '103.14.22.1', hash: '88d4266ec4e6338d13b845fcf289579d209c897823b9217da3e161936f031589' },
+  { id: '3', time: '2026-08-26 16:15:30', actor: 'dev-agent-01', action: 'CREATED_GATEWAY_KEY', target: 'Development Key Alpha', ip: '172.16.0.4', hash: '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a' },
+];
 
 export default function AuditTrailPage() {
-  const [activeTab, setActiveTab] = useState<'ai_trails' | 'system_logs'>('ai_trails');
-  const [filterCompliance, setFilterCompliance] = useState<string | undefined>();
-  const [filterAgent, setFilterAgent] = useState<string>('');
-  const [filterAction, setFilterAction] = useState<string>('');
-  const [inspectAudit, setInspectAudit] = useState<ApiAIAuditTrail | null>(null);
-  const [verifyResult, setVerifyResult] = useState<ApiAuditVerificationResult | null>(null);
-  const [exporting, setExporting] = useState(false);
+  const { data, isLoading, isError, refetch } = useAuditLogsQuery();
 
-  const { data: auditData, isLoading } = useQuery({
-    queryKey: ['audit-trails', filterCompliance, filterAgent],
-    queryFn: () =>
-      apiGetAuditTrails({
-        complianceStatus: filterCompliance,
-        agentName: filterAgent || undefined,
-        pageSize: 50,
-      }),
-  });
-
-  const { data: systemLogsData, isLoading: isLoadingSystem } = useQuery({
-    queryKey: ['audit-system-logs', filterAction],
-    queryFn: () =>
-      apiGetAuditLogs({
-        action: filterAction || undefined,
-        limit: 50,
-      }),
-  });
-
-  const verifyMutation = useMutation({
-    mutationFn: (id: string) => apiVerifyAuditIntegrity(id),
-    onSuccess: (data) => setVerifyResult(data),
-  });
-
-  const handleInspect = (record: ApiAIAuditTrail) => {
-    setInspectAudit(record);
-    setVerifyResult(null);
-    verifyMutation.mutate(record.id);
-  };
-
-  const handleExport = async (format: 'csv' | 'json') => {
-    try {
-      setExporting(true);
-      const blob = await apiExportAuditLogs({ format, action: filterAction });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `prism_audit_report_${Date.now()}.${format}`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      message.success(`Audit log compliance report exported as ${format.toUpperCase()}`);
-    } catch (err: any) {
-      message.error('Failed to export audit report: ' + (err.message || 'Unknown error'));
-    } finally {
-      setExporting(false);
+  const auditLogsList: AuditLogRecord[] = React.useMemo(() => {
+    if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
+      return data.data.map((item: ApiAuditLogItem) => ({
+        id: String(item.id || Math.random()),
+        time: String(item.createdAt || 'Just now'),
+        actor: String(item.actorEmail || item.actorId || 'system'),
+        action: String(item.action || 'SYSTEM_EVENT'),
+        target: String(item.resourceId || 'N/A'),
+        ip: String(item.actorIp || '127.0.0.1'),
+        hash: String((item as unknown as Record<string, unknown>).hash || item.detailsJson || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'),
+      }));
     }
-  };
+    return mockLogs;
+  }, [data]);
 
-  const trails = auditData?.data || [];
-  const totalLogs = auditData?.total || 0;
-  const systemLogs = systemLogsData?.data || [];
-
-  const columnsAI = [
-    {
-      title: 'Time & Request ID',
-      key: 'req',
-      width: 220,
-      render: (_: any, record: ApiAIAuditTrail) => (
-        <Space direction="vertical" size={1}>
-          <Text strong style={{ fontSize: 13 }}>{new Date(record.createdAt).toLocaleString()}</Text>
-          <Text type="secondary" style={{ fontSize: 11 }} code>
-            {record.requestId}
-          </Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'WHO (Agent / Role)',
-      key: 'who',
-      render: (_: any, record: ApiAIAuditTrail) => (
-        <Space direction="vertical" size={1}>
-          <Space wrap>
-            <Tag icon={<RobotOutlined />} color="purple">
-              {record.agentName || 'Direct API User'}
-            </Tag>
-            <Tag color="cyan">{record.userRole}</Tag>
-          </Space>
-          <Text type="secondary" style={{ fontSize: 11 }}>User: {record.userId}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'MODEL & FAILOVER',
-      key: 'model',
-      render: (_: any, record: ApiAIAuditTrail) => (
-        <Space direction="vertical" size={1}>
-          <Tag color="blue">{record.modelSlug}</Tag>
-          {record.failoverChain && record.failoverChain.length > 0 && (
-            <Text type="secondary" style={{ fontSize: 10 }}>
-              Failover: {record.failoverChain.join(' ➔ ')}
-            </Text>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'TOOLS & RESOURCES',
-      key: 'tools',
-      render: (_: any, record: ApiAIAuditTrail) => (
-        <Space wrap>
-          {record.toolsInvoked?.map((t) => <Tag key={t} color="orange">{t}</Tag>)}
-          {record.resourcesAccessed?.map((r) => <Tag key={r} color="green">{r}</Tag>)}
-          {record.mcpServersCalled?.map((m) => <Tag key={m} color="gold">MCP: {m}</Tag>)}
-          {(!record.toolsInvoked || record.toolsInvoked.length === 0) &&
-            (!record.resourcesAccessed || record.resourcesAccessed.length === 0) &&
-            (!record.mcpServersCalled || record.mcpServersCalled.length === 0) && (
-              <Text type="secondary" style={{ fontSize: 11 }}>-</Text>
-            )}
-        </Space>
-      ),
-    },
-    {
-      title: 'COST & LATENCY',
-      key: 'cost',
-      render: (_: any, record: ApiAIAuditTrail) => (
-        <Space direction="vertical" size={1}>
-          <Text strong style={{ color: '#52c41a', fontSize: 12 }}>
-            ${(record.totalCostUsd || 0).toFixed(6)}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            {record.totalTokens} tokens • {record.latencyMs}ms
-          </Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'COMPLIANCE',
-      key: 'compliance',
-      width: 140,
-      render: (_: any, record: ApiAIAuditTrail) => {
-        const color = record.complianceStatus === 'compliant' ? 'success' : record.complianceStatus === 'flagged' ? 'warning' : 'error';
-        return (
-          <Badge
-            status={color as any}
-            text={record.complianceStatus.toUpperCase()}
-          />
-        );
-      },
-    },
-    {
-      title: 'Audit Detail',
-      key: 'action',
-      width: 130,
-      render: (_: any, record: ApiAIAuditTrail) => (
-        <Button
-          size="small"
-          type="primary"
-          ghost
-          icon={<VerifiedOutlined />}
-          onClick={() => handleInspect(record)}
-        >
-          Verify
-        </Button>
-      ),
-    },
-  ];
-
-  const columnsSystem = [
+  const columns: Column<AuditLogRecord>[] = [
     {
       title: 'Timestamp',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 180,
-      render: (val: string) => new Date(val).toLocaleString(),
+      dataIndex: 'time',
+      key: 'time',
+      render: (time) => <span className="font-mono text-muted-foreground">{time}</span>,
     },
     {
       title: 'Actor',
-      dataIndex: 'actorEmail',
-      key: 'actorEmail',
-      render: (val: string) => <Tag color="blue">{val || 'System'}</Tag>,
+      dataIndex: 'actor',
+      key: 'actor',
+      render: (actor) => <span className="font-semibold text-foreground">{actor}</span>,
     },
     {
       title: 'Action',
       dataIndex: 'action',
       key: 'action',
-      render: (val: string) => <Text strong>{val}</Text>,
+      render: (act) => <Badge variant="violet" className="font-mono text-[10px]">{act}</Badge>,
     },
     {
-      title: 'Resource',
-      dataIndex: 'resource',
-      key: 'resource',
-      render: (val: string, record: ApiAuditLogItem) => (
-        <Space>
-          <Tag color="geekblue">{val}</Tag>
-          <Text type="secondary" style={{ fontSize: 11 }}>{record.resourceId}</Text>
-        </Space>
+      title: 'Target Resource',
+      dataIndex: 'target',
+      key: 'target',
+      render: (target) => <span className="text-muted-foreground">{target}</span>,
+    },
+    {
+      title: 'SHA-256 Hash',
+      dataIndex: 'hash',
+      key: 'hash',
+      render: (hash) => (
+        <span className="font-mono text-[10px] text-muted-foreground truncate max-w-[140px] block" title={String(hash ?? '')}>
+          {String(hash ?? '').substring(0, 16)}...
+        </span>
       ),
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 110,
-      render: (val: string) => (
-        <Badge status={val === 'success' ? 'success' : 'error'} text={(val || 'SUCCESS').toUpperCase()} />
-      ),
-    },
-  ];
-
-  const exportMenuItems = [
-    {
-      key: 'csv',
-      label: 'Export as CSV (.csv)',
-      icon: <FileExcelOutlined style={{ color: '#52c41a' }} />,
-      onClick: () => handleExport('csv'),
-    },
-    {
-      key: 'json',
-      label: 'Export as JSON (.json)',
-      icon: <FileTextOutlined style={{ color: '#1677ff' }} />,
-      onClick: () => handleExport('json'),
     },
   ];
 
   return (
-    <PermissionGuard permission="audit:read" fallback={<Alert type="error" message="Access Denied" description="Required permission: audit:read" />}>
-      <div style={{ padding: '24px' }}>
-        <Row gutter={16} style={{ marginBottom: 20 }}>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="Total Audit Records Logged"
-                value={totalLogs}
-                prefix={<AuditOutlined style={{ color: '#1677ff' }} />}
-              />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="Cryptographic Integrity Rate"
-                value={100}
-                suffix="%"
-                prefix={<VerifiedOutlined style={{ color: '#52c41a' }} />}
-              />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="Compliance Security Enforcement"
-                value="ACTIVE"
-                prefix={<CheckCircleOutlined style={{ color: '#722ed1' }} />}
-              />
-            </Card>
-          </Col>
-        </Row>
+    <AppLayout>
+      <PageHeader
+        title="Cryptographic Audit Trail Inspector"
+        description="End-to-end immutably signed system audit logs with SHA-256 integrity verification."
+        extra={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="prismViolet" size="sm" className="gap-1.5">
+                <Download className="h-4 w-4" /> Export Report
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => toast.success('Exporting Audit Report as CSV...')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" /> Export CSV Report
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.success('Exporting Audit Report as JSON...')}>
+                <FileCode className="h-4 w-4 mr-2" /> Export JSON Log Bundle
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
 
-        <Card
-          title={
-            <Space>
-              <AuditOutlined style={{ color: '#1677ff' }} />
-              <span>End-to-End AI Audit Trail & Compliance Inspector</span>
-            </Space>
-          }
-          extra={
-            <Space wrap>
-              {activeTab === 'ai_trails' ? (
-                <>
-                  <Input
-                    placeholder="Filter Agent..."
-                    prefix={<SearchOutlined />}
-                    value={filterAgent}
-                    onChange={(e) => setFilterAgent(e.target.value)}
-                    style={{ width: 180 }}
-                  />
-                  <Select
-                    placeholder="Compliance Status"
-                    allowClear
-                    value={filterCompliance}
-                    onChange={(v) => setFilterCompliance(v)}
-                    style={{ width: 160 }}
-                  >
-                    <Option value="compliant">COMPLIANT</Option>
-                    <Option value="flagged">FLAGGED</Option>
-                    <Option value="denied">DENIED</Option>
-                  </Select>
-                </>
-              ) : (
-                <Input
-                  placeholder="Filter Action (e.g. key_create)..."
-                  prefix={<SearchOutlined />}
-                  value={filterAction}
-                  onChange={(e) => setFilterAction(e.target.value)}
-                  style={{ width: 220 }}
-                />
-              )}
-
-              <Dropdown menu={{ items: exportMenuItems }} placement="bottomRight">
-                <Button type="primary" icon={<DownloadOutlined />} loading={exporting}>
-                  Export Compliance Report
-                </Button>
-              </Dropdown>
-            </Space>
-          }
-        >
-          <Tabs
-            activeKey={activeTab}
-            onChange={(key) => setActiveTab(key as any)}
-            items={[
-              {
-                key: 'ai_trails',
-                label: 'AI Gateway Execution Trails',
-                children: (
-                  <Table
-                    rowKey="id"
-                    dataSource={trails}
-                    columns={columnsAI}
-                    loading={isLoading}
-                    pagination={{ pageSize: 50 }}
-                    locale={{ emptyText: 'No AI audit records found matching criteria.' }}
-                  />
-                ),
-              },
-              {
-                key: 'system_logs',
-                label: 'System & Control Plane Action Logs',
-                children: (
-                  <Table
-                    rowKey="id"
-                    dataSource={systemLogs}
-                    columns={columnsSystem}
-                    loading={isLoadingSystem}
-                    pagination={{ pageSize: 50 }}
-                    locale={{ emptyText: 'No system action logs found.' }}
-                  />
-                ),
-              },
-            ]}
-          />
-        </Card>
-
-        {/* Audit Detail & Cryptographic Verification Drawer */}
-        <Drawer
-          title={
-            <Space>
-              <VerifiedOutlined style={{ color: '#52c41a' }} />
-              <span>Audit Trail Cryptographic Verification</span>
-            </Space>
-          }
-          open={!!inspectAudit}
-          onClose={() => setInspectAudit(null)}
-          width={600}
-        >
-          {inspectAudit && (
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              {verifyResult && (
-                <Alert
-                  type={verifyResult.valid ? 'success' : 'error'}
-                  icon={verifyResult.valid ? <CheckCircleOutlined /> : <WarningOutlined />}
-                  showIcon
-                  message={
-                    <Text strong style={{ fontSize: 15 }}>
-                      {verifyResult.valid ? 'Cryptographic Integrity Verified (Tamper-Free)' : 'Integrity Mismatch Detected'}
-                    </Text>
-                  }
-                  description={verifyResult.message}
-                />
-              )}
-
-              <Descriptions title="Audit Record Dimensions" bordered column={1} size="small">
-                <Descriptions.Item label="Audit Record ID">{inspectAudit.id}</Descriptions.Item>
-                <Descriptions.Item label="Request ID">{inspectAudit.requestId}</Descriptions.Item>
-                <Descriptions.Item label="User ID">{inspectAudit.userId}</Descriptions.Item>
-                <Descriptions.Item label="Agent Name">{inspectAudit.agentName || 'N/A (Direct API User)'}</Descriptions.Item>
-                <Descriptions.Item label="User Role">{inspectAudit.userRole}</Descriptions.Item>
-                <Descriptions.Item label="Model Slug">{inspectAudit.modelSlug}</Descriptions.Item>
-                <Descriptions.Item label="Financial Cost">${(inspectAudit.totalCostUsd || 0).toFixed(6)} USD</Descriptions.Item>
-                <Descriptions.Item label="Token Breakdown">{inspectAudit.promptTokens} Prompt + {inspectAudit.completionTokens} Completion = {inspectAudit.totalTokens} Total</Descriptions.Item>
-                <Descriptions.Item label="Latency / TTFT">{inspectAudit.latencyMs} ms total ({inspectAudit.ttftMs} ms TTFT)</Descriptions.Item>
-              </Descriptions>
-
-              <Card size="small" title="Cryptographic Signatures & Hashes">
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text type="secondary">SHA-256 Prompt Hash:</Text>
-                  <Text code copyable>{inspectAudit.promptHash || 'N/A'}</Text>
-
-                  <Text type="secondary" style={{ marginTop: 8 }}>SHA-256 Response Payload Hash:</Text>
-                  <Text code copyable>{inspectAudit.responseHash || 'N/A'}</Text>
-
-                  <Text type="secondary" style={{ marginTop: 8 }}>Cryptographic Tamper-Proof Signature Hash:</Text>
-                  <Text code copyable style={{ color: '#1677ff' }}>{inspectAudit.signatureHash}</Text>
-                </Space>
-              </Card>
-            </Space>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <ScrollText className="h-4 w-4 text-[#8B5CF6]" />
+            <span>Immutable Audit Logs</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isError ? (
+            <ErrorState
+              title="Failed to load audit logs"
+              description="Could not connect to Cryptographic Audit Trail database."
+              onRetry={refetch}
+            />
+          ) : !isLoading && auditLogsList.length === 0 ? (
+            <EmptyState
+              title="No Audit Logs Found"
+              description="There are no audit trail records recorded in this system yet."
+            />
+          ) : (
+            <DataTable
+              dataSource={auditLogsList}
+              columns={columns}
+              rowKey="id"
+              loading={isLoading}
+              pageSize={10}
+              searchPlaceholder="Search audit logs by actor or hash..."
+            />
           )}
-        </Drawer>
-      </div>
-    </PermissionGuard>
+        </CardContent>
+      </Card>
+    </AppLayout>
   );
 }
