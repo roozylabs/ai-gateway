@@ -45,7 +45,7 @@ description: Master knowledge base and developer guide for RoozyLabs Prism (v2.1
 
 ## 2. Monorepo Directory Structure
 
-- `apps/api`: Go Backend Source Code (Golang 1.25)
+- `apps/api`: Go Backend Source Code (Golang 1.24)
   - `cmd/server/main.go`: Application entrypoint, route registration (`/v1` and `/api/v1`).
   - `internal/proxy`: Core proxy engine (`engine.go`), router (`router.go`), credential health engine (`credential_health.go`), and provider adapters (`openai.go`, `anthropic.go`, `google.go`, `opencode.go`).
   - `internal/middleware`: Middleware (`tenant.go`, `auth.go`, `ratelimit.go`).
