@@ -46,21 +46,21 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Connect to Redis
 	rdb, err := database.NewRedis(cfg.RedisURL)
 	if err != nil {
 		log.Fatal("Failed to connect to Redis:", err)
 	}
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	// OpenTelemetry Initialization
 	otelShutdown, err := telemetry.InitOTel(context.Background())
 	if err != nil {
 		log.Printf("[OTel Warning] Failed to initialize OpenTelemetry: %v", err)
 	} else {
-		defer otelShutdown(context.Background())
+		defer func() { _ = otelShutdown(context.Background()) }()
 	}
 
 	// Repositories (use underlying sql.DB from sqlx)

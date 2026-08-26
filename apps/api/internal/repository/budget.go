@@ -30,7 +30,7 @@ func (r *BudgetRepository) ListByUserID(ctx context.Context, userID string) ([]m
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var budgets []models.Budget
 	for rows.Next() {

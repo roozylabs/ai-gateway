@@ -17,7 +17,7 @@ func RunMigrations(databaseURL, migrationsPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
-	defer m.Close()
+	defer func() { _, _ = m.Close() }()
 
 	if version, dirty, verErr := m.Version(); verErr == nil && dirty {
 		log.Printf("Warning: Migration database is dirty at version %d", version)

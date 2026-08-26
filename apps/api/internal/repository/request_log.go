@@ -410,7 +410,7 @@ func (r *RequestLogRepository) GetLogAnalytics(ctx context.Context, userID strin
 		 ORDER BY cost_usd DESC, requests DESC`, userID, days,
 	)
 	if err == nil {
-		defer rowsApps.Close()
+		defer func() { _ = rowsApps.Close() }()
 		for rowsApps.Next() {
 			var app ClientAppStat
 			if err := rowsApps.Scan(&app.ClientApp, &app.Requests, &app.Tokens, &app.CostUSD); err == nil {
@@ -436,7 +436,7 @@ func (r *RequestLogRepository) GetLogAnalytics(ctx context.Context, userID strin
 		 ORDER BY cost_usd DESC, requests DESC`, userID, days,
 	)
 	if err == nil {
-		defer rowsModels.Close()
+		defer func() { _ = rowsModels.Close() }()
 		for rowsModels.Next() {
 			var ms ModelStat
 			if err := rowsModels.Scan(&ms.Model, &ms.Requests, &ms.Tokens, &ms.CostUSD, &ms.AvgTTFTMs, &ms.AvgLatencyMs); err == nil {

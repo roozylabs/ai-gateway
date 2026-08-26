@@ -412,7 +412,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		}
 
 		body, err := io.ReadAll(httpResp.Body)
-		httpResp.Body.Close()
+		_ = httpResp.Body.Close()
 		release()
 		if err != nil {
 			lastErr = fmt.Errorf("read response: %w", err)
@@ -741,7 +741,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		// 429 → cooldown and retry (before streaming starts)
 		if httpResp.StatusCode == http.StatusTooManyRequests {
 			bodyBytes, _ := io.ReadAll(httpResp.Body)
-			httpResp.Body.Close()
+			_ = httpResp.Body.Close()
 			release()
 			bodyStr := string(bodyBytes)
 
@@ -765,7 +765,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		// 401/403 → check if quota/rate limit error vs invalid key
 		if httpResp.StatusCode == http.StatusUnauthorized || httpResp.StatusCode == http.StatusForbidden {
 			bodyBytes, _ := io.ReadAll(httpResp.Body)
-			httpResp.Body.Close()
+			_ = httpResp.Body.Close()
 			release()
 			bodyStr := string(bodyBytes)
 			bodyLower := strings.ToLower(bodyStr)

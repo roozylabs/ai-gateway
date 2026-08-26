@@ -145,7 +145,7 @@ func (h *GoogleOAuthHandler) Callback(c *gin.Context) {
 		}
 		_ = json.NewDecoder(userResp.Body).Decode(&userInfo)
 		userEmail = userInfo.Email
-		userResp.Body.Close()
+		_ = userResp.Body.Close()
 	}
 
 	credName := "Gemini Account"

@@ -26,7 +26,7 @@ func NewSSEHandler(publisher *goredis.EventPublisher) *SSEHandler {
 // @Router       /api/sse [get]
 func (h *SSEHandler) Stream(c *gin.Context) {
 	pubsub := h.publisher.Subscribe(c.Request.Context())
-	defer pubsub.Close()
+	defer func() { _ = pubsub.Close() }()
 
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")

@@ -57,7 +57,7 @@ func (r *AgentRepository) ListByUserID(ctx context.Context, userID string) ([]mo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var agents []models.Agent
 	for rows.Next() {

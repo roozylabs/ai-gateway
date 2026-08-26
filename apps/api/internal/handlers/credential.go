@@ -298,9 +298,10 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 	}
 	if req.Status != "" {
 		existing.Status = req.Status
-		if req.Status == "active" {
+		switch req.Status {
+		case "active":
 			existing.Enabled = true
-		} else if req.Status == "disabled" {
+		case "disabled":
 			existing.Enabled = false
 		}
 	}

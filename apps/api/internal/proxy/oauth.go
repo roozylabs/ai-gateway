@@ -66,7 +66,7 @@ func (m *OAuthTokenManager) GetAccessToken(ctx context.Context, credentialID str
 	if err != nil {
 		return "", fmt.Errorf("token request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

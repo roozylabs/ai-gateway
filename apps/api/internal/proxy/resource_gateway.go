@@ -272,7 +272,7 @@ func (g *ResourceGateway) getPool(backendID, dsn string) (*sql.DB, error) {
 	pingErr := db.PingContext(ctx)
 	cancel()
 	if pingErr != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("ping: %w", pingErr)
 	}
 	g.mu.Lock()
@@ -320,7 +320,7 @@ func doHTTP(ctx context.Context, req *http.Request, timeout time.Duration) ([]by
 	if err != nil {
 		return nil, 0, fmt.Errorf("http request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
 		return nil, resp.StatusCode, fmt.Errorf("read response: %w", err)

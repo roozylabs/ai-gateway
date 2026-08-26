@@ -40,7 +40,7 @@ func (r *ToolInvocationRepository) CreateBatch(ctx context.Context, requestID st
 			stmt.WriteString(", ")
 		}
 		offset := i * 4
-		stmt.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d::jsonb)", offset+1, offset+2, offset+3, offset+4))
+		_, _ = fmt.Fprintf(stmt, "($%d, $%d, $%d, $%d::jsonb)", offset+1, offset+2, offset+3, offset+4)
 
 		var callID interface{}
 		if rec.CallID != "" {
