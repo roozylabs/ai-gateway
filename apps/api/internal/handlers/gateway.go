@@ -285,6 +285,12 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		{"id": "gemini-2.0-flash", "object": "model", "owned_by": "google"},
 		{"id": "gemini-1.5-pro", "object": "model", "owned_by": "google"},
 		{"id": "gemini-1.5-flash", "object": "model", "owned_by": "google"},
+		{"id": "hy3-free", "object": "model", "owned_by": "opencode"},
+		{"id": "mimo-v2.5-free", "object": "model", "owned_by": "opencode"},
+		{"id": "deepseek-v4-flash-free", "object": "model", "owned_by": "opencode"},
+		{"id": "nemotron-3-ultra-free", "object": "model", "owned_by": "opencode"},
+		{"id": "nemotron-3.5-lightning-free", "object": "model", "owned_by": "opencode"},
+		{"id": "laguna-s-2.1-free", "object": "model", "owned_by": "opencode"},
 		{"id": "big-pickle", "object": "model", "owned_by": "opencode"},
 	}
 
