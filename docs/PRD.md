@@ -18,6 +18,7 @@
 | 2.1 | 25 August 2026, 14:30 WIB | Added Pillar 9 (Agent Gateway & Infra), Pillar 10 (Enterprise Identity, RBAC & Governance), and Pillar 11 (End-to-End Cryptographic AI Audit Trail) specifications |
 | 2.2 | 25 August 2026, 19:30 WIB | Added Pillar 12 (Multi-Tenant Architecture & SaaS Platform) specifications, RLS migrations (055-060), TenantMiddleware, MeteringService, and Organization/Members UI pages |
 | 2.3 | 26 August 2026, 15:15 WIB | Added Phase 4 Agent Platform & Governance Control Plane specifications: Agent Policy Middleware (X-Prism-Agent-ID), Tool/Resource boundary enforcement, candidate model filtering, and Redis budget limiter |
+| 2.4 | 26 August 2026, 15:20 WIB | Added Phase 5 Paperclip Orchestrator Adapter specifications: /v1/adapters/paperclip endpoints, agent registration & metadata synchronization, and X-Paperclip-Task-ID context extraction |
 
 ---
 

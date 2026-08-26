@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "roozylabs-prism"
+version = "2.1.0"
+description = "Official Python SDK for RoozyLabs Prism Universal AI Control Plane & Model Gateway"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "RoozyLabs", email = "dev@roozylabs.com" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+dependencies = [
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0"
+]
+langchain = [
+    "langchain-core>=0.1.0"
+]
+
+[project.urls]
+Homepage = "https://prism.roozylabs.com"
+Documentation = "https://docs.prism.roozylabs.com"
+Repository = "https://github.com/roozylabs/prism"
