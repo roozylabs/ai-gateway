@@ -118,3 +118,4 @@ func InitOTel(ctx context.Context) (OTelShutdownFunc, error) {
 
 	return shutdown, nil
 }
+

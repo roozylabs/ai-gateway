@@ -168,6 +168,7 @@ func main() {
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware())
 
+	// Health check (public)
 	// Health check & OTel Prometheus Metrics (public)
 	r.GET("/health", healthHandler.Check)
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))

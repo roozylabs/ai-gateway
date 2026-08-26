@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/roozylabs/prism/internal/models"
 	goredis "github.com/roozylabs/prism/internal/redis"
 	"github.com/roozylabs/prism/internal/repository"
@@ -992,6 +993,9 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			TotalTokens:     totalTokens.TotalTokens,
 			CostUSD:         costUSD,
 			RetryCount:      retryCount,
+			TTFTMs:          ttftMs,
+			ResponseHash:    respHash,
+			ResponseBytes:   respBytes,
 			Attempts:        MarshalAttempts(attempts),
 		}
 
