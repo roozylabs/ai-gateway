@@ -74,7 +74,7 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 - **📜 End-to-End Cryptographic AI Audit Trail**: SHA-256 tamper-proof hash signature log capturing 6-dimensional execution trails (WHO, REQUEST, MODEL, TOOLS/RESOURCES, COST, OUTCOME) with real-time verification (`/audit-trail`).
 - **🧰 Tool Gateway**: Control plane for custom function calling and external REST API tools with priority failover routing, header injection, and sandbox execution (`/tools`).
 - **🗄️ Resource Gateway**: Dynamic data fetching layer supporting REST API resources and direct PostgreSQL relational database querying with parameterized SQL templates (`/resources`).
-- **🔌 MCP (Model Context Protocol) Gateway**: Centralized protocol gateway for remote HTTP and SSE Model Context Protocol servers (GitHub MCP, Notion MCP, custom agent servers) featuring automatic JSON-RPC 2.0 discovery (`/mcp`).
+- **🔌 MCP (Model Context Protocol) Gateway & Catalog Registry**: Centralized protocol gateway and discovery marketplace for remote HTTP/SSE Model Context Protocol servers featuring automatic capability scanning, RLS tenant isolation (`/v1/mcp/registry`), and visual Next.js Catalog Explorer UI (`/mcp`).
 - **🎨 Prism Design System**: High-density, dark-first UI palette (`#08090A` canvas, `#0F1115` cards, `#8B5CF6` violet signature accent, and `JetBrains Mono` typography for all metrics).
 - **🛡️ High Availability & Circuit Breaker**: Automatic 50x error detection, 60-second credential quarantine, and instant fallback cascades to ensure zero downtime.
 - **💰 AI FinOps & Budget Manager**: Configurable spend limits, velocity alert thresholds (`healthy`, `warning`, `critical`, `exceeded`), burn-rate forecasting, and automatic model cost recommendations.
