@@ -11,6 +11,14 @@
 | 1.4 | 21 August 2026, 22:56 WIB | Added AI Budget Manager, Smart Router Engine (`roozy-auto`), Cost Pipeline, and UI Guardrails |
 | 2.0 | 25 August 2026, 13:00 WIB | Added Tool Gateway, Resource Gateway, and MCP Model Context Protocol Gateway architecture and JSON-RPC 2.0 engine specs |
 | 2.1 | 25 August 2026, 14:30 WIB | Added Agent Gateway, Declarative RBAC Engine, and Cryptographic SHA-256 AI Audit Trail Recorder specs |
+| 2.2 | 26 August 2026, 15:15 WIB | Added Agent Policy Middleware (X-Prism-Agent-ID), Tool/Resource boundary enforcement, & candidate model filtering specs |
+| 2.3 | 26 August 2026, 15:20 WIB | Added Paperclip Orchestrator Adapter architecture & X-Paperclip-Task-ID workflow context extraction specs |
+| 2.4 | 26 August 2026, 16:12 WIB | Added Adaptive Routing Engine architecture & multi-factor dynamic scoring specs |
+| 2.5 | 26 August 2026, 17:00 WIB | Added MCP Server Registry Catalog architecture & JSON-RPC 2.0 gateway routing specs |
+| 2.6 | 26 August 2026, 17:40 WIB | Added Enterprise RBAC & Google/GitHub OAuth2 authentication architecture specs |
+| 2.7 | 26 August 2026, 18:20 WIB | Added Advanced Audit Logs & Compliance Export Engine architecture specs |
+| 2.8 | 26 August 2026, 18:50 WIB | Added Multi-Tenant Quota & Limit Enforcement Engine architecture specs |
+| 2.9 | 26 August 2026, 18:56 WIB | Added Multi-Tier Billing & Pricing Engine architecture specs |
 
 ---
 
