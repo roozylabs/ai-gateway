@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
@@ -8,10 +8,16 @@ import { Button } from '@/components/atoms/Button';
 import { Badge, StatusDot, StatusType } from '@/components/atoms/Badge';
 import { DataTable, Column } from '@/components/organisms/DataTable';
 import { useCredentialsQuery } from '@/hooks/queries/useCredentialsQuery';
-import { ApiCredential } from '@/lib/api';
+import { ApiCredential, apiCreateCredential } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Key, Plus, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Input } from '@/components/atoms/Input';
+import { Label } from '@/components/atoms/Label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
 
 interface CredentialRecord {
   id: string;
@@ -32,6 +38,29 @@ const mockCredentials: CredentialRecord[] = [
 
 export default function CredentialsPage() {
   const { data, isLoading, isError, refetch } = useCredentialsQuery();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formKey, setFormKey] = useState('');
+  const [formProviderId, setFormProviderId] = useState('');
+  const queryClient = useQueryClient();
+  const { data: providersData } = useProvidersQuery();
+  const providers = Array.isArray(providersData) ? providersData : [];
+
+  const createMutation = useMutation({
+    mutationFn: (data: { providerId: string; name: string; apiKey: string }) =>
+      apiCreateCredential(data.providerId, { name: data.name, apiKey: data.apiKey }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['credentials'] });
+      toast.success('Credential created successfully');
+      setDrawerOpen(false);
+      setFormName('');
+      setFormKey('');
+      setFormProviderId('');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create credential: ${error.message}`);
+    },
+  });
 
   const credentialsList: CredentialRecord[] = React.useMemo(() => {
     if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
@@ -111,7 +140,7 @@ export default function CredentialsPage() {
         title="Credential Rotation & Health Center"
         description="Manage API credentials across all LLM providers with automatic health monitoring and rotation."
         extra={
-          <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => toast.info('Add Credential Drawer')}>
+          <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => setDrawerOpen(true)}>
             <Plus className="h-4 w-4" /> Add Provider Key
           </Button>
         }
@@ -153,6 +182,42 @@ export default function CredentialsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Add Provider Key</SheetTitle>
+            <SheetDescription>Add a new API credential for an LLM provider.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cred-provider">Provider</Label>
+              <Select value={formProviderId} onValueChange={setFormProviderId}>
+                <SelectTrigger id="cred-provider"><SelectValue placeholder="Select provider" /></SelectTrigger>
+                <SelectContent>
+                  {providers.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cred-name">Credential Label</Label>
+              <Input id="cred-name" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g., Production Key" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cred-key">API Key</Label>
+              <Input id="cred-key" type="password" value={formKey} onChange={(e) => setFormKey(e.target.value)} placeholder="sk-..." />
+            </div>
+          </div>
+          <SheetFooter>
+            <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
+            <Button variant="prismViolet" onClick={() => createMutation.mutate({ providerId: formProviderId, name: formName, apiKey: formKey })} disabled={!formName.trim() || !formProviderId || !formKey.trim() || createMutation.isPending}>
+              {createMutation.isPending ? 'Creating...' : 'Add Credential'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }
