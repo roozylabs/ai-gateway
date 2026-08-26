@@ -116,7 +116,7 @@ func (h *GoogleOAuthHandler) Callback(c *gin.Context) {
 		renderPopupResult(c, false, "", "Token exchange request failed: "+err.Error())
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil || resp.StatusCode != http.StatusOK {
