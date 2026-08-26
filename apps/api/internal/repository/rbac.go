@@ -46,6 +46,9 @@ func (r *RBACRepository) GetUserPermissions(ctx context.Context, userID string, 
 			}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return []string{"org:read", "logs:read"}, "viewer", fmt.Errorf("scan user permissions row error: %w", err)
+	}
 
 	if roleSlug == "" {
 		roleSlug = "developer"
