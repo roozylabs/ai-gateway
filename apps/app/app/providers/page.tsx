@@ -38,7 +38,7 @@ export default function ProvidersPage() {
         slug: String(item.id || 'provider-slug'),
         modelsCount: 4,
         avgLatency: '120 ms',
-        status: 'healthy' as const,
+        status: item.enabled ? 'healthy' : 'cooldown',
         activeCredentials: 1,
       }));
     }
