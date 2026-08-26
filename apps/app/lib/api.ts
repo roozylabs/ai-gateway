@@ -1057,6 +1057,30 @@ export async function apiExportAuditLogs(params?: {
   return response.data;
 }
 
+// Multi-Tenant Quotas API
+export interface ApiTenantQuota {
+  id: string;
+  organizationId?: string;
+  targetType: 'organization' | 'workspace' | 'agent' | 'user';
+  targetId: string;
+  monthlySpendLimitUsd: number;
+  dailySpendLimitUsd: number;
+  dailyRequestLimit: number;
+  maxConcurrentStreams: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function apiGetQuotas(): Promise<{ object: string; data: ApiTenantQuota[] }> {
+  const response = await api.get<{ object: string; data: ApiTenantQuota[] }>('/quotas');
+  return response.data;
+}
+
+export async function apiUpdateQuota(targetType: string, targetId: string, data: Partial<ApiTenantQuota>): Promise<{ message: string; quota: ApiTenantQuota }> {
+  const response = await api.put<{ message: string; quota: ApiTenantQuota }>(`/quotas/${targetType}/${targetId}`, data);
+  return response.data;
+}
+
 // Agent Gateway API
 export interface ApiAgent {
   id: string;

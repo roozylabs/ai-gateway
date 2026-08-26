@@ -99,6 +99,7 @@ func main() {
 	governancePolicyRepo := repository.NewGovernancePolicyRepository(sqlDB)
 	auditTrailRepo := repository.NewAuditTrailRepository(sqlDB)
 	rbacRepo := repository.NewRBACRepository(sqlDB)
+	quotaRepo := repository.NewQuotaRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -158,6 +159,7 @@ func main() {
 	userPermissionsHandler := handlers.NewUserPermissionsHandler(rbacRepo, userRepo)
 	onboardingHandler := handlers.NewOnboardingHandler(userRepo, gatewayKeyRepo)
 	oauthHandler := handlers.NewOAuthHandler(authService)
+	quotaHandler := handlers.NewQuotaHandler(quotaRepo)
 
 	// Background workers
 	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -247,6 +249,11 @@ func main() {
 			protected.GET("/analytics/finops/anomalies", finopsAnomaliesHandler.ListAnomalies)
 			protected.GET("/analytics/finops/budget-alerts", finopsAnomaliesHandler.ListBudgetAlerts)
 			protected.POST("/analytics/finops/budget-alerts/:id/acknowledge", finopsAnomaliesHandler.AcknowledgeAlert)
+
+			// Quotas & Budgets
+			protected.GET("/quotas", quotaHandler.List)
+			protected.GET("/quotas/:target_type/:target_id", quotaHandler.Get)
+			protected.PUT("/quotas/:target_type/:target_id", quotaHandler.Update)
 
 			// Dashboard
 			protected.GET("/dashboard/stats", dashboardHandler.GetStats)

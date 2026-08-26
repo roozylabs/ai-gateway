@@ -18,6 +18,8 @@ import {
   Row,
   Col,
   message,
+  Tabs,
+  Table,
 } from 'antd';
 import {
   WalletOutlined,
@@ -28,6 +30,7 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
   CloseCircleOutlined,
+  ClusterOutlined,
 } from '@ant-design/icons';
 import {
   PageHeader,
@@ -42,15 +45,22 @@ import {
   apiCreateBudget,
   apiUpdateBudget,
   apiDeleteBudget,
+  apiGetQuotas,
+  apiUpdateQuota,
+  ApiTenantQuota,
 } from '@/lib/api';
+import { PermissionGuard } from '@/components/PermissionProvider';
 
 const { Text, Title, Paragraph } = Typography;
 
 export default function BudgetsPage() {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'budgets' | 'quotas'>('budgets');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<ApiBudget | null>(null);
+  const [editingQuota, setEditingQuota] = useState<ApiTenantQuota | null>(null);
   const [form] = Form.useForm();
+  const [quotaForm] = Form.useForm();
   const [warningVal, setWarningVal] = useState(80);
   const [criticalVal, setCriticalVal] = useState(90);
 
@@ -63,6 +73,11 @@ export default function BudgetsPage() {
   const { data: statusData, isLoading: statusLoading } = useQuery<ApiBudgetStatus>({
     queryKey: ['budget-status'],
     queryFn: apiGetBudgetStatus,
+  });
+
+  const { data: quotasData, isLoading: quotasLoading } = useQuery({
+    queryKey: ['tenant-quotas'],
+    queryFn: apiGetQuotas,
   });
 
   // Mutations
@@ -90,6 +105,19 @@ export default function BudgetsPage() {
     },
     onError: (err: Error) => {
       message.error(err.message || 'Failed to update budget');
+    },
+  });
+
+  const updateQuotaMutation = useMutation({
+    mutationFn: ({ type, id, data }: { type: string; id: string; data: Partial<ApiTenantQuota> }) =>
+      apiUpdateQuota(type, id, data),
+    onSuccess: () => {
+      message.success('Tenant quota limit updated successfully');
+      setEditingQuota(null);
+      queryClient.invalidateQueries({ queryKey: ['tenant-quotas'] });
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Failed to update quota limit');
     },
   });
 
@@ -128,6 +156,16 @@ export default function BudgetsPage() {
     setCriticalVal(Math.round((budget.criticalThreshold || 0.9) * 100));
   };
 
+  const handleOpenEditQuota = (quota: ApiTenantQuota) => {
+    setEditingQuota(quota);
+    quotaForm.setFieldsValue({
+      monthlySpendLimitUsd: quota.monthlySpendLimitUsd,
+      dailySpendLimitUsd: quota.dailySpendLimitUsd,
+      dailyRequestLimit: quota.dailyRequestLimit,
+      maxConcurrentStreams: quota.maxConcurrentStreams,
+    });
+  };
+
   const handleSubmit = (values: any) => {
     const payload: Partial<ApiBudget> = {
       name: values.name,
@@ -144,6 +182,15 @@ export default function BudgetsPage() {
     } else {
       createMutation.mutate(payload);
     }
+  };
+
+  const handleQuotaSubmit = (values: any) => {
+    if (!editingQuota) return;
+    updateQuotaMutation.mutate({
+      type: editingQuota.targetType,
+      id: editingQuota.targetId,
+      data: values,
+    });
   };
 
   // Status Badge Helper
@@ -223,83 +270,173 @@ export default function BudgetsPage() {
     },
   ];
 
+  const columnsQuotas = [
+    {
+      title: 'Target Scope',
+      key: 'target',
+      render: (_: any, record: ApiTenantQuota) => (
+        <Space>
+          <Tag color={record.targetType === 'organization' ? 'purple' : record.targetType === 'workspace' ? 'blue' : 'orange'}>
+            {record.targetType.toUpperCase()}
+          </Tag>
+          <Text strong>{record.targetId}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Monthly Spend Limit',
+      dataIndex: 'monthlySpendLimitUsd',
+      key: 'monthlySpendLimitUsd',
+      render: (val: number) => <Text strong style={{ color: '#52c41a' }}>${(val || 0).toFixed(2)} USD</Text>,
+    },
+    {
+      title: 'Daily Spend Limit',
+      dataIndex: 'dailySpendLimitUsd',
+      key: 'dailySpendLimitUsd',
+      render: (val: number) => `$${(val || 0).toFixed(2)} USD`,
+    },
+    {
+      title: 'Daily Req Limit',
+      dataIndex: 'dailyRequestLimit',
+      key: 'dailyRequestLimit',
+      render: (val: number) => `${val?.toLocaleString() || 0} reqs`,
+    },
+    {
+      title: 'Max Concurrent Streams',
+      dataIndex: 'maxConcurrentStreams',
+      key: 'maxConcurrentStreams',
+      render: (val: number) => `${val || 0} streams`,
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      render: (_: any, record: ApiTenantQuota) => (
+        <PermissionGuard permission="org:write" disabledTooltip="Requires org:write permission to update quota limits">
+          <Button size="small" icon={<EditOutlined />} onClick={() => handleOpenEditQuota(record)}>
+            Edit Quota
+          </Button>
+        </PermissionGuard>
+      ),
+    },
+  ];
+
   const currentStatus = statusData?.status || 'healthy';
   const usagePercent = Math.min(100, Math.round(statusData?.usagePercent || 0));
+  const quotas = quotasData?.data || [];
 
   return (
     <div>
       <PageHeader
-        title="Budgets"
-        description="Configure monthly and daily AI expenditure limits, hard cutoffs, and alert thresholds"
+        title="Budgets & Multi-Tenant Quotas"
+        description="Configure monthly and daily AI expenditure limits, hard cutoffs, and tenant-level quota boundaries"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenAdd}>
-            Add Budget
-          </Button>
+          activeTab === 'budgets' ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenAdd}>
+              Add Budget
+            </Button>
+          ) : null
         }
       />
 
-      {/* Budget Overview Card */}
-      <Card style={{ marginBottom: 24 }} loading={statusLoading}>
-        <Row gutter={[24, 24]} align="middle">
-          <Col xs={24} md={12}>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-              <WalletOutlined style={{ marginRight: 8, color: '#1677ff' }} />
-              Monthly Budget Consumption
-            </Title>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <Text type="secondary">Spent / Limit</Text>
-              <Text strong>
-                ${(statusData?.monthlySpent || 0).toFixed(2)} / ${(statusData?.budget?.monthlyLimit || 0).toFixed(2)}
-              </Text>
-            </div>
-            <Progress
-              percent={usagePercent}
-              status={usagePercent >= 90 ? 'exception' : usagePercent >= 75 ? 'active' : 'normal'}
-              strokeColor={usagePercent >= 90 ? '#ff4d4f' : usagePercent >= 75 ? '#faad14' : '#52c41a'}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-              <Text type="secondary">Remaining: ${(statusData?.monthlyRemaining || 0).toFixed(2)}</Text>
-              {renderStatusTag(currentStatus)}
-            </div>
-          </Col>
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key as any)}
+        items={[
+          {
+            key: 'budgets',
+            label: (
+              <span>
+                <WalletOutlined /> Global Budgets
+              </span>
+            ),
+            children: (
+              <>
+                {/* Budget Overview Card */}
+                <Card style={{ marginBottom: 24 }} loading={statusLoading}>
+                  <Row gutter={[24, 24]} align="middle">
+                    <Col xs={24} md={12}>
+                      <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+                        <WalletOutlined style={{ marginRight: 8, color: '#1677ff' }} />
+                        Monthly Budget Consumption
+                      </Title>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text type="secondary">Spent / Limit</Text>
+                        <Text strong>
+                          ${(statusData?.monthlySpent || 0).toFixed(2)} / ${(statusData?.budget?.monthlyLimit || 0).toFixed(2)}
+                        </Text>
+                      </div>
+                      <Progress
+                        percent={usagePercent}
+                        status={usagePercent >= 90 ? 'exception' : usagePercent >= 75 ? 'active' : 'normal'}
+                        strokeColor={usagePercent >= 90 ? '#ff4d4f' : usagePercent >= 75 ? '#faad14' : '#52c41a'}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                        <Text type="secondary">Remaining: ${(statusData?.monthlyRemaining || 0).toFixed(2)}</Text>
+                        {renderStatusTag(currentStatus)}
+                      </div>
+                    </Col>
 
-          <Col xs={24} md={12}>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-              <AlertOutlined style={{ marginRight: 8, color: '#faad14' }} />
-              Daily Budget Usage
-            </Title>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <Text type="secondary">Daily Spent / Limit</Text>
-              <Text strong>
-                ${(statusData?.dailySpent || 0).toFixed(2)} / ${(statusData?.budget?.dailyLimit || 0).toFixed(2)}
-              </Text>
-            </div>
-            <Progress
-              percent={
-                statusData?.budget?.dailyLimit
-                  ? Math.min(100, Math.round(((statusData?.dailySpent || 0) / statusData.budget.dailyLimit) * 100))
-                  : 0
-              }
-              strokeColor="#1677ff"
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-              <Text type="secondary">Daily Remaining: ${(statusData?.dailyRemaining || 0).toFixed(2)}</Text>
-              <Text type="secondary">Resets daily at 00:00 UTC</Text>
-            </div>
-          </Col>
-        </Row>
-      </Card>
+                    <Col xs={24} md={12}>
+                      <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+                        <AlertOutlined style={{ marginRight: 8, color: '#faad14' }} />
+                        Daily Budget Usage
+                      </Title>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text type="secondary">Daily Spent / Limit</Text>
+                        <Text strong>
+                          ${(statusData?.dailySpent || 0).toFixed(2)} / ${(statusData?.budget?.dailyLimit || 0).toFixed(2)}
+                        </Text>
+                      </div>
+                      <Progress
+                        percent={
+                          statusData?.budget?.dailyLimit
+                            ? Math.min(100, Math.round(((statusData?.dailySpent || 0) / statusData.budget.dailyLimit) * 100))
+                            : 0
+                        }
+                        strokeColor="#1677ff"
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                        <Text type="secondary">Daily Remaining: ${(statusData?.dailyRemaining || 0).toFixed(2)}</Text>
+                        <Text type="secondary">Resets daily at 00:00 UTC</Text>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card>
 
-      {/* Budget Rules Table */}
-      <DataTable<ApiBudget>
-        dataSource={budgetsData || []}
-        columns={columns}
-        loading={budgetsLoading}
-        rowKey="id"
-        searchPlaceholder="Search budget rules..."
+                {/* Budget Rules Table */}
+                <DataTable<ApiBudget>
+                  dataSource={budgetsData || []}
+                  columns={columns}
+                  loading={budgetsLoading}
+                  rowKey="id"
+                  searchPlaceholder="Search budget rules..."
+                />
+              </>
+            ),
+          },
+          {
+            key: 'quotas',
+            label: (
+              <span>
+                <ClusterOutlined /> Multi-Tenant Quotas
+              </span>
+            ),
+            children: (
+              <Card title="Multi-Tenant Quota & Limit Enforcement">
+                <Table
+                  rowKey="id"
+                  dataSource={quotas}
+                  columns={columnsQuotas}
+                  loading={quotasLoading}
+                  pagination={false}
+                />
+              </Card>
+            ),
+          },
+        ]}
       />
 
-      {/* Create / Edit Modal */}
+      {/* Create / Edit Budget Modal */}
       <Modal
         title={editingBudget ? 'Edit Budget' : 'Add New Budget'}
         open={isModalOpen || !!editingBudget}
@@ -393,6 +530,41 @@ export default function BudgetsPage() {
                 loading={createMutation.isPending || updateMutation.isPending}
               >
                 {editingBudget ? 'Save Changes' : 'Create Budget'}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Quota Limit Modal */}
+      <Modal
+        title={`Edit Quota (${editingQuota?.targetType.toUpperCase()}: ${editingQuota?.targetId})`}
+        open={!!editingQuota}
+        onCancel={() => setEditingQuota(null)}
+        footer={null}
+      >
+        <Form form={quotaForm} layout="vertical" onFinish={handleQuotaSubmit} style={{ marginTop: 16 }}>
+          <Form.Item name="monthlySpendLimitUsd" label="Monthly Spend Limit ($ USD)" rules={[{ required: true }]}>
+            <InputNumber min={0} step={50} style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item name="dailySpendLimitUsd" label="Daily Spend Limit ($ USD)" rules={[{ required: true }]}>
+            <InputNumber min={0} step={10} style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item name="dailyRequestLimit" label="Daily Request Limit (Reqs)" rules={[{ required: true }]}>
+            <InputNumber min={100} step={1000} style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item name="maxConcurrentStreams" label="Max Concurrent Streams" rules={[{ required: true }]}>
+            <InputNumber min={1} max={500} style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item style={{ marginTop: 24, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setEditingQuota(null)}>Cancel</Button>
+              <Button type="primary" htmlType="submit" loading={updateQuotaMutation.isPending}>
+                Save Quota Limits
               </Button>
             </Space>
           </Form.Item>
