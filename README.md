@@ -1,6 +1,6 @@
 # RoozyLabs Prism 💎
 
-[![Go Version](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat&logo=go)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/Go-1.25-00ADD8?style=flat&logo=go)](https://golang.org)
 [![Next.js 15](https://img.shields.io/badge/Next.js-15.5.23-black?style=flat&logo=next.js)](https://nextjs.org)
 [![Astro](https://img.shields.io/badge/Astro-5.0-BC52EE?style=flat&logo=astro)](https://astro.build)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat&logo=docker)](https://www.docker.com/)
@@ -84,7 +84,7 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 ## 🛠️ Monorepo & Technology Stack
 
 - **Monorepo Structure**:
-  - `apps/api`: High-performance Go 1.24 API Proxy Engine & Middleware
+  - `apps/api`: High-performance Go 1.25 API Proxy Engine & Middleware
   - `apps/app`: Next.js 15 Admin Console & Control Dashboard
   - `apps/web`: Responsive Astro 5.0 Marketing Landing Page
 - **Database**: PostgreSQL 15 (Single Source of Truth, Migrations 001–061)
@@ -97,7 +97,7 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 
 ### 1. Prerequisites
 - [Docker & Docker Compose](https://docs.docker.com/get-docker/) installed on your system.
-- [Go 1.24+](https://go.dev/dl/) & [pnpm 9+](https://pnpm.io/) (if running locally without Docker).
+- [Go 1.25+](https://go.dev/dl/) & [pnpm 9+](https://pnpm.io/) (if running locally without Docker).
 
 ### 2. Client Setup Example (OpenCode CLI)
 
