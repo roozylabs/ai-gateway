@@ -37,6 +37,12 @@ jobs:
           go-version-file: 'apps/api/go.mod'
           cache-dependency-path: 'apps/api/go.sum'
 
+      - name: Verify Go module tidiness
+        working-directory: apps/api
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
