@@ -8,6 +8,9 @@
     "dev:web": "pnpm --filter prism-web dev",
     "dev:api": "cd apps/api && go run cmd/server/main.go",
     "build": "pnpm --recursive run build",
+    "build:sdk": "pnpm --filter @roozylabs/prism build",
+    "build:cli": "pnpm --filter @roozylabs/prism-cli build",
+    "openapi:generate": "cd apps/api && swag init -g cmd/server/main.go -o docs --parseDependency",
     "test": "cd apps/api && go test ./...",
     "lint": "pnpm --recursive run lint"
   },
