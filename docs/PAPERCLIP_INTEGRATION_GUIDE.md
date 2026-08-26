@@ -66,13 +66,19 @@ resulting in `Missing disposition recovery blocked`.
 In Phase 1 stateless LLM adapters (`prism-roozylabs`), direct tool execution is not supported. When the LLM outputs raw `<tool_call>` XML tags, no tool is executed and no issue disposition is updated.
 
 ### Solution:
-Add this rule to your Agent System Prompt / Skill instructions:
+Tambahkan instruksi **Stateless Execution Rule** pada Agent Instructions / Prompt di Paperclip:
+
 ```text
 Stateless Execution Rule:
 - Tool call XML tags (such as <tool_call> or <function>) cannot be executed by this stateless adapter.
-- Do NOT output <tool_call> or <function> XML tags.
-- Write your complete response, updates, and findings directly in Markdown text.
+- Do NOT output <tool_call> or <function> XML tags in text.
+- Write your complete response, updates, and findings directly as clean Markdown text.
 ```
+
+Dengan aturan ini:
+- Model LLM (seperti `hy3-free`) tidak akan lagi memancarkan tag XML `<tool_call>`.
+- `has_tool_calls` menjadi `false`.
+- `finish_reason` tetap `stop`, dan status eksekusi Paperclip run akan berhasil penuh (`"stopReason": "completed"`)! 🎉
 
 ---
 
@@ -89,7 +95,10 @@ When a stateless adapter (like `prism-roozylabs`) returns a run summary, Papercl
 
 ### Recommended Solutions:
 
-#### Solution A: Add Prompt Rule for Concise Output Format
+#### Solution A: Built-in Adapter Fix (Applied in `prism-roozylabs`)
+The `prism-roozylabs` adapter automatically strips leading narration openers (like *"Let me..."*, *"First,..."*) and caps the summary at 1,000 characters before sending it to Paperclip.
+
+#### Solution B: Add Prompt Rule for Concise Output Format
 Add this rule to your Agent System Prompt / Skill instructions:
 ```text
 Formatting Rule for Task Completion:
@@ -98,7 +107,7 @@ Formatting Rule for Task Completion:
 - Start directly with key result bullets (e.g. "### Summary of Work Completed:").
 ```
 
-#### Solution B: Explicit Comment API Call
+#### Solution C: Explicit Comment API Call
 Instruct Paperclip agents to invoke Paperclip's comment API before ending the run:
 ```bash
 POST /api/issues/:issue_id/comments
