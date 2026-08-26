@@ -1,39 +1,255 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
+import { DataTable, type Column } from '@/components/organisms/DataTable';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/molecules/Sheet';
 import { Button } from '@/components/atoms/Button';
-import { KeyRound, Plus } from 'lucide-react';
+import { Input } from '@/components/atoms/Input';
+import { Label } from '@/components/atoms/Label';
+import { Badge } from '@/components/atoms/Badge';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/molecules/Select';
+import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
+import { useGatewayKeysQuery, useCreateGatewayKey, useDeleteGatewayKey } from '@/hooks/queries/useGatewayKeysQuery';
+import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
+import type { ApiGatewayKey } from '@/lib/api';
+import { KeyRound, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function GatewayKeysPage() {
+  const { data, isLoading, isError, refetch } = useGatewayKeysQuery();
+  const createMutation = useCreateGatewayKey();
+  const deleteMutation = useDeleteGatewayKey();
+  const { data: providers } = useProvidersQuery();
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formRateLimit, setFormRateLimit] = useState('100');
+  const [formProviderId, setFormProviderId] = useState('');
+
+  const list = data?.data ?? [];
+
+  const resetForm = () => {
+    setFormName('');
+    setFormRateLimit('100');
+    setFormProviderId('');
+  };
+
+  const handleCreate = () => {
+    if (!formName.trim()) {
+      toast.error('Key name is required');
+      return;
+    }
+    if (!formProviderId) {
+      toast.error('Please select a provider');
+      return;
+    }
+
+    createMutation.mutate(
+      {
+        name: formName.trim(),
+        providerId: formProviderId,
+        rateLimit: Number(formRateLimit) || undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Gateway key created');
+          setDrawerOpen(false);
+          resetForm();
+        },
+        onError: () => {
+          toast.error('Failed to create gateway key');
+        },
+      }
+    );
+  };
+
+  const handleDelete = (key: ApiGatewayKey) => {
+    if (!window.confirm(`Delete key "${key.name}"? This action cannot be undone.`)) return;
+
+    deleteMutation.mutate(key.id, {
+      onSuccess: () => toast.success('Key deleted'),
+      onError: () => toast.error('Failed to delete key'),
+    });
+  };
+
+  const columns: Column<ApiGatewayKey>[] = [
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      render: (val) => <span className="font-semibold">{String(val)}</span>,
+    },
+    {
+      title: 'Key Prefix',
+      dataIndex: 'keyPrefix',
+      key: 'keyPrefix',
+      render: (val) => <span className="font-mono text-muted-foreground">{String(val)}</span>,
+    },
+    {
+      title: 'Rate Limit',
+      dataIndex: 'rateLimit',
+      key: 'rateLimit',
+      render: (val) => <span className="font-mono">{String(val)} req/min</span>,
+    },
+    {
+      title: 'Requests',
+      dataIndex: 'requestCount',
+      key: 'requestCount',
+      render: (val) => <span className="font-mono">{String(val)}</span>,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'enabled',
+      key: 'enabled',
+      render: (val) => (
+        <Badge variant={val ? 'success' : 'outline'}>
+          {val ? 'Active' : 'Disabled'}
+        </Badge>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+          onClick={() => handleDelete(record)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <AppLayout>
       <PageHeader
-        title="Gateway Keys Management"
-        description="Generate and scope API secret keys bound to specific tenant workspaces and spending limits."
+        title="Gateway Keys"
+        description="Create and manage API keys that authenticate requests through the Prism AI Gateway."
         extra={
-          <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => toast.info('Create Gateway Key Drawer')}>
-            <Plus className="h-4 w-4" /> Create Gateway Key
+          <Button
+            variant="prismViolet"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setDrawerOpen(true)}
+          >
+            <Plus className="h-4 w-4" /> Create Key
           </Button>
         }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-[#8B5CF6]" />
-            <span>Active Gateway Keys</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">
-            Manage live secret keys, key revocation, and tenant quota bounds.
-          </p>
-        </CardContent>
-      </Card>
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : !isLoading && list.length === 0 ? (
+        <EmptyState
+          title="No gateway keys"
+          description="Create your first API key to start routing requests through the gateway."
+          icon={<KeyRound className="h-6 w-6" />}
+          action={
+            <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => setDrawerOpen(true)}>
+              <Plus className="h-4 w-4" /> Create Key
+            </Button>
+          }
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-[#8B5CF6]" />
+              <span>Active Keys</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              dataSource={list}
+              columns={columns}
+              rowKey="id"
+              loading={isLoading}
+              searchPlaceholder="Search gateway keys..."
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Create Gateway Key</SheetTitle>
+            <SheetDescription>
+              Generate a new API key to authenticate requests through the gateway.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="key-name">Key Name</Label>
+              <Input
+                id="key-name"
+                placeholder="e.g. production-key"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Provider</Label>
+              <Select value={formProviderId} onValueChange={setFormProviderId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  {providers?.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rate-limit">Rate Limit (req/min)</Label>
+              <Input
+                id="rate-limit"
+                type="number"
+                placeholder="100"
+                value={formRateLimit}
+                onChange={(e) => setFormRateLimit(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <SheetFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDrawerOpen(false);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="prismViolet"
+              onClick={handleCreate}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? 'Creating...' : 'Create Key'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }
