@@ -15,12 +15,7 @@ func NewOpenAIAdapter() *OpenAIAdapter {
 }
 
 func (a *OpenAIAdapter) BuildRequest(baseURL, apiKey string, req *ProviderRequest) (*http.Request, error) {
-	messages := req.Messages
-	lowerModel := strings.ToLower(req.Model)
-	lowerBaseURL := strings.ToLower(baseURL)
-	if strings.Contains(lowerModel, "gemini") || strings.Contains(lowerModel, "google") || strings.Contains(lowerBaseURL, "google") || strings.Contains(lowerBaseURL, "gemini") {
-		messages = SanitizeMessagesForGoogle(messages)
-	}
+	messages := SanitizeMessagesForGoogle(req.Messages)
 
 	body := map[string]interface{}{
 		"model":    req.Model,

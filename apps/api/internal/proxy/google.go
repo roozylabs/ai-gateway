@@ -128,10 +128,84 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 			}
 		}
 
-		// 2. Handle legacy single function_call
+		// 2. Handle legacy single function_call (snake_case)
 		if fnCallRaw, ok := msgCopy["function_call"]; ok && fnCallRaw != nil {
 			if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
 				msgCopy["function_call"] = sanitizeToolCallMap(fnCallMap)
+			}
+		}
+
+		// 3. Handle camelCase functionCall
+		if fnCallRaw, ok := msgCopy["functionCall"]; ok && fnCallRaw != nil {
+			if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
+				msgCopy["functionCall"] = sanitizeToolCallMap(fnCallMap)
+			}
+		}
+
+		// 4. Handle parts array (Gemini format)
+		if partsRaw, ok := msgCopy["parts"]; ok && partsRaw != nil {
+			if parts, ok := partsRaw.([]interface{}); ok {
+				newParts := make([]interface{}, 0, len(parts))
+				for _, partRaw := range parts {
+					if partMap, ok := partRaw.(map[string]interface{}); ok {
+						pCopy := make(map[string]interface{})
+						for k, v := range partMap {
+							pCopy[k] = v
+						}
+						if fnCallRaw, ok := pCopy["functionCall"]; ok && fnCallRaw != nil {
+							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
+								pCopy["functionCall"] = sanitizeToolCallMap(fnCallMap)
+							}
+						}
+						if fnCallRaw, ok := pCopy["function_call"]; ok && fnCallRaw != nil {
+							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
+								pCopy["function_call"] = sanitizeToolCallMap(fnCallMap)
+							}
+						}
+						newParts = append(newParts, pCopy)
+					} else {
+						newParts = append(newParts, partRaw)
+					}
+				}
+				msgCopy["parts"] = newParts
+			}
+		}
+
+		// 5. Handle content array (multimodal / content blocks)
+		if contentRaw, ok := msgCopy["content"]; ok && contentRaw != nil {
+			if contentBlocks, ok := contentRaw.([]interface{}); ok {
+				newContent := make([]interface{}, 0, len(contentBlocks))
+				for _, blockRaw := range contentBlocks {
+					if blockMap, ok := blockRaw.(map[string]interface{}); ok {
+						bCopy := make(map[string]interface{})
+						for k, v := range blockMap {
+							bCopy[k] = v
+						}
+						if fnCallRaw, ok := bCopy["function_call"]; ok && fnCallRaw != nil {
+							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
+								bCopy["function_call"] = sanitizeToolCallMap(fnCallMap)
+							}
+						}
+						if fnCallRaw, ok := bCopy["functionCall"]; ok && fnCallRaw != nil {
+							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
+								bCopy["functionCall"] = sanitizeToolCallMap(fnCallMap)
+							}
+						}
+						if tcRaw, ok := bCopy["tool_calls"]; ok && tcRaw != nil {
+							if tcs, ok := tcRaw.([]interface{}); ok {
+								var newTcs []interface{}
+								for _, tc := range tcs {
+									newTcs = append(newTcs, sanitizeToolCallItem(tc))
+								}
+								bCopy["tool_calls"] = newTcs
+							}
+						}
+						newContent = append(newContent, bCopy)
+					} else {
+						newContent = append(newContent, blockRaw)
+					}
+				}
+				msgCopy["content"] = newContent
 			}
 		}
 
@@ -162,12 +236,30 @@ func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
 			if sig, hasSig := fnCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
 				fnCopy["thought_signature"] = "skip"
 			}
+			if sig, hasSig := fnCopy["thoughtSignature"]; !hasSig || sig == nil || sig == "" {
+				fnCopy["thoughtSignature"] = "skip"
+			}
 			tcCopy["function"] = fnCopy
+		}
+	}
+
+	if fnRaw, ok := tcCopy["function_call"]; ok && fnRaw != nil {
+		if fnMap, ok := fnRaw.(map[string]interface{}); ok {
+			tcCopy["function_call"] = sanitizeToolCallMap(fnMap)
+		}
+	}
+
+	if fnRaw, ok := tcCopy["functionCall"]; ok && fnRaw != nil {
+		if fnMap, ok := fnRaw.(map[string]interface{}); ok {
+			tcCopy["functionCall"] = sanitizeToolCallMap(fnMap)
 		}
 	}
 
 	if sig, hasSig := tcCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
 		tcCopy["thought_signature"] = "skip"
+	}
+	if sig, hasSig := tcCopy["thoughtSignature"]; !hasSig || sig == nil || sig == "" {
+		tcCopy["thoughtSignature"] = "skip"
 	}
 	return tcCopy
 }
