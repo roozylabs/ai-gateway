@@ -98,6 +98,7 @@ func main() {
 	agentTemplateRepo := repository.NewAgentTemplateRepository(sqlDB)
 	governancePolicyRepo := repository.NewGovernancePolicyRepository(sqlDB)
 	auditTrailRepo := repository.NewAuditTrailRepository(sqlDB)
+	rbacRepo := repository.NewRBACRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -154,6 +155,9 @@ func main() {
 	agentTemplateHandler := handlers.NewAgentTemplateHandler(agentTemplateRepo, agentRepo)
 	governancePolicyHandler := handlers.NewGovernancePolicyHandler(governancePolicyRepo, rbacEngine)
 	auditTrailHandler := handlers.NewAuditTrailHandler(auditTrailRepo, auditRecorder)
+	userPermissionsHandler := handlers.NewUserPermissionsHandler(rbacRepo, userRepo)
+	onboardingHandler := handlers.NewOnboardingHandler(userRepo, gatewayKeyRepo)
+	oauthHandler := handlers.NewOAuthHandler(authService)
 
 	// Background workers
 	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -195,6 +199,12 @@ func main() {
 			// Auth
 			protected.POST("/auth/logout", authHandler.Logout)
 			protected.GET("/auth/me", authHandler.Me)
+			protected.GET("/auth/oauth/:provider", oauthHandler.InitiateOAuth)
+			protected.GET("/auth/oauth/:provider/callback", oauthHandler.OAuthCallback)
+
+			// User Permissions & Onboarding
+			protected.GET("/user/permissions", userPermissionsHandler.GetPermissions)
+			protected.POST("/onboarding", onboardingHandler.Complete)
 
 			// Providers
 			protected.GET("/providers", providerHandler.List)

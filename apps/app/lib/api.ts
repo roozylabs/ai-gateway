@@ -605,6 +605,10 @@ export interface ApiModelScoreDetail {
   displayName: string;
   providerName: string;
   score: number;
+  qualityScore?: number;
+  costScore?: number;
+  speedScore?: number;
+  healthScore?: number;
   reasons: string[];
   inputPrice1M: number;
   outputPrice1M: number;
@@ -985,6 +989,31 @@ export async function apiGetAgentTemplates(): Promise<{ object: string; data: Ap
 
 export async function apiInstantiateAgentTemplate(id: string, name?: string): Promise<{ message: string; agent: ApiAgent }> {
   const response = await api.post<{ message: string; agent: ApiAgent }>(`/agent-templates/${id}/instantiate`, { name });
+  return response.data;
+}
+
+// User Permissions & Onboarding API
+export interface ApiUserPermissionsResponse {
+  userId: string;
+  organizationId: string;
+  roleSlug: string;
+  isOnboarded: boolean;
+  primaryRole: string;
+  permissions: string[];
+}
+
+export interface ApiCompleteOnboardingRequest {
+  workspaceName: string;
+  primaryRole?: string;
+}
+
+export async function apiGetUserPermissions(): Promise<ApiUserPermissionsResponse> {
+  const response = await api.get<ApiUserPermissionsResponse>('/user/permissions');
+  return response.data;
+}
+
+export async function apiCompleteOnboarding(data: ApiCompleteOnboardingRequest): Promise<{ message: string; workspaceName: string; apiKey: string }> {
+  const response = await api.post<{ message: string; workspaceName: string; apiKey: string }>('/onboarding', data);
   return response.data;
 }
 
