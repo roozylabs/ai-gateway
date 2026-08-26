@@ -41,7 +41,7 @@ func (a *GoogleAdapter) BuildRequest(baseURL, apiKey string, req *ProviderReques
 
 	body := map[string]interface{}{
 		"model":    targetModel,
-		"messages": sanitizeMessagesForGoogle(req.Messages),
+		"messages": SanitizeMessagesForGoogle(req.Messages),
 		"stream":   req.Stream,
 	}
 	if len(req.Tools) > 0 {
@@ -97,7 +97,7 @@ func (a *GoogleAdapter) SupportsStreaming() bool {
 	return true
 }
 
-func sanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]interface{} {
+func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]interface{} {
 	if len(messages) == 0 {
 		return messages
 	}
@@ -109,42 +109,65 @@ func sanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 			msgCopy[k] = v
 		}
 
+		// 1. Handle tool_calls array
 		if toolCallsRaw, ok := msgCopy["tool_calls"]; ok && toolCallsRaw != nil {
+			var newToolCalls []interface{}
 			if toolCalls, ok := toolCallsRaw.([]interface{}); ok {
-				newToolCalls := make([]interface{}, 0, len(toolCalls))
+				newToolCalls = make([]interface{}, 0, len(toolCalls))
 				for _, tcRaw := range toolCalls {
-					if tcMap, ok := tcRaw.(map[string]interface{}); ok {
-						tcCopy := make(map[string]interface{})
-						for k, v := range tcMap {
-							tcCopy[k] = v
-						}
-
-						// Check inner function object
-						if fnRaw, ok := tcCopy["function"]; ok && fnRaw != nil {
-							if fnMap, ok := fnRaw.(map[string]interface{}); ok {
-								fnCopy := make(map[string]interface{})
-								for k, v := range fnMap {
-									fnCopy[k] = v
-								}
-								if sig, hasSig := fnCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
-									fnCopy["thought_signature"] = "skip"
-								}
-								tcCopy["function"] = fnCopy
-							}
-						}
-
-						if sig, hasSig := tcCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
-							tcCopy["thought_signature"] = "skip"
-						}
-						newToolCalls = append(newToolCalls, tcCopy)
-					} else {
-						newToolCalls = append(newToolCalls, tcRaw)
-					}
+					newToolCalls = append(newToolCalls, sanitizeToolCallItem(tcRaw))
 				}
+			} else if toolCalls, ok := toolCallsRaw.([]map[string]interface{}); ok {
+				newToolCalls = make([]interface{}, 0, len(toolCalls))
+				for _, tcMap := range toolCalls {
+					newToolCalls = append(newToolCalls, sanitizeToolCallMap(tcMap))
+				}
+			}
+			if newToolCalls != nil {
 				msgCopy["tool_calls"] = newToolCalls
 			}
 		}
+
+		// 2. Handle legacy single function_call
+		if fnCallRaw, ok := msgCopy["function_call"]; ok && fnCallRaw != nil {
+			if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
+				msgCopy["function_call"] = sanitizeToolCallMap(fnCallMap)
+			}
+		}
+
 		result = append(result, msgCopy)
 	}
 	return result
+}
+
+func sanitizeToolCallItem(tcRaw interface{}) interface{} {
+	if tcMap, ok := tcRaw.(map[string]interface{}); ok {
+		return sanitizeToolCallMap(tcMap)
+	}
+	return tcRaw
+}
+
+func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
+	tcCopy := make(map[string]interface{})
+	for k, v := range tcMap {
+		tcCopy[k] = v
+	}
+
+	if fnRaw, ok := tcCopy["function"]; ok && fnRaw != nil {
+		if fnMap, ok := fnRaw.(map[string]interface{}); ok {
+			fnCopy := make(map[string]interface{})
+			for k, v := range fnMap {
+				fnCopy[k] = v
+			}
+			if sig, hasSig := fnCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
+				fnCopy["thought_signature"] = "skip"
+			}
+			tcCopy["function"] = fnCopy
+		}
+	}
+
+	if sig, hasSig := tcCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
+		tcCopy["thought_signature"] = "skip"
+	}
+	return tcCopy
 }
