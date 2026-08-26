@@ -142,7 +142,18 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 			}
 		}
 
-		// 4. Handle parts array (Gemini format)
+		// 4. Handle direct function call at message level
+		if _, hasName := msgCopy["name"]; hasName {
+			if _, hasArgs := msgCopy["args"]; hasArgs {
+				msgCopy = sanitizeToolCallMap(msgCopy)
+			} else if _, hasArgs := msgCopy["arguments"]; hasArgs {
+				msgCopy = sanitizeToolCallMap(msgCopy)
+			} else if _, hasInput := msgCopy["input"]; hasInput {
+				msgCopy = sanitizeToolCallMap(msgCopy)
+			}
+		}
+
+		// 5. Handle parts array (Gemini format)
 		if partsRaw, ok := msgCopy["parts"]; ok && partsRaw != nil {
 			if parts, ok := partsRaw.([]interface{}); ok {
 				newParts := make([]interface{}, 0, len(parts))
@@ -162,6 +173,9 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 								pCopy["function_call"] = sanitizeToolCallMap(fnCallMap)
 							}
 						}
+						if _, hasName := pCopy["name"]; hasName {
+							pCopy = sanitizeToolCallMap(pCopy)
+						}
 						newParts = append(newParts, pCopy)
 					} else {
 						newParts = append(newParts, partRaw)
@@ -171,7 +185,7 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 			}
 		}
 
-		// 5. Handle content array (multimodal / content blocks)
+		// 6. Handle content array (multimodal / content blocks)
 		if contentRaw, ok := msgCopy["content"]; ok && contentRaw != nil {
 			if contentBlocks, ok := contentRaw.([]interface{}); ok {
 				newContent := make([]interface{}, 0, len(contentBlocks))
@@ -199,6 +213,9 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 								}
 								bCopy["tool_calls"] = newTcs
 							}
+						}
+						if _, hasName := bCopy["name"]; hasName {
+							bCopy = sanitizeToolCallMap(bCopy)
 						}
 						newContent = append(newContent, bCopy)
 					} else {
@@ -229,18 +246,24 @@ func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
 
 	const sentinel = "skip_thought_signature_validator"
 
+	setSignature := func(m map[string]interface{}) {
+		if sig, hasSig := m["thought_signature"]; !hasSig || sig == nil || sig == "" {
+			m["thought_signature"] = sentinel
+		}
+		if sig, hasSig := m["thoughtSignature"]; !hasSig || sig == nil || sig == "" {
+			m["thoughtSignature"] = sentinel
+		}
+	}
+
+	setSignature(tcCopy)
+
 	if fnRaw, ok := tcCopy["function"]; ok && fnRaw != nil {
 		if fnMap, ok := fnRaw.(map[string]interface{}); ok {
 			fnCopy := make(map[string]interface{})
 			for k, v := range fnMap {
 				fnCopy[k] = v
 			}
-			if sig, hasSig := fnCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
-				fnCopy["thought_signature"] = sentinel
-			}
-			if sig, hasSig := fnCopy["thoughtSignature"]; !hasSig || sig == nil || sig == "" {
-				fnCopy["thoughtSignature"] = sentinel
-			}
+			setSignature(fnCopy)
 			tcCopy["function"] = fnCopy
 		}
 	}
@@ -257,11 +280,18 @@ func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
 		}
 	}
 
-	if sig, hasSig := tcCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
-		tcCopy["thought_signature"] = sentinel
+	for _, metaKey := range []string{"extra", "provider_metadata", "providerMetadata"} {
+		if metaRaw, ok := tcCopy[metaKey]; ok && metaRaw != nil {
+			if metaMap, ok := metaRaw.(map[string]interface{}); ok {
+				metaCopy := make(map[string]interface{})
+				for k, v := range metaMap {
+					metaCopy[k] = v
+				}
+				setSignature(metaCopy)
+				tcCopy[metaKey] = metaCopy
+			}
+		}
 	}
-	if sig, hasSig := tcCopy["thoughtSignature"]; !hasSig || sig == nil || sig == "" {
-		tcCopy["thoughtSignature"] = sentinel
-	}
+
 	return tcCopy
 }
