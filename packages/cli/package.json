@@ -1,0 +1,41 @@
+{
+  "name": "@roozylabs/prism-cli",
+  "version": "2.1.0",
+  "description": "Official CLI tool for RoozyLabs Prism AI Gateway & Control Plane",
+  "bin": {
+    "prism": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "prism",
+    "cli",
+    "ai-gateway",
+    "roozylabs"
+  ],
+  "author": "RoozyLabs",
+  "license": "MIT",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@roozylabs/prism": "workspace:*",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3"
+  }
+}
+
