@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+const sentinel = "skip_thought_signature_validator"
+
 func TestSanitizeMessagesForGoogle(t *testing.T) {
 	messages := []map[string]interface{}{
 		{
@@ -49,8 +51,8 @@ func TestSanitizeMessagesForGoogle(t *testing.T) {
 		t.Fatalf("expected map in tool_calls")
 	}
 
-	if tcMap["thought_signature"] != "skip" {
-		t.Errorf("expected tcMap thought_signature to be 'skip', got %v", tcMap["thought_signature"])
+	if tcMap["thought_signature"] != sentinel {
+		t.Errorf("expected tcMap thought_signature to be '%s', got %v", sentinel, tcMap["thought_signature"])
 	}
 
 	fnMap, ok := tcMap["function"].(map[string]interface{})
@@ -58,8 +60,8 @@ func TestSanitizeMessagesForGoogle(t *testing.T) {
 		t.Fatalf("expected function map")
 	}
 
-	if fnMap["thought_signature"] != "skip" {
-		t.Errorf("expected fnMap thought_signature to be 'skip', got %v", fnMap["thought_signature"])
+	if fnMap["thought_signature"] != sentinel {
+		t.Errorf("expected fnMap thought_signature to be '%s', got %v", sentinel, fnMap["thought_signature"])
 	}
 
 	// Verify legacy function_call has thought_signature
@@ -68,8 +70,8 @@ func TestSanitizeMessagesForGoogle(t *testing.T) {
 		t.Fatalf("expected function_call map in message 2")
 	}
 
-	if fnCallMap["thought_signature"] != "skip" {
-		t.Errorf("expected function_call thought_signature to be 'skip', got %v", fnCallMap["thought_signature"])
+	if fnCallMap["thought_signature"] != sentinel {
+		t.Errorf("expected function_call thought_signature to be '%s', got %v", sentinel, fnCallMap["thought_signature"])
 	}
 }
 
@@ -117,7 +119,7 @@ func TestSanitizeMessagesForGoogle_AdvancedStructures(t *testing.T) {
 
 	// Message 0: camelCase functionCall
 	msg0FnCall := sanitized[0]["functionCall"].(map[string]interface{})
-	if msg0FnCall["thought_signature"] != "skip" || msg0FnCall["thoughtSignature"] != "skip" {
+	if msg0FnCall["thought_signature"] != sentinel || msg0FnCall["thoughtSignature"] != sentinel {
 		t.Errorf("msg0 functionCall missing thought_signature/thoughtSignature: %v", msg0FnCall)
 	}
 
@@ -125,7 +127,7 @@ func TestSanitizeMessagesForGoogle_AdvancedStructures(t *testing.T) {
 	parts := sanitized[1]["parts"].([]interface{})
 	part0 := parts[0].(map[string]interface{})
 	fnCall := part0["functionCall"].(map[string]interface{})
-	if fnCall["thought_signature"] != "skip" || fnCall["thoughtSignature"] != "skip" {
+	if fnCall["thought_signature"] != sentinel || fnCall["thoughtSignature"] != sentinel {
 		t.Errorf("part functionCall missing thought_signature: %v", fnCall)
 	}
 
@@ -135,7 +137,7 @@ func TestSanitizeMessagesForGoogle_AdvancedStructures(t *testing.T) {
 	tcs := block0["tool_calls"].([]interface{})
 	tc0 := tcs[0].(map[string]interface{})
 	fn0 := tc0["function"].(map[string]interface{})
-	if fn0["thought_signature"] != "skip" {
+	if fn0["thought_signature"] != sentinel {
 		t.Errorf("block tool_call function missing thought_signature: %v", fn0)
 	}
 }
@@ -204,12 +206,12 @@ func TestSanitizeMessagesForGoogle_Position8Bash(t *testing.T) {
 	}
 
 	tcMap := tcRaw[0].(map[string]interface{})
-	if tcMap["thought_signature"] != "skip" || tcMap["thoughtSignature"] != "skip" {
+	if tcMap["thought_signature"] != sentinel || tcMap["thoughtSignature"] != sentinel {
 		t.Errorf("tcMap missing thought_signature: %v", tcMap)
 	}
 
 	fnMap := tcMap["function"].(map[string]interface{})
-	if fnMap["thought_signature"] != "skip" || fnMap["thoughtSignature"] != "skip" {
+	if fnMap["thought_signature"] != sentinel || fnMap["thoughtSignature"] != sentinel {
 		t.Errorf("fnMap missing thought_signature: %v", fnMap)
 	}
 }

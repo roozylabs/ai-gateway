@@ -227,6 +227,8 @@ func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
 		tcCopy[k] = v
 	}
 
+	const sentinel = "skip_thought_signature_validator"
+
 	if fnRaw, ok := tcCopy["function"]; ok && fnRaw != nil {
 		if fnMap, ok := fnRaw.(map[string]interface{}); ok {
 			fnCopy := make(map[string]interface{})
@@ -234,10 +236,10 @@ func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
 				fnCopy[k] = v
 			}
 			if sig, hasSig := fnCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
-				fnCopy["thought_signature"] = "skip"
+				fnCopy["thought_signature"] = sentinel
 			}
 			if sig, hasSig := fnCopy["thoughtSignature"]; !hasSig || sig == nil || sig == "" {
-				fnCopy["thoughtSignature"] = "skip"
+				fnCopy["thoughtSignature"] = sentinel
 			}
 			tcCopy["function"] = fnCopy
 		}
@@ -256,10 +258,10 @@ func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
 	}
 
 	if sig, hasSig := tcCopy["thought_signature"]; !hasSig || sig == nil || sig == "" {
-		tcCopy["thought_signature"] = "skip"
+		tcCopy["thought_signature"] = sentinel
 	}
 	if sig, hasSig := tcCopy["thoughtSignature"]; !hasSig || sig == nil || sig == "" {
-		tcCopy["thoughtSignature"] = "skip"
+		tcCopy["thoughtSignature"] = sentinel
 	}
 	return tcCopy
 }
