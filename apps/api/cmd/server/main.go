@@ -93,6 +93,7 @@ func main() {
 	resourceBackendRepo := repository.NewResourceBackendRepository(sqlDB)
 	mcpServerRepo := repository.NewMCPServerRepository(sqlDB)
 	mcpToolRepo := repository.NewMCPToolRepository(sqlDB)
+	mcpRegistryRepo := repository.NewMCPRegistryRepository(sqlDB)
 	agentRepo := repository.NewAgentRepository(sqlDB)
 	governancePolicyRepo := repository.NewGovernancePolicyRepository(sqlDB)
 	auditTrailRepo := repository.NewAuditTrailRepository(sqlDB)
@@ -147,6 +148,7 @@ func main() {
 	resourceHandler := handlers.NewResourceHandler(resourceRepo, resourceBackendRepo, resourceGateway, cfg.EncryptionKey)
 	resourceGatewayHandler := handlers.NewResourceGatewayHandler(resourceGateway, toolInvocationRepo, eventPublisher, cfg.EncryptionKey)
 	mcpHandler := handlers.NewMCPHandler(mcpServerRepo, mcpToolRepo, mcpGateway, cfg.EncryptionKey)
+	mcpRegistryHandler := handlers.NewMCPRegistryHandler(mcpRegistryRepo)
 	agentHandler := handlers.NewAgentHandler(agentRepo, agentGovernance)
 	governancePolicyHandler := handlers.NewGovernancePolicyHandler(governancePolicyRepo, rbacEngine)
 	auditTrailHandler := handlers.NewAuditTrailHandler(auditTrailRepo, auditRecorder)
@@ -313,6 +315,11 @@ func main() {
 			protected.DELETE("/mcp/servers/:id", mcpHandler.Delete)
 			protected.POST("/mcp/servers/:id/sync", mcpHandler.Sync)
 			protected.POST("/mcp/servers/:id/test", mcpHandler.TestTool)
+
+			// MCP Registry Catalog
+			protected.GET("/mcp/registry", mcpRegistryHandler.ListCatalog)
+			protected.GET("/mcp/registry/:slug", mcpRegistryHandler.GetCatalogBySlug)
+			protected.POST("/mcp/registry", mcpRegistryHandler.RegisterServer)
 
 			// Agent Gateway & Infrastructure
 			protected.GET("/agents", agentHandler.List)

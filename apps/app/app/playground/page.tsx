@@ -195,6 +195,27 @@ export default function RoutingPlaygroundPage() {
       ),
     },
     {
+      title: 'Adaptive Multi-Factor Breakdown',
+      key: 'breakdown',
+      width: 220,
+      render: (_: any, record: ApiModelScoreDetail) => (
+        <Space size={4} wrap>
+          <Tooltip title={`Quality Score: ${(record.qualityScore ? record.qualityScore * 100 : 0).toFixed(0)}%`}>
+            <Tag color="purple" style={{ fontSize: 10 }}>Q: {(record.qualityScore ? record.qualityScore * 100 : 0).toFixed(0)}%</Tag>
+          </Tooltip>
+          <Tooltip title={`Cost Score: ${(record.costScore ? record.costScore * 100 : 0).toFixed(0)}%`}>
+            <Tag color="green" style={{ fontSize: 10 }}>C: {(record.costScore ? record.costScore * 100 : 0).toFixed(0)}%</Tag>
+          </Tooltip>
+          <Tooltip title={`Speed Score: ${(record.speedScore ? record.speedScore * 100 : 0).toFixed(0)}%`}>
+            <Tag color="cyan" style={{ fontSize: 10 }}>S: {(record.speedScore ? record.speedScore * 100 : 0).toFixed(0)}%</Tag>
+          </Tooltip>
+          <Tooltip title={`Health Score: ${(record.healthScore ? record.healthScore * 100 : 100).toFixed(0)}%`}>
+            <Tag color="blue" style={{ fontSize: 10 }}>H: {(record.healthScore ? record.healthScore * 100 : 100).toFixed(0)}%</Tag>
+          </Tooltip>
+        </Space>
+      ),
+    },
+    {
       title: 'Price / 1M',
       key: 'price',
       width: 140,

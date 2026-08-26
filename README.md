@@ -64,7 +64,7 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 
 ## ✨ Key Features & Architecture Pillars
 
-- **🧠 Prism Auto Smart Router (`prism-auto`)**: Intelligent prompt router that deterministically classifies request characteristics (Task, Complexity, Context Window), pre-filters candidate models by active provider credentials, and executes weighted candidate scoring based on the active routing policy (`balanced`, `cheap`, `quality`, or custom).
+- **🧠 Prism Auto Smart Router & Adaptive Routing Engine (`prism-auto`)**: Intelligent prompt router executing multi-factor dynamic scoring (`quality`, `cost`, `speed`, `health`), candidate factor breakdown API (`/v1/routing/simulate`), and automatic fallback cascades.
 - **🔑 Credential Intelligence & Dynamic Health Scoring (Phase 3)**: Dynamic 0–100 health scoring combining success rate, cooldown penalties, and remaining quotas with a 5-state machine (`HEALTHY`, `DEGRADED`, `COOLDOWN`, `EXHAUSTED`, `DISABLED`) and OpenTelemetry metric reporting (`prism_credential_health_score`).
 - **🏢 Multi-Tenant Architecture & SaaS Platform**: Full multi-tenant isolation with a 4-level hierarchy (`Organization` ──► `Workspace` ──► `Project` ──► `Agents`), PostgreSQL Row-Level Security (RLS migrations `055`–`061`), HKDF-SHA256 derived tenant encryption vaults, and real-time consumption metering (`MeteringService`).
 - **🤖 Agent Gateway & Infrastructure**: Identifies and governs autonomous AI agents (`X-Prism-Agent-ID`) with granular permitted models, allowed tools, resource boundaries, and budget caps (`/agents`).

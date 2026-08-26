@@ -923,6 +923,43 @@ export async function apiTestMCPTool(id: string, tool: string, args: Record<stri
   return response.data;
 }
 
+// MCP Registry Catalog API
+export interface ApiMCPRegistryServer {
+  id: string;
+  userId: string;
+  organizationId?: string;
+  name: string;
+  slug: string;
+  description: string;
+  serverUrl: string;
+  transportType: string;
+  visibility: string;
+  capabilities: any;
+  isVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiRegisterMCPRegistryRequest {
+  name: string;
+  slug: string;
+  description?: string;
+  serverUrl: string;
+  transportType?: string;
+  visibility?: string;
+  capabilities?: any;
+}
+
+export async function apiGetMCPRegistryCatalog(): Promise<{ object: string; data: ApiMCPRegistryServer[] }> {
+  const response = await api.get<{ object: string; data: ApiMCPRegistryServer[] }>('/mcp/registry');
+  return response.data;
+}
+
+export async function apiRegisterMCPRegistryServer(data: ApiRegisterMCPRegistryRequest): Promise<ApiMCPRegistryServer> {
+  const response = await api.post<ApiMCPRegistryServer>('/mcp/registry', data);
+  return response.data;
+}
+
 // Agent Gateway API
 export interface ApiAgent {
   id: string;

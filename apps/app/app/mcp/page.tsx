@@ -18,6 +18,8 @@ import {
   message,
   Drawer,
   Badge,
+  Tabs,
+  Tooltip,
 } from 'antd';
 import {
   PlusOutlined,
@@ -28,12 +30,16 @@ import {
   PlayCircleOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
+  CompassOutlined,
+  SafetyCertificateOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import {
   ApiMCPServer,
   ApiMCPServerWithTools,
   ApiMCPTool,
   ApiCreateMCPServerRequest,
+  ApiMCPRegistryServer,
   apiGetMCPServers,
   apiGetMCPServer,
   apiCreateMCPServer,
@@ -41,9 +47,11 @@ import {
   apiDeleteMCPServer,
   apiSyncMCPServer,
   apiTestMCPTool,
+  apiGetMCPRegistryCatalog,
+  apiRegisterMCPRegistryServer,
 } from '@/lib/api';
 
-const { Text, Paragraph } = Typography;
+const { Text, Paragraph, Title } = Typography;
 
 interface MCPServerFormValues {
   name: string;
@@ -55,20 +63,41 @@ interface MCPServerFormValues {
   enabled: boolean;
 }
 
+interface MCPRegistryFormValues {
+  name: string;
+  slug: string;
+  description: string;
+  serverUrl: string;
+  transportType: string;
+  visibility: string;
+}
+
 export default function MCPGatewayPage() {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState('catalog');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [editingServer, setEditingServer] = useState<ApiMCPServerWithTools | null>(null);
   const [inspectServer, setInspectServer] = useState<ApiMCPServerWithTools | null>(null);
   const [testModal, setTestModal] = useState<{ serverId: string; tool: string; args: string } | null>(null);
   const [testResult, setTestResult] = useState<any>(null);
   const [form] = Form.useForm();
+  const [catalogForm] = Form.useForm();
 
+  // Queries
   const { data: servers, isLoading } = useQuery<ApiMCPServer[]>({
     queryKey: ['mcp-servers'],
     queryFn: apiGetMCPServers,
   });
 
+  const { data: catalogResult, isLoading: isCatalogLoading } = useQuery({
+    queryKey: ['mcp-registry-catalog'],
+    queryFn: apiGetMCPRegistryCatalog,
+  });
+
+  const catalogServers = catalogResult?.data || [];
+
+  // Mutations
   const createMutation = useMutation({
     mutationFn: apiCreateMCPServer,
     onSuccess: () => {
@@ -79,6 +108,19 @@ export default function MCPGatewayPage() {
     },
     onError: (err: any) => {
       message.error(err.response?.data?.error || 'Failed to register MCP server');
+    },
+  });
+
+  const registerCatalogMutation = useMutation({
+    mutationFn: apiRegisterMCPRegistryServer,
+    onSuccess: () => {
+      message.success('MCP Server added to catalog successfully');
+      setIsCatalogModalOpen(false);
+      catalogForm.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['mcp-registry-catalog'] });
+    },
+    onError: (err: any) => {
+      message.error(err.response?.data?.error || 'Failed to register catalog server');
     },
   });
 
@@ -99,36 +141,31 @@ export default function MCPGatewayPage() {
   const deleteMutation = useMutation({
     mutationFn: apiDeleteMCPServer,
     onSuccess: () => {
-      message.success('MCP Server removed');
+      message.success('MCP Server removed successfully');
       queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
-    },
-    onError: (err: any) => {
-      message.error(err.response?.data?.error || 'Failed to delete MCP server');
     },
   });
 
   const syncMutation = useMutation({
     mutationFn: apiSyncMCPServer,
-    onSuccess: (data) => {
-      message.success(`Discovered ${data.tools?.length || 0} tools via MCP protocol`);
-      queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
-      if (inspectServer && inspectServer.server.id === data.server.id) {
-        setInspectServer(data);
+    onSuccess: (updated) => {
+      message.success(`Re-synced successfully. Discovered ${updated.tools?.length || 0} tools.`);
+      if (inspectServer && inspectServer.server.id === updated.server.id) {
+        setInspectServer(updated);
       }
-    },
-    onError: (err: any) => {
-      message.error(err.response?.data?.error || 'Sync failed');
+      queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
     },
   });
 
   const testToolMutation = useMutation({
     mutationFn: ({ id, tool, args }: { id: string; tool: string; args: Record<string, any> }) =>
       apiTestMCPTool(id, tool, args),
-    onSuccess: (data) => {
-      setTestResult(data);
+    onSuccess: (res) => {
+      setTestResult(res);
+      message.success('MCP tool executed successfully');
     },
     onError: (err: any) => {
-      setTestResult({ error: err.response?.data?.error || 'Execution error' });
+      message.error(err.response?.data?.error || 'MCP tool execution failed');
     },
   });
 
@@ -136,7 +173,7 @@ export default function MCPGatewayPage() {
     setEditingServer(null);
     form.resetFields();
     form.setFieldsValue({
-      transportType: 'http',
+      transportType: 'sse',
       enabled: true,
     });
     setIsModalOpen(true);
@@ -186,6 +223,25 @@ export default function MCPGatewayPage() {
     } else {
       createMutation.mutate(payload);
     }
+  };
+
+  const handleCatalogSubmit = async () => {
+    const values: MCPRegistryFormValues = await catalogForm.validateFields();
+    registerCatalogMutation.mutate(values);
+  };
+
+  const handleConnectFromCatalog = (catServer: ApiMCPRegistryServer) => {
+    form.resetFields();
+    form.setFieldsValue({
+      name: catServer.slug,
+      displayName: catServer.name,
+      description: catServer.description,
+      transportType: catServer.transportType,
+      endpointUrl: catServer.serverUrl,
+      enabled: true,
+    });
+    setActiveTab('servers');
+    setIsModalOpen(true);
   };
 
   const handleExecuteTest = () => {
@@ -250,6 +306,9 @@ export default function MCPGatewayPage() {
               id: record.id,
               data: {
                 name: record.name,
+                displayName: record.displayName,
+                description: record.description,
+                transportType: record.transportType,
                 endpointUrl: record.endpointUrl,
                 enabled: checked,
               },
@@ -264,21 +323,16 @@ export default function MCPGatewayPage() {
       width: 260,
       render: (_: any, record: ApiMCPServer) => (
         <Space>
-          <Button
-            size="small"
-            icon={<SyncOutlined spin={syncMutation.isPending && syncMutation.variables === record.id} />}
-            onClick={() => syncMutation.mutate(record.id)}
-          >
-            Sync Tools
-          </Button>
           <Button size="small" icon={<ApiOutlined />} onClick={() => handleInspect(record)}>
-            Inspect
+            Inspect Tools
           </Button>
           <Button size="small" icon={<EditOutlined />} onClick={() => handleOpenEdit(record)} />
           <Popconfirm
-            title="Remove MCP Server?"
-            description="Are you sure you want to remove this MCP server registration?"
+            title="Delete MCP Server"
+            description="Are you sure you want to unregister this MCP server?"
             onConfirm={() => deleteMutation.mutate(record.id)}
+            okText="Yes"
+            cancelText="No"
           >
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -288,29 +342,114 @@ export default function MCPGatewayPage() {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card
-        title={
-          <Space>
-            <ApiOutlined style={{ color: '#1677ff' }} />
-            <span>MCP Gateway</span>
-          </Space>
-        }
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenAdd}>
-            Register MCP Server
-          </Button>
-        }
-      >
-        <Table
-          rowKey="id"
-          dataSource={servers}
-          columns={columns}
-          loading={isLoading}
-          pagination={false}
-          locale={{ emptyText: 'No MCP servers registered yet. Click "Register MCP Server" to discover remote tools.' }}
-        />
-      </Card>
+    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={2} style={{ margin: 0 }}>
+          🔌 MCP (Model Context Protocol) Gateway & Registry
+        </Title>
+        <Paragraph type="secondary" style={{ marginTop: 4 }}>
+          Centralized control plane and discovery catalog for remote HTTP/SSE Model Context Protocol servers.
+        </Paragraph>
+      </div>
+
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        type="card"
+        items={[
+          {
+            key: 'catalog',
+            label: (
+              <span>
+                <CompassOutlined /> MCP Catalog Explorer
+              </span>
+            ),
+            children: (
+              <Card
+                title="🌐 Public & Organization MCP Server Catalog"
+                extra={
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => {
+                      catalogForm.resetFields();
+                      setIsCatalogModalOpen(true);
+                    }}
+                  >
+                    Add Server to Catalog
+                  </Button>
+                }
+              >
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+                  {catalogServers.map((cat) => (
+                    <Card
+                      key={cat.id}
+                      size="small"
+                      hoverable
+                      style={{ background: '#0F1115', border: '1px solid #1f242d' }}
+                      title={
+                        <Space>
+                          <Text strong style={{ color: '#fff' }}>{cat.name}</Text>
+                          {cat.isVerified && (
+                            <Tooltip title="Verified Catalog Server">
+                              <SafetyCertificateOutlined style={{ color: '#8B5CF6' }} />
+                            </Tooltip>
+                          )}
+                        </Space>
+                      }
+                      extra={<Tag color="purple">{cat.transportType.toUpperCase()}</Tag>}
+                    >
+                      <Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ fontSize: 13, minHeight: 40 }}>
+                        {cat.description || 'Remote Model Context Protocol capability server.'}
+                      </Paragraph>
+                      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Tag color={cat.visibility === 'public' ? 'green' : 'blue'}>
+                          {cat.visibility.toUpperCase()}
+                        </Tag>
+                        <Button
+                          size="small"
+                          type="primary"
+                          icon={<PlusOutlined />}
+                          onClick={() => handleConnectFromCatalog(cat)}
+                        >
+                          Connect Gateway
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </Card>
+            ),
+          },
+          {
+            key: 'servers',
+            label: (
+              <span>
+                <ApiOutlined /> Registered Servers ({servers?.length || 0})
+              </span>
+            ),
+            children: (
+              <Card
+                title="Registered MCP Gateway Servers"
+                extra={
+                  <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenAdd}>
+                    Register MCP Server
+                  </Button>
+                }
+              >
+                <Table
+                  rowKey="id"
+                  dataSource={servers}
+                  columns={columns}
+                  loading={isLoading}
+                  pagination={false}
+                  locale={{ emptyText: 'No MCP servers registered yet. Click "Register MCP Server" to discover remote tools.' }}
+                />
+              </Card>
+            ),
+          },
+        ]}
+      />
 
       {/* Add / Edit MCP Server Modal */}
       <Modal
@@ -362,6 +501,53 @@ export default function MCPGatewayPage() {
 
           <Form.Item name="enabled" valuePropName="checked" label="Enabled">
             <Switch />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Add Catalog Entry Modal */}
+      <Modal
+        title="Add MCP Server to Public/Tenant Catalog"
+        open={isCatalogModalOpen}
+        onOk={handleCatalogSubmit}
+        onCancel={() => setIsCatalogModalOpen(false)}
+        confirmLoading={registerCatalogMutation.isPending}
+        destroyOnClose
+        width={600}
+      >
+        <Form form={catalogForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="name" label="Server Title" rules={[{ required: true }]}>
+            <Input placeholder="e.g. PostgreSQL Database MCP Server" />
+          </Form.Item>
+
+          <Form.Item name="slug" label="Slug / Unique Identifier" rules={[{ required: true }]}>
+            <Input placeholder="e.g. postgresql-mcp-server" />
+          </Form.Item>
+
+          <Form.Item name="serverUrl" label="Remote Server URL" rules={[{ required: true }]}>
+            <Input placeholder="https://mcp.example.com/sse" />
+          </Form.Item>
+
+          <Form.Item name="description" label="Description">
+            <Input.TextArea rows={2} placeholder="Capability summary of this MCP server" />
+          </Form.Item>
+
+          <Form.Item name="transportType" label="Transport" initialValue="sse">
+            <Select
+              options={[
+                { label: 'Server-Sent Events (SSE)', value: 'sse' },
+                { label: 'HTTP JSON-RPC 2.0', value: 'http_jsonrpc' },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item name="visibility" label="Visibility" initialValue="private">
+            <Select
+              options={[
+                { label: 'Private (My Account Only)', value: 'private' },
+                { label: 'Public Catalog', value: 'public' },
+              ]}
+            />
           </Form.Item>
         </Form>
       </Modal>
