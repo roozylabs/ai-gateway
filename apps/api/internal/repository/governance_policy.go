@@ -39,7 +39,7 @@ func (r *GovernancePolicyRepository) ListByUserID(ctx context.Context, userID st
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var policies []models.GovernancePolicy
 	for rows.Next() {

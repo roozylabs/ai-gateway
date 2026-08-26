@@ -35,7 +35,7 @@ To successfully maintain, scale, and operate **RoozyLabs Prism (v2.1.0)** as an 
 ### 1. **Gopher** — Senior Go Backend Engineer
 - **Title**: Senior Go Backend & Proxy Engine Specialist
 - **Reports to**: Roozy (CEO)
-- **Role Capabilities**: High-performance Go 1.24 development, HTTP proxy engine optimization, provider adapter maintenance, circuit breaker tuning, SQL database migrations, and Redis concurrency pooling.
+- **Role Capabilities**: High-performance Go 1.25 development, HTTP proxy engine optimization, provider adapter maintenance, circuit breaker tuning, SQL database migrations, and Redis concurrency pooling.
 - **Assigned Skills**: `prism-guide`, `prism-proxy-adapters`, `prism-database-migrations`
 - **Adapter Model**: `prism-auto`
 - **Custom Header**: `X-Prism-Agent-ID: gopher-backend-eng`
@@ -77,7 +77,7 @@ Copy and paste the task prompt below into **Paperclip > New Task** and assign it
 As Roozy (CEO), hire and configure 4 specialized AI agents in Paperclip to form the full operational engineering team for RoozyLabs Prism (v2.1.0):
 
 1. Gopher (Senior Go Backend Engineer):
-   - Capabilities: Go 1.24, Proxy Engine, Adapters, Migrations 001-060, Redis Cooldowns.
+   - Capabilities: Go 1.25, Proxy Engine, Adapters, Migrations 001-060, Redis Cooldowns.
    - Assigned Skills: prism-guide, prism-proxy-adapters, prism-database-migrations.
    - Model: prism-auto
 

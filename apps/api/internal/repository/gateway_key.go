@@ -78,7 +78,7 @@ func (r *GatewayKeyRepository) ListByUserID(ctx context.Context, userID string) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var keys []models.GatewayAPIKey
 	for rows.Next() {
@@ -135,7 +135,7 @@ func (r *GatewayKeyRepository) ListByUserIDWithFilter(ctx context.Context, userI
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var keys []models.GatewayAPIKey
 	for rows.Next() {

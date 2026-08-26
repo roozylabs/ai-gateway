@@ -56,7 +56,7 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var logs []models.RequestLog
 	for rows.Next() {
@@ -151,7 +151,7 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var logs []models.RequestLog
 	for rows.Next() {
@@ -285,7 +285,7 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var points []UsagePoint
 	for rows.Next() {
@@ -321,7 +321,7 @@ func (r *RequestLogRepository) GetProviderHealth(ctx context.Context, userID str
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var providers []ProviderHealth
 	for rows.Next() {

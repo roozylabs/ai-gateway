@@ -153,7 +153,7 @@ func (r *RoutingDecisionRepository) ListWithFilter(ctx context.Context, userID s
 			return nil, 0, err
 		}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var decisions []RoutingDecisionLog
 	for rows.Next() {

@@ -42,7 +42,7 @@ func (r *ModelRepository) ListByProviderID(ctx context.Context, providerID strin
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var modelList []models.Model
 	for rows.Next() {
@@ -102,7 +102,7 @@ func (r *ModelRepository) ListWithFilter(ctx context.Context, providerID, search
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var modelList []models.Model
 	for rows.Next() {
@@ -165,7 +165,7 @@ func (r *ModelRepository) ListEnabled(ctx context.Context) ([]models.Model, erro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var modelList []models.Model
 	for rows.Next() {

@@ -25,7 +25,7 @@ func (r *ToolBackendRepository) ListByToolID(ctx context.Context, toolID string)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanToolBackends(rows)
 }
 
@@ -46,7 +46,7 @@ func (r *ToolBackendRepository) ListEnabledByToolID(ctx context.Context, toolID 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanToolBackends(rows)
 }
 
@@ -100,7 +100,7 @@ func (r *ToolBackendRepository) DeleteByToolID(ctx context.Context, toolID strin
 }
 
 func scanToolBackends(rows *sql.Rows) ([]models.ToolBackend, error) {
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var backends []models.ToolBackend
 	for rows.Next() {
 		var b models.ToolBackend

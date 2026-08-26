@@ -53,7 +53,7 @@ func (r *CostAnomalyRepository) List(ctx context.Context, limit int, severity st
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var anomalies []CostAnomaly
 	for rows.Next() {
 		var a CostAnomaly
@@ -87,7 +87,7 @@ func (r *CostAnomalyRepository) GetHourlySpendSeries(ctx context.Context, days i
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var series []HourlySpend
 	for rows.Next() {
 		var s HourlySpend
@@ -128,7 +128,7 @@ func (r *CostAnomalyRepository) GetDailySpendSeries(ctx context.Context, days in
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var series []DailySpend
 	for rows.Next() {
 		var s DailySpend

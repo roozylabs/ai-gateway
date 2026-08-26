@@ -42,7 +42,7 @@ func (r *SettingRepository) List(ctx context.Context) ([]models.Setting, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var settings []models.Setting
 	for rows.Next() {
@@ -63,7 +63,7 @@ func (r *SettingRepository) GetAll(ctx context.Context) (map[string]string, erro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	settings := make(map[string]string)
 	for rows.Next() {

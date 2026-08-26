@@ -28,7 +28,7 @@ func (r *RoutingPolicyRepository) ListByUserID(ctx context.Context, userID strin
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var policies []models.RoutingPolicy
 	for rows.Next() {

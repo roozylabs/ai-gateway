@@ -53,7 +53,7 @@ func (r *BudgetRepository) ListAllEnabled(ctx context.Context) ([]models.Budget,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var budgets []models.Budget
 	for rows.Next() {
 		var budget models.Budget

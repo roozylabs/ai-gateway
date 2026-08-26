@@ -42,7 +42,7 @@ func (r *MCPServerRepository) ListByUserID(ctx context.Context, userID string) (
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var servers []models.MCPServer
 	for rows.Next() {

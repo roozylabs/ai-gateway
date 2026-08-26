@@ -35,7 +35,7 @@ func (r *ToolRepository) ListByUserID(ctx context.Context, userID string) ([]mod
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var tools []models.Tool
 	for rows.Next() {
 		var t models.Tool

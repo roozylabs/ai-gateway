@@ -47,7 +47,7 @@ func (r *BudgetAlertRepository) ListUnacknowledged(ctx context.Context, limit in
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var alerts []BudgetAlert
 	for rows.Next() {
 		var a BudgetAlert

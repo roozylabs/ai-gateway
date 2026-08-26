@@ -84,7 +84,7 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 ## 🛠️ Monorepo & Technology Stack
 
 - **Monorepo Structure**:
-  - `apps/api`: High-performance Go 1.24 API Proxy Engine & Middleware
+  - `apps/api`: High-performance Go 1.25 API Proxy Engine & Middleware
   - `apps/app`: Next.js 15 Admin Console & Control Dashboard
   - `apps/web`: Responsive Astro 5.0 Marketing Landing Page
 - **Database**: PostgreSQL 15 (Single Source of Truth, Migrations 001–061)
@@ -97,7 +97,7 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 
 ### 1. Prerequisites
 - [Docker & Docker Compose](https://docs.docker.com/get-docker/) installed on your system.
-- [Go 1.24+](https://go.dev/dl/) & [pnpm 9+](https://pnpm.io/) (if running locally without Docker).
+- [Go 1.25+](https://go.dev/dl/) & [pnpm 9+](https://pnpm.io/) (if running locally without Docker).
 
 ### 2. Client Setup Example (OpenCode CLI)
 

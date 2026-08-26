@@ -56,7 +56,7 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) (bool, string)
 		log.Printf("[Turnstile Auth] HTTP PostForm failed: %v", err)
 		return false, err.Error()
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, _ := io.ReadAll(resp.Body)
 	var result TurnstileResponse

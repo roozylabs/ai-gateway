@@ -25,7 +25,7 @@ func (r *ProviderRepository) ListByUserID(ctx context.Context, userID string) ([
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var providers []models.Provider
 	for rows.Next() {

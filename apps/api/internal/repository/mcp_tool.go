@@ -25,7 +25,7 @@ func (r *MCPToolRepository) ListByServerID(ctx context.Context, serverID string)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tools []models.MCPTool
 	for rows.Next() {

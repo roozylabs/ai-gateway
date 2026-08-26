@@ -30,7 +30,7 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var credentials []models.Credential
 	for rows.Next() {
@@ -94,7 +94,7 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var credentials []models.Credential
 	for rows.Next() {
@@ -194,7 +194,7 @@ func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, pr
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	excludeMap := make(map[string]bool)
 	for _, id := range excludeIDs {
@@ -271,7 +271,7 @@ func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID st
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	excludeMap := make(map[string]bool)
 	for _, id := range excludeIDs {
@@ -307,7 +307,7 @@ func (r *CredentialRepository) FindLRU(ctx context.Context, providerID string, e
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	excludeMap := make(map[string]bool)
 	for _, id := range excludeIDs {
@@ -349,7 +349,7 @@ func (r *CredentialRepository) ListActiveProviderIDs(ctx context.Context) (map[s
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	activeMap := make(map[string]bool)
 	for rows.Next() {

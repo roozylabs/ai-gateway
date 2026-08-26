@@ -26,7 +26,7 @@ func (r *ResourceBackendRepository) ListByResourceID(ctx context.Context, resour
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return r.scan(rows)
 }
 
@@ -49,7 +49,7 @@ func (r *ResourceBackendRepository) ListEnabledByResourceID(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return r.scan(rows)
 }
 
@@ -98,7 +98,7 @@ func (r *ResourceBackendRepository) DeleteByResourceID(ctx context.Context, reso
 }
 
 func (r *ResourceBackendRepository) scan(rows *sql.Rows) ([]models.ResourceBackend, error) {
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var backends []models.ResourceBackend
 	for rows.Next() {
 		var b models.ResourceBackend

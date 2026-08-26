@@ -788,7 +788,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		// 5xx → Circuit Breaker recording and retry
 		if httpResp.StatusCode >= 500 {
-			httpResp.Body.Close()
+			_ = httpResp.Body.Close()
 			release()
 			if isQuarantined, _ := e.cooldown.RecordServerError(c.Request.Context(), route.Credential.ID, httpResp.StatusCode); isQuarantined {
 				if e.publisher != nil {
@@ -810,7 +810,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		// 4xx (other than 401/403/429) → abort immediately, do not retry
 		if httpResp.StatusCode >= 400 && httpResp.StatusCode < 500 {
 			bodyBytes, _ := io.ReadAll(httpResp.Body)
-			httpResp.Body.Close()
+			_ = httpResp.Body.Close()
 			release()
 			return nil, fmt.Errorf("upstream error %d: %s", httpResp.StatusCode, string(bodyBytes))
 		}
@@ -821,7 +821,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "active")
 		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
 		defer func() {
-			httpResp.Body.Close()
+			_ = httpResp.Body.Close()
 			release()
 		}()
 

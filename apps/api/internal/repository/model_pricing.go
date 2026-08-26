@@ -73,7 +73,7 @@ func (r *ModelPricingRepository) ListAll(ctx context.Context) ([]models.ModelPri
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var pricings []models.ModelPricing
 	for rows.Next() {
