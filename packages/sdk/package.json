@@ -1,0 +1,45 @@
+{
+  "name": "@roozylabs/prism",
+  "version": "2.1.0",
+  "description": "Official TypeScript SDK for RoozyLabs Prism AI Control Plane & Gateway",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit",
+    "test": "node --test"
+  },
+  "keywords": [
+    "prism",
+    "ai-gateway",
+    "llm",
+    "openai-compatible",
+    "agents",
+    "routing",
+    "mcp",
+    "typescript-sdk"
+  ],
+  "author": "RoozyLabs",
+  "license": "MIT",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3"
+  }
+}
