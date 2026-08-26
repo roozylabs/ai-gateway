@@ -713,7 +713,7 @@ export interface ApiToolExecutionResult {
   tool: string;
   backend: string;
   statusCode: number;
-  result: any;
+  result: unknown;
   latencyMs: number;
 }
 
@@ -810,7 +810,7 @@ export interface ApiResourceExecutionResult {
   backend: string;
   backendType: string;
   statusCode: number;
-  data: any;
+  data: unknown;
   rowCount: number;
   latencyMs: number;
 }
@@ -889,7 +889,7 @@ export interface ApiMCPToolExecutionResult {
   server: string;
   tool: string;
   statusCode: number;
-  result: any;
+  result: unknown;
   latencyMs: number;
 }
 
@@ -922,7 +922,7 @@ export async function apiSyncMCPServer(id: string): Promise<ApiMCPServerWithTool
   return response.data;
 }
 
-export async function apiTestMCPTool(id: string, tool: string, args: Record<string, any>): Promise<ApiMCPToolExecutionResult> {
+export async function apiTestMCPTool(id: string, tool: string, args: Record<string, unknown>): Promise<ApiMCPToolExecutionResult> {
   const response = await api.post<ApiMCPToolExecutionResult>(`/mcp/servers/${id}/test`, { tool, args });
   return response.data;
 }
@@ -938,7 +938,7 @@ export interface ApiMCPRegistryServer {
   serverUrl: string;
   transportType: string;
   visibility: string;
-  capabilities: any;
+  capabilities: Record<string, unknown>;
   isVerified: boolean;
   createdAt: string;
   updatedAt: string;
@@ -951,7 +951,7 @@ export interface ApiRegisterMCPRegistryRequest {
   serverUrl: string;
   transportType?: string;
   visibility?: string;
-  capabilities?: any;
+  capabilities?: Record<string, unknown>;
 }
 
 export async function apiGetMCPRegistryCatalog(): Promise<{ object: string; data: ApiMCPRegistryServer[] }> {
@@ -973,9 +973,9 @@ export interface ApiAgentTemplate {
   role: string;
   description: string;
   icon: string;
-  allowedModels: any;
-  allowedTools: any;
-  allowedResources: any;
+  allowedModels: string[];
+  allowedTools: string[];
+  allowedResources: string[];
   maxBudgetCents: number;
   isPreset: boolean;
   createdAt: string;
