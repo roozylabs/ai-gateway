@@ -1,16 +1,21 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/molecules/Card';
 import { Button } from '@/components/atoms/Button';
 import { Badge, StatusDot } from '@/components/atoms/Badge';
 import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
-import { ApiProvider } from '@/lib/api';
+import { ApiProvider, apiCreateProvider } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Server, Plus, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Input } from '@/components/atoms/Input';
+import { Label } from '@/components/atoms/Label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface ProviderCardProps {
   name: string;
@@ -30,6 +35,28 @@ const mockProviders: ProviderCardProps[] = [
 
 export default function ProvidersPage() {
   const { data, isLoading, isError, refetch } = useProvidersQuery();
+  const queryClient = useQueryClient();
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formType, setFormType] = useState('openai');
+  const [formBaseUrl, setFormBaseUrl] = useState('');
+
+  const createMutation = useMutation({
+    mutationFn: (providerData: { name: string; type: string; baseUrl: string }) =>
+      apiCreateProvider({ name: providerData.name, type: providerData.type, baseUrl: providerData.baseUrl }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['providers'] });
+      toast.success('Provider created successfully');
+      setDrawerOpen(false);
+      setFormName('');
+      setFormType('openai');
+      setFormBaseUrl('');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create provider: ${error.message}`);
+    },
+  });
 
   const providersList: ProviderCardProps[] = React.useMemo(() => {
     if (data && Array.isArray(data) && data.length > 0) {
@@ -51,7 +78,7 @@ export default function ProvidersPage() {
         title="AI Model Providers"
         description="Manage connected AI provider adapters, rate limits, and health status."
         extra={
-          <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => toast.info('Connect Provider Drawer')}>
+          <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => setDrawerOpen(true)}>
             <Plus className="h-4 w-4" /> Connect New Provider
           </Button>
         }
@@ -115,6 +142,47 @@ export default function ProvidersPage() {
           ))}
         </div>
       )}
+
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Connect New Provider</SheetTitle>
+            <SheetDescription>Add a new AI provider adapter to your workspace.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="provider-name">Provider Name</Label>
+              <Input id="provider-name" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g., OpenAI Production" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="provider-type">Provider Type</Label>
+              <Select value={formType} onValueChange={setFormType}>
+                <SelectTrigger id="provider-type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="anthropic">Anthropic</SelectItem>
+                  <SelectItem value="google">Google Gemini</SelectItem>
+                  <SelectItem value="opencode">OpenCode</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="provider-url">Base URL</Label>
+              <Input id="provider-url" value={formBaseUrl} onChange={(e) => setFormBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" />
+            </div>
+          </div>
+          <SheetFooter>
+            <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
+            <Button
+              variant="prismViolet"
+              onClick={() => createMutation.mutate({ name: formName, type: formType, baseUrl: formBaseUrl })}
+              disabled={!formName.trim() || createMutation.isPending}
+            >
+              {createMutation.isPending ? 'Creating...' : 'Create Provider'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }
