@@ -155,6 +155,9 @@ The application stack will be available at:
 | `POST` | `/v1/mcp/registry` | Register custom MCP server in registry | Session |
 | `GET` | `/v1/agent-templates` | List pre-configured agent role templates | Gateway / Session |
 | `POST` | `/v1/agent-templates/:id/instantiate` | 1-Click Agent Instantiation | Session |
+| **Audit Trail & Exporter** | | | |
+| `GET` | `/v1/audit-trail/logs` | Query system action logs | Session |
+| `GET` | `/v1/audit-trail/export` | Download CSV/JSON compliance reports | Session |
 | **Gateway (OpenAI-Compatible)** | | | |
 | `GET` | `/v1/models` | List active models (including `prism-auto`) | Gateway Key |
 | `POST` | `/v1/chat/completions` | Inference API (Smart Router `prism-auto`, Streaming, Retry) | Gateway Key |
