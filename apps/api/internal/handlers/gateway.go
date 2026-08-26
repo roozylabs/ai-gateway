@@ -28,6 +28,7 @@ type GatewayHandler struct {
 	agentGovernance *proxy.AgentGovernanceEngine
 	rbacEngine      *proxy.RBACEngine
 	auditRecorder   *proxy.AuditRecorder
+	modelRepo       *repository.ModelRepository
 }
 
 func NewGatewayHandler(
@@ -40,6 +41,7 @@ func NewGatewayHandler(
 	agentGovernance *proxy.AgentGovernanceEngine,
 	rbacEngine *proxy.RBACEngine,
 	auditRecorder *proxy.AuditRecorder,
+	modelRepo *repository.ModelRepository,
 ) *GatewayHandler {
 	return &GatewayHandler{
 		engine:          engine,
@@ -51,6 +53,7 @@ func NewGatewayHandler(
 		agentGovernance: agentGovernance,
 		rbacEngine:      rbacEngine,
 		auditRecorder:   auditRecorder,
+		modelRepo:       modelRepo,
 	}
 }
 
@@ -273,8 +276,45 @@ func (h *GatewayHandler) SandboxChatCompletions(c *gin.Context) {
 // @Success      200 {object} map[string]interface{}
 // @Router       /v1/models [get]
 func (h *GatewayHandler) Models(c *gin.Context) {
-	modelsList := []map[string]interface{}{
-		{"id": models.SmartRouterModel, "object": "model", "owned_by": "roozylabs"},
+	modelsMap := make(map[string]map[string]interface{})
+	modelsList := []map[string]interface{}{}
+
+	// Always include prism-auto smart router
+	autoItem := map[string]interface{}{
+		"id":       models.SmartRouterModel,
+		"object":   "model",
+		"owned_by": "roozylabs",
+	}
+	modelsList = append(modelsList, autoItem)
+	modelsMap[models.SmartRouterModel] = autoItem
+
+	// Query dynamic enabled models from DB repository if available
+	if h.modelRepo != nil {
+		if dbModels, err := h.modelRepo.ListEnabled(c.Request.Context()); err == nil && len(dbModels) > 0 {
+			for _, m := range dbModels {
+				id := m.Slug
+				if id == "" {
+					id = m.Name
+				}
+				if id == "" || modelsMap[id] != nil {
+					continue
+				}
+
+				ownedBy := detectOwnedBy(id, m.ProviderName)
+				item := map[string]interface{}{
+					"id":       id,
+					"object":   "model",
+					"owned_by": ownedBy,
+					"created":  m.CreatedAt.Unix(),
+				}
+				modelsList = append(modelsList, item)
+				modelsMap[id] = item
+			}
+		}
+	}
+
+	// Fallback list of supported models
+	fallbacks := []map[string]interface{}{
 		{"id": "gpt-4o", "object": "model", "owned_by": "openai"},
 		{"id": "gpt-4o-mini", "object": "model", "owned_by": "openai"},
 		{"id": "claude-3-7-sonnet", "object": "model", "owned_by": "anthropic"},
@@ -282,9 +322,6 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		{"id": "claude-3-haiku-20240307", "object": "model", "owned_by": "anthropic"},
 		{"id": "gemini-3.6-flash", "object": "model", "owned_by": "google"},
 		{"id": "gemini-3.7-flash", "object": "model", "owned_by": "google"},
-		{"id": "gemini-2.0-flash", "object": "model", "owned_by": "google"},
-		{"id": "gemini-1.5-pro", "object": "model", "owned_by": "google"},
-		{"id": "gemini-1.5-flash", "object": "model", "owned_by": "google"},
 		{"id": "hy3-free", "object": "model", "owned_by": "opencode"},
 		{"id": "mimo-v2.5-free", "object": "model", "owned_by": "opencode"},
 		{"id": "deepseek-v4-flash-free", "object": "model", "owned_by": "opencode"},
@@ -294,10 +331,38 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		{"id": "big-pickle", "object": "model", "owned_by": "opencode"},
 	}
 
+	for _, fb := range fallbacks {
+		id := fb["id"].(string)
+		if modelsMap[id] == nil {
+			modelsList = append(modelsList, fb)
+			modelsMap[id] = fb
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"object": "list",
 		"data":   modelsList,
 	})
+}
+
+func detectOwnedBy(slug, providerName string) string {
+	if providerName != "" {
+		return strings.ToLower(providerName)
+	}
+	s := strings.ToLower(slug)
+	if strings.HasPrefix(s, "gpt") || strings.HasPrefix(s, "o1") || strings.HasPrefix(s, "o3") {
+		return "openai"
+	}
+	if strings.HasPrefix(s, "claude") {
+		return "anthropic"
+	}
+	if strings.HasPrefix(s, "gemini") {
+		return "google"
+	}
+	if strings.HasSuffix(s, "-free") || s == "big-pickle" {
+		return "opencode"
+	}
+	return "prism"
 }
 
 func parseClientApp(ua string) string {
@@ -352,7 +417,7 @@ func (h *GatewayHandler) recordAuditTrail(c *gin.Context, log *models.RequestLog
 		ModelSlug:         log.Model,
 		FailoverChain:     []string{},
 		ToolsInvoked:      []string{},
-		ResourcesAccessed:  []string{},
+		ResourcesAccessed: []string{},
 		MCPServersCalled:  []string{},
 		PromptTokens:      log.InputTokens,
 		CompletionTokens:  log.OutputTokens,
