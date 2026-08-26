@@ -1,60 +1,270 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/molecules/Card';
 import { Button } from '@/components/atoms/Button';
 import { Badge, StatusDot } from '@/components/atoms/Badge';
-import { Bot, Plus, Zap, Shield } from 'lucide-react';
+import { useAgentsQuery, useCreateAgent, useUpdateAgent, useDeleteAgent } from '@/hooks/queries/useAgentsQuery';
+import { ApiAgent } from '@/lib/api';
+import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
+import { Bot, Plus, Settings, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Input } from '@/components/atoms/Input';
+import { Label } from '@/components/atoms/Label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
+
+const AGENT_TYPES = ['general', 'code', 'research', 'ops', 'custom'];
+
+function formatBudgetCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}/mo`;
+}
+
+interface AgentFormProps {
+  name: string;
+  displayName: string;
+  description: string;
+  agentType: string;
+  maxBudgetCents: number;
+  onNameChange: (v: string) => void;
+  onDisplayNameChange: (v: string) => void;
+  onDescriptionChange: (v: string) => void;
+  onAgentTypeChange: (v: string) => void;
+  onMaxBudgetCentsChange: (v: number) => void;
+}
+
+function AgentFormFields({
+  name, displayName, description, agentType, maxBudgetCents,
+  onNameChange, onDisplayNameChange, onDescriptionChange, onAgentTypeChange, onMaxBudgetCentsChange,
+}: AgentFormProps) {
+  return (
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="agent-name">Agent Name *</Label>
+        <Input id="agent-name" value={name} onChange={(e) => onNameChange(e.target.value)} placeholder="e.g., code-reviewer" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="agent-display-name">Display Name</Label>
+        <Input id="agent-display-name" value={displayName} onChange={(e) => onDisplayNameChange(e.target.value)} placeholder="e.g., Code Reviewer" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="agent-description">Description</Label>
+        <Input id="agent-description" value={description} onChange={(e) => onDescriptionChange(e.target.value)} placeholder="What this agent does..." />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="agent-type">Agent Type</Label>
+        <Select value={agentType} onValueChange={onAgentTypeChange}>
+          <SelectTrigger id="agent-type"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {AGENT_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="agent-budget">Max Budget (cents/mo)</Label>
+        <Input id="agent-budget" type="number" min={0} value={maxBudgetCents} onChange={(e) => onMaxBudgetCentsChange(Number(e.target.value))} placeholder="0" />
+      </div>
+    </div>
+  );
+}
 
 export default function AgentsPage() {
+  const { data, isLoading, isError, refetch } = useAgentsQuery();
+  const createMutation = useCreateAgent();
+  const updateMutation = useUpdateAgent();
+  const deleteMutation = useDeleteAgent();
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<ApiAgent | null>(null);
+
+  const [formName, setFormName] = useState('');
+  const [formDisplayName, setFormDisplayName] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [formAgentType, setFormAgentType] = useState('general');
+  const [formMaxBudgetCents, setFormMaxBudgetCents] = useState(0);
+
+  const resetForm = () => {
+    setFormName('');
+    setFormDisplayName('');
+    setFormDescription('');
+    setFormAgentType('general');
+    setFormMaxBudgetCents(0);
+    setEditingAgent(null);
+  };
+
+  const openCreateDrawer = () => {
+    resetForm();
+    setDrawerOpen(true);
+  };
+
+  const openEditDrawer = (agent: ApiAgent) => {
+    setEditingAgent(agent);
+    setFormName(agent.name);
+    setFormDisplayName(agent.displayName);
+    setFormDescription(agent.description);
+    setFormAgentType(agent.agentType);
+    setFormMaxBudgetCents(agent.maxBudgetCents);
+    setDrawerOpen(true);
+  };
+
+  const handleSubmit = () => {
+    const payload = {
+      name: formName,
+      displayName: formDisplayName || undefined,
+      description: formDescription || undefined,
+      agentType: formAgentType,
+      maxBudgetCents: formMaxBudgetCents,
+    };
+
+    if (editingAgent) {
+      updateMutation.mutate({ id: editingAgent.id, data: payload }, {
+        onSuccess: () => {
+          toast.success(`Agent "${formName}" updated`);
+          setDrawerOpen(false);
+          resetForm();
+        },
+        onError: (err: Error) => toast.error(`Failed to update: ${err.message}`),
+      });
+    } else {
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          toast.success(`Agent "${formName}" created`);
+          setDrawerOpen(false);
+          resetForm();
+        },
+        onError: (err: Error) => toast.error(`Failed to create: ${err.message}`),
+      });
+    }
+  };
+
+  const handleDelete = (agent: ApiAgent) => {
+    if (window.confirm(`Delete agent "${agent.name}"? This cannot be undone.`)) {
+      deleteMutation.mutate(agent.id, {
+        onSuccess: () => toast.success(`Agent "${agent.name}" deleted`),
+        onError: (err: Error) => toast.error(`Failed to delete: ${err.message}`),
+      });
+    }
+  };
+
+  const agents: ApiAgent[] = (data && Array.isArray(data)) ? data : [];
+  const isPending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+
   return (
     <AppLayout>
       <PageHeader
         title="Agent Gateway & Agent Catalog"
         description="Provision autonomous AI agent identities with bound system prompts, tool boundaries, and key quotas."
         extra={
-          <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => toast.info('Instantiate Agent Drawer')}>
+          <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={openCreateDrawer}>
             <Plus className="h-4 w-4" /> Instantiate New Agent
           </Button>
         }
       />
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="flex flex-col justify-between">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Bot className="h-5 w-5 text-[#8B5CF6]" />
-                <span>DevOps Auto-Remediator</span>
-              </CardTitle>
-              <StatusDot status="healthy" />
-            </div>
-            <CardDescription className="font-mono text-xs">agent_id: agent-devops-01</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Default Model</span>
-              <Badge variant="outline">claude-3-7-sonnet</Badge>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Bound Tools</span>
-              <span className="font-mono text-foreground font-semibold">4 tools (k8s_restart, fetch_logs)</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Spend Cap</span>
-              <span className="font-mono text-emerald-500 font-bold">$200.00 / mo</span>
-            </div>
-          </CardContent>
-          <CardFooter className="border-t border-border pt-3">
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => toast.info('Configuring agent...')}>
-              Configure Agent
+      {isError ? (
+        <ErrorState
+          title="Failed to fetch agents"
+          description="Could not communicate with the Prism Agent Gateway backend."
+          onRetry={refetch}
+        />
+      ) : !isLoading && agents.length === 0 ? (
+        <EmptyState
+          title="No Agents Configured"
+          description="There are no AI agents provisioned in this workspace yet."
+          action={
+            <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={openCreateDrawer}>
+              <Plus className="h-4 w-4" /> Instantiate New Agent
             </Button>
-          </CardFooter>
-        </Card>
-      </div>
+          }
+        />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {agents.map((agent) => (
+            <Card key={agent.id} className="flex flex-col justify-between">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-[#8B5CF6]" />
+                    <span>{agent.displayName || agent.name}</span>
+                  </CardTitle>
+                  <StatusDot status={agent.enabled ? 'healthy' : 'cooldown'} />
+                </div>
+                <CardDescription className="font-mono text-xs">{agent.description || `type: ${agent.agentType}`}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between text-xs border-b border-border pb-2">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge variant={agent.enabled ? 'success' : 'default'}>
+                    {agent.enabled ? 'Enabled' : 'Disabled'}
+                  </Badge>
+                </div>
+                {agent.allowedModels.length > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Models</span>
+                    <div className="flex gap-1 flex-wrap justify-end max-w-[180px]">
+                      {agent.allowedModels.slice(0, 3).map((m) => (
+                        <Badge key={m} variant="outline" className="text-[10px]">{m}</Badge>
+                      ))}
+                      {agent.allowedModels.length > 3 && (
+                        <Badge variant="outline" className="text-[10px]">+{agent.allowedModels.length - 3}</Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Spend Cap</span>
+                  <span className="font-mono text-emerald-500 font-bold">{formatBudgetCents(agent.maxBudgetCents)}</span>
+                </div>
+              </CardContent>
+              <CardFooter className="border-t border-border pt-3 gap-2">
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs" onClick={() => openEditDrawer(agent)}>
+                  <Settings className="h-3.5 w-3.5" /> Configure
+                </Button>
+                <Button variant="destructive" size="sm" className="flex-1 gap-1.5 text-xs" disabled={isPending} onClick={() => handleDelete(agent)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Sheet open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) resetForm(); }}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{editingAgent ? 'Configure Agent' : 'Instantiate New Agent'}</SheetTitle>
+            <SheetDescription>
+              {editingAgent ? `Update settings for "${editingAgent.name}".` : 'Provision a new AI agent identity in this workspace.'}
+            </SheetDescription>
+          </SheetHeader>
+          <AgentFormFields
+            name={formName}
+            displayName={formDisplayName}
+            description={formDescription}
+            agentType={formAgentType}
+            maxBudgetCents={formMaxBudgetCents}
+            onNameChange={setFormName}
+            onDisplayNameChange={setFormDisplayName}
+            onDescriptionChange={setFormDescription}
+            onAgentTypeChange={setFormAgentType}
+            onMaxBudgetCentsChange={setFormMaxBudgetCents}
+          />
+          <SheetFooter>
+            <Button variant="outline" onClick={() => { setDrawerOpen(false); resetForm(); }}>Cancel</Button>
+            <Button
+              variant="prismViolet"
+              onClick={handleSubmit}
+              disabled={!formName.trim() || isPending}
+            >
+              {isPending ? 'Saving...' : editingAgent ? 'Update Agent' : 'Create Agent'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }
