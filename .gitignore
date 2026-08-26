@@ -50,6 +50,7 @@ Thumbs.db
 
 # Local runtime & plugins
 opencode.json
+.opencode/*
 .agents/plugins/antd/
 .superpowers/
 */superpowers
