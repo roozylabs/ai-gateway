@@ -48,6 +48,10 @@ type ModelScoreDetail struct {
 	DisplayName   string   `json:"displayName"`
 	ProviderName  string   `json:"providerName"`
 	Score         float64  `json:"score"`
+	QualityScore  float64  `json:"qualityScore"`
+	CostScore     float64  `json:"costScore"`
+	SpeedScore    float64  `json:"speedScore"`
+	HealthScore   float64  `json:"healthScore"`
 	Reasons       []string `json:"reasons"`
 	InputPrice1M  float64  `json:"inputPrice1M"`
 	OutputPrice1M float64  `json:"outputPrice1M"`
@@ -190,6 +194,10 @@ func (h *SimulateHandler) Simulate(c *gin.Context) {
 				DisplayName:   s.Model.DisplayName,
 				ProviderName:  providerMap[s.Model.ProviderID],
 				Score:         s.Score,
+				QualityScore:  s.QualityScore,
+				CostScore:     s.CostScore,
+				SpeedScore:    s.SpeedScore,
+				HealthScore:   s.HealthScore,
 				Reasons:       s.Reason,
 				InputPrice1M:  s.Model.InputPricePer1M,
 				OutputPrice1M: s.Model.OutputPricePer1M,

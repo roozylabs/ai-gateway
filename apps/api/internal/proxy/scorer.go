@@ -14,9 +14,13 @@ type RoutingPolicy struct {
 }
 
 type ModelScore struct {
-	Model  *models.Model
-	Score  float64
-	Reason []string
+	Model        *models.Model
+	Score        float64
+	QualityScore float64
+	CostScore    float64
+	SpeedScore   float64
+	HealthScore  float64
+	Reason       []string
 }
 
 type RoutingDecision struct {
@@ -134,9 +138,13 @@ func ScoreCandidatesWithTelemetry(candidates []*models.Model, chars RequestChara
 		reasons = append(reasons, "quality="+formatFloat(qualityScore))
 
 		scores = append(scores, &ModelScore{
-			Model:  m,
-			Score:  score,
-			Reason: reasons,
+			Model:        m,
+			Score:        score,
+			QualityScore: qualityScore,
+			CostScore:    costScore,
+			SpeedScore:   speedScore,
+			HealthScore:  1.0,
+			Reason:       reasons,
 		})
 	}
 
@@ -207,6 +215,7 @@ func ScoreCandidatesWithBudgetAndTelemetry(candidates []*models.Model, chars Req
 			if v, ok := healthScores[s.Model.ProviderID]; ok {
 				hs = v
 			}
+			s.HealthScore = hs
 			multiplier := 0.5 + 0.5*hs
 			s.Score *= multiplier
 			if multiplier < 0.9 {

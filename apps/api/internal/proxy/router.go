@@ -394,8 +394,12 @@ func (r *Router) ResolveSemantic(
 	scoresBreakdown := make(map[string]interface{})
 	for _, sc := range scores {
 		scoresBreakdown[sc.Model.Slug] = map[string]interface{}{
-			"score":  sc.Score,
-			"reason": sc.Reason,
+			"score":        sc.Score,
+			"qualityScore": sc.QualityScore,
+			"costScore":    sc.CostScore,
+			"speedScore":   sc.SpeedScore,
+			"healthScore":  sc.HealthScore,
+			"reason":       sc.Reason,
 		}
 	}
 
