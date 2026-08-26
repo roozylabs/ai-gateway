@@ -341,6 +341,7 @@ func main() {
 	registerGatewayRoutes := func(rg *gin.RouterGroup) {
 		rg.Use(middleware.GatewayAuthMiddleware(gatewayKeyCache))
 		rg.Use(middleware.GatewayRateLimitMiddleware(rdb, cfg.RateLimitPerKey))
+		rg.Use(middleware.AgentPolicyMiddleware(agentRepo))
 		rg.Use(proxy.IdempotencyMiddleware(idemStore))
 		rg.POST("/chat/completions", gatewayHandler.ChatCompletions)
 		rg.GET("/models", gatewayHandler.Models)
