@@ -1,0 +1,970 @@
+basePath: /api/v1
+definitions:
+  github_com_roozylabs_prism_internal_models.Credential:
+    properties:
+      authType:
+        type: string
+      cooldownTtl:
+        type: integer
+      createdAt:
+        type: string
+      enabled:
+        type: boolean
+      errorCount:
+        type: integer
+      id:
+        type: string
+      isCoolingDown:
+        type: boolean
+      keyPrefix:
+        type: string
+      lastError:
+        $ref: '#/definitions/sql.NullString'
+      lastErrorAt:
+        type: string
+      lastUsedAt:
+        type: string
+      maskedKey:
+        type: string
+      name:
+        type: string
+      priority:
+        type: integer
+      providerId:
+        type: string
+      providerName:
+        type: string
+      quota:
+        $ref: '#/definitions/github_com_roozylabs_prism_internal_models.CredentialQuota'
+      requestCount:
+        type: integer
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github_com_roozylabs_prism_internal_models.CredentialQuota:
+    properties:
+      lastUpdated:
+        type: integer
+      limitRequests:
+        type: integer
+      limitTokens:
+        type: integer
+      remainingRequests:
+        type: integer
+      remainingTokens:
+        type: integer
+      resetAt:
+        type: string
+      resetDurationSec:
+        type: integer
+      statusText:
+        type: string
+    type: object
+  github_com_roozylabs_prism_internal_models.Model:
+    properties:
+      codingScore:
+        type: number
+      contextWindow:
+        type: integer
+      createdAt:
+        type: string
+      displayName:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      inputPricePer1M:
+        type: number
+      name:
+        type: string
+      outputPricePer1M:
+        type: number
+      providerId:
+        type: string
+      providerName:
+        type: string
+      qualityScore:
+        type: number
+      reasoningScore:
+        type: number
+      slug:
+        type: string
+      speedScore:
+        type: number
+      supportsTools:
+        type: boolean
+      supportsVision:
+        type: boolean
+      updatedAt:
+        type: string
+      writingScore:
+        type: number
+    type: object
+  github_com_roozylabs_prism_internal_models.Provider:
+    properties:
+      baseUrl:
+        type: string
+      createdAt:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      routingStrategy:
+        type: string
+      slug:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+    type: object
+  github_com_roozylabs_prism_internal_models.User:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      emailVerified:
+        type: boolean
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github_com_roozylabs_prism_internal_proxy.ProxyRequest:
+    properties:
+      max_tokens:
+        type: integer
+      messages:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      model:
+        type: string
+      stream:
+        type: boolean
+      temperature:
+        type: number
+      tool_choice: {}
+      tools:
+        items: {}
+        type: array
+    type: object
+  github_com_roozylabs_prism_internal_service.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      turnstileToken:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  github_com_roozylabs_prism_internal_service.LoginResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_roozylabs_prism_internal_models.User'
+    type: object
+  internal_handlers.CreateCredentialRequest:
+    properties:
+      apiKey:
+        type: string
+      authType:
+        type: string
+      metadata:
+        $ref: '#/definitions/internal_handlers.OAuthMetadataInput'
+      name:
+        type: string
+      priority:
+        type: integer
+    required:
+    - name
+    type: object
+  internal_handlers.OAuthMetadataInput:
+    properties:
+      clientId:
+        type: string
+      clientSecret:
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  internal_handlers.UpdateCapabilitiesRequest:
+    properties:
+      codingScore:
+        type: number
+      contextWindow:
+        type: integer
+      inputPricePer1M:
+        type: number
+      outputPricePer1M:
+        type: number
+      qualityScore:
+        type: number
+      reasoningScore:
+        type: number
+      speedScore:
+        type: number
+      supportsTools:
+        type: boolean
+      supportsVision:
+        type: boolean
+      writingScore:
+        type: number
+    type: object
+  internal_handlers.UpdateCredentialRequest:
+    properties:
+      apiKey:
+        type: string
+      authType:
+        type: string
+      metadata:
+        $ref: '#/definitions/internal_handlers.OAuthMetadataInput'
+      name:
+        type: string
+      priority:
+        type: integer
+      status:
+        type: string
+    type: object
+  sql.NullString:
+    properties:
+      string:
+        type: string
+      valid:
+        description: Valid is true if String is not NULL
+        type: boolean
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Centralized AI API Gateway
+  title: RoozyLabs Prism AI Gateway API
+  version: 2.1.0
+paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_roozylabs_prism_internal_service.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_service.LoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login
+      tags:
+      - auth
+  /api/auth/logout:
+    post:
+      description: Invalidate session token
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - auth
+  /api/auth/me:
+    get:
+      description: Get the currently authenticated user
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.User'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /api/providers:
+    get:
+      description: Get all providers for the current user
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Provider'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List providers
+      tags:
+      - providers
+    post:
+      description: Create a new provider
+      parameters:
+      - description: Provider data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Provider'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Provider'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create provider
+      tags:
+      - providers
+  /api/providers/{id}:
+    delete:
+      description: Delete a provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete provider
+      tags:
+      - providers
+    get:
+      description: Get a provider by ID
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Provider'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get provider
+      tags:
+      - providers
+    put:
+      description: Update a provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Provider data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Provider'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Provider'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update provider
+      tags:
+      - providers
+  /api/providers/{id}/credentials:
+    get:
+      description: Get all credentials for a provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Credential'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List credentials
+      tags:
+      - credentials
+    post:
+      description: Create a new credential for a provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Credential data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.CreateCredentialRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Credential'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create credential
+      tags:
+      - credentials
+  /api/providers/{id}/credentials/{credId}:
+    delete:
+      description: Delete a credential
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Credential ID
+        in: path
+        name: credId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete credential
+      tags:
+      - credentials
+    get:
+      description: Get a credential by ID
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Credential ID
+        in: path
+        name: credId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Credential'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get credential
+      tags:
+      - credentials
+    put:
+      description: Update a credential
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Credential ID
+        in: path
+        name: credId
+        required: true
+        type: string
+      - description: Credential data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.UpdateCredentialRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Credential'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update credential
+      tags:
+      - credentials
+  /api/providers/{id}/credentials/{credId}/reset-cooldown:
+    post:
+      description: Manually reset cooldown state for a credential
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Credential ID
+        in: path
+        name: credId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reset credential cooldown
+      tags:
+      - credentials
+  /api/providers/{id}/credentials/{credId}/reveal:
+    post:
+      description: Get unmasked original credential name
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Credential ID
+        in: path
+        name: credId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reveal unmasked credential name
+      tags:
+      - credentials
+  /api/providers/{id}/models:
+    get:
+      description: Get all models for a provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Model'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List models
+      tags:
+      - models
+    post:
+      description: Create a new model for a provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Model data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Model'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Model'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create model
+      tags:
+      - models
+  /api/providers/{id}/models/{modelId}:
+    delete:
+      description: Delete a model
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Model ID
+        in: path
+        name: modelId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete model
+      tags:
+      - models
+    get:
+      description: Get a model by ID
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Model ID
+        in: path
+        name: modelId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Model'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get model
+      tags:
+      - models
+    put:
+      description: Update a model
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Model ID
+        in: path
+        name: modelId
+        required: true
+        type: string
+      - description: Model data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Model'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Model'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update model
+      tags:
+      - models
+  /api/providers/{id}/models/{modelId}/capabilities:
+    patch:
+      description: Update model capability scores, pricing, and features
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Model ID
+        in: path
+        name: modelId
+        required: true
+        type: string
+      - description: Capability data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.UpdateCapabilitiesRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_models.Model'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update model capabilities
+      tags:
+      - models
+  /api/sse:
+    get:
+      description: Real-time Server-Sent Events stream for live dashboard updates
+      responses:
+        "200":
+          description: SSE stream
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: SSE event stream
+      tags:
+      - sse
+  /v1/chat/completions:
+    post:
+      consumes:
+      - application/json
+      description: OpenAI-compatible chat completion endpoint supporting prism-auto
+        smart routing and streaming.
+      parameters:
+      - description: Organization ID
+        in: header
+        name: X-Prism-Org-ID
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Prism-Workspace-ID
+        type: string
+      - description: Agent ID
+        in: header
+        name: X-Prism-Agent-ID
+        type: string
+      - description: Chat Completion Request Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_roozylabs_prism_internal_proxy.ProxyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create Chat Completion
+      tags:
+      - gateway
+  /v1/models:
+    get:
+      description: List all available OpenAI-compatible models supported by Prism
+        Gateway.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List Models
+      tags:
+      - gateway
+swagger: "2.0"

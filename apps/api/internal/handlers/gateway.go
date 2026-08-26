@@ -54,6 +54,22 @@ func NewGatewayHandler(
 	}
 }
 
+// ChatCompletions godoc
+// @Summary      Create Chat Completion
+// @Description  OpenAI-compatible chat completion endpoint supporting prism-auto smart routing and streaming.
+// @Tags         gateway
+// @Accept       json
+// @Produce      json
+// @Param        X-Prism-Org-ID header string false "Organization ID"
+// @Param        X-Prism-Workspace-ID header string false "Workspace ID"
+// @Param        X-Prism-Agent-ID header string false "Agent ID"
+// @Param        request body proxy.ProxyRequest true "Chat Completion Request Payload"
+// @Security     BearerAuth
+// @Success      200 {object} map[string]interface{}
+// @Failure      400 {object} map[string]interface{}
+// @Failure      401 {object} map[string]interface{}
+// @Failure      429 {object} map[string]interface{}
+// @Router       /v1/chat/completions [post]
 func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	gatewayKey := c.MustGet("gatewayKey").(*models.GatewayAPIKey)
 	requestID := uuid.New().String()
@@ -248,6 +264,14 @@ func (h *GatewayHandler) SandboxChatCompletions(c *gin.Context) {
 	h.ChatCompletions(c)
 }
 
+// Models godoc
+// @Summary      List Models
+// @Description  List all available OpenAI-compatible models supported by Prism Gateway.
+// @Tags         gateway
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} map[string]interface{}
+// @Router       /v1/models [get]
 func (h *GatewayHandler) Models(c *gin.Context) {
 	modelsList := []map[string]interface{}{
 		{"id": models.SmartRouterModel, "object": "model", "owned_by": "roozylabs"},

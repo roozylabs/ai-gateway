@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/service"
 )
 
