@@ -603,7 +603,7 @@ func (h *CredentialHandler) testAnthropic(baseURL, apiKey string) (int, string) 
 	if err != nil {
 		return 0, err.Error()
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		return resp.StatusCode, "authentication failed"
@@ -642,7 +642,7 @@ func (h *CredentialHandler) testGoogle(baseURL, apiKey, authType string) (int, s
 	if err != nil {
 		return 0, err.Error()
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -676,7 +676,7 @@ func (h *CredentialHandler) testOpenCode(baseURL, apiKey string) (int, string) {
 	if err != nil {
 		return 0, err.Error()
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		return resp.StatusCode, "authentication failed"

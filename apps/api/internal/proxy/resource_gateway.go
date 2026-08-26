@@ -205,7 +205,7 @@ func (g *ResourceGateway) executePostgresBackend(ctx context.Context, b *models.
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	columns, err := rows.Columns()
 	if err != nil {
