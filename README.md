@@ -158,6 +158,9 @@ The application stack will be available at:
 | **Audit Trail & Exporter** | | | |
 | `GET` | `/v1/audit-trail/logs` | Query system action logs | Session |
 | `GET` | `/v1/audit-trail/export` | Download CSV/JSON compliance reports | Session |
+| **Quotas & Budgets** | | | |
+| `GET` | `/v1/quotas` | List organization and workspace tenant quotas | Session |
+| `PUT` | `/v1/quotas/:target_type/:target_id` | Update target quota spend and request limits | Session |
 | **Gateway (OpenAI-Compatible)** | | | |
 | `GET` | `/v1/models` | List active models (including `prism-auto`) | Gateway Key |
 | `POST` | `/v1/chat/completions` | Inference API (Smart Router `prism-auto`, Streaming, Retry) | Gateway Key |
