@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
@@ -11,6 +11,8 @@ import { Badge } from '@/components/atoms/Badge';
 import { Play, Sparkles, Send, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaygroundStore } from '@/stores/usePlaygroundStore';
+import { apiSimulateRouting } from '@/lib/api';
+import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 
 export default function PlaygroundPage() {
   const {
@@ -18,61 +20,68 @@ export default function PlaygroundPage() {
     prompt,
     response,
     decisionDetails,
+    isStreaming,
     setModel,
     setPrompt,
     setResponse,
     setDecisionDetails,
+    setIsStreaming,
   } = usePlaygroundStore();
 
-  const [loading, setLoading] = useState(false);
+  const { data: modelsData } = useModelsListQuery();
+  const models = modelsData?.data ?? [];
 
   const handleExecute = async () => {
     try {
-      setLoading(true);
+      setIsStreaming(true);
       setResponse(null);
       setDecisionDetails(null);
 
-      // Simulate execution call
-      await new Promise((res) => setTimeout(res, 600));
-
-      setResponse(`\`\`\`go
-package main
-
-import (
-    "sync"
-    "time"
-)
-
-type TokenBucket struct {
-    capacity   int64
-    tokens     int64
-    refillRate int64
-    lastRefill time.Time
-    mu         sync.Mutex
-}
-
-func NewTokenBucket(capacity, refillRate int64) *TokenBucket {
-    return &TokenBucket{
-        capacity:   capacity,
-        tokens:     capacity,
-        refillRate: refillRate,
-        lastRefill: time.Now(),
-    }
-}
-\`\`\``);
-
+      const decision = await apiSimulateRouting({ prompt });
       setDecisionDetails({
-        selectedModel: 'claude-3-7-sonnet',
-        provider: 'Anthropic',
-        routingPolicy: 'prism-auto',
-        score: '99.4%',
-        latency: '184 ms',
-        cost: '$0.0032',
+        selectedModel: decision.selectedModel,
+        provider: decision.selectedProvider,
+        routingPolicy: decision.policyName,
+        score: `${(decision.candidates?.[0]?.score ?? 0) * 100}%`,
+        latency: '—',
+        cost: `$${decision.candidates?.[0]?.inputPrice1M ?? 0}`,
       });
+
+      const res = await fetch('/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: model === 'prism-auto' ? 'prism-auto' : model,
+          messages: [{ role: 'user', content: prompt }],
+          stream: true,
+        }),
+      });
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            try {
+              const json = JSON.parse(line.slice(6));
+              const token = json.choices?.[0]?.delta?.content;
+              if (token) {
+                fullResponse += token;
+                setResponse(fullResponse);
+              }
+            } catch {}
+          }
+        }
+      }
 
       toast.success('Prompt executed successfully via prism-auto!');
     } finally {
-      setLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -99,10 +108,11 @@ func NewTokenBucket(capacity, refillRate int64) *TokenBucket {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="prism-auto">prism-auto (Smart)</SelectItem>
-                    <SelectItem value="gpt-5-turbo">gpt-5-turbo</SelectItem>
-                    <SelectItem value="claude-3-7-sonnet">claude-3-7-sonnet</SelectItem>
-                    <SelectItem value="gemini-2.5-pro">gemini-2.5-pro</SelectItem>
-                    <SelectItem value="opencode-coder">opencode-coder</SelectItem>
+                    {models.map((m) => (
+                      <SelectItem key={m.id} value={m.slug}>
+                        {m.displayName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -120,9 +130,9 @@ func NewTokenBucket(capacity, refillRate int64) *TokenBucket {
               variant="prismViolet"
               className="w-full gap-2"
               onClick={handleExecute}
-              disabled={loading || !prompt.trim()}
+              disabled={isStreaming || !prompt.trim()}
             >
-              {loading ? (
+              {isStreaming ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin" /> Routing request...
                 </>
