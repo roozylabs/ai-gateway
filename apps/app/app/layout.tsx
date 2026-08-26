@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/layouts/ThemeProvider';
 import { QueryProvider } from '@/components/layouts/QueryProvider';
+import { SSEProvider } from '@/context/SSEContext';
 import { Toaster } from 'sonner';
 
 const inter = Inter({
@@ -31,10 +32,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
         <QueryProvider>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-            {children}
-            <Toaster position="top-right" richColors closeButton />
-          </ThemeProvider>
+          <SSEProvider>
+            <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+              {children}
+              <Toaster position="top-right" richColors closeButton />
+            </ThemeProvider>
+          </SSEProvider>
         </QueryProvider>
       </body>
     </html>
