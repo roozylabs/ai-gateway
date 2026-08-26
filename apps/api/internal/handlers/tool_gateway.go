@@ -37,6 +37,27 @@ func (h *ToolGatewayHandler) ExecuteTool(c *gin.Context) {
 		return
 	}
 
+	if agentVal, exists := c.Get("agentObject"); exists && agentVal != nil {
+		if agent, ok := agentVal.(*models.Agent); ok && len(agent.AllowedTools) > 0 {
+			allowed := false
+			for _, t := range agent.AllowedTools {
+				if t == "*" || t == toolName {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": gin.H{
+						"message": "Agent is not authorized to execute tool '" + toolName + "'",
+						"type":    "permission_denied",
+					},
+				})
+				return
+			}
+		}
+	}
+
 	var req ExecuteToolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})

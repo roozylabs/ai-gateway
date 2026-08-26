@@ -37,6 +37,27 @@ func (h *ResourceGatewayHandler) ExecuteQuery(c *gin.Context) {
 		return
 	}
 
+	if agentVal, exists := c.Get("agentObject"); exists && agentVal != nil {
+		if agent, ok := agentVal.(*models.Agent); ok && len(agent.AllowedResources) > 0 {
+			allowed := false
+			for _, r := range agent.AllowedResources {
+				if r == "*" || r == resourceName {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": gin.H{
+						"message": "Agent is not authorized to access resource '" + resourceName + "'",
+						"type":    "permission_denied",
+					},
+				})
+				return
+			}
+		}
+	}
+
 	var req QueryResourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
