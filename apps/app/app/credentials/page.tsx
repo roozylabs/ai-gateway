@@ -7,10 +7,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules
 import { Button } from '@/components/atoms/Button';
 import { Badge, StatusDot, StatusType } from '@/components/atoms/Badge';
 import { DataTable, Column } from '@/components/organisms/DataTable';
-import { useCredentialsQuery } from '@/hooks/queries/useCredentialsQuery';
+import { useCredentialsQuery, useDeleteCredential } from '@/hooks/queries/useCredentialsQuery';
 import { ApiCredential, apiCreateCredential } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Key, Plus, RefreshCw } from 'lucide-react';
+import { Key, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
 import { Input } from '@/components/atoms/Input';
@@ -19,25 +19,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
 
-interface CredentialRecord {
-  id: string;
-  name: string;
-  provider: string;
-  keyPrefix: string;
-  healthScore: number;
-  status: 'healthy' | 'degraded' | 'cooldown' | 'exhausted';
-  lastRotated: string;
-}
-
-const mockCredentials: CredentialRecord[] = [
-  { id: '1', name: 'OpenAI Production Key 1', provider: 'OpenAI', keyPrefix: 'sk-proj-9f8...', healthScore: 98, status: 'healthy', lastRotated: '2026-08-20' },
-  { id: '2', name: 'Anthropic Primary Key', provider: 'Anthropic', keyPrefix: 'sk-ant-api...', healthScore: 92, status: 'healthy', lastRotated: '2026-08-15' },
-  { id: '3', name: 'Gemini Backup Key 2', provider: 'Google Gemini', keyPrefix: 'AIzaSyC8...', healthScore: 64, status: 'degraded', lastRotated: '2026-08-01' },
-  { id: '4', name: 'OpenCode Dedicated Key', provider: 'OpenCode', keyPrefix: 'oc_live_7a...', healthScore: 100, status: 'healthy', lastRotated: '2026-08-25' },
-];
-
 export default function CredentialsPage() {
-  const { data, isLoading, isError, refetch } = useCredentialsQuery();
+  const [selectedProviderId, setSelectedProviderId] = useState('openai');
+  const { data, isLoading, isError, refetch } = useCredentialsQuery(selectedProviderId);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [formName, setFormName] = useState('');
   const [formKey, setFormKey] = useState('');
@@ -45,10 +29,11 @@ export default function CredentialsPage() {
   const queryClient = useQueryClient();
   const { data: providersData } = useProvidersQuery();
   const providers = Array.isArray(providersData) ? providersData : [];
+  const deleteMutation = useDeleteCredential(selectedProviderId);
 
   const createMutation = useMutation({
-    mutationFn: (data: { providerId: string; name: string; apiKey: string }) =>
-      apiCreateCredential(data.providerId, { name: data.name, apiKey: data.apiKey }),
+    mutationFn: (d: { providerId: string; name: string; apiKey: string }) =>
+      apiCreateCredential(d.providerId, { name: d.name, apiKey: d.apiKey }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['credentials'] });
       toast.success('Credential created successfully');
@@ -62,73 +47,57 @@ export default function CredentialsPage() {
     },
   });
 
-  const credentialsList: CredentialRecord[] = React.useMemo(() => {
-    if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
-      return data.data.map((item: ApiCredential) => ({
-        id: String(item.id ?? Math.random()),
-        name: String(item.name ?? item.providerId ?? 'API Key'),
-        provider: String(item.providerId ?? 'OpenAI'),
-        keyPrefix: String(item.keyPrefix ?? item.maskedKey ?? 'sk-***'),
-        healthScore: typeof (item as unknown as Record<string, unknown>).healthScore === 'number' ? ((item as unknown as Record<string, unknown>).healthScore as number) : 95,
-        status: ((item as unknown as Record<string, unknown>).status as 'healthy' | 'degraded' | 'cooldown' | 'exhausted') || 'healthy',
-        lastRotated: (item as unknown as Record<string, unknown>).lastRotatedAt ? String((item as unknown as Record<string, unknown>).lastRotatedAt).substring(0, 10) : 'Recent',
-      }));
-    }
-    return mockCredentials;
-  }, [data]);
+  const credentialsList: ApiCredential[] = data?.data && Array.isArray(data.data) ? data.data : [];
 
-  const columns: Column<CredentialRecord>[] = [
+  const columns: Column<ApiCredential>[] = [
     {
       title: 'Credential Label',
-      dataIndex: 'name',
+      dataIndex: 'name' as const,
       key: 'name',
-      render: (name) => <span className="font-semibold text-foreground">{name}</span>,
+      render: (val) => <span className="font-semibold text-foreground">{String(val)}</span>,
     },
     {
       title: 'Provider',
-      dataIndex: 'provider',
+      dataIndex: 'providerName' as const,
       key: 'provider',
-      render: (provider) => <Badge variant="outline">{provider}</Badge>,
+      render: (_val, record) => <Badge variant="outline">{record.providerName || record.providerId}</Badge>,
     },
     {
       title: 'Key Identifier',
-      dataIndex: 'keyPrefix',
+      dataIndex: 'keyPrefix' as const,
       key: 'keyPrefix',
-      render: (keyPrefix) => <span className="font-mono text-muted-foreground">{keyPrefix}</span>,
-    },
-    {
-      title: 'Health Score',
-      dataIndex: 'healthScore',
-      key: 'healthScore',
-      render: (score) => (
-        <span className="font-mono font-bold text-foreground">
-          {score} <span className="text-muted-foreground font-normal text-[11px]">/ 100</span>
-        </span>
-      ),
+      render: (val) => <span className="font-mono text-muted-foreground">{String(val)}</span>,
     },
     {
       title: 'Status',
-      dataIndex: 'status',
+      dataIndex: 'status' as const,
       key: 'status',
-      render: (status) => <StatusDot status={(status as StatusType) || 'healthy'} />,
+      render: (val) => <StatusDot status={(String(val) as StatusType) || 'healthy'} />,
     },
     {
-      title: 'Last Rotated',
-      dataIndex: 'lastRotated',
-      key: 'lastRotated',
-      render: (date) => <span className="font-mono text-muted-foreground">{date}</span>,
+      title: 'Request Count',
+      dataIndex: 'requestCount' as const,
+      key: 'requestCount',
+      render: (val) => <span className="font-mono text-muted-foreground">{String(val ?? 0)}</span>,
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_val, record) => (
         <Button
           variant="outline"
           size="sm"
-          className="h-7 gap-1 text-xs"
-          onClick={() => toast.success(`Initiated key rotation for ${record.name}`)}
+          className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+          onClick={() => {
+            if (window.confirm(`Delete credential "${record.name}"? This cannot be undone.`)) {
+              deleteMutation.mutate(record.id, {
+                onSuccess: () => toast.success('Credential deleted'),
+                onError: (error: Error) => toast.error(`Failed to delete: ${error.message}`),
+              });
+            }
+          }}
         >
-          <RefreshCw className="h-3 w-3" /> Rotate Key
+          <Trash2 className="h-3 w-3" /> Delete
         </Button>
       ),
     },
@@ -145,6 +114,20 @@ export default function CredentialsPage() {
           </Button>
         }
       />
+
+      <div className="mb-4">
+        <Label htmlFor="provider-filter" className="text-sm font-medium mb-1 block">Filter by Provider</Label>
+        <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
+          <SelectTrigger id="provider-filter" className="w-64">
+            <SelectValue placeholder="Select provider" />
+          </SelectTrigger>
+          <SelectContent>
+            {providers.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <Card>
         <CardHeader>
@@ -163,9 +146,9 @@ export default function CredentialsPage() {
           ) : !isLoading && credentialsList.length === 0 ? (
             <EmptyState
               title="No Provider Credentials"
-              description="No API credentials configured. Add your first LLM key to enable routing."
+              description="No API credentials configured for this provider. Add your first LLM key to enable routing."
               action={
-                <Button variant="prismViolet" size="sm" className="gap-1.5">
+                <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => setDrawerOpen(true)}>
                   <Plus className="h-4 w-4" /> Add Provider Key
                 </Button>
               }
