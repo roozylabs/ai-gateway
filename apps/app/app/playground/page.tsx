@@ -57,6 +57,11 @@ export default function PlaygroundPage() {
         }),
       });
 
+      if (!res.ok) {
+        const errorBody = await res.text();
+        throw new Error(errorBody || `Request failed with status ${res.status}`);
+      }
+
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let fullResponse = '';
@@ -79,7 +84,10 @@ export default function PlaygroundPage() {
         }
       }
 
-      toast.success('Prompt executed successfully via prism-auto!');
+      toast.success(`Prompt executed successfully via ${model}!`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Execution failed: ${message}`);
     } finally {
       setIsStreaming(false);
     }
