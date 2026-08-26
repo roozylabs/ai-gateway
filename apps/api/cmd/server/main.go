@@ -173,7 +173,7 @@ func main() {
 
 		// Protected API routes
 		protected := api.Group("")
-		protected.Use(middleware.AuthMiddleware(sessionRepo))
+		protected.Use(middleware.AuthMiddleware(sessionRepo, gatewayKeyCache))
 		{
 			// Auth
 			protected.POST("/auth/logout", authHandler.Logout)
