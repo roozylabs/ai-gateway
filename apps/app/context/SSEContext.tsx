@@ -4,10 +4,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePathname } from 'next/navigation';
 import Cookies from 'js-cookie';
+import { AppRoutes, ApiEndpoints, CookieKeys } from '@/constants/routes';
 
 export interface SSEMessageEvent {
   type: string;
-  payload: any;
+  payload: Record<string, unknown> | unknown;
   timestamp: string;
 }
 
@@ -28,8 +29,8 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lastEvent, setLastEvent] = useState<SSEMessageEvent | null>(null);
 
   useEffect(() => {
-    const token = Cookies.get('auth_token');
-    if (pathname === '/login' || !token) {
+    const token = Cookies.get(CookieKeys.AUTH_TOKEN);
+    if (pathname === AppRoutes.LOGIN || !token) {
       setIsConnected(false);
       return;
     }
@@ -38,14 +39,14 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let reconnectTimeout: NodeJS.Timeout | null = null;
 
     const connect = () => {
-      const currentToken = Cookies.get('auth_token');
-      if (pathname === '/login' || !currentToken) {
+      const currentToken = Cookies.get(CookieKeys.AUTH_TOKEN);
+      if (pathname === AppRoutes.LOGIN || !currentToken) {
         setIsConnected(false);
         return;
       }
 
       try {
-        eventSource = new EventSource('/api/sse', { withCredentials: true });
+        eventSource = new EventSource(ApiEndpoints.SSE, { withCredentials: true });
 
         eventSource.onopen = () => {
           setIsConnected(true);
@@ -93,16 +94,16 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (eventSource) {
             eventSource.close();
           }
-          const activeToken = Cookies.get('auth_token');
-          if (pathname !== '/login' && activeToken) {
+          const activeToken = Cookies.get(CookieKeys.AUTH_TOKEN);
+          if (pathname !== AppRoutes.LOGIN && activeToken) {
             reconnectTimeout = setTimeout(connect, 5000);
           }
         };
       } catch (err) {
         console.error('[SSE Initialization Error]', err);
         setIsConnected(false);
-        const activeToken = Cookies.get('auth_token');
-        if (pathname !== '/login' && activeToken) {
+        const activeToken = Cookies.get(CookieKeys.AUTH_TOKEN);
+        if (pathname !== AppRoutes.LOGIN && activeToken) {
           reconnectTimeout = setTimeout(connect, 5000);
         }
       }

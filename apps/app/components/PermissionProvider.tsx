@@ -2,63 +2,63 @@
 
 import React, { createContext, useContext } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Tooltip } from 'antd';
 import { apiGetUserPermissions, ApiUserPermissionsResponse } from '@/lib/api';
+import { UserRole } from '@/types/roles';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/atoms/Tooltip';
 
 interface PermissionContextType {
-  roleSlug: string;
+  role: UserRole;
   permissions: string[];
+  hasPermission: (perm: string) => boolean;
   isLoading: boolean;
-  hasPermission: (permCode: string) => boolean;
 }
 
 const PermissionContext = createContext<PermissionContextType>({
-  roleSlug: 'developer',
-  permissions: ['*'],
-  isLoading: false,
+  role: UserRole.OWNER,
+  permissions: [],
   hasPermission: () => true,
+  isLoading: false,
 });
 
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
   const { data, isLoading } = useQuery<ApiUserPermissionsResponse>({
     queryKey: ['user-permissions'],
     queryFn: apiGetUserPermissions,
-    staleTime: 5 * 60 * 1000, // Cache for 5 mins
   });
 
-  const permissions = data?.permissions || ['*'];
-  const roleSlug = data?.roleSlug || 'developer';
+  const rawRole = (data?.primaryRole || data?.roleSlug || 'owner').toLowerCase();
+  const role: UserRole =
+    rawRole === 'admin'
+      ? UserRole.ADMIN
+      : rawRole === 'member'
+      ? UserRole.MEMBER
+      : rawRole === 'viewer'
+      ? UserRole.VIEWER
+      : UserRole.OWNER;
 
-  const hasPermission = (permCode: string): boolean => {
-    if (permissions.includes('*') || roleSlug === 'owner') {
-      return true;
-    }
-    if (permissions.includes(permCode)) {
-      return true;
-    }
-    // Check wildcard scope (e.g. agents:* matches agents:create)
-    const parts = permCode.split(':');
-    if (parts.length > 1 && permissions.includes(`${parts[0]}:*`)) {
-      return true;
-    }
-    return false;
+  const permissions = data?.permissions || [];
+
+  const hasPermission = (perm: string): boolean => {
+    if (role === UserRole.OWNER || role === UserRole.ADMIN) return true;
+    return permissions.includes(perm);
   };
 
   return (
-    <PermissionContext.Provider value={{ roleSlug, permissions, isLoading, hasPermission }}>
+    <PermissionContext.Provider value={{ role, permissions, hasPermission, isLoading }}>
       {children}
     </PermissionContext.Provider>
   );
 }
 
-export function usePermission(permCode: string): boolean {
-  const { hasPermission } = useContext(PermissionContext);
-  return hasPermission(permCode);
+export function usePermission() {
+  return useContext(PermissionContext);
 }
 
-export function useUserRole(): string {
-  const { roleSlug } = useContext(PermissionContext);
-  return roleSlug;
+export interface PermissionGuardProps {
+  permission: string;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+  disabledTooltip?: string;
 }
 
 export function PermissionGuard({
@@ -66,26 +66,30 @@ export function PermissionGuard({
   children,
   fallback = null,
   disabledTooltip,
-}: {
-  permission: string;
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-  disabledTooltip?: string;
-}) {
-  const permitted = usePermission(permission);
+}: PermissionGuardProps) {
+  const { hasPermission } = usePermission();
+  const allowed = hasPermission(permission);
 
-  if (!permitted) {
-    if (disabledTooltip) {
-      return (
-        <Tooltip title={disabledTooltip || `Required Permission: ${permission}`}>
-          <span style={{ opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' }}>
-            {children}
-          </span>
-        </Tooltip>
-      );
-    }
-    return <>{fallback}</>;
+  if (allowed) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  if (disabledTooltip) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-not-allowed opacity-50 pointer-events-none inline-block">
+              {children}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <span>{disabledTooltip}</span>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return <>{fallback}</>;
 }

@@ -1,495 +1,213 @@
 'use client';
 
-import React, { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { useTheme } from '@/context/ThemeContext';
-import { useAuth } from '@/context/AuthContext';
-import { useSSE } from '@/hooks/useSSE';
-import { apiGetActiveStreams } from '@/lib/api';
+import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
-  Layout,
-  Menu,
-  Typography,
-  Avatar,
-  Dropdown,
-  Space,
-  Badge,
-  Tag,
-  Button,
-  theme,
-  Tooltip,
-} from 'antd';
-import {
-  DashboardOutlined,
-  ApiOutlined,
-  KeyOutlined,
-  SafetyCertificateOutlined,
-  AuditOutlined,
-  AppstoreOutlined,
-  FileTextOutlined,
-  SettingOutlined,
-  UserOutlined,
-  LogoutOutlined,
-  ThunderboltFilled,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  SunOutlined,
-  MoonOutlined,
-  CodeOutlined,
-  SyncOutlined,
-  WalletOutlined,
-  BranchesOutlined,
-  ExperimentOutlined,
-  ToolOutlined,
-  DatabaseOutlined,
-  RobotOutlined,
-} from '@ant-design/icons';
+  LayoutDashboard,
+  Box,
+  Server,
+  Key,
+  Layers,
+  Workflow,
+  KeyRound,
+  Wrench,
+  Database,
+  Globe,
+  Bot,
+  Users,
+  ScrollText,
+  Activity,
+  Wallet,
+  Play,
+  Settings,
+  CreditCard,
+  ChevronLeft,
+  ChevronRight,
+  Shield,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/molecules/ThemeToggle';
+import { StatusDot } from '@/components/atoms/Badge';
+import { TenantSelector } from '@/components/TenantSelector';
+import { PermissionProvider } from '@/components/PermissionProvider';
+import { Avatar, AvatarFallback } from '@/components/atoms/Avatar';
+import { useSidebarStore } from '@/stores/useSidebarStore';
+import { useSystemStore } from '@/stores/useSystemStore';
+import { AppRoutes } from '@/constants/routes';
 
-function SidebarActivityWidget({ collapsed, mode }: { collapsed: boolean; mode: 'light' | 'dark' }) {
-  const { data } = useQuery({
-    queryKey: ['active-streams'],
-    queryFn: apiGetActiveStreams,
-  });
+interface NavItem {
+  key: string;
+  label: string;
+  href: AppRoutes;
+  icon: React.ReactNode;
+}
 
-  const total = data?.totalActive || 0;
-  const activeModels = data?.byModel
-    ? Object.entries(data.byModel)
-        .map(([slug, count]) => (count > 1 ? `${slug} (${count})` : slug))
-        .join(', ')
-    : '';
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
 
-  const activeCreds = data?.byCredential
-    ? Object.entries(data.byCredential)
-        .map(([cred, count]) => (count > 1 ? `${cred} (${count})` : cred))
-        .join(', ')
-    : '';
+const navGroups: NavGroup[] = [
+  {
+    title: 'OVERVIEW',
+    items: [
+      { key: AppRoutes.HOME, label: 'Dashboard', href: AppRoutes.HOME, icon: <LayoutDashboard className="h-4 w-4" /> },
+      { key: AppRoutes.SANDBOX, label: 'AI Sandbox', href: AppRoutes.SANDBOX, icon: <Box className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: 'AI INFRASTRUCTURE',
+    items: [
+      { key: AppRoutes.PROVIDERS, label: 'Providers', href: AppRoutes.PROVIDERS, icon: <Server className="h-4 w-4" /> },
+      { key: AppRoutes.CREDENTIALS, label: 'Credentials', href: AppRoutes.CREDENTIALS, icon: <Key className="h-4 w-4" /> },
+      { key: AppRoutes.MODELS, label: 'Models', href: AppRoutes.MODELS, icon: <Layers className="h-4 w-4" /> },
+      { key: AppRoutes.POLICIES, label: 'Routing Policies', href: AppRoutes.POLICIES, icon: <Workflow className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: 'GATEWAYS',
+    items: [
+      { key: AppRoutes.GATEWAY_KEYS, label: 'Gateway Keys', href: AppRoutes.GATEWAY_KEYS, icon: <KeyRound className="h-4 w-4" /> },
+      { key: AppRoutes.TOOLS, label: 'Tool Gateway', href: AppRoutes.TOOLS, icon: <Wrench className="h-4 w-4" /> },
+      { key: AppRoutes.RESOURCES, label: 'Resource Gateway', href: AppRoutes.RESOURCES, icon: <Database className="h-4 w-4" /> },
+      { key: AppRoutes.MCP, label: 'MCP Gateway', href: AppRoutes.MCP, icon: <Globe className="h-4 w-4" /> },
+      { key: AppRoutes.AGENTS, label: 'Agent Gateway', href: AppRoutes.AGENTS, icon: <Bot className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: 'GOVERNANCE',
+    items: [
+      { key: AppRoutes.GOVERNANCE, label: 'Governance & RBAC', href: AppRoutes.GOVERNANCE, icon: <Users className="h-4 w-4" /> },
+      { key: AppRoutes.AUDIT_TRAIL, label: 'Audit Trail', href: AppRoutes.AUDIT_TRAIL, icon: <ScrollText className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: 'OPERATIONS & SYSTEM',
+    items: [
+      { key: AppRoutes.LOGS, label: 'Request Logs', href: AppRoutes.LOGS, icon: <Activity className="h-4 w-4" /> },
+      { key: AppRoutes.BUDGETS, label: 'Budgets & Quotas', href: AppRoutes.BUDGETS, icon: <Wallet className="h-4 w-4" /> },
+      { key: AppRoutes.PLAYGROUND, label: 'Playground', href: AppRoutes.PLAYGROUND, icon: <Play className="h-4 w-4" /> },
+      { key: AppRoutes.BILLING, label: 'Billing & Plans', href: AppRoutes.BILLING, icon: <CreditCard className="h-4 w-4" /> },
+      { key: AppRoutes.SETTINGS, label: 'Settings', href: AppRoutes.SETTINGS, icon: <Settings className="h-4 w-4" /> },
+    ],
+  },
+];
 
-  if (collapsed) {
-    return (
-      <div
-        style={{
-          padding: '16px 0',
-          display: 'flex',
-          justifyContent: 'center',
-          borderTop: `1px solid ${mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#f0f0f0'}`,
-        }}
-      >
-        <Tooltip
-          title={
-            total > 0
-              ? `Active: ${total} stream(s) | Model: ${activeModels || '-'} | Credential: ${activeCreds || '-'}`
-              : 'Gateway Status: Idle (0 active)'
-          }
-          placement="right"
-        >
-          {total > 0 ? (
-            <Badge count={total} size="small">
-              <SyncOutlined spin style={{ color: '#1677ff', fontSize: 16 }} />
-            </Badge>
-          ) : (
-            <Badge status="default" />
-          )}
-        </Tooltip>
-      </div>
-    );
-  }
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { collapsed, toggleCollapsed } = useSidebarStore();
+  const { status: systemStatus } = useSystemStore();
 
   return (
-    <div
-      style={{
-        padding: '12px 14px',
-        margin: '8px 12px 14px 12px',
-        background: mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
-        border: `1px solid ${mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
-        borderRadius: 8,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: total > 0 ? 8 : 0,
-        }}
-      >
-        <Text
-          type="secondary"
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.6px',
-            textTransform: 'uppercase',
-          }}
-        >
-          Activity
-        </Text>
-        {total > 0 ? (
-          <Tag color="processing" style={{ margin: 0, fontSize: 11, fontWeight: 600, borderRadius: 10 }}>
-            <SyncOutlined spin style={{ marginRight: 4 }} />
-            {total} Active
-          </Tag>
-        ) : (
-          <Tag color="default" style={{ margin: 0, fontSize: 11, borderRadius: 10 }}>
-            Idle
-          </Tag>
-        )}
-      </div>
-
-      {total > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-          {activeModels && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>Model</Text>
-              <Text
-                strong
-                style={{
-                  fontSize: 11,
-                  color: '#1677ff',
-                }}
-              >
-                {activeModels}
-              </Text>
-            </div>
+    <PermissionProvider>
+      <div className="flex min-h-screen bg-background text-foreground">
+        {/* Sidebar */}
+        <aside
+          className={cn(
+            'fixed bottom-0 top-0 z-40 flex flex-col border-r border-border bg-card transition-all duration-200',
+            collapsed ? 'w-[72px]' : 'w-[248px]'
           )}
+        >
+          {/* Sidebar Header Brand */}
+          <div className="flex h-14 items-center justify-between border-b border-border px-4">
+            <Link href={AppRoutes.HOME} className="flex items-center gap-2.5 overflow-hidden">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#8B5CF6] text-white shadow-sm">
+                <Shield className="h-4 w-4" />
+              </div>
+              {!collapsed && (
+                <span className="font-mono text-base font-bold tracking-tight text-foreground truncate">
+                  PRISM <span className="text-xs font-normal text-muted-foreground">v2.1.0</span>
+                </span>
+              )}
+            </Link>
 
-          {data?.byCredential && Object.keys(data.byCredential).length > 0 && (
-            <div>
-              <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 4, letterSpacing: '0.4px', textTransform: 'uppercase' }}>
-                Credentials
-              </Text>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {Object.entries(data.byCredential).map(([cred, count]) => (
-                  <div
-                    key={cred}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      background: mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9',
-                      padding: '3px 6px',
-                      borderRadius: 4,
-                      fontSize: 11,
-                    }}
-                  >
-                    <Text code style={{ fontSize: 10, border: 'none', background: 'transparent', padding: 0 }}>
-                      {cred}
-                    </Text>
-                    {count > 1 && (
-                      <Tag color="processing" style={{ margin: 0, fontSize: 10, padding: '0 4px', lineHeight: '16px', height: 16 }}>
-                        ×{count}
-                      </Tag>
-                    )}
-                  </div>
-                ))}
+            <button
+              onClick={toggleCollapsed}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+          </div>
+
+          {/* Navigation Groups */}
+          <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+            {navGroups.map((group) => (
+              <div key={group.title} className="space-y-1">
+                {!collapsed && (
+                  <h4 className="px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {group.title}
+                  </h4>
+                )}
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href || (item.href !== AppRoutes.HOME && pathname.startsWith(item.href));
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      className={cn(
+                        'group relative flex items-center gap-3 rounded-md px-3 py-2 text-xs font-medium transition-colors',
+                        isActive
+                          ? 'bg-[#8B5CF6]/10 text-[#8B5CF6] font-semibold'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      )}
+                    >
+                      {/* Left Active Line Indicator */}
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r bg-[#8B5CF6]" />
+                      )}
+                      <span className={cn('shrink-0', isActive ? 'text-[#8B5CF6]' : 'text-muted-foreground group-hover:text-foreground')}>
+                        {item.icon}
+                      </span>
+                      {!collapsed && <span className="truncate">{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* Sidebar Footer User Section */}
+          {!collapsed && (
+            <div className="border-t border-border p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <Avatar className="h-7 w-7">
+                  <AvatarFallback className="bg-[#8B5CF6]/20 text-[#8B5CF6] text-xs font-bold">
+                    RP
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col truncate">
+                  <span className="text-xs font-medium text-foreground truncate">Platform Admin</span>
+                  <span className="text-[10px] text-muted-foreground truncate">admin@roozylabs.dev</span>
+                </div>
               </div>
             </div>
           )}
+        </aside>
+
+        {/* Main Content Area */}
+        <div className={cn('flex flex-1 flex-col transition-all duration-200', collapsed ? 'pl-[72px]' : 'pl-[248px]')}>
+          {/* Topbar Header */}
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-6 backdrop-blur">
+            <div className="flex items-center gap-4">
+              <TenantSelector />
+              <StatusDot status={systemStatus} label={`System ${systemStatus}`} />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-[#8B5CF6] text-white text-xs font-bold">
+                  PA
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </header>
+
+          {/* Page Content */}
+          <main className="flex-1 p-6">{children}</main>
         </div>
-      )}
-    </div>
-  );
-}
-
-const { Header, Sider, Content, Footer } = Layout;
-const { Text, Title } = Typography;
-
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { mode, toggleTheme } = useTheme();
-  const { user, logout } = useAuth();
-  const { isConnected, lastEvent } = useSSE();
-  const [collapsed, setCollapsed] = useState(false);
-  const { token } = theme.useToken();
-
-  // If on login page, don't show sidebar layout
-  if (pathname === '/login') {
-    return <>{children}</>;
-  }
-
-  const menuItems = [
-    {
-      key: '/',
-      icon: <DashboardOutlined />,
-      label: 'Dashboard',
-    },
-    {
-      key: '/sandbox',
-      icon: <CodeOutlined />,
-      label: 'AI Sandbox',
-    },
-    {
-      key: '/providers',
-      icon: <ApiOutlined />,
-      label: 'AI Providers',
-    },
-    {
-      key: '/credentials',
-      icon: <SafetyCertificateOutlined />,
-      label: 'Credentials Pool',
-    },
-    {
-      key: '/gateway-keys',
-      icon: <KeyOutlined />,
-      label: 'Gateway API Keys',
-    },
-    {
-      key: '/models',
-      icon: <AppstoreOutlined />,
-      label: 'Models & Routing',
-    },
-    {
-      key: '/budgets',
-      icon: <WalletOutlined />,
-      label: 'Budgets',
-    },
-    {
-      key: '/policies',
-      icon: <BranchesOutlined />,
-      label: 'Routing Policies',
-    },
-    {
-      key: '/tools',
-      icon: <ToolOutlined />,
-      label: 'Tool Gateway',
-    },
-    {
-      key: '/resources',
-      icon: <DatabaseOutlined />,
-      label: 'Resource Gateway',
-    },
-    {
-      key: '/mcp',
-      icon: <ApiOutlined />,
-      label: 'MCP Gateway',
-    },
-    {
-      key: '/agents',
-      icon: <RobotOutlined />,
-      label: 'Agent Gateway',
-    },
-    {
-      key: '/governance',
-      icon: <SafetyCertificateOutlined />,
-      label: 'Governance & RBAC',
-    },
-    {
-      key: '/audit-trail',
-      icon: <AuditOutlined />,
-      label: 'AI Audit Trail',
-    },
-    {
-      key: '/playground',
-      icon: <ExperimentOutlined />,
-      label: 'Routing Playground',
-    },
-    {
-      key: '/logs',
-      icon: <FileTextOutlined />,
-      label: 'Request Logs',
-    },
-    {
-      key: '/settings',
-      icon: <SettingOutlined />,
-      label: 'Settings',
-    },
-  ];
-
-  const userMenuItems = [
-    {
-      key: 'profile',
-      icon: <UserOutlined />,
-      label: 'Admin Profile',
-    },
-    {
-      type: 'divider' as const,
-    },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      danger: true,
-      label: 'Logout',
-      onClick: () => logout(),
-    },
-  ];
-
-  // System Status Status & Color logic strictly driven by real-time SSE stream
-  let systemStatusText = 'System Status: Operational';
-  let badgeStatus: 'processing' | 'warning' | 'error' = 'processing';
-  let badgeColor = 'green';
-
-  if (!isConnected) {
-    systemStatusText = 'System Status: Connecting...';
-    badgeStatus = 'warning';
-    badgeColor = 'gold';
-  } else if (lastEvent?.payload?.status && lastEvent.payload.status !== 'ok') {
-    systemStatusText = 'System Status: Degraded';
-    badgeStatus = 'warning';
-    badgeColor = 'gold';
-  }
-
-  return (
-    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        theme={mode}
-        width={250}
-        style={{
-          height: '100vh',
-          position: 'sticky',
-          top: 0,
-          left: 0,
-          bottom: 0,
-          zIndex: 10,
-          boxShadow: '2px 0 8px 0 rgba(29,35,41,.05)',
-          background: mode === 'dark' ? '#0F1115' : '#ffffff',
-          borderRight: `1px solid ${token.colorBorderSecondary}`,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div
-          style={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            padding: '0 20px',
-            background: mode === 'dark' ? '#08090A' : '#ffffff',
-            borderBottom: `1px solid ${token.colorBorderSecondary}`,
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #8B5CF6 0%, #3B82F6 50%, #06B6D4 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: collapsed ? 0 : 12,
-              boxShadow: '0 2px 10px rgba(139, 92, 246, 0.3)',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: 16,
-            }}
-          >
-            ◇
-          </div>
-          {!collapsed && (
-            <Title level={4} style={{ color: mode === 'dark' ? '#F5F7FA' : '#0f172a', margin: 0, letterSpacing: '0.5px', fontWeight: 700 }}>
-              Prism
-            </Title>
-          )}
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: 2 }}>
-          <Menu
-            theme={mode}
-            mode="inline"
-            selectedKeys={[pathname]}
-            items={menuItems}
-            onClick={({ key }) => router.push(key)}
-            style={{ padding: '8px 0', borderRight: 0, background: 'transparent' }}
-          />
-        </div>
-
-        <div
-          style={{
-            flexShrink: 0,
-            position: 'sticky',
-            bottom: 0,
-            zIndex: 10,
-            background: mode === 'dark' ? '#0F1115' : '#ffffff',
-            borderTop: `1px solid ${token.colorBorderSecondary}`,
-            padding: '4px 0 8px',
-          }}
-        >
-          <SidebarActivityWidget collapsed={collapsed} mode={mode} />
-        </div>
-      </Sider>
-
-      <Layout style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: token.colorBgLayout }}>
-        <Header
-          style={{
-            padding: '0 24px',
-            background: token.colorBgContainer,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: `1px solid ${token.colorBorderSecondary}`,
-            boxShadow: '0 1px 4px rgba(0,21,41,.08)',
-            flexShrink: 0,
-            height: 64,
-            position: 'sticky',
-            top: 0,
-            zIndex: 9,
-          }}
-        >
-          <Space size="middle">
-            <Button
-              type="text"
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: '16px', width: 40, height: 40 }}
-            />
-            <Badge status={badgeStatus} color={badgeColor} text={<Text type="secondary">{systemStatusText}</Text>} />
-          </Space>
-
-          <Space size="large">
-            <Text type="secondary" style={{ fontSize: 13 }}>
-              v2.1.0
-            </Text>
-
-            <Tooltip title={`Switch to ${mode === 'dark' ? 'Light' : 'Dark'} Mode`}>
-              <Button
-                type="text"
-                shape="circle"
-                icon={mode === 'dark' ? <SunOutlined style={{ color: '#faad14' }} /> : <MoonOutlined style={{ color: '#1677ff' }} />}
-                onClick={toggleTheme}
-                style={{ fontSize: 18 }}
-              />
-            </Tooltip>
-
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomLeft" trigger={['click']}>
-              <Space style={{ cursor: 'pointer' }}>
-                <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
-                <Text strong>{user?.name || user?.email || 'Admin User'}</Text>
-              </Space>
-            </Dropdown>
-          </Space>
-        </Header>
-
-        <Content
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '24px 24px 0',
-          }}
-        >
-          <div
-            style={{
-              padding: 24,
-              minHeight: 'calc(100vh - 160px)',
-              background: token.colorBgContainer,
-              borderRadius: token.borderRadiusLG,
-              marginBottom: 24,
-            }}
-          >
-            {children}
-          </div>
-
-          <Footer style={{ textAlign: 'center', color: token.colorTextDescription, padding: '0 0 24px', background: 'transparent' }}>
-            AI Gateway ©{new Date().getFullYear()} RoozyLabs. Centralized Model API key Management System.
-          </Footer>
-        </Content>
-
-      </Layout>
-    </Layout>
+      </div>
+    </PermissionProvider>
   );
 }

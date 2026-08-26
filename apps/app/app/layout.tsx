@@ -1,39 +1,41 @@
-import '@ant-design/v5-patch-for-react-19';
-import React from 'react';
-import { AntdRegistry } from '@ant-design/nextjs-registry';
+import type { Metadata } from 'next';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import { ThemeProvider } from '@/context/ThemeContext';
-import { QueryProvider } from '@/context/QueryProvider';
-import { AuthProvider } from '@/context/AuthContext';
-import AppLayout from '@/components/AppLayout';
-import { App as AntdApp } from 'antd';
+import { ThemeProvider } from '@/components/layouts/ThemeProvider';
+import { QueryProvider } from '@/components/layouts/QueryProvider';
+import { Toaster } from 'sonner';
 
-export const dynamic = 'force-dynamic';
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
-export const metadata = {
-  title: 'Prism — Universal AI Control Plane',
-  description: 'Centralized AI Infrastructure, Multi-Model Routing & Token Governance',
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+});
+
+export const metadata: Metadata = {
+  title: 'RoozyLabs Prism — Universal AI Control Plane',
+  description: 'AI Infrastructure Control Plane, Model Gateway, Credential Rotation & Governance',
 };
 
-import { SSEProvider } from '@/context/SSEContext';
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning style={{ margin: 0, padding: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-        <AntdRegistry>
-          <QueryProvider>
-            <SSEProvider>
-              <AuthProvider>
-                <ThemeProvider>
-                  <AntdApp>
-                    <AppLayout>{children}</AppLayout>
-                  </AntdApp>
-                </ThemeProvider>
-              </AuthProvider>
-            </SSEProvider>
-          </QueryProvider>
-        </AntdRegistry>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="min-h-screen bg-background text-foreground font-sans antialiased">
+        <QueryProvider>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+            {children}
+            <Toaster position="top-right" richColors closeButton />
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );
