@@ -23,6 +23,7 @@
 | 2.6 | 26 August 2026, 16:12 WIB | Added Adaptive Routing Engine specifications: multi-factor dynamic scoring (quality, cost, speed, health), candidate factor breakdown observability (/v1/routing/simulate), and dedicated test suite |
 | 2.7 | 26 August 2026, 17:00 WIB | Added MCP Server Registry Catalog & Next.js Dashboard UI specifications: /v1/mcp/registry REST endpoints, migration 062, MCP Catalog Explorer UI (apps/app), and Adaptive Routing score visualizer |
 | 2.8 | 26 August 2026, 17:10 WIB | Added Agent Templates Engine specifications: /v1/agent-templates REST endpoints, migration 063 with preset role seeding (Software Engineer, DevOps, QA, Data Analyst), and Next.js 1-click instantiation gallery UI |
+| 2.9 | 26 August 2026, 17:40 WIB | Added Enterprise RBAC System & OAuth2 Authentication specifications: /v1/user/permissions & /v1/auth/oauth/:provider endpoints, migration 064, 3-step onboarding wizard (/onboarding), and Next.js Permission Guarding |
 
 ---
 

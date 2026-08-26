@@ -1017,6 +1017,46 @@ export async function apiCompleteOnboarding(data: ApiCompleteOnboardingRequest):
   return response.data;
 }
 
+// Audit Logs Export API
+export interface ApiAuditLogItem {
+  id: string;
+  organizationId: string;
+  actorId: string;
+  actorEmail: string;
+  action: string;
+  resource: string;
+  resourceId: string;
+  status: string;
+  detailsJson: string;
+  actorIp: string;
+  actorUserAgent: string;
+  createdAt: string;
+}
+
+export async function apiGetAuditLogs(params?: {
+  action?: string;
+  status?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<PaginatedResult<ApiAuditLogItem>> {
+  const response = await api.get<PaginatedResult<ApiAuditLogItem>>('/audit-trail/logs', { params });
+  return response.data;
+}
+
+export async function apiExportAuditLogs(params?: {
+  format?: 'csv' | 'json';
+  action?: string;
+  status?: string;
+  search?: string;
+}): Promise<Blob> {
+  const response = await api.get('/audit-trail/export', {
+    params,
+    responseType: 'blob',
+  });
+  return response.data;
+}
+
 // Agent Gateway API
 export interface ApiAgent {
   id: string;

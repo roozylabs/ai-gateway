@@ -142,11 +142,19 @@ The application stack will be available at:
 | `GET` | `/health` | Healthcheck API, DB, & Redis status | Public |
 | `POST` | `/api/auth/login` | User Login | Public |
 | `GET` | `/api/auth/me` | Current session user | Session |
-| **Tenants & Members** | | | |
+| **Tenants, Auth & RBAC** | | | |
+| `GET` | `/api/auth/oauth/:provider` | Initiate OAuth2 Login (Google / GitHub) | Public |
+| `GET` | `/api/user/permissions` | Get user active permissions & role matrix | Session |
+| `POST` | `/api/onboarding` | 3-step onboarding wizard workspace setup | Session |
 | `GET` | `/api/organizations` | List organizations | Session |
 | `GET` | `/api/workspaces` | List workspaces | Session |
 | `GET` | `/api/projects` | List projects | Session |
 | `GET` | `/api/settings/members` | List organization RBAC members | Session |
+| **MCP Registry & Agent Templates** | | | |
+| `GET` | `/v1/mcp/registry` | List verified & public MCP servers | Gateway / Session |
+| `POST` | `/v1/mcp/registry` | Register custom MCP server in registry | Session |
+| `GET` | `/v1/agent-templates` | List pre-configured agent role templates | Gateway / Session |
+| `POST` | `/v1/agent-templates/:id/instantiate` | 1-Click Agent Instantiation | Session |
 | **Gateway (OpenAI-Compatible)** | | | |
 | `GET` | `/v1/models` | List active models (including `prism-auto`) | Gateway Key |
 | `POST` | `/v1/chat/completions` | Inference API (Smart Router `prism-auto`, Streaming, Retry) | Gateway Key |

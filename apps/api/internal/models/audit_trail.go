@@ -52,3 +52,27 @@ type AuditVerificationResult struct {
 	ExpectedHash  string `json:"expectedHash"`
 	Message       string `json:"message"`
 }
+
+type AuditLogItem struct {
+	ID             string    `json:"id" db:"id"`
+	OrganizationID string    `json:"organizationId" db:"organization_id"`
+	ActorID        string    `json:"actorId" db:"actor_id"`
+	ActorEmail     string    `json:"actorEmail" db:"actor_email"`
+	Action         string    `json:"action" db:"action"`
+	Resource       string    `json:"resource" db:"resource"`
+	ResourceID     string    `json:"resourceId" db:"resource_id"`
+	Status         string    `json:"status" db:"status"`
+	DetailsJSON    string    `json:"detailsJson" db:"details_json"`
+	ActorIP        string    `json:"actorIp" db:"actor_ip"`
+	ActorUserAgent string    `json:"actorUserAgent" db:"actor_user_agent"`
+	CreatedAt      time.Time `json:"createdAt" db:"created_at"`
+}
+
+type AuditExportRequest struct {
+	Format    string `json:"format"` // "csv" | "json"
+	Action    string `json:"action"`
+	Status    string `json:"status"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+	Search    string `json:"search"`
+}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -105,4 +106,88 @@ func (h *AuditTrailHandler) Verify(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, result)
+}
+
+func (h *AuditTrailHandler) ListLogs(c *gin.Context) {
+	orgID := c.GetString("organizationId")
+	action := c.Query("action")
+	status := c.Query("status")
+	search := c.Query("search")
+
+	limit := 50
+	if l := c.Query("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+
+	page := 1
+	if p := c.Query("page"); p != "" {
+		if n, err := strconv.Atoi(p); err == nil && n > 0 {
+			page = n
+		}
+	}
+	offset := (page - 1) * limit
+
+	req := models.AuditExportRequest{
+		Action: action,
+		Status: status,
+		Search: search,
+	}
+
+	logs, total, err := h.repo.ListAuditLogs(c.Request.Context(), orgID, req, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query audit logs: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":     logs,
+		"total":    total,
+		"page":     page,
+		"pageSize": limit,
+	})
+}
+
+func (h *AuditTrailHandler) ExportLogs(c *gin.Context) {
+	orgID := c.GetString("organizationId")
+	format := c.DefaultQuery("format", "csv")
+	action := c.Query("action")
+	status := c.Query("status")
+	search := c.Query("search")
+
+	req := models.AuditExportRequest{
+		Format: format,
+		Action: action,
+		Status: status,
+		Search: search,
+	}
+
+	logs, _, err := h.repo.ListAuditLogs(c.Request.Context(), orgID, req, 1000, 0)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export audit logs: " + err.Error()})
+		return
+	}
+
+	if format == "json" {
+		c.Header("Content-Disposition", "attachment; filename=\"prism_audit_report.json\"")
+		c.JSON(http.StatusOK, gin.H{
+			"object":    "list",
+			"data":      logs,
+			"exportedAt": time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	// Default CSV export format
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=\"prism_audit_report.csv\"")
+
+	csvData := "ID,Timestamp,ActorEmail,Action,Resource,ResourceID,Status,ActorIP,UserAgent\n"
+	for _, l := range logs {
+		csvData += fmt.Sprintf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+			l.ID, l.CreatedAt.Format(time.RFC3339), l.ActorEmail, l.Action, l.Resource, l.ResourceID, l.Status, l.ActorIP, l.ActorUserAgent)
+	}
+
+	c.String(http.StatusOK, csvData)
 }

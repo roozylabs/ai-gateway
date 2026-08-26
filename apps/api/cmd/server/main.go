@@ -355,6 +355,8 @@ func main() {
 
 			// End-to-End AI Audit Trail
 			protected.GET("/audit-trail", auditTrailHandler.List)
+			protected.GET("/audit-trail/logs", auditTrailHandler.ListLogs)
+			protected.GET("/audit-trail/export", auditTrailHandler.ExportLogs)
 			protected.GET("/audit-trail/:id", auditTrailHandler.Get)
 			protected.POST("/audit-trail/:id/verify", auditTrailHandler.Verify)
 

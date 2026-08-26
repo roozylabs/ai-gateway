@@ -167,3 +167,86 @@ func (r *AuditTrailRepository) FindByID(ctx context.Context, id, userID string) 
 	}
 	return &a, nil
 }
+
+func (r *AuditTrailRepository) ListAuditLogs(ctx context.Context, orgID string, req models.AuditExportRequest, limit, offset int) ([]models.AuditLogItem, int, error) {
+	query := `SELECT id, organization_id, actor_id, actor_email, action, resource, resource_id, status, COALESCE(details_json, ''), COALESCE(actor_ip, ''), COALESCE(actor_user_agent, ''), created_at FROM audit_logs WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM audit_logs WHERE 1=1`
+	var args []interface{}
+	paramIdx := 1
+
+	if orgID != "" {
+		clause := fmt.Sprintf(" AND (organization_id = $%d OR organization_id = '' OR organization_id IS NULL)", paramIdx)
+		query += clause
+		countQuery += clause
+		args = append(args, orgID)
+		paramIdx++
+	}
+
+	if req.Action != "" {
+		clause := fmt.Sprintf(" AND action ILIKE $%d", paramIdx)
+		query += clause
+		countQuery += clause
+		args = append(args, "%"+req.Action+"%")
+		paramIdx++
+	}
+
+	if req.Status != "" {
+		clause := fmt.Sprintf(" AND status = $%d", paramIdx)
+		query += clause
+		countQuery += clause
+		args = append(args, req.Status)
+		paramIdx++
+	}
+
+	if req.Search != "" {
+		clause := fmt.Sprintf(" AND (actor_email ILIKE $%d OR resource ILIKE $%d OR action ILIKE $%d)", paramIdx, paramIdx, paramIdx)
+		query += clause
+		countQuery += clause
+		args = append(args, "%"+req.Search+"%")
+		paramIdx++
+	}
+
+	var total int
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		// Table might not exist yet or empty, return empty list gracefully
+		return []models.AuditLogItem{}, 0, nil
+	}
+
+	query += ` ORDER BY created_at DESC`
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT $%d", paramIdx)
+		args = append(args, limit)
+		paramIdx++
+	} else {
+		query += ` LIMIT 100`
+	}
+
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET $%d", paramIdx)
+		args = append(args, offset)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return []models.AuditLogItem{}, 0, nil
+	}
+	defer func() { _ = rows.Close() }()
+
+	var items []models.AuditLogItem
+	for rows.Next() {
+		var item models.AuditLogItem
+		if err := rows.Scan(
+			&item.ID, &item.OrganizationID, &item.ActorID, &item.ActorEmail,
+			&item.Action, &item.Resource, &item.ResourceID, &item.Status,
+			&item.DetailsJSON, &item.ActorIP, &item.ActorUserAgent, &item.CreatedAt,
+		); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("scan audit logs row error: %w", err)
+	}
+
+	return items, total, nil
+}
