@@ -538,6 +538,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		costUSD := inputCost + outputCost
 		e.backfillActualCost(reqID, costUSD)
 
+		c.Header("X-Prism-Model", route.Model.Slug)
+		c.Header("X-Prism-Provider", route.Provider.Type)
 		c.Header("X-Roozy-Model", route.Model.Slug)
 		c.Header("X-Roozy-Provider", route.Provider.Type)
 
@@ -818,6 +820,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
+		c.Header("X-Prism-Model", route.Model.Slug)
+		c.Header("X-Prism-Provider", route.Provider.Type)
 		c.Header("X-Roozy-Model", route.Model.Slug)
 		c.Header("X-Roozy-Provider", route.Provider.Type)
 		c.Status(http.StatusOK)

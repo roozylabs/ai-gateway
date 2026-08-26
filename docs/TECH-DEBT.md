@@ -24,7 +24,7 @@ All initial backend API gaps between the Next.js frontend and Go backend have be
 | **1.5** | Routing Policies & Budgets | ✅ **Resolved** | `GET/POST/PUT/DELETE` endpoints for `/api/policies` and `/api/budgets`. |
 | **1.6** | Real-Time Cost Pipeline | ✅ **Resolved** | Real-time `CostUSD` calculation per request based on input/output tokens and model pricing stored in `request_logs`. |
 | **1.7** | Instant Failover (Ready Pool) | ✅ **Resolved** | Pre-filtering 429 rate-limited cooling credentials in Redis before strategy rotation (Round Robin/LRU/Fallback). |
-| **1.8** | Error Sanitization & Headers | ✅ **Resolved** | Sanitized user-friendly error responses and `X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID` response headers. |
+| **1.8** | Error Sanitization & Headers | ✅ **Resolved** | Sanitized user-friendly error responses and `X-Prism-Model`, `X-Prism-Provider`, `X-Roozy-Model`, `X-Roozy-Provider`, `X-Request-ID` response headers. |
 
 ---
 

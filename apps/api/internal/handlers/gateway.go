@@ -124,6 +124,8 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			h.recordAuditTrail(c, log, gatewayKey)
 
 			c.Header("X-Request-ID", requestID)
+			c.Header("X-Prism-Model", log.Model)
+			c.Header("X-Prism-Provider", log.ProviderType)
 			c.Header("X-Roozy-Model", log.Model)
 			c.Header("X-Roozy-Provider", log.ProviderType)
 		}
@@ -152,6 +154,8 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		h.recordAuditTrail(c, log, gatewayKey)
 
 		c.Header("X-Request-ID", requestID)
+		c.Header("X-Prism-Model", log.Model)
+		c.Header("X-Prism-Provider", log.ProviderType)
 		c.Header("X-Roozy-Model", log.Model)
 		c.Header("X-Roozy-Provider", log.ProviderType)
 	}

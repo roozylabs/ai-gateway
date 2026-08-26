@@ -43,7 +43,7 @@ func CORSMiddleware() gin.HandlerFunc {
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Prism-Agent-ID", "X-Prism-Role", "X-Request-ID"},
-		ExposeHeaders:    []string{"Content-Length", "X-Request-ID", "X-Roozy-Model", "X-Roozy-Provider"},
+		ExposeHeaders:    []string{"Content-Length", "X-Request-ID", "X-Prism-Model", "X-Prism-Provider", "X-Prism-Routing-Policy", "X-Roozy-Model", "X-Roozy-Provider"},
 		AllowCredentials: true,
 	})
 }
