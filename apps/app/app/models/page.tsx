@@ -1,98 +1,157 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
 import { Badge } from '@/components/atoms/Badge';
+import { Button } from '@/components/atoms/Button';
 import { DataTable, Column } from '@/components/organisms/DataTable';
-import { useModelsQuery } from '@/hooks/queries/useModelsQuery';
+import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
+import { useCreateModel, useDeleteModel } from '@/hooks/queries/useModelsQuery';
+import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
 import { ApiModel } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Layers } from 'lucide-react';
-
-interface ModelMatrixRecord {
-  id: string;
-  name: string;
-  slug: string;
-  provider: string;
-  inputCost: number;
-  outputCost: number;
-  qualityScore: number;
-  costScore: number;
-  speedScore: number;
-}
-
-const mockModels: ModelMatrixRecord[] = [
-  { id: '1', name: 'Claude 3.7 Sonnet', slug: 'claude-3-7-sonnet', provider: 'Anthropic', inputCost: 3.0, outputCost: 15.0, qualityScore: 99, costScore: 82, speedScore: 88 },
-  { id: '2', name: 'GPT-5 Turbo', slug: 'gpt-5-turbo', provider: 'OpenAI', inputCost: 2.5, outputCost: 10.0, qualityScore: 98, costScore: 85, speedScore: 95 },
-  { id: '3', name: 'Gemini 2.5 Pro', slug: 'gemini-2.5-pro', provider: 'Google', inputCost: 1.25, outputCost: 5.0, qualityScore: 94, costScore: 92, speedScore: 90 },
-  { id: '4', name: 'OpenCode Coder 33B', slug: 'opencode-coder-33b', provider: 'OpenCode', inputCost: 0.8, outputCost: 2.4, qualityScore: 91, costScore: 98, speedScore: 96 },
-  { id: '5', name: 'GPT-5 Mini', slug: 'gpt-5-mini', provider: 'OpenAI', inputCost: 0.15, outputCost: 0.6, qualityScore: 88, costScore: 99, speedScore: 99 },
-];
+import { Layers, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Input } from '@/components/atoms/Input';
+import { Label } from '@/components/atoms/Label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 
 export default function ModelsPage() {
-  const { data, isLoading, isError, refetch } = useModelsQuery();
+  const { data, isLoading, isError, refetch } = useModelsListQuery();
+  const { data: providers } = useProvidersQuery();
+  const createMutation = useCreateModel();
+  const deleteMutation = useDeleteModel();
 
-  const modelsList: ModelMatrixRecord[] = React.useMemo(() => {
-    if (data && Array.isArray(data) && data.length > 0) {
-      return data.map((item: ApiModel) => ({
-        id: String(item.id || Math.random()),
-        name: String(item.displayName || item.name || 'Model'),
-        slug: String(item.slug || 'model-slug'),
-        provider: String(item.providerName || item.providerId || 'AI Provider'),
-        inputCost: Number(item.inputPricePer1M ?? 1.0),
-        outputCost: Number(item.outputPricePer1M ?? 3.0),
-        qualityScore: Number(item.qualityScore ?? 90),
-        costScore: 90,
-        speedScore: Number(item.speedScore ?? 90),
-      }));
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [formProviderId, setFormProviderId] = useState('');
+  const [formName, setFormName] = useState('');
+  const [formSlug, setFormSlug] = useState('');
+  const [formDisplayName, setFormDisplayName] = useState('');
+  const [formInputPrice, setFormInputPrice] = useState('');
+  const [formOutputPrice, setFormOutputPrice] = useState('');
+  const [formQualityScore, setFormQualityScore] = useState('');
+  const [formSpeedScore, setFormSpeedScore] = useState('');
+
+  const allModels: ApiModel[] = data?.data ?? [];
+
+  const modelsList = selectedProviderId === 'all'
+    ? allModels
+    : allModels.filter((m) => m.providerId === selectedProviderId);
+
+  const providerOptions = Array.isArray(providers) ? providers : [];
+
+  const resetForm = () => {
+    setFormProviderId('');
+    setFormName('');
+    setFormSlug('');
+    setFormDisplayName('');
+    setFormInputPrice('');
+    setFormOutputPrice('');
+    setFormQualityScore('');
+    setFormSpeedScore('');
+  };
+
+  const handleCreate = () => {
+    if (!formProviderId || !formName.trim() || !formSlug.trim()) return;
+    createMutation.mutate(
+      {
+        providerId: formProviderId,
+        data: {
+          name: formName.trim(),
+          slug: formSlug.trim(),
+          displayName: formDisplayName.trim() || formName.trim(),
+          inputPricePer1M: formInputPrice ? parseFloat(formInputPrice) : undefined,
+          outputPricePer1M: formOutputPrice ? parseFloat(formOutputPrice) : undefined,
+          qualityScore: formQualityScore ? parseInt(formQualityScore, 10) : undefined,
+          speedScore: formSpeedScore ? parseInt(formSpeedScore, 10) : undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success('Model created successfully');
+          setDrawerOpen(false);
+          resetForm();
+        },
+        onError: (err: Error) => toast.error(`Failed to create model: ${err.message}`),
+      }
+    );
+  };
+
+  const handleDelete = (model: ApiModel) => {
+    if (window.confirm(`Remove model "${model.displayName || model.name}"? This cannot be undone.`)) {
+      deleteMutation.mutate(
+        { providerId: model.providerId, modelId: model.id },
+        {
+          onSuccess: () => toast.success(`${model.displayName || model.name} removed`),
+          onError: (err: Error) => toast.error(`Failed to remove: ${err.message}`),
+        }
+      );
     }
-    return mockModels;
-  }, [data]);
+  };
 
-  const columns: Column<ModelMatrixRecord>[] = [
+  const columns: Column<ApiModel>[] = [
     {
       title: 'Model Name',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name) => <span className="font-semibold text-foreground">{name}</span>,
+      dataIndex: 'displayName',
+      key: 'displayName',
+      render: (displayName, record) => (
+        <span className="font-semibold text-foreground">{displayName || record.name}</span>
+      ),
     },
     {
-      title: 'Model Slug',
+      title: 'Slug',
       dataIndex: 'slug',
       key: 'slug',
       render: (slug) => <span className="font-mono text-muted-foreground">{slug}</span>,
     },
     {
       title: 'Provider',
-      dataIndex: 'provider',
-      key: 'provider',
-      render: (provider) => <Badge variant="outline">{provider}</Badge>,
+      dataIndex: 'providerName',
+      key: 'providerName',
+      render: (providerName) => <Badge variant="outline">{providerName || '—'}</Badge>,
     },
     {
       title: 'Pricing (Input / Output)',
       key: 'pricing',
       render: (_, record) => (
         <span className="font-mono text-xs">
-          <span className="text-emerald-500">${record.inputCost.toFixed(2)}</span> / <span className="text-emerald-500">${record.outputCost.toFixed(2)}</span> per 1M tokens
+          <span className="text-emerald-500">${(record.inputPricePer1M ?? 0).toFixed(2)}</span> / <span className="text-emerald-500">${(record.outputPricePer1M ?? 0).toFixed(2)}</span> per 1M tokens
         </span>
       ),
     },
     {
-      title: 'Quality Score',
+      title: 'Quality',
       dataIndex: 'qualityScore',
       key: 'qualityScore',
       render: (score) => (
-        <Badge variant="violet" className="font-mono">Q: {score}%</Badge>
+        <Badge variant="violet" className="font-mono">Q: {score != null ? `${score}%` : '—'}</Badge>
       ),
     },
     {
-      title: 'Speed Score',
+      title: 'Speed',
       dataIndex: 'speedScore',
       key: 'speedScore',
       render: (score) => (
-        <Badge variant="info" className="font-mono">S: {score}%</Badge>
+        <Badge variant="info" className="font-mono">S: {score != null ? `${score}%` : '—'}</Badge>
+      ),
+    },
+    {
+      title: '',
+      key: 'actions',
+      render: (_, record) => (
+        <Button
+          variant="destructive"
+          size="sm"
+          className="gap-1.5 text-xs"
+          disabled={deleteMutation.isPending}
+          onClick={() => handleDelete(record)}
+        >
+          <Trash2 className="h-3.5 w-3.5" /> Remove
+        </Button>
       ),
     },
   ];
@@ -101,7 +160,27 @@ export default function ModelsPage() {
     <AppLayout>
       <PageHeader
         title="Model Registry & Routing Score Matrix"
-        description="Unified model catalog with JetBrains Mono pricing benchmarks and automated routing scores."
+        description="Unified model catalog with pricing benchmarks and automated routing scores."
+        extra={
+          <div className="flex items-center gap-3">
+            {providerOptions.length > 0 && (
+              <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All providers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Providers</SelectItem>
+                  {providerOptions.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => setDrawerOpen(true)}>
+              <Plus className="h-4 w-4" /> Add Model
+            </Button>
+          </div>
+        }
       />
 
       <Card>
@@ -122,6 +201,11 @@ export default function ModelsPage() {
             <EmptyState
               title="No Models Registered"
               description="No models available in the current matrix."
+              action={
+                <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => setDrawerOpen(true)}>
+                  <Plus className="h-4 w-4" /> Add Model
+                </Button>
+              }
             />
           ) : (
             <DataTable
@@ -135,6 +219,70 @@ export default function ModelsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Sheet open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) resetForm(); }}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Add New Model</SheetTitle>
+            <SheetDescription>Register a new LLM model under an existing provider.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="model-provider">Provider</Label>
+              <Select value={formProviderId} onValueChange={setFormProviderId}>
+                <SelectTrigger id="model-provider"><SelectValue placeholder="Select a provider" /></SelectTrigger>
+                <SelectContent>
+                  {providerOptions.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="model-name">Model Name</Label>
+              <Input id="model-name" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g., GPT-4o" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="model-slug">Slug</Label>
+              <Input id="model-slug" value={formSlug} onChange={(e) => setFormSlug(e.target.value)} placeholder="e.g., gpt-4o" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="model-display">Display Name (optional)</Label>
+              <Input id="model-display" value={formDisplayName} onChange={(e) => setFormDisplayName(e.target.value)} placeholder="e.g., GPT-4o" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="model-input-price">Input Price / 1M</Label>
+                <Input id="model-input-price" type="number" step="0.01" value={formInputPrice} onChange={(e) => setFormInputPrice(e.target.value)} placeholder="0.00" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="model-output-price">Output Price / 1M</Label>
+                <Input id="model-output-price" type="number" step="0.01" value={formOutputPrice} onChange={(e) => setFormOutputPrice(e.target.value)} placeholder="0.00" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="model-quality">Quality Score</Label>
+                <Input id="model-quality" type="number" min="0" max="100" value={formQualityScore} onChange={(e) => setFormQualityScore(e.target.value)} placeholder="0-100" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="model-speed">Speed Score</Label>
+                <Input id="model-speed" type="number" min="0" max="100" value={formSpeedScore} onChange={(e) => setFormSpeedScore(e.target.value)} placeholder="0-100" />
+              </div>
+            </div>
+          </div>
+          <SheetFooter>
+            <Button variant="outline" onClick={() => { setDrawerOpen(false); resetForm(); }}>Cancel</Button>
+            <Button
+              variant="prismViolet"
+              onClick={handleCreate}
+              disabled={!formProviderId || !formName.trim() || !formSlug.trim() || createMutation.isPending}
+            >
+              {createMutation.isPending ? 'Creating...' : 'Create Model'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }
