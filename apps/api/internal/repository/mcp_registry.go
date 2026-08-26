@@ -93,5 +93,8 @@ func (r *MCPRegistryRepository) ListPublicAndTenant(ctx context.Context, userID 
 		}
 		results = append(results, s)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scan mcp registry row error: %w", err)
+	}
 	return results, nil
 }

@@ -93,5 +93,8 @@ func (r *AgentTemplateRepository) ListAll(ctx context.Context, userID string) ([
 		}
 		results = append(results, t)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scan agent templates row error: %w", err)
+	}
 	return results, nil
 }

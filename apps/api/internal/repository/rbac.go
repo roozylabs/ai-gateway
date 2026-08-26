@@ -82,6 +82,9 @@ func (r *RBACRepository) ListRoles(ctx context.Context, orgID string) ([]models.
 		}
 		roles = append(roles, role)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scan roles row error: %w", err)
+	}
 	return roles, nil
 }
 
