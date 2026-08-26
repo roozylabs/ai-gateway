@@ -53,3 +53,7 @@ opencode.json
 .agents/plugins/antd/
 .superpowers/
 */superpowers
+
+
+# Prism
+.prism/*

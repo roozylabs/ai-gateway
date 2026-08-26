@@ -28,7 +28,7 @@ export function registerModelsCommand(program: Command) {
             item.id,
             item.owned_by || "prism",
             item.object,
-            new Date(item.created * 1000).toLocaleString(),
+            item.created ? new Date(item.created * 1000).toLocaleString() : "active",
           ]);
         }
 
