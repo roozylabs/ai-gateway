@@ -1,0 +1,168 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-primary-fixed":"#23005c","background":"#15121b","tertiary":"#ffb869","secondary-fixed":"#acedff","secondary-fixed-dim":"#4cd7f6","tertiary-fixed":"#ffdcbb","on-background":"#e7e0ed","surface-variant":"#37333d","on-error":"#690005","primary-container":"#a078ff","secondary":"#4cd7f6","inverse-surface":"#e7e0ed","on-tertiary-container":"#3f2300","bg-card":"#0F1115","outline-variant":"#494454","bg-base":"#08090A","inverse-primary":"#6d3bd7","primary":"#d0bcff","surface-bright":"#3b3742","primary-fixed-dim":"#d0bcff","inverse-on-surface":"#322f39","surface-container-high":"#2c2832","on-secondary-fixed-variant":"#004e5c","on-secondary":"#003640","surface-container-lowest":"#0f0d15","secondary-container":"#03b5d3","surface-dim":"#15121b","on-surface-variant":"#cbc3d7","on-secondary-fixed":"#001f26","on-tertiary-fixed-variant":"#673d00","border-subtle":"#1B1F27","on-tertiary":"#482900","tertiary-container":"#ca801e","on-primary":"#3c0091","on-error-container":"#ffdad6","surface-container-low":"#1d1a23","surface-container":"#211e27","error":"#ffb4ab","surface-tint":"#d0bcff","on-tertiary-fixed":"#2c1700","on-primary-container":"#340080","primary-fixed":"#e9ddff","surface-container-highest":"#37333d","surface":"#15121b","error-container":"#93000a","on-secondary-container":"#00424e","border-default":"#242832","tertiary-fixed-dim":"#ffb869","on-primary-fixed-variant":"#5516be","on-surface":"#e7e0ed","bg-hover":"#181C23","outline":"#958ea0"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"gutter":"16px","margin-sm":"12px","grid-unit":"4px","margin-md":"20px","sidebar-width":"248px"},"fontFamily":{"code-md":["JetBrains Mono"],"headline-sm":["Inter"],"body-sm":["Inter"],"headline-md":["Inter"],"headline-lg":["Inter"],"body-md":["Inter"],"label-caps":["Inter"],"code-sm":["JetBrains Mono"]},"fontSize":{"code-md":["13px",{"lineHeight":"20px","fontWeight":"450"}],"headline-sm":["16px",{"lineHeight":"24px","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"headline-md":["20px",{"lineHeight":"28px","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"label-caps":["11px",{"lineHeight":"16px","letterSpacing":"0.05em","fontWeight":"700"}],"code-sm":["12px",{"lineHeight":"16px","fontWeight":"450"}]}}}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/></head><body class="bg-bg-base font-body-md text-on-surface"><aside class="fixed left-0 top-0 h-full w-[248px] bg-bg-card border-r border-border-default z-50 flex flex-col"><div class="h-14 flex items-center px-margin-md border-b border-border-default"><div class="flex items-center gap-2"><div class="w-5 h-5 bg-primary"></div><span class="font-headline-md text-headline-md tracking-tight text-primary">PRISM</span></div></div><nav class="flex-1 overflow-y-auto py-margin-md" data-active-classes="bg-surface-container-highest text-primary border-l-2 border-primary"><div class="px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Core</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="dashboard" href="#">Dashboard</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">AI Infrastructure</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="providers" href="#">Providers</a><a aria-current="page" class="flex items-center px-margin-md py-2 transition-colors bg-surface-container-highest text-primary border-l-2 border-primary" data-path="credentials" href="#">Credentials</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="models" href="#">Models</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="routing" href="#">Routing</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Gateways</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="tool-gateway" href="#">Tool</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="resource-gateway" href="#">Resource</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="mcp-gateway" href="#">MCP</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="agent-gateway" href="#">Agent</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Governance</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="policies" href="#">Policies</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="audit-trail" href="#">Audit Trail</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Operations</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="logs" href="#">Logs</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="budgets" href="#">Budgets</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="playground" href="#">Playground</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">System</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="settings" href="#">Settings</a></nav></aside><div class="pl-[248px]"><header class="fixed top-0 left-[248px] right-0 h-14 bg-bg-base/80 backdrop-blur-md border-b border-border-default z-40 flex items-center justify-between px-margin-md"><div class="flex items-center gap-4"><div class="flex items-center gap-2 px-2 py-1 bg-secondary/10 border border-secondary/20"><div class="w-1.5 h-1.5 rounded-full bg-secondary"></div><span class="font-label-caps text-label-caps text-secondary uppercase">System Active</span></div></div><div class="flex items-center gap-gutter"><button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">search</span></button><button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span></button><div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center border border-border-default cursor-pointer"><span class="material-symbols-outlined text-on-surface text-[18px]">person</span></div></div></header><main class="relative pt-14 min-h-screen"><div class="flex flex-col w-full h-full max-w-[1600px] mx-auto px-margin-md pb-margin-md">
+<div class="flex items-center justify-between mb-margin-md">
+<div class="flex flex-col gap-1">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Credentials</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Manage provider credentials, health, and rotation policies.</p>
+</div>
+<button class="flex items-center gap-2 px-3 py-2 bg-primary text-on-primary rounded font-headline-sm text-headline-sm hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+            Add Credential
+        </button>
+</div>
+<div class="bg-bg-card rounded shadow-md overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[800px]">
+<thead class="bg-surface-container-high border-b border-border-subtle sticky top-0 z-10">
+<tr>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold w-1/5">Name</th>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold w-1/6">Provider</th>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold w-1/6">Status</th>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold w-1/5">Usage (Quota)</th>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold w-[120px] text-right">Success Rate</th>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold w-[140px] text-right">Last Rotated</th>
+<th class="px-4 py-3 w-10"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle bg-bg-card">
+<tr class="hover:bg-bg-hover transition-colors group cursor-pointer h-12">
+<td class="px-4 py-2 flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">key</span>
+<span class="font-code-md text-code-md text-on-surface">prod-gpt4-primary</span>
+</td>
+<td class="px-4 py-2 font-body-md text-body-md text-on-surface-variant">OpenAI</td>
+<td class="px-4 py-2">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<span class="font-body-md text-body-md text-on-surface">Healthy</span>
+</div>
+</td>
+<td class="px-4 py-2">
+<div class="flex flex-col gap-1 w-full max-w-[180px]">
+<div class="flex justify-between items-center w-full">
+<span class="font-code-sm text-code-sm text-on-surface-variant">42%</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-70">4.2k / 10k</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[42%]"></div>
+</div>
+</div>
+</td>
+<td class="px-4 py-2 font-code-md text-code-md text-on-surface text-right">99.8%</td>
+<td class="px-4 py-2 font-code-md text-code-md text-on-surface-variant text-right">2d ago</td>
+<td class="px-4 py-2 text-right">
+<button class="text-on-surface-variant hover:text-on-surface opacity-0 group-hover:opacity-100 transition-opacity p-1">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-bg-hover transition-colors group cursor-pointer h-12">
+<td class="px-4 py-2 flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">key</span>
+<span class="font-code-md text-code-md text-on-surface">prod-claude-fallback</span>
+</td>
+<td class="px-4 py-2 font-body-md text-body-md text-on-surface-variant">Anthropic</td>
+<td class="px-4 py-2">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-tertiary"></div>
+<span class="font-body-md text-body-md text-on-surface">Cooldown</span>
+</div>
+</td>
+<td class="px-4 py-2">
+<div class="flex flex-col gap-1 w-full max-w-[180px]">
+<div class="flex justify-between items-center w-full">
+<span class="font-code-sm text-code-sm text-on-surface-variant">89%</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-70">8.9k / 10k</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full w-[89%]"></div>
+</div>
+</div>
+</td>
+<td class="px-4 py-2 font-code-md text-code-md text-on-surface text-right">94.2%</td>
+<td class="px-4 py-2 font-code-md text-code-md text-on-surface-variant text-right">14d ago</td>
+<td class="px-4 py-2 text-right">
+<button class="text-on-surface-variant hover:text-on-surface opacity-0 group-hover:opacity-100 transition-opacity p-1">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-bg-hover transition-colors group cursor-pointer h-12">
+<td class="px-4 py-2 flex items-center gap-3">
+<span class="material-symbols-outlined text-error text-[16px]">warning</span>
+<span class="font-code-md text-code-md text-error">dev-gpt35-test</span>
+</td>
+<td class="px-4 py-2 font-body-md text-body-md text-on-surface-variant">OpenAI</td>
+<td class="px-4 py-2">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-error"></div>
+<span class="font-body-md text-body-md text-error">Exhausted</span>
+</div>
+</td>
+<td class="px-4 py-2">
+<div class="flex flex-col gap-1 w-full max-w-[180px]">
+<div class="flex justify-between items-center w-full">
+<span class="font-code-sm text-code-sm text-error">100%</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-70">1.0k / 1.0k</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-error h-full w-full"></div>
+</div>
+</div>
+</td>
+<td class="px-4 py-2 font-code-md text-code-md text-on-surface text-right">0.0%</td>
+<td class="px-4 py-2 font-code-md text-code-md text-on-surface-variant text-right">30d+ ago</td>
+<td class="px-4 py-2 text-right">
+<button class="text-on-surface-variant hover:text-on-surface opacity-0 group-hover:opacity-100 transition-opacity p-1">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-bg-hover transition-colors group cursor-pointer h-12">
+<td class="px-4 py-2 flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">key</span>
+<span class="font-code-md text-code-md text-on-surface">prod-mistral-eu</span>
+</td>
+<td class="px-4 py-2 font-body-md text-body-md text-on-surface-variant">Mistral</td>
+<td class="px-4 py-2">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<span class="font-body-md text-body-md text-on-surface">Healthy</span>
+</div>
+</td>
+<td class="px-4 py-2">
+<div class="flex flex-col gap-1 w-full max-w-[180px]">
+<div class="flex justify-between items-center w-full">
+<span class="font-code-sm text-code-sm text-on-surface-variant">12%</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-70">1.2k / 10k</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[12%]"></div>
+</div>
+</div>
+</td>
+<td class="px-4 py-2 font-code-md text-code-md text-on-surface text-right">99.9%</td>
+<td class="px-4 py-2 font-code-md text-code-md text-on-surface-variant text-right">5d ago</td>
+<td class="px-4 py-2 text-right">
+<button class="text-on-surface-variant hover:text-on-surface opacity-0 group-hover:opacity-100 transition-opacity p-1">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="bg-surface-container-low border-t border-border-subtle p-3 flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Showing 4 of 4 credentials</span>
+<div class="flex gap-2">
+<button class="px-2 py-1 text-on-surface-variant hover:text-on-surface disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="px-2 py-1 text-on-surface-variant hover:text-on-surface disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

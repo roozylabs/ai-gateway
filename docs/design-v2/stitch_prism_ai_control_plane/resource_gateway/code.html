@@ -1,0 +1,226 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-primary-fixed":"#23005c","background":"#15121b","tertiary":"#ffb869","secondary-fixed":"#acedff","secondary-fixed-dim":"#4cd7f6","tertiary-fixed":"#ffdcbb","on-background":"#e7e0ed","surface-variant":"#37333d","on-error":"#690005","primary-container":"#a078ff","secondary":"#4cd7f6","inverse-surface":"#e7e0ed","on-tertiary-container":"#3f2300","bg-card":"#0F1115","outline-variant":"#494454","bg-base":"#08090A","inverse-primary":"#6d3bd7","primary":"#d0bcff","surface-bright":"#3b3742","primary-fixed-dim":"#d0bcff","inverse-on-surface":"#322f39","surface-container-high":"#2c2832","on-secondary-fixed-variant":"#004e5c","on-secondary":"#003640","surface-container-lowest":"#0f0d15","secondary-container":"#03b5d3","surface-dim":"#15121b","on-surface-variant":"#cbc3d7","on-secondary-fixed":"#001f26","on-tertiary-fixed-variant":"#673d00","border-subtle":"#1B1F27","on-tertiary":"#482900","tertiary-container":"#ca801e","on-primary":"#3c0091","on-error-container":"#ffdad6","surface-container-low":"#1d1a23","surface-container":"#211e27","error":"#ffb4ab","surface-tint":"#d0bcff","on-tertiary-fixed":"#2c1700","on-primary-container":"#340080","primary-fixed":"#e9ddff","surface-container-highest":"#37333d","surface":"#15121b","error-container":"#93000a","on-secondary-container":"#00424e","border-default":"#242832","tertiary-fixed-dim":"#ffb869","on-primary-fixed-variant":"#5516be","on-surface":"#e7e0ed","bg-hover":"#181C23","outline":"#958ea0"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"gutter":"16px","margin-sm":"12px","grid-unit":"4px","margin-md":"20px","sidebar-width":"248px"},"fontFamily":{"code-md":["JetBrains Mono"],"headline-sm":["Inter"],"body-sm":["Inter"],"headline-md":["Inter"],"headline-lg":["Inter"],"body-md":["Inter"],"label-caps":["Inter"],"code-sm":["JetBrains Mono"]},"fontSize":{"code-md":["13px",{"lineHeight":"20px","fontWeight":"450"}],"headline-sm":["16px",{"lineHeight":"24px","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"headline-md":["20px",{"lineHeight":"28px","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"label-caps":["11px",{"lineHeight":"16px","letterSpacing":"0.05em","fontWeight":"700"}],"code-sm":["12px",{"lineHeight":"16px","fontWeight":"450"}]}}}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/></head><body class="bg-bg-base font-body-md text-on-surface"><aside class="fixed left-0 top-0 h-full w-[248px] bg-bg-card border-r border-border-default z-50 flex flex-col"><div class="h-14 flex items-center px-margin-md border-b border-border-default"><div class="flex items-center gap-2"><div class="w-5 h-5 bg-primary"></div><span class="font-headline-md text-headline-md tracking-tight text-primary">PRISM</span></div></div><nav class="flex-1 overflow-y-auto py-margin-md" data-active-classes="bg-surface-container-highest text-primary border-l-2 border-primary"><div class="px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Core</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="dashboard" href="#">Dashboard</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">AI Infrastructure</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="providers" href="#">Providers</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="credentials" href="#">Credentials</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="models" href="#">Models</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="routing" href="#">Routing</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Gateways</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="tool-gateway" href="#">Tool</a><a aria-current="page" class="flex items-center px-margin-md py-2 transition-colors bg-surface-container-highest text-primary border-l-2 border-primary" data-path="resource-gateway" href="#">Resource</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="mcp-gateway" href="#">MCP</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="agent-gateway" href="#">Agent</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Governance</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="policies" href="#">Policies</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="audit-trail" href="#">Audit Trail</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Operations</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="logs" href="#">Logs</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="budgets" href="#">Budgets</a><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="playground" href="#">Playground</a><div class="mt-6 px-margin-md mb-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">System</span></div><a class="flex items-center px-margin-md py-2 text-on-surface-variant hover:bg-bg-hover transition-colors text-body-md" data-path="settings" href="#">Settings</a></nav></aside><div class="pl-[248px]"><header class="fixed top-0 left-[248px] right-0 h-14 bg-bg-base/80 backdrop-blur-md border-b border-border-default z-40 flex items-center justify-between px-margin-md"><div class="flex items-center gap-4"><div class="flex items-center gap-2 px-2 py-1 bg-secondary/10 border border-secondary/20"><div class="w-1.5 h-1.5 rounded-full bg-secondary"></div><span class="font-label-caps text-label-caps text-secondary uppercase">System Active</span></div></div><div class="flex items-center gap-gutter"><button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">search</span></button><button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span></button><div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center border border-border-default cursor-pointer"><span class="material-symbols-outlined text-on-surface text-[18px]">person</span></div></div></header><main class="relative pt-14 min-h-screen"><div class="flex flex-col w-full h-full relative overflow-hidden bg-bg-base">
+<div class="px-margin-md py-margin-md flex flex-col md:flex-row md:items-end justify-between gap-4 sticky top-0 bg-bg-base/90 backdrop-blur-md z-30">
+<div class="flex flex-col gap-1">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Resource Gateway</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Connect and manage data resources for RAG and model context. Ensure secure and high-throughput connections to underlying storage systems.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="h-8 px-4 flex items-center justify-center gap-2 bg-surface-container-high hover:bg-bg-hover text-on-surface transition-colors font-body-sm text-body-sm rounded-sm">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+        Sync Status
+      </button>
+<button class="h-8 px-4 flex items-center justify-center gap-2 bg-primary hover:bg-primary-fixed text-on-primary transition-colors font-body-sm text-body-sm rounded-sm shadow-md shadow-primary/10">
+<span class="material-symbols-outlined text-[16px]">add</span>
+        New Resource
+      </button>
+</div>
+</div>
+<div class="px-margin-md py-4 w-full">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+<div class="bg-bg-card p-4 rounded-lg flex flex-col gap-2 shadow-sm relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-secondary/5 rounded-full blur-xl group-hover:bg-secondary/10 transition-colors"></div>
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Total Resources</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">dns</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface">14</span>
+<span class="font-body-sm text-body-sm text-secondary">+2 this week</span>
+</div>
+</div>
+<div class="bg-bg-card p-4 rounded-lg flex flex-col gap-2 shadow-sm relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-error/5 rounded-full blur-xl group-hover:bg-error/10 transition-colors"></div>
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Degraded Connections</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">warning</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface">1</span>
+<span class="font-body-sm text-body-sm text-error">Check Logs</span>
+</div>
+</div>
+<div class="bg-bg-card p-4 rounded-lg flex flex-col gap-2 shadow-sm relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors"></div>
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Avg Retrieval Latency</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">speed</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-code-md text-code-md text-on-surface">24ms</span>
+<span class="font-body-sm text-body-sm text-secondary">-4ms vs yesterday</span>
+</div>
+</div>
+<div class="bg-bg-card p-4 rounded-lg flex flex-col gap-2 shadow-sm relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-tertiary/5 rounded-full blur-xl group-hover:bg-tertiary/10 transition-colors"></div>
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Total Documents Indexed</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">data_usage</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-code-md text-code-md text-on-surface">1.2M</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Across 8 indices</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4 mb-4">
+<div class="relative flex-1 max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full bg-surface h-10 pl-10 pr-4 rounded-md font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary shadow-sm" placeholder="Search resources..." type="text"/>
+</div>
+<div class="flex items-center gap-2 ml-auto">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Filter by:</span>
+<select class="bg-surface h-10 px-3 rounded-md font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary shadow-sm appearance-none pr-8 relative">
+<option>All Types</option>
+<option>Vector DB</option>
+<option>Relational</option>
+<option>Filesystem</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+<div class="bg-bg-card rounded-lg flex flex-col shadow-sm hover:shadow-md hover:bg-bg-hover transition-all cursor-pointer group">
+<div class="p-4 flex flex-col gap-4">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">database</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Postgres Prod</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Relational DB</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-secondary/10">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></div>
+<span class="font-label-caps text-label-caps text-secondary uppercase">Online</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Latency</span>
+<span class="font-code-md text-code-md text-on-surface">12ms</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Rows Indexed</span>
+<span class="font-code-md text-code-md text-on-surface">450k</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-2 pt-4 border-t border-border-subtle group-hover:border-border-default transition-colors">
+<span class="font-code-sm text-code-sm text-on-surface-variant bg-surface px-2 py-0.5 rounded-sm">arn:aws:rds:us-east-1...</span>
+<div class="ml-auto flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">settings</span></button>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-bg-card rounded-lg flex flex-col shadow-sm hover:shadow-md hover:bg-bg-hover transition-all cursor-pointer group relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full blur-2xl group-hover:bg-secondary/10 transition-colors pointer-events-none"></div>
+<div class="p-4 flex flex-col gap-4 relative z-10">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-md bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">folder_open</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">S3 Documentation</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Filesystem (Blob)</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-secondary/10">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></div>
+<span class="font-label-caps text-label-caps text-secondary uppercase">Online</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Latency</span>
+<span class="font-code-md text-code-md text-on-surface">85ms</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Documents</span>
+<span class="font-code-md text-code-md text-on-surface">12.4k</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-2 pt-4 border-t border-border-subtle group-hover:border-border-default transition-colors">
+<span class="font-code-sm text-code-sm text-on-surface-variant bg-surface px-2 py-0.5 rounded-sm">s3://prism-docs-prod/</span>
+<div class="ml-auto flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">settings</span></button>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-bg-card rounded-lg flex flex-col shadow-sm hover:shadow-md hover:bg-bg-hover transition-all cursor-pointer group">
+<div class="p-4 flex flex-col gap-4">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-md bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">scatter_plot</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Pinecone Index (Main)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Vector DB</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-secondary/10">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></div>
+<span class="font-label-caps text-label-caps text-secondary uppercase">Online</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Latency</span>
+<span class="font-code-md text-code-md text-on-surface">8ms</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Vectors</span>
+<span class="font-code-md text-code-md text-on-surface">3.8M</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-2 pt-4 border-t border-border-subtle group-hover:border-border-default transition-colors">
+<span class="font-code-sm text-code-sm text-on-surface-variant bg-surface px-2 py-0.5 rounded-sm">https://prism-main-xxx...</span>
+<div class="ml-auto flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">settings</span></button>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-bg-card rounded-lg flex flex-col shadow-sm hover:shadow-md hover:bg-bg-hover transition-all cursor-pointer group">
+<div class="p-4 flex flex-col gap-4">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-md bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">api</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">Zendesk API Hook</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">REST API</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-error/10">
+<div class="w-1.5 h-1.5 rounded-full bg-error"></div>
+<span class="font-label-caps text-label-caps text-error uppercase">Degraded</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Latency</span>
+<span class="font-code-md text-code-md text-error">850ms</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Records Synced</span>
+<span class="font-code-md text-code-md text-on-surface">8.1k</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-2 pt-4 border-t border-border-subtle group-hover:border-border-default transition-colors">
+<span class="font-code-sm text-code-sm text-on-surface-variant bg-surface px-2 py-0.5 rounded-sm">https://prism.zendesk...</span>
+<div class="ml-auto flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">settings</span></button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

@@ -1,0 +1,253 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container":"#1b2122","on-primary":"#003640","bg-base":"#08090A","border-subtle":"#242832","surface-bright":"#343a3c","data-pink":"#EC4899","on-tertiary-fixed":"#2d1600","on-primary-container":"#00424f","on-background":"#dee3e6","primary-fixed-dim":"#4cd7f6","status-critical":"#EF4444","inverse-primary":"#00687a","on-tertiary-fixed-variant":"#6a3b00","primary-container":"#06b6d4","primary":"#4cd7f6","surface":"#0e1416","on-secondary-fixed":"#23005c","surface-dim":"#0e1416","primary-fixed":"#acedff","on-tertiary-container":"#5b3200","error":"#ffb4ab","secondary-fixed":"#e9ddff","secondary-fixed-dim":"#d0bcff","on-primary-fixed":"#001f26","outline":"#869397","on-primary-fixed-variant":"#004e5c","tertiary-fixed-dim":"#ffb873","surface-variant":"#303638","on-error-container":"#ffdad6","surface-container-high":"#252b2d","surface-tint":"#4cd7f6","error-container":"#93000a","on-surface":"#dee3e6","inverse-surface":"#dee3e6","surface-container-low":"#171d1e","on-secondary":"#3c0091","on-tertiary":"#4b2800","background":"#0e1416","secondary-container":"#571bc1","tertiary-fixed":"#ffdcbf","tertiary-container":"#e89337","surface-container-lowest":"#090f11","tertiary":"#ffb873","on-secondary-container":"#c4abff","status-healthy":"#10B981","inverse-on-surface":"#2b3133","status-warning":"#F59E0B","outline-variant":"#3d494c","on-secondary-fixed-variant":"#5516be","surface-container-highest":"#303638","on-error":"#690005","bg-elevated":"#14171D","bg-card":"#0F1115","secondary":"#d0bcff","on-surface-variant":"#bcc9cd"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"sidebar-expanded":"248px","unit":"4px","margin-page":"24px","row-height-dense":"32px","gutter":"16px","row-height-default":"48px","sidebar-collapsed":"72px"},"fontFamily":{"headline-md":["JetBrains Mono"],"body-base":["Geist"],"label-caps":["JetBrains Mono"],"display-metrics":["JetBrains Mono"],"body-mono":["JetBrains Mono"],"caption":["Geist"],"title-sm":["Geist"]},"fontSize":{"headline-md":["24px",{"lineHeight":"32px","fontWeight":"600"}],"body-base":["14px",{"lineHeight":"22px","fontWeight":"400"}],"label-caps":["11px",{"lineHeight":"14px","letterSpacing":"0.08em","fontWeight":"700"}],"display-metrics":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-mono":["13px",{"lineHeight":"20px","fontWeight":"400"}],"caption":["12px",{"lineHeight":"16px","fontWeight":"400"}],"title-sm":["18px",{"lineHeight":"24px","fontWeight":"600"}]}}}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/></head><body class="bg-bg-base font-body-base text-on-surface"><aside class="fixed left-0 top-0 h-full w-sidebar-expanded bg-bg-card border-r border-border-subtle z-50 flex flex-col"><div class="h-[60px] flex items-center px-margin-page border-b border-border-subtle"><div class="flex items-center gap-2"><div class="w-6 h-6 bg-primary"></div><span class="font-headline-md text-headline-md tracking-tighter text-primary">PRISM</span></div></div><nav class="flex-1 overflow-y-auto py-margin-page" data-active-classes="bg-surface-container-highest text-primary border-l-2 border-primary"><div class="px-margin-page mb-2 flex items-center gap-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Core</span></div><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span class="text-body-base">Dashboard</span></a><div class="mt-6 px-margin-page mb-2 flex items-center gap-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">AI Infrastructure</span></div><a aria-current="page" class="flex items-center gap-3 px-margin-page py-2 transition-colors bg-surface-container-highest text-primary border-l-2 border-primary" data-path="providers" href="#"><span class="material-symbols-outlined text-[20px]">cloud_done</span><span class="text-body-base">Providers</span></a><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="credentials" href="#"><span class="material-symbols-outlined text-[20px]">key</span><span class="text-body-base">Credentials</span></a><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="models" href="#"><span class="material-symbols-outlined text-[20px]">token</span><span class="text-body-base">Models</span></a><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="routing" href="#"><span class="material-symbols-outlined text-[20px]">alt_route</span><span class="text-body-base">Routing</span></a><div class="mt-6 px-margin-page mb-2 flex items-center gap-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Gateways</span></div><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="tool-gateway" href="#"><span class="material-symbols-outlined text-[20px]">build</span><span class="text-body-base">Tool</span></a><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="resource-gateway" href="#"><span class="material-symbols-outlined text-[20px]">database</span><span class="text-body-base">Resource</span></a><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="mcp-gateway" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span class="text-body-base">MCP</span></a><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="agent-gateway" href="#"><span class="material-symbols-outlined text-[20px]">smart_toy</span><span class="text-body-base">Agent</span></a><div class="mt-6 px-margin-page mb-2 flex items-center gap-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Governance</span></div><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="policies" href="#"><span class="material-symbols-outlined text-[20px]">policy</span><span class="text-body-base">Policies</span></a><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="audit-trail" href="#"><span class="material-symbols-outlined text-[20px]">history_edu</span><span class="text-body-base">Audit Trail</span></a><div class="mt-6 px-margin-page mb-2 flex items-center gap-2 opacity-50"><span class="font-label-caps text-label-caps uppercase">Operations</span></div><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="logs" href="#"><span class="material-symbols-outlined text-[20px]">terminal</span><span class="text-body-base">Logs</span></a><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="budgets" href="#"><span class="material-symbols-outlined text-[20px]">payments</span><span class="text-body-base">Budgets</span></a><a class="flex items-center gap-3 px-margin-page py-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="playground" href="#"><span class="material-symbols-outlined text-[20px]">science</span><span class="text-body-base">Playground</span></a></nav></aside><div class="pl-sidebar-expanded"><header class="fixed top-0 left-sidebar-expanded right-0 h-[60px] bg-bg-base/80 backdrop-blur-md border-b border-border-subtle z-40 flex items-center justify-between px-margin-page"><div class="flex items-center gap-4"><div class="flex items-center gap-2 px-3 py-1 bg-status-healthy/10 border border-status-healthy/30"><div class="w-2 h-2 rounded-full bg-status-healthy animate-pulse"></div><span class="font-label-caps text-label-caps text-status-healthy">Operational</span></div></div><div class="flex items-center gap-gutter"><button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined">search</span></button><button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[22px]">notifications</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center cursor-pointer hover:ring-2 ring-primary/20 transition-all"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-[60px] min-h-screen"><div class="flex flex-col w-full p-margin-page gap-gutter">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter">
+<div class="bg-bg-card border border-border-subtle p-4 relative group">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-caps text-on-surface-variant">TOTAL REQUESTS</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">stacked_line_chart</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-metrics text-display-metrics text-on-surface">1.24M</span>
+<div class="flex items-center text-status-healthy font-body-mono text-[11px] border border-status-healthy/30 bg-status-healthy/10 px-1 py-0.5">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+          12.4%
+        </div>
+</div>
+</div>
+<div class="bg-bg-card border border-border-subtle p-4 relative group">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-caps text-on-surface-variant">TOKENS PROCESSED</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">data_usage</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-metrics text-display-metrics text-on-surface">48.2M</span>
+<div class="flex items-center text-status-healthy font-body-mono text-[11px] border border-status-healthy/30 bg-status-healthy/10 px-1 py-0.5">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+          8.1%
+        </div>
+</div>
+</div>
+<div class="bg-bg-card border border-border-subtle p-4 relative group">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-caps text-on-surface-variant">INFRASTRUCTURE COST</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">attach_money</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-metrics text-display-metrics text-on-surface">$182.42</span>
+<div class="flex items-center text-status-warning font-body-mono text-[11px] border border-status-warning/30 bg-status-warning/10 px-1 py-0.5">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+          2.3%
+        </div>
+</div>
+</div>
+<div class="bg-bg-card border border-border-subtle p-4 relative group">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-caps text-on-surface-variant">SUCCESS RATE</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">check_circle</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-metrics text-display-metrics text-on-surface">99.94%</span>
+<div class="flex items-center text-status-critical font-body-mono text-[11px] border border-status-critical/30 bg-status-critical/10 px-1 py-0.5">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+          0.01%
+        </div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<div class="lg:col-span-2 flex flex-col gap-gutter">
+<div class="bg-bg-card border border-border-subtle flex flex-col min-h-[320px]">
+<div class="px-4 py-3 border-b border-border-subtle flex justify-between items-center bg-bg-card">
+<h2 class="font-headline-md text-title-sm text-on-surface uppercase tracking-tight">Request Traffic / 1H</h2>
+<div class="flex gap-2 font-body-mono text-[11px]">
+<button class="px-2 py-1 bg-surface-container border border-primary text-primary">1H</button>
+<button class="px-2 py-1 bg-transparent border border-border-subtle text-on-surface-variant hover:text-on-surface">24H</button>
+<button class="px-2 py-1 bg-transparent border border-border-subtle text-on-surface-variant hover:text-on-surface">7D</button>
+</div>
+</div>
+<div class="flex-1 p-4 relative overflow-hidden flex items-end justify-between gap-1 opacity-80" id="chart-container">
+<svg class="absolute inset-0 z-0" height="100%" preserveaspectratio="none" viewbox="0 0 100 100" width="100%">
+<path d="M0,80 L10,75 L20,85 L30,60 L40,65 L50,40 L60,55 L70,30 L80,45 L90,20 L100,10 L100,100 L0,100 Z" fill="url(#grad)" opacity="0.1"></path>
+<path d="M0,80 L10,75 L20,85 L30,60 L40,65 L50,40 L60,55 L70,30 L80,45 L90,20 L100,10" fill="none" stroke="#06b6d4" stroke-width="0.5" vector-effect="non-scaling-stroke"></path>
+<defs>
+<lineargradient id="grad" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#06b6d4" stop-opacity="1"></stop>
+<stop offset="100%" stop-color="#06b6d4" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+</div>
+<div class="bg-bg-card border border-border-subtle flex flex-col">
+<div class="px-4 py-3 border-b border-border-subtle">
+<h2 class="font-headline-md text-title-sm text-on-surface uppercase tracking-tight">Provider Gateways</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border-subtle">
+<div class="p-4 flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-on-surface">OPENAI</span>
+<div class="flex items-center gap-1.5 border border-status-healthy/30 bg-status-healthy/10 px-1.5 py-0.5">
+<div class="w-1.5 h-1.5 bg-status-healthy rounded-none animate-pulse"></div>
+<span class="font-label-caps text-[10px] text-status-healthy">HEALTHY</span>
+</div>
+</div>
+<div class="flex items-baseline gap-1 mt-2">
+<span class="font-body-mono text-[16px] text-on-surface">248</span>
+<span class="font-body-mono text-[10px] text-on-surface-variant">ms avg</span>
+</div>
+</div>
+<div class="p-4 flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-on-surface">ANTHROPIC</span>
+<div class="flex items-center gap-1.5 border border-status-healthy/30 bg-status-healthy/10 px-1.5 py-0.5">
+<div class="w-1.5 h-1.5 bg-status-healthy rounded-none animate-pulse"></div>
+<span class="font-label-caps text-[10px] text-status-healthy">HEALTHY</span>
+</div>
+</div>
+<div class="flex items-baseline gap-1 mt-2">
+<span class="font-body-mono text-[16px] text-on-surface">312</span>
+<span class="font-body-mono text-[10px] text-on-surface-variant">ms avg</span>
+</div>
+</div>
+<div class="p-4 flex flex-col gap-2 bg-status-warning/5">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-on-surface">GEMINI</span>
+<div class="flex items-center gap-1.5 border border-status-warning/30 bg-status-warning/10 px-1.5 py-0.5">
+<div class="w-1.5 h-1.5 bg-status-warning rounded-none"></div>
+<span class="font-label-caps text-[10px] text-status-warning">DEGRADED</span>
+</div>
+</div>
+<div class="flex items-baseline gap-1 mt-2">
+<span class="font-body-mono text-[16px] text-status-warning">1840</span>
+<span class="font-body-mono text-[10px] text-on-surface-variant">ms avg</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-bg-card border border-border-subtle flex flex-col min-h-[500px]">
+<div class="px-4 py-3 border-b border-border-subtle flex justify-between items-center">
+<h2 class="font-headline-md text-title-sm text-on-surface uppercase tracking-tight flex items-center gap-2">
+<span class="w-2 h-2 bg-primary animate-ping"></span> Live Telemetry
+         </h2>
+</div>
+<div class="flex-1 overflow-y-auto flex flex-col p-2 gap-1 font-body-mono text-[12px]" id="telemetry-feed">
+<div class="flex flex-col p-2 border border-border-subtle bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex justify-between text-on-surface-variant mb-1">
+<span>14:32:01.421</span>
+<span class="text-status-healthy">200 OK</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="border border-[#8B5CF6]/50 bg-[#8B5CF6]/10 text-[#8B5CF6] px-1 py-0.5 text-[10px]">PRISM AUTO</span>
+<span class="text-on-surface truncate max-w-[120px]">gpt-4o-mini</span>
+</div>
+<span class="text-on-surface-variant">312ms</span>
+</div>
+</div>
+<div class="flex flex-col p-2 border border-border-subtle bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex justify-between text-on-surface-variant mb-1">
+<span>14:32:01.105</span>
+<span class="text-status-healthy">200 OK</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="border border-border-subtle text-on-surface-variant px-1 py-0.5 text-[10px]">DIRECT</span>
+<span class="text-on-surface truncate max-w-[120px]">claude-3-haiku</span>
+</div>
+<span class="text-on-surface-variant">421ms</span>
+</div>
+</div>
+<div class="flex flex-col p-2 border border-status-critical/30 bg-status-critical/5 hover:bg-status-critical/10 transition-colors">
+<div class="flex justify-between text-on-surface-variant mb-1">
+<span>14:31:59.882</span>
+<span class="text-status-critical">429 RATE LIMIT</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="border border-border-subtle text-on-surface-variant px-1 py-0.5 text-[10px]">DIRECT</span>
+<span class="text-on-surface truncate max-w-[120px]">gemini-1.5-pro</span>
+</div>
+<span class="text-status-critical">84ms</span>
+</div>
+</div>
+<div class="flex flex-col p-2 border border-border-subtle bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex justify-between text-on-surface-variant mb-1">
+<span>14:31:55.210</span>
+<span class="text-status-healthy">200 OK</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="border border-[#8B5CF6]/50 bg-[#8B5CF6]/10 text-[#8B5CF6] px-1 py-0.5 text-[10px]">PRISM AUTO</span>
+<span class="text-on-surface truncate max-w-[120px]">gpt-4-turbo</span>
+</div>
+<span class="text-on-surface-variant">1204ms</span>
+</div>
+</div>
+<div class="flex flex-col p-2 border border-border-subtle bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex justify-between text-on-surface-variant mb-1">
+<span>14:31:52.991</span>
+<span class="text-status-healthy">200 OK</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="border border-[#8B5CF6]/50 bg-[#8B5CF6]/10 text-[#8B5CF6] px-1 py-0.5 text-[10px]">PRISM AUTO</span>
+<span class="text-on-surface truncate max-w-[120px]">claude-3-sonnet</span>
+</div>
+<span class="text-on-surface-variant">892ms</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-bg-card border border-border-subtle flex flex-col mt-4">
+<div class="px-4 py-3 border-b border-border-subtle flex justify-between items-center">
+<h2 class="font-headline-md text-title-sm text-on-surface uppercase tracking-tight">Recent AI Activity</h2>
+<button class="font-label-caps text-primary border border-primary/50 hover:bg-primary/10 px-3 py-1 transition-colors">VIEW ALL</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[600px]">
+<thead>
+<tr class="border-b border-border-subtle font-label-caps text-on-surface-variant bg-bg-base">
+<th class="p-3 font-normal">TIMESTAMP</th>
+<th class="p-3 font-normal">ROUTE</th>
+<th class="p-3 font-normal">PROVIDER / MODEL</th>
+<th class="p-3 font-normal">STATUS</th>
+<th class="p-3 font-normal text-right">LATENCY</th>
+</tr>
+</thead>
+<tbody class="font-body-mono text-[13px]">
+<tr class="border-b border-border-subtle bg-bg-card hover:bg-surface-container transition-colors">
+<td class="p-3 text-on-surface-variant">2023-10-24 14:32:01</td>
+<td class="p-3"><span class="border border-[#8B5CF6]/50 text-[#8B5CF6] px-1.5 py-0.5 text-[10px] tracking-wide">PRISM AUTO</span></td>
+<td class="p-3 text-on-surface">OpenAI / gpt-4o-mini</td>
+<td class="p-3 text-status-healthy">200 OK</td>
+<td class="p-3 text-right text-on-surface-variant">312ms</td>
+</tr>
+<tr class="border-b border-border-subtle bg-bg-base hover:bg-surface-container transition-colors">
+<td class="p-3 text-on-surface-variant">2023-10-24 14:32:01</td>
+<td class="p-3"><span class="border border-border-subtle text-on-surface-variant px-1.5 py-0.5 text-[10px] tracking-wide">DIRECT</span></td>
+<td class="p-3 text-on-surface">Anthropic / claude-3-haiku</td>
+<td class="p-3 text-status-healthy">200 OK</td>
+<td class="p-3 text-right text-on-surface-variant">421ms</td>
+</tr>
+<tr class="border-b border-border-subtle bg-status-critical/5 hover:bg-status-critical/10 transition-colors">
+<td class="p-3 text-on-surface-variant">2023-10-24 14:31:59</td>
+<td class="p-3"><span class="border border-border-subtle text-on-surface-variant px-1.5 py-0.5 text-[10px] tracking-wide">DIRECT</span></td>
+<td class="p-3 text-on-surface">Google / gemini-1.5-pro</td>
+<td class="p-3 text-status-critical">429 RATE LIMIT</td>
+<td class="p-3 text-right text-status-critical">84ms</td>
+</tr>
+<tr class="border-b border-border-subtle bg-bg-base hover:bg-surface-container transition-colors">
+<td class="p-3 text-on-surface-variant">2023-10-24 14:31:55</td>
+<td class="p-3"><span class="border border-[#8B5CF6]/50 text-[#8B5CF6] px-1.5 py-0.5 text-[10px] tracking-wide">PRISM AUTO</span></td>
+<td class="p-3 text-on-surface">OpenAI / gpt-4-turbo</td>
+<td class="p-3 text-status-healthy">200 OK</td>
+<td class="p-3 text-right text-on-surface-variant">1204ms</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div></main></div></body></html>

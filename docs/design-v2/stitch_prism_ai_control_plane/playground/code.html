@@ -1,0 +1,308 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-tint":"#d0bcff","on-tertiary-fixed":"#2c1700","surface-container":"#211e27","tertiary-container":"#ca801e","border-default":"#242832","error":"#ffb4ab","outline":"#958ea0","surface-container-lowest":"#0f0d15","secondary":"#4cd7f6","inverse-on-surface":"#322f39","on-tertiary-fixed-variant":"#673d00","on-surface-variant":"#cbc3d7","on-tertiary-container":"#3f2300","surface-bright":"#3b3742","inverse-surface":"#e7e0ed","secondary-fixed-dim":"#4cd7f6","surface-container-highest":"#37333d","surface":"#15121b","background":"#15121b","on-error":"#690005","tertiary-fixed":"#ffdcbb","surface-container-high":"#2c2832","on-background":"#e7e0ed","border-subtle":"#1B1F27","bg-base":"#08090A","primary-container":"#a078ff","tertiary-fixed-dim":"#ffb869","on-primary-fixed":"#23005c","on-secondary-fixed":"#001f26","inverse-primary":"#6d3bd7","primary-fixed-dim":"#d0bcff","on-secondary-fixed-variant":"#004e5c","secondary-fixed":"#acedff","on-error-container":"#ffdad6","primary-fixed":"#e9ddff","outline-variant":"#494454","on-secondary":"#003640","on-primary-fixed-variant":"#5516be","surface-container-low":"#1d1a23","on-primary-container":"#340080","bg-card":"#0F1115","surface-dim":"#15121b","bg-hover":"#181C23","tertiary":"#ffb869","primary":"#d0bcff","on-secondary-container":"#00424e","surface-variant":"#37333d","on-tertiary":"#482900","secondary-container":"#03b5d3","on-surface":"#e7e0ed","error-container":"#93000a","on-primary":"#3c0091"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{"margin-md":"20px",gutter:"16px","margin-sm":"12px","sidebar-width":"248px","grid-unit":"4px"},fontFamily:{"headline-md":["Inter"],"headline-lg":["Inter"],"code-md":["JetBrains Mono"],"body-sm":["Inter"],"body-md":["Inter"],"label-caps":["Inter"],"headline-sm":["Inter"],"code-sm":["JetBrains Mono"]},fontSize:{"headline-md":["20px",{lineHeight:"28px",fontWeight:"600"}],"headline-lg":["24px",{lineHeight:"32px",fontWeight:"600"}],"code-md":["13px",{lineHeight:"20px",fontWeight:"450"}],"body-sm":["13px",{lineHeight:"18px",fontWeight:"400"}],"body-md":["14px",{lineHeight:"20px",fontWeight:"400"}],"label-caps":["11px",{lineHeight:"16px",letterSpacing:"0.05em",fontWeight:"700"}],"headline-sm":["16px",{lineHeight:"24px",fontWeight:"600"}],"code-sm":["12px",{lineHeight:"16px",fontWeight:"450"}]}}}}</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@450&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/></head><body class="bg-bg-base font-body-md text-on-surface"><aside class="fixed left-0 top-0 h-full w-[248px] bg-bg-card border-r border-border-default z-50 flex flex-col overflow-y-auto overflow-x-hidden"><div class="p-6 flex items-center gap-3"><img alt="Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WMNrDjVqKCYnUNg9fCRIu1RMe5AStIJxlZpDtRm3cSKNpt-_drUPfPNX6jcmmUmYd_ZJ1tS4NIZw0ldfaz1iMKhAPBH0m9Sr8ZqS89pTJE83LlOkovVPkNCBdtXGDPCEND5l9As303QVIuFbU2tXk6f10194qzTV6vz3S0dT5eJty_6Ie302YJkWfbdFRwfqHA07TKRMjhd44oOpJgdYZ256S6qMxs4VGrdmhV_yC7GI-nsSC3CvpwsxlB"/><span class="font-headline-sm text-headline-sm tracking-tight">Prism</span></div><nav class="flex-1 flex flex-col gap-1 px-3" data-active-classes="bg-surface-container-highest text-primary border-r-2 border-primary"><div class="px-3 py-2 text-label-caps font-label-caps text-outline uppercase tracking-widest mt-4">Core</div><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span class="font-body-md">Dashboard</span></a><div class="px-3 py-2 text-label-caps font-label-caps text-outline uppercase tracking-widest mt-6">AI Infrastructure</div><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="providers" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span class="font-body-md">Providers</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="credentials" href="#"><span class="material-symbols-outlined text-[20px]">key</span><span class="font-body-md">Credentials</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="models" href="#"><span class="material-symbols-outlined text-[20px]">model_training</span><span class="font-body-md">Models</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="routing" href="#"><span class="material-symbols-outlined text-[20px]">alt_route</span><span class="font-body-md">Routing</span></a><div class="px-3 py-2 text-label-caps font-label-caps text-outline uppercase tracking-widest mt-6">Gateways</div><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="tool-gateway" href="#"><span class="material-symbols-outlined text-[20px]">construction</span><span class="font-body-md">Tool</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="resource-gateway" href="#"><span class="material-symbols-outlined text-[20px]">storage</span><span class="font-body-md">Resource</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="mcp" href="#"><span class="material-symbols-outlined text-[20px]">lan</span><span class="font-body-md">MCP</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="agent-gateway" href="#"><span class="material-symbols-outlined text-[20px]">smart_toy</span><span class="font-body-md">Agent</span></a><div class="px-3 py-2 text-label-caps font-label-caps text-outline uppercase tracking-widest mt-6">Governance</div><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="policies" href="#"><span class="material-symbols-outlined text-[20px]">policy</span><span class="font-body-md">Policies</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="audit-trail" href="#"><span class="material-symbols-outlined text-[20px]">history</span><span class="font-body-md">Audit Trail</span></a><div class="px-3 py-2 text-label-caps font-label-caps text-outline uppercase tracking-widest mt-6">Operations</div><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="logs" href="#"><span class="material-symbols-outlined text-[20px]">terminal</span><span class="font-body-md">Logs</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="budgets" href="#"><span class="material-symbols-outlined text-[20px]">payments</span><span class="font-body-md">Budgets</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group bg-surface-container-highest text-primary border-r-2 border-primary" data-path="playground" href="#"><span class="material-symbols-outlined text-[20px]">science</span><span class="font-body-md">Playground</span></a></nav><div class="mt-auto p-3 border-t border-border-default"><a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-bg-hover hover:text-on-surface transition-colors group" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-body-md">Settings</span></a></div></aside><div class="pl-[248px]"><header class="fixed top-0 left-[248px] right-0 h-[60px] bg-bg-base/80 backdrop-blur-xl border-b border-border-default z-40 flex items-center px-8 justify-between"><div class="flex items-center gap-6"><div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low border border-border-default rounded-lg text-outline w-96 hover:border-primary/50 transition-colors cursor-pointer"><span class="material-symbols-outlined text-sm">search</span><span class="text-body-sm">Search infrastructure...</span><span class="ml-auto text-xs opacity-50">⌘K</span></div></div><div class="flex items-center gap-6"><div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low border border-border-default rounded-full"><span class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_#4cd7f6]"></span><span class="text-label-caps font-label-caps text-on-surface">Operational</span></div><div class="h-8 w-px bg-border-default"></div><img alt="Profile" class="w-8 h-8 rounded-full border border-border-default object-cover cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFU_htNdvk00fwB2tq2T4KQ79L0nlfjl5EppZcokBhQx-5mHQ-HoJbIz8m7WlH2gZFnf08LfZY5gXHnum-dw_o2NuslP9q8LFyUo9WzTttaVdKm90rTAW2UzREegmCCFMz5St2y0tEnjo7NLiC1GahLwC7P_5VUxyg08FHSZaztRe-n2kHv6P1QETagfgi4sjoNkw3NKHjlszCM0zrbAkHGKahMBfzzZghhsWxzheEQ6oTiFgzwaHjkA"/></div></header><main class="pt-[60px] min-h-screen bg-bg-base"><div class="flex flex-col w-full h-[calc(100vh-60px)] font-body-md bg-bg-base text-on-surface p-4 pb-0 pt-0 box-border">
+<div class="flex flex-row flex-1 overflow-hidden h-full">
+<!-- Left Panel: Request Editor -->
+<div class="flex flex-col w-[45%] h-full border-r border-border-default bg-surface-container-lowest relative pb-4">
+<div class="flex items-center justify-between px-6 py-4 border-b border-border-default bg-surface-container/50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">terminal</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface m-0 p-0">Request Editor</h2>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_#4cd7f6] animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-widest">Live Connect</span>
+</div>
+</div>
+<!-- Configuration Options -->
+<div class="px-6 py-4 border-b border-border-default bg-surface/50">
+<div class="flex flex-col gap-4">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-caps text-label-caps text-outline uppercase tracking-widest">Target Router</label>
+<div class="flex items-center justify-between px-3 py-2 bg-bg-base border border-border-default rounded-md cursor-pointer hover:border-outline-variant transition-colors group">
+<span class="font-code-md text-code-md text-primary-fixed">prism-auto-router</span>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface-variant transition-colors text-sm">expand_more</span>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex flex-col gap-1.5 flex-1">
+<label class="font-label-caps text-label-caps text-outline uppercase tracking-widest">Fallback Policy</label>
+<div class="flex items-center justify-between px-3 py-2 bg-bg-base border border-border-default rounded-md cursor-pointer hover:border-outline-variant transition-colors group">
+<span class="font-body-md text-on-surface-variant">Strict Degradation</span>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface-variant transition-colors text-sm">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5 flex-1">
+<label class="font-label-caps text-label-caps text-outline uppercase tracking-widest">Timeout (ms)</label>
+<input class="w-full px-3 py-2 bg-bg-base border border-border-default rounded-md font-code-md text-code-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all" type="number" value="1500"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Editor Area -->
+<div class="flex-1 flex flex-col px-6 py-4 relative group">
+<label class="font-label-caps text-label-caps text-outline uppercase tracking-widest mb-2 flex items-center justify-between w-full">
+<span>Input Prompt</span>
+<div class="flex gap-2">
+<button class="text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-[16px]">content_copy</span></button>
+<button class="text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-[16px]">clear_all</span></button>
+</div>
+</label>
+<div class="relative flex-1 rounded-lg border border-border-default bg-bg-base overflow-hidden focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all flex flex-col">
+<!-- Line Numbers (Simulated) -->
+<div class="absolute left-0 top-0 bottom-0 w-10 bg-surface-container-lowest border-r border-border-default flex flex-col items-end py-3 px-2 font-code-sm text-code-sm text-outline select-none pointer-events-none opacity-50 z-10" id="line-numbers">
+<span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+</div>
+<textarea class="w-full flex-1 bg-transparent border-none resize-none font-code-md text-code-md text-on-surface-variant p-3 pl-14 focus:outline-none focus:ring-0 whitespace-pre-wrap font-code" id="prompt-input" oninput="updateLineNumbers(this)" spellcheck="false">{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a senior data engineer specializing in highly optimized PySpark ETL pipelines."
+    },
+    {
+      "role": "user",
+      "content": "Write a PySpark script to perform a complex left anti-join on two massive parquet datasets, resolving skew issues using broadcast joins where applicable, and outputting to Delta format partitioned by event_date."
+    }
+  ],
+  "temperature": 0.2,
+  "max_tokens": 1500
+}</textarea>
+</div>
+</div>
+<!-- Action Area -->
+<div class="px-6 pb-2 pt-2 flex items-center justify-between border-t border-border-default bg-surface-container-lowest mt-auto z-20">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm text-outline">tokens: ~142</span>
+<span class="w-1 h-4 bg-border-default"></span>
+<span class="font-code-sm text-code-sm text-outline">est cost: $0.0014</span>
+</div>
+<button class="bg-primary hover:bg-primary-fixed text-on-primary-fixed px-5 py-2 rounded-md font-body-sm font-semibold tracking-wide flex items-center gap-2 transition-colors" id="run-btn">
+<span class="material-symbols-outlined text-sm">play_arrow</span>
+                     Simulate Route
+                 </button>
+</div>
+</div>
+<!-- Right Panel: Output & Trace -->
+<div class="flex flex-col w-[55%] h-full bg-bg-base relative overflow-y-auto pb-6">
+<div class="sticky top-0 z-30 flex items-center justify-between px-6 py-4 border-b border-border-default bg-bg-base/90 backdrop-blur-md">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-xl">analytics</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface m-0 p-0">Execution Trace</h2>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 bg-surface-container text-on-surface-variant font-body-sm rounded border border-border-default hover:bg-surface-container-high transition-colors text-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">download</span> Export JSON
+                      </button>
+</div>
+</div>
+<div class="p-6 flex flex-col gap-6" id="trace-container">
+<!-- Step 1: Intent Classification -->
+<div class="flex flex-col gap-3 relative before:content-[''] before:absolute before:left-[11px] before:top-8 before:bottom-[-24px] before:w-px before:bg-border-default before:-z-10 animate-[fade-in_0.3s_ease-out]">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-border-default flex items-center justify-center z-10">
+<span class="font-code-sm text-code-sm text-outline">1</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant">Intent Classification</h3>
+<span class="ml-auto font-code-sm text-code-sm text-outline">45ms</span>
+</div>
+<div class="ml-[36px] bg-surface-container-lowest border border-border-default rounded-lg p-4 flex flex-col gap-4">
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-widest">Primary Intent</span>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded font-code-sm text-code-sm">CODE_GENERATION</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-70">0.94 confidence</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-widest">Domain Context</span>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 bg-secondary/10 text-secondary border border-secondary/20 rounded font-code-sm text-code-sm">DATA_ENGINEERING</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-70">0.88 confidence</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-widest">Complexity Assessment</span>
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-gradient-to-r from-tertiary-container to-error h-full rounded-full" style="width: 85%;"></div>
+</div>
+<div class="flex justify-between w-full font-code-sm text-code-sm">
+<span class="text-outline">Low</span>
+<span class="text-error font-medium">High (8.5/10)</span>
+</div>
+<p class="font-body-sm text-on-surface-variant text-sm mt-1 leading-relaxed">Request demands specialized framework knowledge (PySpark), optimization strategies (broadcast joins), and complex logic (left anti-join on skewed data). Requires a highly capable reasoning model.</p>
+</div>
+</div>
+</div>
+<!-- Step 2: Candidate Evaluation -->
+<div class="flex flex-col gap-3 relative before:content-[''] before:absolute before:left-[11px] before:top-8 before:bottom-[-24px] before:w-px before:bg-border-default before:-z-10 animate-[fade-in_0.5s_ease-out]">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-border-default flex items-center justify-center z-10">
+<span class="font-code-sm text-code-sm text-outline">2</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant">Candidate Evaluation Matrix</h3>
+<span class="ml-auto font-code-sm text-code-sm text-outline">120ms</span>
+</div>
+<div class="ml-[36px] overflow-x-auto border border-border-default rounded-lg bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container/50 border-b border-border-default">
+<th class="p-3 font-label-caps text-label-caps text-outline uppercase tracking-widest whitespace-nowrap">Model ID</th>
+<th class="p-3 font-label-caps text-label-caps text-outline uppercase tracking-widest whitespace-nowrap">Capability Score</th>
+<th class="p-3 font-label-caps text-label-caps text-outline uppercase tracking-widest whitespace-nowrap">Latency Est.</th>
+<th class="p-3 font-label-caps text-label-caps text-outline uppercase tracking-widest whitespace-nowrap">Cost Est.</th>
+<th class="p-3 font-label-caps text-label-caps text-outline uppercase tracking-widest whitespace-nowrap">Total Score</th>
+</tr>
+</thead>
+<tbody class="font-code-md text-code-md text-on-surface-variant">
+<tr class="border-b border-border-subtle bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer group relative">
+<td class="p-3 flex items-center gap-2">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<span class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_#4cd7f6]"></span>
+<span class="text-primary-fixed font-medium">claude-3-5-sonnet-v2</span>
+</td>
+<td class="p-3">0.98</td>
+<td class="p-3">~1.2s</td>
+<td class="p-3">$0.0045</td>
+<td class="p-3 text-secondary font-semibold">92.4 <span class="material-symbols-outlined text-[14px] align-middle ml-1">star</span></td>
+</tr>
+<tr class="border-b border-border-subtle hover:bg-bg-hover transition-colors">
+<td class="p-3 flex items-center gap-2 pl-3">
+<span class="w-2 h-2 rounded-full bg-secondary/50"></span>
+<span>gpt-4o</span>
+</td>
+<td class="p-3">0.96</td>
+<td class="p-3">~0.8s</td>
+<td class="p-3">$0.0075</td>
+<td class="p-3">88.1</td>
+</tr>
+<tr class="border-b border-border-subtle hover:bg-bg-hover transition-colors opacity-70">
+<td class="p-3 flex items-center gap-2 pl-3">
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+<span>claude-3-haiku</span>
+</td>
+<td class="p-3 text-error">0.45 <span class="text-xs ml-1">(insufficient)</span></td>
+<td class="p-3">~0.3s</td>
+<td class="p-3">$0.0004</td>
+<td class="p-3">--</td>
+</tr>
+<tr class="hover:bg-bg-hover transition-colors opacity-70">
+<td class="p-3 flex items-center gap-2 pl-3">
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+<span>llama-3-70b</span>
+</td>
+<td class="p-3">0.85</td>
+<td class="p-3 text-error">~4.5s <span class="text-xs ml-1">(timeout risk)</span></td>
+<td class="p-3">$0.0009</td>
+<td class="p-3">--</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Step 3: Selection & Dispatch -->
+<div class="flex flex-col gap-3 relative animate-[fade-in_0.7s_ease-out]">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-full bg-primary text-bg-base font-bold flex items-center justify-center z-10 shadow-[0_0_12px_#d0bcff40]">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary">Routing Decision</h3>
+<span class="ml-auto font-code-sm text-code-sm text-outline">5ms</span>
+</div>
+<div class="ml-[36px] bg-gradient-to-br from-surface-container to-surface-container-lowest border border-primary/30 rounded-lg p-5 shadow-lg relative overflow-hidden">
+<!-- Decorative background glow -->
+<div class="absolute -right-20 -top-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="flex items-start justify-between relative z-10">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-primary uppercase tracking-widest">Selected Provider</span>
+<div class="flex items-center gap-3 mt-1">
+<div class="px-3 py-1.5 bg-bg-base border border-primary/50 rounded shadow-sm flex items-center gap-2">
+<img alt="Anthropic Logo" class="h-4 w-auto invert opacity-80" data-alt="A stylized logo representing Anthropic AI company, white silhouette on transparent background, minimal and clean design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVujj46FzkvS0FhB8iff5RndW4pgqLQfRERfXMirLjeoajjcaq3HcPgIjbWY8QZhL69paz0wCQngJ-pwJlVvV8Amxcwa9-pirr2fdkghZXz63hVJ5N75lCuQWC7K4W0E1BOl8e8sMl9pi2QAZ8CfewU-lrNUYTCoTGQYCqZXQ8GX3MetLz9GPD6B4683Q02FtH6st_98qY1wQYRmI3d7sdagQGxyeC3DLS4NgIWR6_6s1-op4HC850dg"/>
+<span class="font-code-md text-code-md font-bold text-on-surface">claude-3-5-sonnet-v2</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-widest">Status</span>
+<div class="flex items-center gap-1.5">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-secondary"></span>
+</span>
+<span class="font-code-md text-code-md text-secondary">Dispatching request...</span>
+</div>
+</div>
+</div>
+<div class="mt-5 pt-4 border-t border-border-default/50">
+<p class="font-code-sm text-code-sm text-on-surface-variant flex items-start gap-2">
+<span class="material-symbols-outlined text-outline text-[16px]">info</span>
+<span class="leading-relaxed">Selected based on optimal balance of <span class="text-primary-fixed">code generation capability (0.98)</span> vs <span class="text-on-surface">latency budget (&lt;1.5s)</span>. Target meets requirements for specialized PySpark domain knowledge.</span>
+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<style>
+    /* Required for line numbers syncing in textarea */
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Custom scrollbar for the textarea and panels to match theme */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #242832; /* border-default */
+        border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #37333d; /* surface-variant */
+    }
+</style>
+<script>
+    // Simple script to update line numbers in the editor
+    function updateLineNumbers(textarea) {
+        const lines = textarea.value.split('\n').length;
+        const lineNumbersDiv = document.getElementById('line-numbers');
+        let numbersHtml = '';
+        for (let i = 1; i <= lines; i++) {
+            numbersHtml += `<span>${i}</span>`;
+        }
+        lineNumbersDiv.innerHTML = numbersHtml;
+        
+        // Sync scroll
+        textarea.addEventListener('scroll', () => {
+             lineNumbersDiv.style.transform = `translateY(-${textarea.scrollTop}px)`;
+        });
+    }
+
+    // Initialize line numbers on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const textarea = document.getElementById('prompt-input');
+        if(textarea) {
+            updateLineNumbers(textarea);
+            
+            // Re-simulate action
+            const runBtn = document.getElementById('run-btn');
+            const traceContainer = document.getElementById('trace-container');
+            
+            runBtn.addEventListener('click', () => {
+                const originalHtml = traceContainer.innerHTML;
+                traceContainer.innerHTML = '<div class="w-full h-full flex items-center justify-center font-code-md text-outline py-20"><span class="material-symbols-outlined animate-spin mr-2">refresh</span> Processing routing logic...</div>';
+                
+                setTimeout(() => {
+                    traceContainer.innerHTML = originalHtml;
+                }, 800);
+            });
+        }
+    });
+</script></main></div></body></html>
