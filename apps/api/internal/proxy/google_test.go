@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -168,4 +169,49 @@ func TestOpenAIAdapter_AlwaysSanitizesPrismAuto(t *testing.T) {
 		t.Fatalf("httpReq is nil")
 	}
 }
+
+func TestSanitizeMessagesForGoogle_Position8Bash(t *testing.T) {
+	// Simulate history up to position 8
+	messages := make([]map[string]interface{}, 9)
+	for i := 0; i < 8; i++ {
+		messages[i] = map[string]interface{}{
+			"role":    "user",
+			"content": fmt.Sprintf("Turn %d", i),
+		}
+	}
+	messages[8] = map[string]interface{}{
+		"role": "assistant",
+		"tool_calls": []interface{}{
+			map[string]interface{}{
+				"id":   "call_bash_pos8",
+				"type": "function",
+				"function": map[string]interface{}{
+					"name":      "default_api:bash",
+					"arguments": "{\"command\":\"echo hello\"}",
+				},
+			},
+		},
+	}
+
+	sanitized := SanitizeMessagesForGoogle(messages)
+	if len(sanitized) != 9 {
+		t.Fatalf("expected 9 messages, got %d", len(sanitized))
+	}
+
+	tcRaw, ok := sanitized[8]["tool_calls"].([]interface{})
+	if !ok || len(tcRaw) == 0 {
+		t.Fatalf("expected tool_calls at position 8")
+	}
+
+	tcMap := tcRaw[0].(map[string]interface{})
+	if tcMap["thought_signature"] != "skip" || tcMap["thoughtSignature"] != "skip" {
+		t.Errorf("tcMap missing thought_signature: %v", tcMap)
+	}
+
+	fnMap := tcMap["function"].(map[string]interface{})
+	if fnMap["thought_signature"] != "skip" || fnMap["thoughtSignature"] != "skip" {
+		t.Errorf("fnMap missing thought_signature: %v", fnMap)
+	}
+}
+
 
