@@ -100,6 +100,7 @@ func main() {
 	auditTrailRepo := repository.NewAuditTrailRepository(sqlDB)
 	rbacRepo := repository.NewRBACRepository(sqlDB)
 	quotaRepo := repository.NewQuotaRepository(sqlDB)
+	billingRepo := repository.NewBillingRepository(sqlDB)
 
 	// Services
 	authService := service.NewAuthService(userRepo, sessionRepo, accountRepo)
@@ -160,6 +161,7 @@ func main() {
 	onboardingHandler := handlers.NewOnboardingHandler(userRepo, gatewayKeyRepo)
 	oauthHandler := handlers.NewOAuthHandler(authService)
 	quotaHandler := handlers.NewQuotaHandler(quotaRepo)
+	billingHandler := handlers.NewBillingHandler(billingRepo)
 
 	// Background workers
 	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -254,6 +256,13 @@ func main() {
 			protected.GET("/quotas", quotaHandler.List)
 			protected.GET("/quotas/:target_type/:target_id", quotaHandler.Get)
 			protected.PUT("/quotas/:target_type/:target_id", quotaHandler.Update)
+
+			// Multi-Tier Billing & Subscriptions
+			protected.GET("/billing/plans", billingHandler.ListPlans)
+			protected.GET("/billing/subscription", billingHandler.GetSubscription)
+			protected.POST("/billing/subscription/upgrade", billingHandler.UpgradeSubscription)
+			protected.GET("/billing/invoices", billingHandler.ListInvoices)
+			protected.GET("/billing/usage", billingHandler.GetUsage)
 
 			// Dashboard
 			protected.GET("/dashboard/stats", dashboardHandler.GetStats)

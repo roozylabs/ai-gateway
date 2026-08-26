@@ -1081,6 +1081,60 @@ export async function apiUpdateQuota(targetType: string, targetId: string, data:
   return response.data;
 }
 
+// Multi-Tier Billing & Pricing API
+export interface ApiBillingPlan {
+  id: string;
+  name: string;
+  slug: string;
+  priceMonthlyUsd: number;
+  includedTokens: number;
+  markupPercentage: number;
+  features: string[];
+}
+
+export interface ApiSubscriptionStatus {
+  plan: ApiBillingPlan;
+  status: string;
+  currentPeriodEnd: string;
+  monthlyUsageSpent: number;
+}
+
+export interface ApiBillingInvoice {
+  id: string;
+  organizationId: string;
+  invoiceNumber: string;
+  amountDueUsd: number;
+  amountPaidUsd: number;
+  currency: string;
+  status: 'paid' | 'pending' | 'overdue';
+  lineItemsJson: string;
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export async function apiGetBillingPlans(): Promise<{ object: string; data: ApiBillingPlan[] }> {
+  const response = await api.get<{ object: string; data: ApiBillingPlan[] }>('/billing/plans');
+  return response.data;
+}
+
+export async function apiGetActiveSubscription(): Promise<ApiSubscriptionStatus> {
+  const response = await api.get<ApiSubscriptionStatus>('/billing/subscription');
+  return response.data;
+}
+
+export async function apiUpgradeSubscription(planSlug: string): Promise<{ message: string; planSlug: string }> {
+  const response = await api.post<{ message: string; planSlug: string }>('/billing/subscription/upgrade', { planSlug });
+  return response.data;
+}
+
+export async function apiGetInvoices(): Promise<{ object: string; data: ApiBillingInvoice[] }> {
+  const response = await api.get<{ object: string; data: ApiBillingInvoice[] }>('/billing/invoices');
+  return response.data;
+}
+
 // Agent Gateway API
 export interface ApiAgent {
   id: string;
