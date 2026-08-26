@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/roozylabs/prism/internal/models"
 	goredis "github.com/roozylabs/prism/internal/redis"
 	"github.com/roozylabs/prism/internal/repository"
+	"github.com/roozylabs/prism/internal/telemetry"
 	"github.com/roozylabs/prism/internal/utils"
 )
 
@@ -565,6 +565,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			log.ErrorMessage = sql.NullString{String: resp.Error.Message, Valid: true}
 		}
 
+		telemetry.RecordRequestMetrics(c.Request.Context(), log.Model, log.ProviderType, strconv.Itoa(log.StatusCode), gatewayKey.ID, float64(log.LatencyMs)/1000.0, log.InputTokens, log.OutputTokens, log.CostUSD)
+
 		if e.toolCalls != nil {
 			if recs := ExtractToolCallsFromResponse(resp); len(recs) > 0 {
 				go func(requestID string, recs []ToolCallRecord) {
@@ -856,11 +858,13 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 						if content, ok := ch.Delta["content"].(string); ok && content != "" {
 							ttftMs = int(time.Since(start).Milliseconds())
 							ttftCaptured = true
+							telemetry.RecordTTFT(c.Request.Context(), route.Model.Slug, route.Provider.Type, float64(ttftMs)/1000.0)
 							break
 						}
 						if _, ok := ch.Delta["reasoning_content"].(string); ok {
 							ttftMs = int(time.Since(start).Milliseconds())
 							ttftCaptured = true
+							telemetry.RecordTTFT(c.Request.Context(), route.Model.Slug, route.Provider.Type, float64(ttftMs)/1000.0)
 							break
 						}
 					}
@@ -988,11 +992,10 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			TotalTokens:     totalTokens.TotalTokens,
 			CostUSD:         costUSD,
 			RetryCount:      retryCount,
-			TTFTMs:          ttftMs,
-			ResponseHash:    respHash,
-			ResponseBytes:   respBytes,
 			Attempts:        MarshalAttempts(attempts),
 		}
+
+		telemetry.RecordRequestMetrics(c.Request.Context(), log.Model, log.ProviderType, strconv.Itoa(log.StatusCode), gatewayKey.ID, float64(latency)/1000.0, log.InputTokens, log.OutputTokens, log.CostUSD)
 
 		return log, nil
 	}

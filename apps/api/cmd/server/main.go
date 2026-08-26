@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/roozylabs/prism/internal/config"
 	"github.com/roozylabs/prism/internal/database"
 	"github.com/roozylabs/prism/internal/handlers"
@@ -17,6 +18,7 @@ import (
 	goredis "github.com/roozylabs/prism/internal/redis"
 	"github.com/roozylabs/prism/internal/repository"
 	"github.com/roozylabs/prism/internal/service"
+	"github.com/roozylabs/prism/internal/telemetry"
 	"github.com/roozylabs/prism/internal/workers"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -52,6 +54,14 @@ func main() {
 		log.Fatal("Failed to connect to Redis:", err)
 	}
 	defer rdb.Close()
+
+	// OpenTelemetry Initialization
+	otelShutdown, err := telemetry.InitOTel(context.Background())
+	if err != nil {
+		log.Printf("[OTel Warning] Failed to initialize OpenTelemetry: %v", err)
+	} else {
+		defer otelShutdown(context.Background())
+	}
 
 	// Repositories (use underlying sql.DB from sqlx)
 	sqlDB := db.DB
@@ -158,8 +168,9 @@ func main() {
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware())
 
-	// Health check (public)
+	// Health check & OTel Prometheus Metrics (public)
 	r.GET("/health", healthHandler.Check)
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// API routes group
 	api := r.Group("/api")
