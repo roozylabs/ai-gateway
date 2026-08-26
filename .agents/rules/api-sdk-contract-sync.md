@@ -49,3 +49,4 @@ Both `@roozylabs/prism` and `@roozylabs/prism-cli` follow **Semantic Versioning 
 
 ### Mandatory Version Synchronization:
 When bumping project release versions, ensure `packages/sdk/package.json` and `packages/cli/package.json` version strings match the target release.
+

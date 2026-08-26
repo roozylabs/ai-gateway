@@ -10,8 +10,6 @@ import (
 	"github.com/roozylabs/prism/internal/utils"
 )
 
-
-
 func AuthMiddleware(sessions *repository.SessionRepository, keys GatewayKeyFinder) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var token string

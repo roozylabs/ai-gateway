@@ -55,4 +55,3 @@ The following items are planned for future optimization as traffic scales:
     1. **Python SDK (`roozylabs-prism` / `packages/sdk-python`) [P1]**: PyPI package with sync/async `httpx` client, Pydantic type definitions, SSE streaming generator, and integrations for LangChain, CrewAI, AutoGen, and LlamaIndex.
     2. **Go SDK (`pkg/prism` / `packages/sdk-go`) [P1]**: High-throughput Go client library for internal microservices, edge proxies, and backend integrations.
     3. **Rust Crate (`prism-rs`) [P2]**: Zero-overhead Rust client crate for Wasm/Edge agent runtimes.
-
