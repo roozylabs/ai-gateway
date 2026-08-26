@@ -369,7 +369,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		providerReq := &ProviderRequest{
 			Model:       targetModel,
-			Messages:    req.Messages,
+			Messages:    SanitizeMessagesForGoogle(req.Messages),
 			Tools:       req.Tools,
 			ToolChoice:  req.ToolChoice,
 			Stream:      req.Stream,
@@ -688,7 +688,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		providerReq := &ProviderRequest{
 			Model:       targetModel,
-			Messages:    req.Messages,
+			Messages:    SanitizeMessagesForGoogle(req.Messages),
 			Tools:       req.Tools,
 			ToolChoice:  req.ToolChoice,
 			Stream:      true,
