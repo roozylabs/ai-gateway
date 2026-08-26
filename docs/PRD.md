@@ -26,6 +26,7 @@
 | 2.9 | 26 August 2026, 17:40 WIB | Added Enterprise RBAC System & OAuth2 Authentication specifications: /v1/user/permissions & /v1/auth/oauth/:provider endpoints, migration 064, 3-step onboarding wizard (/onboarding), and Next.js Permission Guarding |
 | 3.0 | 26 August 2026, 18:20 WIB | Added Advanced Audit Logs & Compliance Export Engine specifications: /v1/audit-trail/export CSV/JSON endpoints, migration 065 for sub-50ms indexing, dual-tab UI, and permission guarding (audit:read) |
 | 3.1 | 26 August 2026, 18:50 WIB | Added Multi-Tenant Quota & Limit Enforcement Engine specifications: /v1/quotas REST endpoints, migration 066, target scope limits (org/workspace/agent/user), and Next.js Quotas UI |
+| 3.2 | 26 August 2026, 18:56 WIB | Added Multi-Tier Billing & Pricing Engine specifications: /v1/billing REST endpoints, migration 067, subscription tier pricing cards, invoice history table, and permission guarding (billing:read) |
 
 ---
 
