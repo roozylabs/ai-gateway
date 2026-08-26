@@ -6,10 +6,12 @@ Whenever a new version release is tagged (e.g. `v2.1.0`), **ALL** version string
 
 ### Required Synchronization Target Locations:
 
-1. **Root Configuration Manifests**:
+1. **Root Configuration & Package Manifests**:
    - `package.json` (`"version": "2.1.0"`)
    - `apps/app/package.json` (`"version": "2.1.0"`)
    - `apps/web/package.json` (`"version": "2.1.0"`)
+   - `packages/sdk/package.json` (`"version": "2.1.0"`)
+   - `packages/cli/package.json` (`"version": "2.1.0"`)
 
 2. **Frontend UI Footers & Headers**:
    - `apps/app/components/AppLayout.tsx` (Sidebar/Header version badge `v2.1.0`)
