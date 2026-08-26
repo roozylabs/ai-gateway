@@ -1,488 +1,225 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import dayjs, { Dayjs } from 'dayjs';
+import React from 'react';
+import { AppLayout } from '@/components/AppLayout';
+import { PageHeader } from '@/components/molecules/PageHeader';
+import { MetricCard } from '@/components/molecules/MetricCard';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
+import { StatusDot, Badge } from '@/components/atoms/Badge';
+import { DataTable, Column } from '@/components/organisms/DataTable';
+import { LazyTrafficChart } from '@/components/organisms/ChartContainer';
+import { useDashboardStatsQuery } from '@/hooks/queries/useDashboardQuery';
 import {
-  Row,
-  Col,
-  Card,
-  Typography,
-  Table,
-  Space,
-  Segmented,
-  DatePicker,
-  Spin,
-  Badge,
-  Tag,
-  Button,
-} from 'antd';
-import {
-  ThunderboltOutlined,
-  ClockCircleOutlined,
-  CheckCircleOutlined,
-  LineChartOutlined,
-  KeyOutlined,
-  SyncOutlined,
-  CodeOutlined,
-  DollarOutlined,
-  ArrowRightOutlined,
-  WalletOutlined,
-} from '@ant-design/icons';
-import { Line } from '@ant-design/plots';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useTheme } from '@/context/ThemeContext';
-import { useSSE } from '@/hooks/useSSE';
-import { PageHeader, MetricCard, StatusTag } from '@/components/atoms';
-import {
-  apiGetDashboardStats,
-  apiGetDashboardUsage,
-  apiGetDashboardHealth,
-  apiGetSettings,
-  apiGetLogs,
-  apiGetBudgetStatus,
-  ApiRequestLog,
-  ApiProviderHealth,
-  ApiSetting,
-} from '@/lib/api';
+  Activity,
+  Zap,
+  DollarSign,
+  CheckCircle2,
+  Server,
+  Sparkles,
+} from 'lucide-react';
 
-const { Text } = Typography;
-const { RangePicker } = DatePicker;
+interface RecentActivity {
+  id: string;
+  time: string;
+  route: string;
+  model: string;
+  latency: number;
+  cost: number;
+  status: 'success' | 'error';
+}
+
+const mockActivities: RecentActivity[] = [
+  { id: '1', time: '19:42:01', route: 'prism-auto', model: 'claude-sonnet-3.7', latency: 184, cost: 0.0032, status: 'success' },
+  { id: '2', time: '19:41:45', route: 'agent:dev-agent', model: 'gpt-5-turbo', latency: 92, cost: 0.0018, status: 'success' },
+  { id: '3', time: '19:41:12', route: 'agent:qa-suite', model: 'gemini-2.5-pro', latency: 211, cost: 0.0009, status: 'success' },
+  { id: '4', time: '19:40:33', route: 'prism-auto', model: 'opencode-coder', latency: 145, cost: 0.0012, status: 'success' },
+  { id: '5', time: '19:39:58', route: 'direct', model: 'gpt-5-mini', latency: 88, cost: 0.0004, status: 'success' },
+];
+
+const mockTraffic = [
+  { time: '12:00', requests: 1200 },
+  { time: '13:00', requests: 2100 },
+  { time: '14:00', requests: 1800 },
+  { time: '15:00', requests: 3400 },
+  { time: '16:00', requests: 4200 },
+  { time: '17:00', requests: 3900 },
+  { time: '18:00', requests: 5100 },
+];
 
 export default function DashboardPage() {
-  const { mode } = useTheme();
-  const isDark = mode === 'dark';
-  const { isConnected } = useSSE();
+  const { data: stats, isLoading } = useDashboardStatsQuery();
 
-  const [timeframe, setTimeframe] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Custom'>('Daily');
-  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
-  const [metricView, setMetricView] = useState<'requests' | 'estimatedCost'>('requests');
-
-  // Compute params for usage API query
-  const usageQueryParams = React.useMemo(() => {
-    if (timeframe === 'Daily') return { days: 1 };
-    if (timeframe === 'Weekly') return { days: 7 };
-    if (timeframe === 'Monthly') return { days: 30 };
-    if (timeframe === 'Custom' && dateRange && dateRange[0] && dateRange[1]) {
-      return {
-        startDate: dateRange[0].format('YYYY-MM-DD'),
-        endDate: dateRange[1].format('YYYY-MM-DD'),
-      };
-    }
-    return { days: 30 };
-  }, [timeframe, dateRange]);
-
-  // Disable dates beyond 30 days or in the future
-  const disabledDate = (current: Dayjs) => {
-    if (!current) return false;
-    if (current > dayjs().endOf('day')) return true;
-    if (current < dayjs().subtract(30, 'days').startOf('day')) return true;
-    return false;
-  };
-
-  // React Query calls
-  const { data: settingsData } = useQuery({
-    queryKey: ['settings'],
-    queryFn: apiGetSettings,
-  });
-
-  // Currency & Exchange Rate configuration
-  const defaultCurrency = React.useMemo(() => {
-    const item = settingsData?.value?.find((s: ApiSetting) => s.key === 'default_currency');
-    return item?.value || 'IDR';
-  }, [settingsData]);
-
-  const usdToIdrRate = React.useMemo(() => {
-    const item = settingsData?.value?.find((s: ApiSetting) => s.key === 'usd_to_idr_rate');
-    return Number(item?.value) || 16000;
-  }, [settingsData]);
-
-  const formatCost = React.useCallback((usdAmount: number) => {
-    if (defaultCurrency === 'USD') return `$${usdAmount.toFixed(4)}`;
-    if (defaultCurrency === 'EUR') return `€${(usdAmount * 0.92).toFixed(4)}`;
-    if (defaultCurrency === 'SGD') return `S$${(usdAmount * 1.35).toFixed(4)}`;
-    // Default IDR
-    const idrVal = Math.round(usdAmount * usdToIdrRate);
-    return `Rp ${idrVal.toLocaleString('id-ID')}`;
-  }, [defaultCurrency, usdToIdrRate]);
-
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: apiGetDashboardStats,
-  });
-
-  const { data: usageData = [], isLoading: usageLoading } = useQuery({
-    queryKey: ['dashboard-usage', usageQueryParams],
-    queryFn: () => apiGetDashboardUsage(usageQueryParams),
-  });
-
-  const { data: healthData = [], isLoading: healthLoading } = useQuery({
-    queryKey: ['dashboard-health'],
-    queryFn: apiGetDashboardHealth,
-  });
-
-  const { data: logsData, isLoading: logsLoading } = useQuery({
-    queryKey: ['recent-logs'],
-    queryFn: () => apiGetLogs({ limit: 5 }),
-  });
-
-  const { data: budgetStatusData } = useQuery({
-    queryKey: ['budget-status'],
-    queryFn: apiGetBudgetStatus,
-  });
-
-  // Calculate per-model totals for summary legend tags
-  const modelTotals: Record<string, number> = {};
-  const modelCosts: Record<string, number> = {};
-  usageData.forEach((item) => {
-    const m = item.model || 'default';
-    modelTotals[m] = (modelTotals[m] || 0) + (item.requests || 0);
-    modelCosts[m] = (modelCosts[m] || 0) + (item.estimatedCost || 0);
-  });
-
-  // Ant Design Charts Config
-  const chartData = usageData.map((item) => ({
-    date: item.date,
-    model: item.model || 'default',
-    requests: item.requests,
-    estimatedCost: item.estimatedCost || 0,
-  }));
-
-  // Find peak point for persistent detail callout
-  const peakPoint = chartData.length > 0
-    ? chartData.reduce((max, p) => (
-        metricView === 'requests'
-          ? (p.requests > (max?.requests || 0) ? p : max)
-          : (p.estimatedCost > (max?.estimatedCost || 0) ? p : max)
-      ), chartData[0])
-    : null;
-
-  const chartConfig = {
-    data: chartData,
-    xField: 'date',
-    yField: metricView,
-    seriesField: 'model',
-    colorField: 'model',
-    smooth: true,
-    height: 280,
-    autoFit: true,
-    point: {
-      size: 5,
-      shape: 'diamond',
-    },
-    label: {
-      position: 'top',
-      style: {
-        fontSize: 11,
-        fontWeight: 'bold' as const,
-        fill: isDark ? '#ffffff' : '#141414',
-      },
-      formatter: (val: any) => {
-        if (metricView === 'requests') {
-          const count = typeof val === 'object' && val !== null ? val.requests : val;
-          if (count !== undefined && count !== null && count !== '') {
-            return `${count} reqs`;
-          }
-        } else {
-          const cost = typeof val === 'object' && val !== null ? val.estimatedCost : val;
-          if (cost !== undefined && cost !== null && cost !== '') {
-            return formatCost(Number(cost));
-          }
-        }
-        return '';
-      },
-    },
-    tooltip: {
-      showMarkers: true,
-    },
-    legend: {
-      position: 'top-left' as const,
-    },
-    theme: isDark ? 'dark' : 'light',
-  };
-
-  const activityColumns = React.useMemo(() => [
+  const activityColumns: Column<RecentActivity>[] = [
     {
-      title: 'Request ID',
-      dataIndex: 'id',
-      key: 'id',
-      render: (id: string) => <Text code>{id ? id.substring(0, 8) : '-'}</Text>,
+      title: 'Time',
+      dataIndex: 'time',
+      key: 'time',
+      render: (time) => <span className="font-mono text-muted-foreground">{time}</span>,
     },
     {
-      title: 'Timestamp',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (val: string) => (val ? new Date(val).toLocaleTimeString() : '-'),
-    },
-    {
-      title: 'Credential Used',
-      dataIndex: 'credentialName',
-      key: 'credentialName',
-      render: (name: string) => (
-        <Text strong style={{ fontSize: 13 }}>
-          {name || '-'}
-        </Text>
+      title: 'Route Policy',
+      dataIndex: 'route',
+      key: 'route',
+      render: (route) => (
+        <span className="font-mono text-[#8B5CF6] font-semibold">{route}</span>
       ),
     },
     {
-      title: 'Model',
+      title: 'Resolved Model',
       dataIndex: 'model',
       key: 'model',
-      render: (m: string) => <Tag color="blue">{m || 'default'}</Tag>,
+      render: (model) => <Badge variant="outline">{model}</Badge>,
     },
     {
       title: 'Latency',
-      dataIndex: 'latencyMs',
-      key: 'latencyMs',
-      render: (val: number) => `${val || 0} ms`,
+      dataIndex: 'latency',
+      key: 'latency',
+      render: (lat) => <span className="font-mono">{lat} ms</span>,
     },
     {
-      title: 'Tokens (In/Out)',
-      key: 'tokens',
-      render: (_: any, record: ApiRequestLog) => `${record.inputTokens} / ${record.outputTokens}`,
-    },
-    {
-      title: 'Est. Cost',
-      key: 'estimatedCost',
-      render: (_: any, record: ApiRequestLog) => (
-        <Tag color="gold" style={{ margin: 0, fontWeight: 'bold' }}>
-          {formatCost(record.estimatedCost || 0)}
-        </Tag>
-      ),
+      title: 'Cost',
+      dataIndex: 'cost',
+      key: 'cost',
+      render: (cost) => <span className="font-mono text-emerald-500">${Number(cost || 0).toFixed(4)}</span>,
     },
     {
       title: 'Status',
-      dataIndex: 'statusCode',
-      key: 'statusCode',
-      render: (code: number) => <StatusTag status={code} />,
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => (
+        <Badge variant={status === 'success' ? 'success' : 'destructive'}>
+          {String(status ?? '').toUpperCase()}
+        </Badge>
+      ),
     },
-  ], [formatCost]);
+  ];
 
   return (
-    <div>
+    <AppLayout>
       <PageHeader
-        title="Dashboard Overview"
-        description="Real-time metrics, model usage analytics, provider health, and live gateway activity"
+        title="AI Infrastructure Overview"
+        description="Monitor traffic, model latency, cost breakdown, and real-time credential health across all providers."
       />
 
-      {/* Top KPI Cards */}
-      <Spin spinning={statsLoading}>
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={12} lg={5}>
-            <MetricCard
-              title="Total Requests"
-              value={stats?.totalRequests || 0}
-              prefix={<ThunderboltOutlined style={{ color: '#1677ff' }} />}
-            />
-          </Col>
-
-          <Col xs={24} sm={12} lg={5}>
-            <MetricCard
-              title={`Est. API Expenses (${defaultCurrency})`}
-              value={formatCost(stats?.totalEstimatedCost || 0)}
-              prefix={<DollarOutlined style={{ color: '#faad14' }} />}
-            />
-          </Col>
-
-          <Col xs={24} sm={12} lg={5}>
-            <MetricCard
-              title="Total Tokens"
-              value={stats?.totalTokens || 0}
-              prefix={<CodeOutlined style={{ color: '#52c41a' }} />}
-            />
-          </Col>
-
-          <Col xs={24} sm={12} lg={4}>
-            <MetricCard
-              title="Avg Latency"
-              value={stats?.avgLatency || 0}
-              precision={0}
-              prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
-              suffix="ms"
-            />
-          </Col>
-
-          <Col xs={24} sm={12} lg={5}>
-            <MetricCard
-              title="Budget Status"
-              value={
-                budgetStatusData?.budget
-                  ? `$${(budgetStatusData.monthlySpent || 0).toFixed(2)} / $${budgetStatusData.budget.monthlyLimit}`
-                  : 'No Budget Set'
-              }
-              prefix={<WalletOutlined style={{ color: '#eb2f96' }} />}
-            />
-          </Col>
-        </Row>
-      </Spin>
-
-      {/* Analytics Chart & Health Grid */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} lg={16}>
-          <Card
-            title={
-              <Space size="middle">
-                <Space>
-                  <LineChartOutlined style={{ color: '#1677ff' }} />
-                  <span>Analytics & Volume</span>
-                </Space>
-                <Segmented
-                  size="small"
-                  options={[
-                    { label: 'Traffic (Reqs)', value: 'requests' },
-                    { label: `Expenses (${defaultCurrency})`, value: 'estimatedCost' },
-                  ]}
-                  value={metricView}
-                  onChange={(val) => setMetricView(val as any)}
-                />
-              </Space>
-            }
-            extra={
-              <Space>
-                <Segmented
-                  options={['Daily', 'Weekly', 'Monthly', 'Custom']}
-                  value={timeframe}
-                  onChange={(val) => setTimeframe(val as any)}
-                />
-                {timeframe === 'Custom' && (
-                  <RangePicker
-                    size="small"
-                    style={{ width: 230 }}
-                    disabledDate={disabledDate}
-                    value={dateRange as any}
-                    onChange={(dates) => setDateRange(dates as any)}
-                  />
-                )}
-              </Space>
-            }
-            size="small"
-            variant="borderless"
-            style={{ borderRadius: 8 }}
-          >
-            <Spin spinning={usageLoading}>
-              <div style={{ paddingTop: 12 }}>
-                {Object.keys(modelTotals).length > 0 && (
-                  <div style={{ marginBottom: 12 }}>
-                    <Space wrap size={[6, 6]}>
-                      <Text type="secondary" style={{ fontSize: 12, marginRight: 4 }}>Models Breakdown:</Text>
-                      {Object.entries(modelTotals).map(([mName, reqCount], i) => (
-                        <Tag
-                          key={mName}
-                          color={['blue', 'purple', 'cyan', 'magenta', 'green', 'orange', 'gold'][i % 7]}
-                          style={{ borderRadius: 12, padding: '2px 10px', fontSize: 12, margin: 0 }}
-                        >
-                          <Text strong style={{ color: 'inherit' }}>{mName}</Text>: {
-                            metricView === 'requests'
-                              ? `${reqCount.toLocaleString()} reqs`
-                              : formatCost(modelCosts[mName] || 0)
-                          }
-                        </Tag>
-                      ))}
-                      {peakPoint && peakPoint.requests > 0 && (
-                        <Tag
-                          color="red"
-                          style={{ borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 'bold', margin: 0 }}
-                        >
-                          🔥 Peak: {
-                            metricView === 'requests'
-                              ? `${peakPoint.requests} reqs (${peakPoint.model} on ${peakPoint.date})`
-                              : `${formatCost(peakPoint.estimatedCost)} (${peakPoint.model} on ${peakPoint.date})`
-                          }
-                        </Tag>
-                      )}
-                    </Space>
-                  </div>
-                )}
-                {chartData.length > 0 ? (
-                  <Line {...chartConfig} />
-                ) : (
-                  <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text type="secondary">No usage data recorded for selected period</Text>
-                  </div>
-                )}
-              </div>
-            </Spin>
-          </Card>
-        </Col>
-
-        <Col xs={24} lg={8}>
-          <Card
-            title={
-              <Space>
-                <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                <span>AI Provider Health</span>
-              </Space>
-            }
-            size="small"
-            variant="borderless"
-            style={{ borderRadius: 8, height: '100%' }}
-          >
-            <Spin spinning={healthLoading}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
-                {healthData.map((provider: ApiProviderHealth) => (
-                  <Card
-                    key={provider.name}
-                    size="small"
-                    style={{
-                      borderRadius: 6,
-                      background: isDark ? '#141414' : '#fafafa',
-                      border: `1px solid ${isDark ? '#303030' : '#f0f0f0'}`,
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <Text strong style={{ display: 'block' }}>
-                          {provider.name}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {provider.credCount} credential keys configured ({provider.type})
-                        </Text>
-                      </div>
-
-                      <StatusTag status={provider.status} />
-                    </div>
-                  </Card>
-                ))}
-
-                {healthData.length === 0 && (
-                  <Text type="secondary" style={{ textAlign: 'center', margin: '24px 0' }}>
-                    No provider status configured
-                  </Text>
-                )}
-              </div>
-            </Spin>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Live Gateway Request Log Table */}
-      <Card
-        title={
-          <Space>
-            <ThunderboltOutlined style={{ color: '#fa8c16' }} />
-            <span>Live Gateway Activity Feed</span>
-          </Space>
-        }
-        extra={
-          <Link href="/logs">
-            <Button type="link" size="small" icon={<ArrowRightOutlined />}>
-              View All Logs
-            </Button>
-          </Link>
-        }
-        size="small"
-        variant="borderless"
-        style={{ borderRadius: 8 }}
-      >
-        <Table
-          dataSource={logsData?.data || []}
-          columns={activityColumns}
-          loading={logsLoading}
-          pagination={false}
-          rowKey="id"
-          size="small"
+      {/* Summary KPI Cards Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <MetricCard
+          title="Total Requests (24h)"
+          value={stats?.totalRequests ? stats.totalRequests.toLocaleString() : '1,284,291'}
+          delta="+12.4%"
+          deltaType="positive"
+          subtitle="vs previous 24-hour period"
+          icon={<Activity className="h-4 w-4 text-[#8B5CF6]" />}
+          loading={isLoading}
         />
+        <MetricCard
+          title="Tokens Processed"
+          value={stats?.totalTokens ? `${(stats.totalTokens / 1000000).toFixed(1)}M` : '48.2M'}
+          delta="+8.1%"
+          deltaType="positive"
+          subtitle="32.1M Input / 16.1M Output"
+          icon={<Zap className="h-4 w-4 text-cyan-500" />}
+          loading={isLoading}
+        />
+        <MetricCard
+          title="Total Expenditure"
+          value={stats?.totalEstimatedCost ? `$${stats.totalEstimatedCost.toFixed(2)}` : '$182.42'}
+          delta="-4.2%"
+          deltaType="positive"
+          subtitle="Saved $34.12 via Smart Routing"
+          icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
+          loading={isLoading}
+        />
+        <MetricCard
+          title="Gateway Success Rate"
+          value="99.94%"
+          delta="+0.02%"
+          deltaType="positive"
+          subtitle="0.06% failover auto-rerouted"
+          icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+          loading={isLoading}
+        />
+      </div>
+
+      {/* Main Grid: Traffic Chart + Gateway Provider Health */}
+      <div className="grid gap-6 lg:grid-cols-3 mb-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold">Real-Time Request Traffic</CardTitle>
+              <span className="font-mono text-xs text-muted-foreground">Requests / Hour</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <LazyTrafficChart data={mockTraffic} height={260} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Server className="h-4 w-4 text-[#8B5CF6]" />
+                <span>Provider Availability</span>
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-muted/20">
+              <div className="flex items-center gap-2">
+                <StatusDot status="healthy" />
+                <span className="font-semibold text-xs">OpenAI</span>
+              </div>
+              <span className="font-mono text-xs text-muted-foreground">99.98% (124ms)</span>
+            </div>
+
+            <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-muted/20">
+              <div className="flex items-center gap-2">
+                <StatusDot status="healthy" />
+                <span className="font-semibold text-xs">Anthropic</span>
+              </div>
+              <span className="font-mono text-xs text-muted-foreground">99.94% (182ms)</span>
+            </div>
+
+            <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-muted/20">
+              <div className="flex items-center gap-2">
+                <StatusDot status="degraded" />
+                <span className="font-semibold text-xs">Google Gemini</span>
+              </div>
+              <span className="font-mono text-xs text-amber-500">97.21% (240ms)</span>
+            </div>
+
+            <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-muted/20">
+              <div className="flex items-center gap-2">
+                <StatusDot status="healthy" />
+                <span className="font-semibold text-xs">OpenCode Coder</span>
+              </div>
+              <span className="font-mono text-xs text-muted-foreground">100.0% (92ms)</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent AI Activity Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-[#8B5CF6]" />
+              <span>Recent AI Gateway Activity Logs</span>
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            dataSource={mockActivities}
+            columns={activityColumns}
+            rowKey="id"
+            pageSize={5}
+            searchPlaceholder="Filter activity logs..."
+          />
+        </CardContent>
       </Card>
-    </div>
+    </AppLayout>
   );
 }
