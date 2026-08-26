@@ -5,6 +5,16 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-08-26
+
+### Added
+- **Credential Intelligence Engine & Dynamic Health Scoring (Pillar 14 - Phase 3)**:
+  - Dynamic 0–100 Credential Health Scoring combining request success rate (60% weight), active cooldown/rate-limit penalty (30% weight), and quota exhaustion penalty (10% weight).
+  - Robust Credential State Machine with roadmap-standard states: `HEALTHY` (Score ≥ 80), `DEGRADED` (Score < 80), `COOLDOWN` (Active Redis TTL rate limit), `EXHAUSTED` (Quota depleted), and `DISABLED`.
+  - Health-Aware Smart Pool Routing: `CredentialRepository` (`ListByProviderID`, `FindRoundRobin`, `FindLRU`, `FindAllActiveByProviderID`) automatically prioritizes healthiest credentials (`COALESCE(health_score, 100.00) DESC`) before degraded keys.
+  - Database Migration `061_update_credential_health_and_states`: Added `health_score` NUMERIC(5,2) column (default 100.00) and expanded `status` check constraint.
+  - OpenTelemetry Metric Gauge: Real-time metric export of `prism_credential_health_score` gauge labeled by `credential_id` and `provider_id`.
+
 ## [2.1.0] - 2026-08-25
 
 ### Added

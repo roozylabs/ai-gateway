@@ -31,7 +31,7 @@ description: Master knowledge base and developer guide for RoozyLabs Prism (v2.1
             ▼                            ▼
 ┌───────────────────────┐   ┌────────────────────────────┐
 │ PostgreSQL 15 DB      │   │ Redis 7 Store              │
-│ (001-060 Migrations,  │   │ (Cooldown TTLs, Tenant     │
+│ (001-061 Migrations,  │   │ (Cooldown TTLs, Tenant     │
 │ Multi-Tenant RLS)     │   │ Keyspaces, Rate Limits)    │
 └───────────────────────┘   └────────────────────────────┘
             │
@@ -47,13 +47,13 @@ description: Master knowledge base and developer guide for RoozyLabs Prism (v2.1
 
 - `apps/api`: Go Backend Source Code (Golang 1.24)
   - `cmd/server/main.go`: Application entrypoint, route registration (`/v1` and `/api/v1`).
-  - `internal/proxy`: Core proxy engine (`engine.go`), router (`router.go`), and provider adapters (`openai.go`, `anthropic.go`, `google.go`, `opencode.go`).
+  - `internal/proxy`: Core proxy engine (`engine.go`), router (`router.go`), credential health engine (`credential_health.go`), and provider adapters (`openai.go`, `anthropic.go`, `google.go`, `opencode.go`).
   - `internal/middleware`: Middleware (`tenant.go`, `auth.go`, `ratelimit.go`).
   - `internal/service`: Services (`metering.go`, `auth.go`).
   - `internal/handlers`: HTTP handlers for Gateway, Credentials, Models, Keys, Logs, Settings, and Dashboard.
   - `internal/repository`: Data access repositories with PostgreSQL `sqlx`.
   - `internal/redis`: Redis cooldown store (`cooldown.go`) and pub/sub event publisher.
-  - `migrations`: Sequential SQL database migration files (001–060).
+  - `migrations`: Sequential SQL database migration files (001–061).
 - `apps/app`: Next.js 15 Admin Console & Control Dashboard
   - `app`: Next.js App Router pages (`logs`, `gateway-keys`, `models`, `credentials`, `playground`, `sandbox`, `settings/organization`, `settings/members`).
   - `components`: Reusable UI components (`TenantSelector.tsx`, `AppLayout.tsx`).

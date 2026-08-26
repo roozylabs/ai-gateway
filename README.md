@@ -65,7 +65,8 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 ## ✨ Key Features & Architecture Pillars
 
 - **🧠 Prism Auto Smart Router (`prism-auto`)**: Intelligent prompt router that deterministically classifies request characteristics (Task, Complexity, Context Window), pre-filters candidate models by active provider credentials, and executes weighted candidate scoring based on the active routing policy (`balanced`, `cheap`, `quality`, or custom).
-- **🏢 Multi-Tenant Architecture & SaaS Platform**: Full multi-tenant isolation with a 4-level hierarchy (`Organization` ──► `Workspace` ──► `Project` ──► `Agents`), PostgreSQL Row-Level Security (RLS migrations `055`–`060`), HKDF-SHA256 derived tenant encryption vaults, and real-time consumption metering (`MeteringService`).
+- **🔑 Credential Intelligence & Dynamic Health Scoring (Phase 3)**: Dynamic 0–100 health scoring combining success rate, cooldown penalties, and remaining quotas with a 5-state machine (`HEALTHY`, `DEGRADED`, `COOLDOWN`, `EXHAUSTED`, `DISABLED`) and OpenTelemetry metric reporting (`prism_credential_health_score`).
+- **🏢 Multi-Tenant Architecture & SaaS Platform**: Full multi-tenant isolation with a 4-level hierarchy (`Organization` ──► `Workspace` ──► `Project` ──► `Agents`), PostgreSQL Row-Level Security (RLS migrations `055`–`061`), HKDF-SHA256 derived tenant encryption vaults, and real-time consumption metering (`MeteringService`).
 - **🤖 Agent Gateway & Infrastructure**: Identifies and governs autonomous AI agents (`X-Prism-Agent-ID`) with granular permitted models, allowed tools, resource boundaries, and budget caps (`/agents`).
 - **🛡️ Enterprise Identity, Permissions & Governance (RBAC)**: Declarative Policy Engine with **`DENY` precedence** and wildcard matching (`allow`/`deny` rules) enforcing strict cross-domain authorization (`/governance`).
 - **📜 End-to-End Cryptographic AI Audit Trail**: SHA-256 tamper-proof hash signature log capturing 6-dimensional execution trails (WHO, REQUEST, MODEL, TOOLS/RESOURCES, COST, OUTCOME) with real-time verification (`/audit-trail`).
@@ -86,7 +87,7 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
   - `apps/api`: High-performance Go 1.24 API Proxy Engine & Middleware
   - `apps/app`: Next.js 15 Admin Console & Control Dashboard
   - `apps/web`: Responsive Astro 5.0 Marketing Landing Page
-- **Database**: PostgreSQL 15 (Single Source of Truth, Migrations 001–060)
+- **Database**: PostgreSQL 15 (Single Source of Truth, Migrations 001–061)
 - **Cache & State Store**: Redis 7 (Rate Limiting, Cooldown, Tenant Keyspaces)
 - **CI/CD**: GitHub Actions (Linting, Automated Testing, GHCR Container Registry, Automated VPS Deployment)
 
