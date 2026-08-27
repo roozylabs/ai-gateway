@@ -143,7 +143,7 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
 
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground pt-0.5 truncate">
           <KeyRound className="h-3 w-3 text-violet-400 shrink-0" />
-          <span className="truncate">Key: {activeCred}</span>
+          <span className="truncate">{activeCred}</span>
         </div>
       </div>
     </div>
