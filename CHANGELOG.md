@@ -5,6 +5,15 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-08-27
+
+### Added
+- **Asynchronous Request Queue & Decoupled Worker Pool Architecture**:
+  - Implemented `AsyncPostProcessor` worker pool (`apps/api/internal/service/post_processor.go`) with buffered Go channels and worker goroutines to offload PostgreSQL log writes (`request_logs`), key usage increments (`gateway_api_keys`), cryptographic audit trail generation (`audit_trails`), and Redis SSE telemetry publishing off the hot HTTP response path.
+  - Implemented Redis-backed `JobQueue` (`apps/api/internal/queue/job_queue.go`) with `BLPop` worker pool supporting `POST /v1/chat/completions/async` and `POST /api/sandbox/chat/completions/async` endpoints returning HTTP 202 Accepted.
+  - Added Job Status polling endpoint (`GET /v1/jobs/:jobId` and `GET /api/jobs/:jobId`) returning job lifecycle status (`queued`, `processing`, `completed`, `failed`), completion payload, and token metrics.
+  - Added **Enable Async Execution (HTTP 202)** toggle switch in Developer Web Sandbox UI (`apps/app/app/(dashboard)/sandbox/page.tsx`) for testing asynchronous job queuing and polling.
+
 ## [2.5.0] - 2026-08-27
 
 ### Added

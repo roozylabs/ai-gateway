@@ -31,6 +31,7 @@
 | 3.4 | 27 August 2026, 12:45 WIB | Added Developer Web Sandbox Overhaul, React Hook Form & Custom Mutation Architecture, and Strict Developer Rules (no-unknown-type, no-empty catch, FormLabel required) specifications |
 | 3.5 | 27 August 2026, 13:50 WIB | Added Web Sandbox & Routing Simulator Audit, Active Model Sidebar Widget, Dry-Run Playground Separation, Agent Context Boundary System Persona Injection, Dynamic Policies, and Compiler-Enforced Code Hygiene Policy (noUnusedLocals, no-unused-imports-policy.md) |
 | 3.6 | 27 August 2026, 15:15 WIB | Added Production-Ready API Error Envelope & Snake Case Standardization (message, type, code, policy_id, policy_name, request_id), Behind-the-Scenes Agent Persona Pre-Compilation, Lifecycle Route Groups ((auth), (onboarding), (dashboard)), 16 Feature Modules Extraction, and Atomic & Conventional Commits Rule (.agents/rules/atomic-commits-and-conventional-commits.md) |
+| 3.7 | 27 August 2026, 16:15 WIB | Added Asynchronous Request Queue & Decoupled Worker Pool Architecture specifications: AsyncPostProcessor (apps/api/internal/service/post_processor.go), Redis-backed JobQueue with BLPop worker pool (apps/api/internal/queue/job_queue.go), POST /v1/chat/completions/async (HTTP 202 Accepted), GET /v1/jobs/:jobId polling endpoint, and Web Sandbox Async Execution UI toggle |
 
 ---
 
