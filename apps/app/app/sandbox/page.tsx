@@ -13,7 +13,7 @@ import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery';
 import { useGatewayKeysQuery } from '@/hooks/queries/useGatewayKeysQuery';
 import { ApiModel } from '@/lib/api';
-import { Play, Terminal, RefreshCw, Code2, SlidersHorizontal, KeyRound } from 'lucide-react';
+import { Play, Terminal, RefreshCw, Code2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SandboxPage() {
@@ -178,7 +178,7 @@ export default function SandboxPage() {
         description="Isolated execution container sandbox for live agent prompt evaluation, code execution, and boundary safety testing."
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <Card className="flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -188,11 +188,11 @@ export default function SandboxPage() {
             <CardDescription>Select target model, bound agent identity, and prompt code payload</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">Target Model</Label>
                 <Select value={selectedModel} onValueChange={setSelectedModel}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
@@ -213,52 +213,29 @@ export default function SandboxPage() {
                 </Select>
               </div>
 
-              {selectedModel === 'prism-auto' ? (
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold flex items-center gap-1.5">
-                    <SlidersHorizontal className="h-3.5 w-3.5 text-[#8B5CF6]" />
-                    <span>Smart Router Policy</span>
-                  </Label>
-                  <Select value={selectedRoutingPolicy} onValueChange={setSelectedRoutingPolicy}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select policy" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="balanced">Balanced Policy</SelectItem>
-                      <SelectItem value="quality">Quality Focus Policy</SelectItem>
-                      <SelectItem value="cheap">Cost Savings Policy</SelectItem>
-                      <SelectItem value="fast">Speed Priority Policy</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Agent Context Boundary</Label>
-                  <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">Default Gateway Identity</SelectItem>
-                      {agentsList.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.displayName || a.name} ({a.agentType})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <KeyRound className="h-3.5 w-3.5 text-[#8B5CF6]" />
-                  <span>Gateway API Key Context</span>
-                </Label>
+                <Label className="text-xs font-semibold">Smart Router Policy</Label>
+                <Select
+                  value={selectedRoutingPolicy}
+                  onValueChange={setSelectedRoutingPolicy}
+                  disabled={selectedModel !== 'prism-auto'}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select policy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="balanced">Balanced Policy</SelectItem>
+                    <SelectItem value="quality">Quality Focus Policy</SelectItem>
+                    <SelectItem value="cheap">Cost Savings Policy</SelectItem>
+                    <SelectItem value="fast">Speed Priority Policy</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Gateway API Key Context</Label>
                 <Select value={selectedKeyPrefix} onValueChange={setSelectedKeyPrefix}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Gateway Key" />
                   </SelectTrigger>
                   <SelectContent>
@@ -272,24 +249,22 @@ export default function SandboxPage() {
                 </Select>
               </div>
 
-              {selectedModel === 'prism-auto' && (
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Agent Context Boundary</Label>
-                  <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">Default Gateway Identity</SelectItem>
-                      {agentsList.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.displayName || a.name} ({a.agentType})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Agent Context Boundary</Label>
+                <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default Gateway Identity</SelectItem>
+                    {agentsList.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.displayName || a.name} ({a.agentType})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card/60">
