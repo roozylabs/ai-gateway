@@ -429,6 +429,44 @@ func (h *GatewayHandler) AsyncChatCompletions(c *gin.Context) {
 	userAgent := c.GetHeader("User-Agent")
 	clientApp := parseClientApp(userAgent)
 
+	// Inject Agent System Persona into messages (same as ChatCompletions)
+	if agentID != "" && h.agentRepo != nil {
+		var agent *models.Agent
+		if _, uuidErr := uuid.Parse(agentID); uuidErr == nil {
+			agent, _ = h.agentRepo.FindByID(c.Request.Context(), agentID, "")
+		}
+		if agent == nil {
+			agent, _ = h.agentRepo.FindByUserAndName(c.Request.Context(), "", agentID)
+		}
+		if agent != nil {
+			if agentName == "" {
+				agentName = agent.DisplayName
+			}
+			hasSystem := false
+			for _, m := range req.Messages {
+				if role, rOk := m["role"].(string); rOk && role == "system" {
+					hasSystem = true
+					break
+				}
+			}
+			if !hasSystem {
+				systemContent := agent.SystemPromptOverride
+				if systemContent == "" {
+					systemContent = fmt.Sprintf("You are %s. %s. Operate strictly within your agent context boundary rules and execute tools safely.", agent.DisplayName, agent.Description)
+				}
+				if len(agent.AllowedTools) > 0 {
+					systemContent += fmt.Sprintf(" Allowed tools: %s.", strings.Join(agent.AllowedTools, ", "))
+				}
+				if len(agent.AllowedResources) > 0 {
+					systemContent += fmt.Sprintf(" Allowed resources: %s.", strings.Join(agent.AllowedResources, ", "))
+				}
+				req.Messages = append([]map[string]interface{}{
+					{"role": "system", "content": systemContent},
+				}, req.Messages...)
+			}
+		}
+	}
+
 	job := &queue.AsyncJob{
 		JobID:          jobID,
 		RequestID:      requestID,
@@ -447,6 +485,7 @@ func (h *GatewayHandler) AsyncChatCompletions(c *gin.Context) {
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
+
 
 	if err := h.jobQueue.EnqueueJob(c.Request.Context(), job); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
