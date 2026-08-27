@@ -113,7 +113,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {/* Sidebar Header Brand */}
           <div className="flex h-14 items-center justify-between border-b border-border px-4">
             <Link href={AppRoutes.HOME} className="flex items-center gap-2.5 overflow-hidden">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#8B5CF6] text-white shadow-sm">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none bg-[#8B5CF6] text-white shadow-sm">
                 <Shield className="h-4 w-4" />
               </div>
               {!collapsed && (
@@ -125,7 +125,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <button
               onClick={toggleCollapsed}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+              className="flex h-6 w-6 items-center justify-center rounded-none text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
             >
               {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
@@ -147,7 +147,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                       key={item.key}
                       href={item.href}
                       className={cn(
-                        'group relative flex items-center gap-3 rounded-md px-3 py-2 text-xs font-medium transition-colors',
+                        'group relative flex items-center gap-3 rounded-none px-3 py-2 text-xs font-medium transition-colors',
                         isActive
                           ? 'bg-[#8B5CF6]/10 text-[#8B5CF6] font-semibold'
                           : 'text-muted-foreground hover:bg-accent hover:text-foreground'
