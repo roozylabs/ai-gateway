@@ -34,13 +34,42 @@ const sandboxSchema = z.object({
 
 type SandboxFormValues = z.infer<typeof sandboxSchema>;
 
+function renderInlineMarkdown(text: string): React.ReactNode {
+  if (!text) return text;
+  const tokens = text.split(/(\*\*.*?\*\*|`.*?`|\*.*?\*)/g);
+  return tokens.map((token, i) => {
+    if (token.startsWith('**') && token.endsWith('**') && token.length >= 4) {
+      return (
+        <strong key={i} className="font-semibold text-slate-100">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (token.startsWith('`') && token.endsWith('`') && token.length >= 2) {
+      return (
+        <code key={i} className="px-1.5 py-0.5 rounded bg-violet-500/15 text-[#06B6D4] font-mono text-[11px]">
+          {token.slice(1, -1)}
+        </code>
+      );
+    }
+    if ((token.startsWith('*') && token.endsWith('*') && token.length >= 2) || (token.startsWith('_') && token.endsWith('_') && token.length >= 2)) {
+      return (
+        <em key={i} className="italic text-slate-300">
+          {token.slice(1, -1)}
+        </em>
+      );
+    }
+    return token;
+  });
+}
+
 function FormattedSandboxOutput({ content }: { content: string }) {
   if (!content) return null;
 
   const parts = content.split(/(```[\s\S]*?```)/g);
 
   return (
-    <div className="space-y-3 font-mono text-xs leading-relaxed">
+    <div className="space-y-2.5 text-xs leading-relaxed text-slate-200">
       {parts.map((part, index) => {
         if (part.startsWith('```')) {
           const firstLineEnd = part.indexOf('\n');
@@ -50,7 +79,7 @@ function FormattedSandboxOutput({ content }: { content: string }) {
           return (
             <div key={index} className="my-3 rounded-md border border-violet-500/25 bg-[#0D0F14] overflow-hidden shadow-md">
               <div className="flex items-center justify-between px-3 py-1.5 bg-[#141720] border-b border-violet-500/20 text-[11px]">
-                <div className="flex items-center gap-1.5 text-[#8B5CF6] font-semibold">
+                <div className="flex items-center gap-1.5 text-[#8B5CF6] font-semibold font-mono">
                   <Code2 className="h-3.5 w-3.5" />
                   <span className="uppercase tracking-wider">{language}</span>
                 </div>
@@ -76,36 +105,51 @@ function FormattedSandboxOutput({ content }: { content: string }) {
         const lines = part.split('\n');
 
         return (
-          <div key={index} className="space-y-1">
+          <div key={index} className="space-y-1.5">
             {lines.map((line, lineIdx) => {
-              if (line.trim().startsWith('### ') || line.trim().startsWith('## ')) {
+              const trimmed = line.trim();
+
+              if (/^#{1,6}\s+/.test(trimmed)) {
+                const headingText = trimmed.replace(/^#{1,6}\s+/, '');
                 return (
-                  <h4 key={lineIdx} className="text-[#8B5CF6] font-bold text-xs pt-2 pb-1 border-b border-violet-500/20 flex items-center gap-1.5">
-                    <span className="text-[#06B6D4]">#</span> {line.replace(/^#+\s*/, '')}
+                  <h4 key={lineIdx} className="text-[#8B5CF6] font-bold text-xs pt-3 pb-1 border-b border-violet-500/20 flex items-center gap-1.5">
+                    <span className="text-[#06B6D4]">#</span>
+                    <span>{renderInlineMarkdown(headingText)}</span>
                   </h4>
                 );
               }
 
-              if (line.trim() === '---') {
+              if (trimmed === '---' || trimmed === '***') {
                 return <hr key={lineIdx} className="border-violet-500/20 my-3" />;
               }
 
-              if (line.trim().startsWith('* ') || line.trim().startsWith('- ')) {
+              const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+              if (numMatch) {
                 return (
                   <div key={lineIdx} className="flex items-start gap-2 pl-2 text-slate-200">
-                    <span className="text-[#8B5CF6] font-bold mt-0.5">•</span>
-                    <span>{line.replace(/^[*|-]\s*/, '')}</span>
+                    <span className="text-[#8B5CF6] font-semibold min-w-[16px] text-[11px] font-mono">{numMatch[1]}.</span>
+                    <div className="flex-1">{renderInlineMarkdown(numMatch[2])}</div>
                   </div>
                 );
               }
 
-              if (!line.trim()) {
+              if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+                const itemText = trimmed.replace(/^[*|-]\s*/, '');
+                return (
+                  <div key={lineIdx} className="flex items-start gap-2 pl-2 text-slate-200">
+                    <span className="text-[#8B5CF6] font-bold mt-0.5">•</span>
+                    <div className="flex-1">{renderInlineMarkdown(itemText)}</div>
+                  </div>
+                );
+              }
+
+              if (!trimmed) {
                 return <div key={lineIdx} className="h-1" />;
               }
 
               return (
                 <p key={lineIdx} className="text-slate-300 text-xs leading-normal">
-                  {line}
+                  {renderInlineMarkdown(line)}
                 </p>
               );
             })}
