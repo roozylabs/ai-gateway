@@ -1,5 +1,7 @@
 # Prism — Deep Repository Understanding & Architecture Map
 
+> **UPDATE (v2.3.0 - 27 August 2026)**: See [Prism Runtime Architecture](prism_runtime_architecture.md) for the active production architecture specification detailing the unified `ExecutionOrchestrator` and `AdmissionController`.
+
 > **Scope**: This document describes *what Prism currently is*, based entirely on implementation evidence. No recommendations, redesigns, or roadmap proposals.
 
 ---

@@ -5,6 +5,17 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-08-27
+
+### Added
+- **Organizational AI Control Plane Architecture**:
+  - **Decoupled `ExecutionOrchestrator` (`internal/service/orchestrator.go`)**: Replaced thick handler logic in `GatewayHandler` with a dedicated execution pipeline managing `Admission → Proxy Execution → Tenant Context → Telemetry → Request Log → Cryptographic Audit Trail`.
+  - **Unified `AdmissionController` (`internal/proxy/admission.go`)**: Pre-execution gate sequencing RBAC, Agent Governance, Tenant Quotas, and Multi-Level Budget Policies BEFORE provider requests or candidate scoring occurs. Returns deterministic decisions (`ALLOW`, `DENY`, `DOWNGRADE`, `WARN`).
+  - **Authoritative Tenant Ownership & Security (`internal/middleware/tenant.go`)**: Enforced `GatewayAPIKey` as the authoritative source for Organization ownership. Client headers (`X-Prism-Org-ID`) can only narrow workspace/project scope within authorized orgs; cross-org header spoofing returns HTTP 403 Forbidden (`tenant_security_error`).
+  - **Credential Health State Machine (`internal/proxy/router.go`)**: State machine (`HEALTHY`, `DEGRADED`, `COOLDOWN`, `EXHAUSTED`, `DISABLED`) prioritizing healthy credentials in `Router.selectByStrategy()`.
+  - **Golden Path & Denied Golden Path Integration Test Suite (`internal/handlers/golden_path_test.go`)**: Automated tests verifying cross-tenant header rejection, zero provider calls on RBAC/Budget denial, and SDK/CLI governance consistency.
+  - **System Runtime Architecture Documentation (`docs/prism_runtime_architecture.md`)**: Complete specification of canonical request lifecycles, security threat models, tenant boundaries, and feedback loops.
+
 ## [2.2.0] - 2026-08-26
 
 ### Added

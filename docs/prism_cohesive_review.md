@@ -1,5 +1,7 @@
 # Prism — Cohesive Architecture & Product Review
 
+> **UPDATE (v2.3.0 - 27 August 2026)**: All P0-P1 architectural gaps identified in this review (Tenant Context, Hot-path RBAC, Universal Budget Gate, Quota Admission, Authoritative Tenant Security, Credential Health State Engine, ExecutionOrchestrator) have been **fully implemented and verified**. See [Prism Runtime Architecture](prism_runtime_architecture.md) for the active production architecture specification.
+
 ---
 
 ## Executive Summary
