@@ -23,6 +23,8 @@ export function useSandboxExecutionMutation() {
         headers['X-Routing-Policy'] = payload.routingPolicy;
       }
       if (payload.agentId && payload.agentId !== 'default') {
+        headers['X-Prism-Agent-ID'] = payload.agentId;
+        headers['X-Prism-Agent-Name'] = payload.agentId;
         headers['X-Agent-Name'] = payload.agentId;
       }
 

@@ -16,15 +16,16 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery';
 import { useGatewayKeysQuery } from '@/hooks/queries/useGatewayKeysQuery';
+import { usePoliciesQuery } from '@/hooks/queries/usePoliciesQuery';
 import { ApiModel } from '@/lib/api';
-import { Play, Terminal, RefreshCw, Code2, Copy, Check } from 'lucide-react';
+import { Play, Terminal, RefreshCw, Code2, Copy, Check, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/types/ui';
 import { useSandboxExecutionMutation } from '@/hooks/mutations/useSandboxMutation';
 
 const sandboxSchema = z.object({
   model: z.string().min(1, 'Target model is required'),
-  routingPolicy: z.enum(['balanced', 'quality', 'cheap', 'fast']),
+  routingPolicy: z.string().min(1, 'Routing policy is required'),
   keyPrefix: z.string().min(1, 'Gateway API Key Context is required'),
   agentId: z.string().default('default'),
   enableStream: z.boolean().default(true),
@@ -120,16 +121,19 @@ export default function SandboxPage() {
   const { data: modelsData } = useModelsListQuery();
   const { data: agentsData } = useAgentsQuery();
   const { data: keysData } = useGatewayKeysQuery();
+  const { data: policiesData } = usePoliciesQuery();
 
   const modelsList = modelsData?.data ?? [];
   const agentsList = Array.isArray(agentsData) ? agentsData : [];
   const keysList = keysData?.data ?? [];
+  const policiesList = Array.isArray(policiesData) ? policiesData : [];
 
   const sandboxMutation = useSandboxExecutionMutation();
 
   const [executionOutput, setExecutionOutput] = useState<string>('');
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [tokenStats, setTokenStats] = useState<{ input: number; output: number } | null>(null);
+  const [routedModel, setRoutedModel] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const form = useForm<SandboxFormValues>({
@@ -171,6 +175,7 @@ export default function SandboxPage() {
     setExecutionOutput('');
     setLatencyMs(null);
     setTokenStats(null);
+    setRoutedModel(null);
     const startTime = Date.now();
 
     try {
@@ -186,6 +191,11 @@ export default function SandboxPage() {
         temperature: 0.7,
         stream: values.enableStream,
       });
+
+      const selectedHeaderModel = res.headers?.get('X-Prism-Selected-Model');
+      if (selectedHeaderModel) {
+        setRoutedModel(selectedHeaderModel);
+      }
 
       if (values.enableStream && res.body) {
         const reader = res.body.getReader();
@@ -211,6 +221,9 @@ export default function SandboxPage() {
 
             try {
               const parsed = JSON.parse(dataStr);
+              if (parsed.model) {
+                setRoutedModel(parsed.model);
+              }
               const delta = parsed.choices?.[0]?.delta?.content;
               if (delta) {
                 accumulatedText += delta;
@@ -232,6 +245,9 @@ export default function SandboxPage() {
         toast.success('Sandbox stream execution completed');
       } else {
         const data = await res.json();
+        if (data.model) {
+          setRoutedModel(data.model);
+        }
         const choice = data.choices?.[0]?.message?.content ?? JSON.stringify(data, null, 2);
         setExecutionOutput(choice);
         if (data.usage) {
@@ -282,7 +298,7 @@ export default function SandboxPage() {
                           <FormLabel className="text-xs font-semibold">Target Model</FormLabel>
                           <FormControl>
                             <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger className="w-full min-w-0">
                                 <SelectValue placeholder="Select model" />
                               </SelectTrigger>
                               <SelectContent>
@@ -300,7 +316,7 @@ export default function SandboxPage() {
                       )}
                     />
 
-                    {/* Smart Router Policy */}
+                    {/* Smart Router Policy (Dynamic from /api/policies) */}
                     <FormField
                       control={form.control}
                       name="routingPolicy"
@@ -313,14 +329,24 @@ export default function SandboxPage() {
                               onValueChange={field.onChange}
                               disabled={isExecuting || selectedModel !== 'prism-auto'}
                             >
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger className="w-full min-w-0">
                                 <SelectValue placeholder="Select policy" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="balanced">Balanced Policy</SelectItem>
-                                <SelectItem value="quality">Quality Policy</SelectItem>
-                                <SelectItem value="cheap">Cheap Policy</SelectItem>
-                                <SelectItem value="fast">Fast Policy</SelectItem>
+                                {policiesList.length > 0 ? (
+                                  policiesList.map((p) => (
+                                    <SelectItem key={p.id} value={p.name.toLowerCase()}>
+                                      {p.name} {p.isDefault ? '(Default)' : ''}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <>
+                                    <SelectItem value="balanced">Balanced Policy</SelectItem>
+                                    <SelectItem value="quality">Quality Policy</SelectItem>
+                                    <SelectItem value="cheap">Cheap Policy</SelectItem>
+                                    <SelectItem value="fast">Fast Policy</SelectItem>
+                                  </>
+                                )}
                               </SelectContent>
                             </Select>
                           </FormControl>
@@ -340,13 +366,15 @@ export default function SandboxPage() {
                           </FormLabel>
                           <FormControl>
                             <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger className="w-full min-w-0">
                                 <SelectValue placeholder="Select key" />
                               </SelectTrigger>
                               <SelectContent>
                                 {keysList.map((k) => (
                                   <SelectItem key={k.id} value={k.keyPrefix}>
-                                    {k.name} ({k.keyPrefix}...)
+                                    <span className="truncate block max-w-[220px]">
+                                      {k.name} ({k.keyPrefix}...)
+                                    </span>
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -366,14 +394,16 @@ export default function SandboxPage() {
                           <FormLabel className="text-xs font-semibold">Agent Context Boundary</FormLabel>
                           <FormControl>
                             <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger className="w-full min-w-0">
                                 <SelectValue placeholder="Select agent" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="default">Default Gateway Identity</SelectItem>
                                 {agentsList.map((a) => (
                                   <SelectItem key={a.id} value={a.name}>
-                                    {a.displayName || a.name}
+                                    <span className="truncate block max-w-[220px]">
+                                      {a.displayName || a.name}
+                                    </span>
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -468,6 +498,12 @@ export default function SandboxPage() {
                 <span>Execution Output Console</span>
               </CardTitle>
               <div className="flex items-center gap-2">
+                {routedModel && (
+                  <Badge variant="violet" className="font-mono text-[10px] gap-1 border-violet-500/30">
+                    <Layers className="h-3 w-3 text-[#8B5CF6]" />
+                    Routed: {routedModel}
+                  </Badge>
+                )}
                 {latencyMs != null && (
                   <Badge variant="violet" className="font-mono text-[10px]">{latencyMs} ms</Badge>
                 )}
