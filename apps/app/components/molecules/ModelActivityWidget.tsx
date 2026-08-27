@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { Layers, Activity, KeyRound } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiGetLogs, ApiRequestLog } from '@/lib/api';
+import { useSSE } from '@/context/SSEContext';
 
 export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
+  const { lastEvent } = useSSE();
   const { data: logsData } = useQuery({
     queryKey: ['active-model-activity'],
     queryFn: () => apiGetLogs({ page: 1, limit: 1 }),
@@ -32,47 +34,24 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
     }
   }, [latestLog]);
 
-  // Real-time SSE Stream Listener
+  // Consume global SSE stream
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    let eventSource: EventSource | null = null;
-    try {
-      eventSource = new EventSource('/api/sse');
-
-      eventSource.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.model) {
-            setActiveModel(payload.model);
-            setLastActiveTime(Date.now());
-          }
-          if (payload.credentialName || payload.keyPrefix) {
-            setActiveCred(payload.credentialName || payload.keyPrefix);
-            setLastActiveTime(Date.now());
-          }
-          if (typeof payload.latencyMs === 'number') {
-            setLatencyMs(payload.latencyMs);
-            setLastActiveTime(Date.now());
-          }
-        } catch (_parseErr) {
-          // Ignore partial or non-JSON SSE event data
-        }
-      };
-
-      eventSource.onerror = () => {
-        // Fall back gracefully when connection resets
-      };
-    } catch (_err) {
-      // EventSource fallback
+    if (!lastEvent || !lastEvent.payload) return;
+    const payload = lastEvent.payload as any;
+    if (payload.model) {
+      setActiveModel(payload.model);
+      setLastActiveTime(Date.now());
     }
+    if (payload.credentialName || payload.keyPrefix) {
+      setActiveCred(payload.credentialName || payload.keyPrefix);
+      setLastActiveTime(Date.now());
+    }
+    if (typeof payload.latencyMs === 'number') {
+      setLatencyMs(payload.latencyMs);
+      setLastActiveTime(Date.now());
+    }
+  }, [lastEvent]);
 
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-    };
-  }, []);
 
   // 15-second recency status ticker
   useEffect(() => {
@@ -100,7 +79,6 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-muted-foreground font-semibold text-[11px]">
           <Activity className={`h-3.5 w-3.5 ${isRecentlyActive ? 'text-emerald-400 animate-pulse' : 'text-muted-foreground'}`} />
-          <span className="uppercase tracking-wider">ACTIVE MODEL ROUTER</span>
         </div>
         <span
           className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${

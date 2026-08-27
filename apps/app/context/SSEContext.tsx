@@ -2,9 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePathname } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { AppRoutes, ApiEndpoints, CookieKeys } from '@/constants/routes';
+import { ApiEndpoints, CookieKeys } from '@/constants/routes';
 
 export interface SSEMessageEvent {
   type: string;
@@ -24,9 +23,9 @@ const SSEContext = createContext<SSEContextType>({
 
 export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
-  const pathname = usePathname();
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<SSEMessageEvent | null>(null);
+
 
   useEffect(() => {
     const token = Cookies.get(CookieKeys.AUTH_TOKEN);
