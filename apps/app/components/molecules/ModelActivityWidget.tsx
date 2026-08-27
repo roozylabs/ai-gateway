@@ -38,6 +38,45 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
   useEffect(() => {
     if (!lastEvent || !lastEvent.payload) return;
     const payload = lastEvent.payload as any;
+
+    // 1. active_streams_update event (Real-time active credentials & models)
+    if (payload.type === 'active_streams_update' && payload.data) {
+      const { byCredential, byModel } = payload.data;
+      if (byCredential) {
+        const credKeys = Object.keys(byCredential);
+        if (credKeys.length > 0) {
+          setActiveCred(credKeys[0]);
+          setLastActiveTime(Date.now());
+        }
+      }
+      if (byModel) {
+        const modelKeys = Object.keys(byModel);
+        if (modelKeys.length > 0) {
+          setActiveModel(modelKeys[0]);
+          setLastActiveTime(Date.now());
+        }
+      }
+    }
+
+    // 2. ROUTING_DECISION event (Smart Router selection)
+    if (payload.type === 'ROUTING_DECISION' && payload.data) {
+      if (payload.data.selectedModel) {
+        setActiveModel(payload.data.selectedModel);
+        setLastActiveTime(Date.now());
+      }
+    }
+
+    // 3. request_log_created event (Completed request summary)
+    if (payload.type === 'request_log_created' && payload.data) {
+      const d = payload.data;
+      if (d.model) setActiveModel(d.model);
+      const cred = d.gatewayKeyName || d.credentialName || d.keyPrefix;
+      if (cred) setActiveCred(cred);
+      if (typeof d.latencyMs === 'number') setLatencyMs(d.latencyMs);
+      setLastActiveTime(Date.now());
+    }
+
+    // 4. Fallback / flat payload structure
     if (payload.model) {
       setActiveModel(payload.model);
       setLastActiveTime(Date.now());
@@ -79,7 +118,6 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-muted-foreground font-semibold text-[11px]">
           <Activity className={`h-3.5 w-3.5 ${isRecentlyActive ? 'text-emerald-400 animate-pulse' : 'text-muted-foreground'}`} />
-          <span className="uppercase tracking-wider">ACTIVE MODEL ROUTER</span>
         </div>
         <span
           className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
