@@ -260,16 +260,16 @@ export default function SandboxPage() {
           if (payload.model) {
             setRoutedModel(payload.model);
           }
-          toast.success(`Tugas Async ${activeJobId} Selesai diproses!`);
+          toast.success(`Async Job ${activeJobId} completed processing!`);
           setActiveJobId(null);
           setIsAsyncExecuting(false);
         } else if (status === 'failed') {
-          setExecutionOutput(`Proses Gagal:\n${payload.error}`);
-          toast.error(`Tugas Async ${activeJobId} gagal: ${payload.error}`);
+          setExecutionOutput(`Execution Failed:\n${payload.error}`);
+          toast.error(`Async Job ${activeJobId} failed: ${payload.error}`);
           setActiveJobId(null);
           setIsAsyncExecuting(false);
         } else if (status === 'processing') {
-          setExecutionOutput(`Status: MEMPROSES (ID Tugas: ${activeJobId})\nSedang diproses oleh sistem latar belakang...`);
+          setExecutionOutput(`Status: PROCESSING (Job ID: ${activeJobId})\nExecuting on background worker pool...`);
         }
       }
     }
@@ -303,7 +303,7 @@ export default function SandboxPage() {
     if (!executionOutput) return;
     navigator.clipboard.writeText(executionOutput);
     setCopied(true);
-    toast.success('Salinan hasil berhasil disimpan');
+    toast.success('Result copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -317,7 +317,7 @@ export default function SandboxPage() {
     try {
       if (values.enableAsync) {
         setIsAsyncExecuting(true);
-        setExecutionOutput('Mengirimkan permintaan ke Antrean Latar Belakang...');
+        setExecutionOutput('Submitting request to Background Queue...');
         const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
         const asyncRes = await fetch('/api/sandbox/chat/completions/async', {
           method: 'POST',
@@ -338,14 +338,14 @@ export default function SandboxPage() {
         if (!asyncRes.ok) {
           const errData = await asyncRes.json();
           setIsAsyncExecuting(false);
-          throw new Error(errData?.error?.message || `Gagal mengirimkan tugas async (Status ${asyncRes.status})`);
+          throw new Error(errData?.error?.message || `Failed to submit async job (Status ${asyncRes.status})`);
         }
 
         const asyncJob = await asyncRes.json();
         const jobId = asyncJob.job_id;
         setActiveJobId(jobId);
-        setExecutionOutput(`Status: ANTREAN (ID Tugas: ${jobId})\nMendengarkan update live SSE & mengecek status di latar belakang...`);
-        toast.info(`Tugas Async ${jobId} berhasil masuk antrean`);
+        setExecutionOutput(`Status: QUEUED (Job ID: ${jobId})\nListening to real-time SSE stream & polling status in background...`);
+        toast.info(`Async Job ${jobId} queued successfully`);
 
         let isDone = false;
         let pollCount = 0;
@@ -377,19 +377,19 @@ export default function SandboxPage() {
               setRoutedModel(jobData.model);
             }
             setLatencyMs(Date.now() - startTime);
-            toast.success(`Tugas Async ${jobId} selesai diproses`);
+            toast.success(`Async Job ${jobId} completed successfully`);
             setActiveJobId(null);
             setIsAsyncExecuting(false);
             break;
           } else if (jobData.status === 'failed') {
             isDone = true;
-            setExecutionOutput(`Tugas ${jobId} Gagal:\n${jobData.error}`);
-            toast.error(`Tugas ${jobId} gagal: ${jobData.error}`);
+            setExecutionOutput(`Job ${jobId} Failed:\n${jobData.error}`);
+            toast.error(`Job ${jobId} failed: ${jobData.error}`);
             setActiveJobId(null);
             setIsAsyncExecuting(false);
             break;
           } else {
-            setExecutionOutput(`Status: ${String(jobData.status).toUpperCase()} (ID Tugas: ${jobId})\nMenunggu giliran eksekusi worker... (${pollCount}s)`);
+            setExecutionOutput(`Status: ${String(jobData.status).toUpperCase()} (Job ID: ${jobId})\nWaiting for worker execution... (${pollCount}s)`);
           }
         }
         setIsAsyncExecuting(false);
@@ -456,7 +456,7 @@ export default function SandboxPage() {
         }
 
         setLatencyMs(Date.now() - startTime);
-        toast.success('Eksekusi stream selesai');
+        toast.success('Stream execution completed');
       } else {
         const data = await res.json();
         if (data.model) {
@@ -471,11 +471,11 @@ export default function SandboxPage() {
           });
         }
         setLatencyMs(Date.now() - startTime);
-        toast.success('Eksekusi berhasil dilakukan');
+        toast.success('Sandbox execution completed');
       }
     } catch (err: unknown) {
-      setExecutionOutput(`[Kendala Sistem]\n${getErrorMessage(err)}`);
-      toast.error('Gagal menjalankan instruksi di Sandbox');
+      setExecutionOutput(`[System Exception]\n${getErrorMessage(err)}`);
+      toast.error('Failed to run Sandbox container instruction');
     }
   };
 
@@ -485,8 +485,8 @@ export default function SandboxPage() {
     <TooltipProvider>
       <AppLayout>
         <PageHeader
-          title="Sandbox Pengujian AI (Developer Web Sandbox)"
-          description="Ruang pengujian terisolasi untuk mencoba perintah prompt, mengevaluasi balasan AI, dan memverifikasi batas keamanan secara langsung."
+          title="Developer Web Sandbox"
+          description="Isolated execution container for prompt evaluation, real-time AI responses, and boundary safety testing."
         />
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-w-0 flex-1">
@@ -495,10 +495,10 @@ export default function SandboxPage() {
             <CardHeader className="pb-3 border-b border-border/40 bg-card/50">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Code2Icon className="h-4 w-4 text-[#8B5CF6]" />
-                <span>Pengaturan Eksekusi Sandbox</span>
+                <span>Sandbox Execution Controls</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                Atur model AI tujuan, Kunci API, identitas agen, dan opsi metode pengiriman.
+                Configure target AI model, API key context, agent boundaries, and execution mode.
               </CardDescription>
             </CardHeader>
 
@@ -514,16 +514,16 @@ export default function SandboxPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormTooltipLabel
-                              label="Model AI Tujuan"
-                              tooltip="Pilih model spesifik (seperti Gemini, Claude, OpenAI) atau gunakan 'prism-auto' agar sistem memilihkan model terbaik secara otomatis."
+                              label="Target AI Model"
+                              tooltip="Select a specific AI model (e.g. Gemini, Claude, OpenAI) or use 'prism-auto' for automatic optimal routing."
                             />
                             <FormControl>
                               <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
                                 <SelectTrigger className="w-full min-w-0">
-                                  <SelectValue placeholder="Pilih model AI" />
+                                  <SelectValue placeholder="Select target model" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="prism-auto">prism-auto (Pemilihan Otomatis)</SelectItem>
+                                  <SelectItem value="prism-auto">prism-auto (Auto Selection)</SelectItem>
                                   {modelsList.map((m: ApiModel) => (
                                     <SelectItem key={m.id} value={m.slug}>
                                       {m.displayName || m.name} ({m.providerName || m.slug})
@@ -544,8 +544,8 @@ export default function SandboxPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormTooltipLabel
-                              label="Kebijakan Rute Pintar"
-                              tooltip="Aturan otomatis memilih model AI. Misalnya 'Balanced' untuk keseimbangan biaya & kecepatan, 'Quality' untuk hasil terbaik, atau 'Cheap' untuk biaya termurah."
+                              label="Smart Router Policy"
+                              tooltip="Rules for automatic model selection. E.g. 'Balanced' for speed/cost balance, 'Quality' for highest accuracy, or 'Cheap' for lowest cost."
                             />
                             <FormControl>
                               <Select
@@ -554,21 +554,21 @@ export default function SandboxPage() {
                                 disabled={isExecuting || selectedModel !== 'prism-auto'}
                               >
                                 <SelectTrigger className="w-full min-w-0">
-                                  <SelectValue placeholder="Pilih kebijakan" />
+                                  <SelectValue placeholder="Select routing policy" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {policiesList.length > 0 ? (
                                     policiesList.map((p) => (
                                       <SelectItem key={p.id} value={p.name.toLowerCase()}>
-                                        {p.name} {p.isDefault ? '(Bawaan)' : ''}
+                                        {p.name} {p.isDefault ? '(Default)' : ''}
                                       </SelectItem>
                                     ))
                                   ) : (
                                     <>
-                                      <SelectItem value="balanced">Balanced (Seimbang)</SelectItem>
-                                      <SelectItem value="quality">Quality (Kualitas Tinggi)</SelectItem>
-                                      <SelectItem value="cheap">Cheap (Hemat Biaya)</SelectItem>
-                                      <SelectItem value="fast">Fast (Kecepatan Tinggi)</SelectItem>
+                                      <SelectItem value="balanced">Balanced (Optimal Balance)</SelectItem>
+                                      <SelectItem value="quality">Quality (Highest Accuracy)</SelectItem>
+                                      <SelectItem value="cheap">Cheap (Cost Efficient)</SelectItem>
+                                      <SelectItem value="fast">Fast (Highest Speed)</SelectItem>
                                     </>
                                   )}
                                 </SelectContent>
@@ -586,14 +586,14 @@ export default function SandboxPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormTooltipLabel
-                              label="Kunci API Gateway"
+                              label="Gateway API Key Context"
                               required
-                              tooltip="Kunci API yang digunakan untuk mengidentifikasi batasan kuota, anggaran, dan hak akses organisasi Anda."
+                              tooltip="Your organization's API Key used to evaluate quota limits, budget policies, and access rights."
                             />
                             <FormControl>
                               <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
                                 <SelectTrigger className="w-full min-w-0">
-                                  <SelectValue placeholder="Pilih kunci API" />
+                                  <SelectValue placeholder="Select API key" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {keysList.map((k) => (
@@ -618,16 +618,16 @@ export default function SandboxPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormTooltipLabel
-                              label="Batas Identitas Agen AI"
-                              tooltip="Identitas spesifik Agen AI yang membatasi aturan keamanan (RBAC) dan instrumen tools yang diperbolehkan."
+                              label="Agent Context Boundary"
+                              tooltip="Bound AI Agent identity restricting security rules (RBAC) and allowed tool executions."
                             />
                             <FormControl>
                               <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
                                 <SelectTrigger className="w-full min-w-0">
-                                  <SelectValue placeholder="Pilih agen AI" />
+                                  <SelectValue placeholder="Select AI agent" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="default">Identitas Gateway Bawaan</SelectItem>
+                                  <SelectItem value="default">Default Gateway Identity</SelectItem>
                                   {agentsList.map((a) => (
                                     <SelectItem key={a.id} value={a.name}>
                                       <span className="truncate block max-w-[220px]">
@@ -653,7 +653,7 @@ export default function SandboxPage() {
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5">
                               <FormLabel className="text-xs font-semibold cursor-pointer">
-                                Respon AI Langsung (Live Stream)
+                                Live Response Streaming (SSE)
                               </FormLabel>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -662,12 +662,12 @@ export default function SandboxPage() {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="max-w-xs text-[11px] bg-[#141720] border-violet-500/30 text-slate-200">
-                                  Balasan AI akan muncul secara langsung kata demi kata (streaming SSE) sehingga Anda tidak perlu menunggu seluruh teks selesai.
+                                  Receive AI responses word-by-word in real time (SSE streaming) without waiting for full completion.
                                 </TooltipContent>
                               </Tooltip>
                             </div>
                             <p className="text-[11px] text-muted-foreground">
-                              Tampilkan teks balasan secara langsung saat sedang dibuat oleh AI
+                              Display response text live as it is generated by the AI model
                             </p>
                           </div>
                           <FormControl>
@@ -690,7 +690,7 @@ export default function SandboxPage() {
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5">
                               <FormLabel className="text-xs font-semibold cursor-pointer">
-                                Proses Latar Belakang (Async Queue)
+                                Background Queue Execution (Async)
                               </FormLabel>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -699,12 +699,12 @@ export default function SandboxPage() {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="max-w-xs text-[11px] bg-[#141720] border-violet-500/30 text-slate-200">
-                                  Perintah dikirimkan ke antrean latar belakang (Redis). Sangat berguna untuk tugas panjang agar tidak membuat halaman terhenti.
+                                  Offloads requests to a background Redis queue. Ideal for long-running prompts without keeping the browser connection waiting.
                                 </TooltipContent>
                               </Tooltip>
                             </div>
                             <p className="text-[11px] text-muted-foreground">
-                              Kirimkan ke antrean kerja tanpa menahan koneksi halaman browser
+                              Dispatch requests asynchronously to background workers without holding browser connection
                             </p>
                           </div>
                           <FormControl>
@@ -721,16 +721,16 @@ export default function SandboxPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormTooltipLabel
-                            label="Instruksi Perintah / Prompt"
+                            label="Prompt / Code Instruction"
                             required
-                            tooltip="Tuliskan pertanyaan, petunjuk tugas, atau kode yang ingin diproses oleh sistem AI."
+                            tooltip="Enter the instruction, prompt text, or code block for the AI sandbox to evaluate."
                           />
                           <FormControl>
                             <textarea
                               {...field}
                               disabled={isExecuting}
                               className="w-full h-28 rounded-lg border border-border bg-background p-3 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed custom-scrollbar"
-                              placeholder="Tuliskan instruksi atau prompt Anda di sini..."
+                              placeholder="Type your prompt or code instructions here..."
                             />
                           </FormControl>
                           <FormMessage />
@@ -752,9 +752,9 @@ export default function SandboxPage() {
                     )}
                     {isExecuting
                       ? isAsyncMode
-                        ? 'Memproses di Antrean Latar Belakang...'
-                        : 'Menjalankan Instruksi AI...'
-                      : 'Jalankan Instruksi (Run Container)'}
+                        ? 'Processing in Background Queue...'
+                        : 'Running AI Instruction...'
+                      : 'Run Sandbox Container'}
                   </Button>
                 </form>
               </Form>
@@ -767,7 +767,7 @@ export default function SandboxPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <TerminalIcon className="h-4 w-4 text-[#8B5CF6]" />
-                  <span>Konsol Hasil Eksekusi (Output Console)</span>
+                  <span>Execution Output Console</span>
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {routedModel && (
@@ -785,7 +785,7 @@ export default function SandboxPage() {
                   {tokenStats && (
                     <Badge variant="outline" className="font-mono text-[10px] gap-1">
                       <ZapIcon className="h-3 w-3 text-amber-400" />
-                      {tokenStats.input + tokenStats.output} token
+                      {tokenStats.input + tokenStats.output} tokens
                     </Badge>
                   )}
                   <Button
@@ -800,7 +800,7 @@ export default function SandboxPage() {
                     ) : (
                       <CopyIcon className="h-3.5 w-3.5 text-[#8B5CF6]" />
                     )}
-                    <span>{copied ? 'Tersalin!' : 'Salin Hasil'}</span>
+                    <span>{copied ? 'Copied!' : 'Copy Result'}</span>
                   </Button>
                 </div>
               </div>
@@ -826,12 +826,12 @@ export default function SandboxPage() {
 
                     <div className="space-y-1.5 max-w-sm">
                       <h4 className="text-sm font-semibold text-slate-100 flex items-center justify-center gap-2">
-                        <span>{isAsyncMode ? 'Tugas Async Sedang Diproses' : 'Menghubungkan ke Mesin AI'}</span>
+                        <span>{isAsyncMode ? 'Async Job Processing in Background' : 'Connecting to Prism AI Engine'}</span>
                       </h4>
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         {isAsyncMode
-                          ? 'Perintah telah masuk antrean latar belakang. Sistem sedang memproses instruksi via worker pool.'
-                          : 'Mengevaluasi batas keamanan RBAC & memilih model AI terbaik...'}
+                          ? 'Request has been queued. Background worker pool is executing the job.'
+                          : 'Evaluating RBAC security policies & selecting optimal AI model...'}
                       </p>
                     </div>
 
@@ -840,23 +840,23 @@ export default function SandboxPage() {
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-2 text-emerald-400 font-semibold">
                           <CheckCircle2Icon className="h-3.5 w-3.5" />
-                          <span>1. Kirim Perintah (Request)</span>
+                          <span>1. Dispatch Request</span>
                         </span>
                         <span className="text-[10px] text-emerald-400/80 font-mono">OK</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-2 text-[#8B5CF6] font-semibold">
                           <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
-                          <span>2. Eksekusi Model AI</span>
+                          <span>2. Execute AI Model</span>
                         </span>
-                        <span className="text-[10px] text-[#8B5CF6] font-mono animate-pulse">PROSES</span>
+                        <span className="text-[10px] text-[#8B5CF6] font-mono animate-pulse">PROCESSING</span>
                       </div>
                       <div className="flex items-center justify-between text-muted-foreground opacity-60">
                         <span className="flex items-center gap-2">
                           <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/40 flex items-center justify-center text-[9px]">3</span>
-                          <span>3. Terima Balasan Teks</span>
+                          <span>3. Receive Response</span>
                         </span>
-                        <span className="text-[10px] font-mono">NANTI</span>
+                        <span className="text-[10px] font-mono">PENDING</span>
                       </div>
                     </div>
 
@@ -877,9 +877,9 @@ export default function SandboxPage() {
                   <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 text-muted-foreground space-y-3">
                     <TerminalIcon className="h-10 w-10 text-muted-foreground/30" />
                     <div className="space-y-1 max-w-xs">
-                      <p className="text-xs font-semibold text-slate-300">Konsol Siap Digunakan</p>
+                      <p className="text-xs font-semibold text-slate-300">Console Ready</p>
                       <p className="text-[11px] text-muted-foreground">
-                        Tuliskan instruksi prompt di panel sebelah kiri lalu klik tombol &quot;Jalankan Instruksi&quot; untuk melihat balasan.
+                        Type your prompt in the left panel and click &quot;Run Sandbox Container&quot; to view AI output.
                       </p>
                     </div>
                   </div>
