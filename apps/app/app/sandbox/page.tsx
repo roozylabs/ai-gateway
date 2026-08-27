@@ -16,6 +16,14 @@ import { ApiModel } from '@/lib/api';
 import { Play, Terminal, RefreshCw, Code2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import {
+  TargetModelOption,
+  RoutingPolicyType,
+  GatewayKeyPrefixOption,
+  AgentIdentityOption,
+  getErrorMessage,
+} from '@/types/ui';
+
 export default function SandboxPage() {
   const { data: modelsData } = useModelsListQuery();
   const { data: agentsData } = useAgentsQuery();
@@ -25,10 +33,10 @@ export default function SandboxPage() {
   const agentsList = Array.isArray(agentsData) ? agentsData : [];
   const keysList = keysData?.data ?? [];
 
-  const [selectedModel, setSelectedModel] = useState<string>('prism-auto');
-  const [selectedRoutingPolicy, setSelectedRoutingPolicy] = useState<string>('balanced');
-  const [selectedKeyPrefix, setSelectedKeyPrefix] = useState<string>('auto');
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('default');
+  const [selectedModel, setSelectedModel] = useState<TargetModelOption>('prism-auto');
+  const [selectedRoutingPolicy, setSelectedRoutingPolicy] = useState<RoutingPolicyType>('balanced');
+  const [selectedKeyPrefix, setSelectedKeyPrefix] = useState<GatewayKeyPrefixOption>('auto');
+  const [selectedAgentId, setSelectedAgentId] = useState<AgentIdentityOption>('default');
   const [enableStream, setEnableStream] = useState<boolean>(true);
 
   const [systemPrompt, setSystemPrompt] = useState<string>(
@@ -163,8 +171,8 @@ export default function SandboxPage() {
         }
         toast.success('Sandbox execution completed');
       }
-    } catch (err: any) {
-      setExecutionOutput(`[Client Exception]\n${err?.message || 'Failed to connect to gateway'}`);
+    } catch (err: unknown) {
+      setExecutionOutput(`[Client Exception]\n${getErrorMessage(err)}`);
       toast.error('Sandbox execution error');
     } finally {
       setIsExecuting(false);
@@ -217,7 +225,7 @@ export default function SandboxPage() {
                 <Label className="text-xs font-semibold">Smart Router Policy</Label>
                 <Select
                   value={selectedRoutingPolicy}
-                  onValueChange={setSelectedRoutingPolicy}
+                  onValueChange={(val) => setSelectedRoutingPolicy(val as RoutingPolicyType)}
                   disabled={selectedModel !== 'prism-auto'}
                 >
                   <SelectTrigger className="w-full">

@@ -23,9 +23,10 @@ import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 
 import { apiTestCredential, apiResetCredentialCooldown } from '@/lib/api';
 import { Activity, RefreshCw } from 'lucide-react';
+import { ProviderFilterId, getErrorMessage } from '@/types/ui';
 
 export default function CredentialsPage() {
-  const [selectedProviderId, setSelectedProviderId] = useState('all');
+  const [selectedProviderId, setSelectedProviderId] = useState<ProviderFilterId>('all');
   const { data, isLoading, isError, refetch } = useCredentialsQuery(selectedProviderId);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -63,8 +64,8 @@ export default function CredentialsPage() {
         toast.error(`Key Health Check Failed: ${result.error || result.message || 'Invalid key or quota exceeded'}`);
       }
       refetch();
-    } catch (err: any) {
-      toast.error(`Health check failed: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Health check failed: ${getErrorMessage(err)}`);
     } finally {
       setTestingId(null);
     }
@@ -75,8 +76,8 @@ export default function CredentialsPage() {
       await apiResetCredentialCooldown(providerId, credId);
       toast.success('Credential cooldown reset');
       refetch();
-    } catch (err: any) {
-      toast.error(`Failed to reset cooldown: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Failed to reset cooldown: ${getErrorMessage(err)}`);
     }
   };
 

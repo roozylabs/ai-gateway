@@ -18,6 +18,7 @@ import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { apiTestTool, ApiToolExecutionResult } from '@/lib/api';
 import { Play, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/types/ui';
 
 export default function ToolsPage() {
   const { data: tools, isLoading, isError, refetch } = useToolsQuery();
@@ -54,8 +55,8 @@ export default function ToolsPage() {
       } else {
         toast.error(`Tool execution returned status ${res.statusCode}`);
       }
-    } catch (err: any) {
-      toast.error(`Invalid JSON or request error: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Invalid JSON or request error: ${getErrorMessage(err)}`);
     } finally {
       setTestExecuting(false);
     }
