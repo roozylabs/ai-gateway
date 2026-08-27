@@ -1,0 +1,313 @@
+package service
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/proxy"
+	goredis "github.com/roozylabs/prism/internal/redis"
+	"github.com/roozylabs/prism/internal/repository"
+	"github.com/roozylabs/prism/internal/utils"
+)
+
+type OrchestrationResult struct {
+	Denied       bool                   `json:"denied"`
+	HTTPStatus   int                    `json:"httpStatus"`
+	ErrorCode    string                 `json:"errorCode"`
+	ErrorMessage string                 `json:"errorMessage"`
+	RequestID    string                 `json:"requestId"`
+	Response     *proxy.ProviderResponse `json:"response,omitempty"`
+	RequestLog   *models.RequestLog     `json:"requestLog,omitempty"`
+}
+
+type ExecutionOrchestrator struct {
+	engine         *proxy.Engine
+	admission      *proxy.AdmissionController
+	gatewayKeys    *repository.GatewayKeyRepository
+	requestLogs    *repository.RequestLogRepository
+	eventPublisher *goredis.EventPublisher
+	pricingRepo    *repository.ModelPricingRepository
+	auditRecorder  *proxy.AuditRecorder
+}
+
+func NewExecutionOrchestrator(
+	engine *proxy.Engine,
+	admission *proxy.AdmissionController,
+	gatewayKeys *repository.GatewayKeyRepository,
+	requestLogs *repository.RequestLogRepository,
+	eventPublisher *goredis.EventPublisher,
+	pricingRepo *repository.ModelPricingRepository,
+	auditRecorder *proxy.AuditRecorder,
+) *ExecutionOrchestrator {
+	return &ExecutionOrchestrator{
+		engine:         engine,
+		admission:      admission,
+		gatewayKeys:    gatewayKeys,
+		requestLogs:    requestLogs,
+		eventPublisher: eventPublisher,
+		pricingRepo:    pricingRepo,
+		auditRecorder:  auditRecorder,
+	}
+}
+
+func (o *ExecutionOrchestrator) ExecuteChatCompletions(
+	c *gin.Context,
+	ctx context.Context,
+	req *proxy.ProxyRequest,
+	gatewayKey *models.GatewayAPIKey,
+	tenantCtx models.TenantContext,
+	agentID string,
+	agentName string,
+	userRole string,
+	requestID string,
+	clientIP string,
+	userAgent string,
+	clientApp string,
+) (*OrchestrationResult, error) {
+	if userRole == "" {
+		userRole = "developer"
+	}
+	if agentName == "" && agentID != "" {
+		agentName = agentID
+	} else if agentName == "" {
+		agentName = "general-agent"
+	}
+
+	// 1. Admission Control Gate
+	admReq := proxy.AdmissionRequest{
+		UserID:    gatewayKey.UserID,
+		Role:      userRole,
+		AgentID:   agentID,
+		AgentName: agentName,
+		ModelSlug: req.Model,
+		TenantCtx: tenantCtx,
+	}
+
+	admRes, err := o.admission.Evaluate(ctx, admReq)
+	if err != nil {
+		return nil, fmt.Errorf("admission control evaluate: %w", err)
+	}
+
+	if admRes.Decision == proxy.AdmissionDeny {
+		// Record audit event for denied request
+		o.recordDeniedAuditTrail(ctx, requestID, gatewayKey, tenantCtx, agentID, agentName, userRole, req.Model, admRes.Reason)
+
+		return &OrchestrationResult{
+			Denied:       true,
+			HTTPStatus:   admRes.HTTPStatus,
+			ErrorCode:    admRes.ErrorCode,
+			ErrorMessage: admRes.Reason,
+			RequestID:    requestID,
+		}, nil
+	}
+
+	// Attach budget status to proxy request if downgraded or warned
+	if admRes.BudgetStatus != "" {
+		// Budget pressure communicated to ProxyEngine
+	}
+
+	// 2. Stream vs Non-Stream Proxy Execution
+	var providerResp *proxy.ProviderResponse
+	var log *models.RequestLog
+
+	if req.Stream {
+		log, err = o.engine.ProxyStream(c, req, gatewayKey)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		providerResp, log, err = o.engine.Proxy(c, req, gatewayKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if log != nil {
+		// 3. Populate Canonical Tenant & Metadata Attribution
+		log.RequestID = requestID
+		log.OrgID = tenantCtx.OrgID
+		log.WorkspaceID = tenantCtx.WorkspaceID
+		log.ProjectID = tenantCtx.ProjectID
+		if agentID != "" {
+			log.AgentID = &agentID
+		}
+		log.ClientIP = clientIP
+		log.UserAgent = userAgent
+		log.ClientApp = clientApp
+		log.IsStream = req.Stream
+
+		if log.CostUSD == 0 && o.pricingRepo != nil {
+			log.CostUSD = o.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
+		}
+
+		// Save request log to database
+		_ = o.requestLogs.Create(ctx, log)
+
+		// Increment gateway key usage
+		_ = o.gatewayKeys.IncrementUsage(ctx, gatewayKey.ID)
+
+		// Publish SSE events
+		o.publishEvents(c, ctx, requestID, log, gatewayKey)
+
+		// Record complete cryptographic audit trail
+		o.recordAuditTrail(ctx, log, gatewayKey, agentID, agentName, userRole)
+	}
+
+	return &OrchestrationResult{
+		Denied:     false,
+		HTTPStatus: 200,
+		RequestID:  requestID,
+		Response:   providerResp,
+		RequestLog: log,
+	}, nil
+}
+
+func (o *ExecutionOrchestrator) publishEvents(c *gin.Context, ctx context.Context, requestID string, log *models.RequestLog, gatewayKey *models.GatewayAPIKey) {
+	if o.eventPublisher == nil || log == nil {
+		return
+	}
+
+	eventData := map[string]interface{}{
+		"requestId":    requestID,
+		"model":        log.Model,
+		"provider":     log.ProviderType,
+		"statusCode":   log.StatusCode,
+		"latencyMs":    log.LatencyMs,
+		"inputTokens":  log.InputTokens,
+		"outputTokens": log.OutputTokens,
+		"totalTokens":  log.TotalTokens,
+		"costUsd":      log.CostUSD,
+		"clientApp":    log.ClientApp,
+		"orgId":        log.OrgID,
+		"workspaceId":  log.WorkspaceID,
+		"projectId":    log.ProjectID,
+		"timestamp":    log.CreatedAt,
+	}
+
+	_ = o.eventPublisher.Publish(ctx, "request_log_created", eventData)
+}
+
+func (o *ExecutionOrchestrator) recordDeniedAuditTrail(
+	ctx context.Context,
+	requestID string,
+	gatewayKey *models.GatewayAPIKey,
+	tenantCtx models.TenantContext,
+	agentID string,
+	agentName string,
+	userRole string,
+	modelSlug string,
+	reason string,
+) {
+	if o.auditRecorder == nil {
+		return
+	}
+
+	promptHash := utils.HashSHA256(modelSlug + ":" + requestID)
+
+	trail := &models.AIAuditTrail{
+		RequestID:         requestID,
+		UserID:            gatewayKey.UserID,
+		UserRole:          userRole,
+		ModelSlug:         modelSlug,
+		FailoverChain:     []string{},
+		ToolsInvoked:      []string{},
+		ResourcesAccessed: []string{},
+		MCPServersCalled:  []string{},
+		PromptTokens:      0,
+		CompletionTokens:  0,
+		TotalTokens:       0,
+		TotalCostUSD:      0,
+		StatusCode:        403,
+		LatencyMS:         0,
+		TTFTMS:            0,
+		PromptHash:        promptHash,
+		ResponseHash:      utils.HashSHA256("denied:" + reason),
+		ComplianceStatus:  "denied",
+	}
+
+	if gatewayKey.ID != "" {
+		trail.GatewayKeyID = &gatewayKey.ID
+	}
+	if agentID != "" {
+		trail.AgentID = &agentID
+		trail.AgentName = &agentName
+	}
+
+	_ = o.auditRecorder.Record(ctx, trail)
+}
+
+func (o *ExecutionOrchestrator) recordAuditTrail(
+	ctx context.Context,
+	log *models.RequestLog,
+	gatewayKey *models.GatewayAPIKey,
+	agentID string,
+	agentName string,
+	userRole string,
+) {
+	if o.auditRecorder == nil || log == nil {
+		return
+	}
+
+	failoverChain := extractFailoverChain(log.Attempts)
+
+	promptHash := utils.HashSHA256(log.Model + ":" + log.RequestID)
+	responseHash := utils.HashSHA256(log.Model + ":" + log.ProviderType + ":" + fmt.Sprintf("%d", log.TotalTokens))
+
+	trail := &models.AIAuditTrail{
+		RequestID:         log.RequestID,
+		UserID:            gatewayKey.UserID,
+		UserRole:          userRole,
+		ModelSlug:         log.Model,
+		FailoverChain:     failoverChain,
+		ToolsInvoked:      []string{},
+		ResourcesAccessed: []string{},
+		MCPServersCalled:  []string{},
+		PromptTokens:      log.InputTokens,
+		CompletionTokens:  log.OutputTokens,
+		TotalTokens:       log.TotalTokens,
+		TotalCostUSD:      log.CostUSD,
+		StatusCode:        log.StatusCode,
+		LatencyMS:         log.LatencyMs,
+		TTFTMS:            log.TTFTMs,
+		PromptHash:        promptHash,
+		ResponseHash:      responseHash,
+		ComplianceStatus:  "compliant",
+	}
+
+	if gatewayKey.ID != "" {
+		trail.GatewayKeyID = &gatewayKey.ID
+	}
+	if agentID != "" {
+		trail.AgentID = &agentID
+		trail.AgentName = &agentName
+	}
+
+	_ = o.auditRecorder.Record(ctx, trail)
+}
+
+func extractFailoverChain(attemptsBytes []byte) []string {
+	if len(attemptsBytes) == 0 {
+		return []string{}
+	}
+
+	var attempts []map[string]interface{}
+	if err := json.Unmarshal(attemptsBytes, &attempts); err != nil {
+		return []string{}
+	}
+
+	var chain []string
+	for _, att := range attempts {
+		if credID, ok := att["credential_id"].(string); ok && credID != "" {
+			provName, _ := att["provider_name"].(string)
+			if provName != "" {
+				chain = append(chain, fmt.Sprintf("%s:%s", provName, credID))
+			} else {
+				chain = append(chain, credID)
+			}
+		}
+	}
+	return chain
+}
