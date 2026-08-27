@@ -382,7 +382,7 @@ func (r *CredentialRepository) CountActiveByProviderID(ctx context.Context, prov
 }
 
 func (r *CredentialRepository) ListActiveProviderIDs(ctx context.Context) (map[string]bool, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT DISTINCT provider_id FROM credentials WHERE enabled = true AND status != 'invalid' AND (api_key IS NOT NULL AND api_key != '')`)
+	rows, err := r.db.QueryContext(ctx, `SELECT DISTINCT provider_id FROM credentials WHERE enabled = true AND status != 'invalid' AND (encrypted_key IS NOT NULL AND encrypted_key != '')`)
 	if err != nil {
 		return nil, err
 	}

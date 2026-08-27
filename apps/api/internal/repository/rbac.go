@@ -26,7 +26,7 @@ func (r *RBACRepository) GetUserPermissions(ctx context.Context, userID string, 
 		JOIN roles r ON om.role_id = r.id
 		LEFT JOIN role_permissions rp ON r.id = rp.role_id
 		LEFT JOIN permissions p ON rp.permission_id = p.id
-		WHERE om.user_id = $1 AND om.organization_id = $2
+		WHERE om.user_id = $1 AND om.org_id = $2
 	`
 	rows, err := r.db.QueryContext(ctx, query, userID, orgID)
 	if err != nil {
