@@ -1,28 +1,120 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/molecules/Card';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
-import { Label } from '@/components/atoms/Label';
 import { Switch } from '@/components/atoms/Switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/molecules/Form';
 import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery';
 import { useGatewayKeysQuery } from '@/hooks/queries/useGatewayKeysQuery';
 import { ApiModel } from '@/lib/api';
-import { Play, Terminal, RefreshCw, Code2 } from 'lucide-react';
+import { Play, Terminal, RefreshCw, Code2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/types/ui';
+import { useSandboxExecutionMutation } from '@/hooks/mutations/useSandboxMutation';
 
-import {
-  TargetModelOption,
-  RoutingPolicyType,
-  GatewayKeyPrefixOption,
-  AgentIdentityOption,
-  getErrorMessage,
-} from '@/types/ui';
+const sandboxSchema = z.object({
+  model: z.string().min(1, 'Target model is required'),
+  routingPolicy: z.enum(['balanced', 'quality', 'cheap', 'fast']),
+  keyPrefix: z.string().min(1, 'Gateway API Key Context is required'),
+  agentId: z.string().default('default'),
+  enableStream: z.boolean().default(true),
+  systemPrompt: z.string(),
+  userPrompt: z.string().min(1, 'Prompt / Code Instruction is required'),
+});
+
+type SandboxFormValues = z.infer<typeof sandboxSchema>;
+
+function FormattedSandboxOutput({ content }: { content: string }) {
+  if (!content) return null;
+
+  const parts = content.split(/(```[\s\S]*?```)/g);
+
+  return (
+    <div className="space-y-3 font-mono text-xs leading-relaxed">
+      {parts.map((part, index) => {
+        if (part.startsWith('```')) {
+          const firstLineEnd = part.indexOf('\n');
+          const language = part.slice(3, firstLineEnd).trim() || 'code';
+          const codeBody = part.slice(firstLineEnd + 1, -3).trim();
+
+          return (
+            <div key={index} className="my-3 rounded-md border border-violet-500/25 bg-[#0D0F14] overflow-hidden shadow-md">
+              <div className="flex items-center justify-between px-3 py-1.5 bg-[#141720] border-b border-violet-500/20 text-[11px]">
+                <div className="flex items-center gap-1.5 text-[#8B5CF6] font-semibold">
+                  <Code2 className="h-3.5 w-3.5" />
+                  <span className="uppercase tracking-wider">{language}</span>
+                </div>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => {
+                    navigator.clipboard.writeText(codeBody);
+                    toast.success(`Copied ${language} code block`);
+                  }}
+                >
+                  <Copy className="h-3 w-3 text-[#8B5CF6]" />
+                  <span>Copy Code</span>
+                </button>
+              </div>
+              <pre className="p-3 overflow-x-auto text-[#06B6D4] whitespace-pre font-mono text-[11px] leading-relaxed custom-scrollbar">
+                {codeBody}
+              </pre>
+            </div>
+          );
+        }
+
+        const lines = part.split('\n');
+
+        return (
+          <div key={index} className="space-y-1">
+            {lines.map((line, lineIdx) => {
+              if (line.trim().startsWith('### ') || line.trim().startsWith('## ')) {
+                return (
+                  <h4 key={lineIdx} className="text-[#8B5CF6] font-bold text-xs pt-2 pb-1 border-b border-violet-500/20 flex items-center gap-1.5">
+                    <span className="text-[#06B6D4]">#</span> {line.replace(/^#+\s*/, '')}
+                  </h4>
+                );
+              }
+
+              if (line.trim() === '---') {
+                return <hr key={lineIdx} className="border-violet-500/20 my-3" />;
+              }
+
+              if (line.trim().startsWith('* ') || line.trim().startsWith('- ')) {
+                return (
+                  <div key={lineIdx} className="flex items-start gap-2 pl-2 text-slate-200">
+                    <span className="text-[#8B5CF6] font-bold mt-0.5">•</span>
+                    <span>{line.replace(/^[*|-]\s*/, '')}</span>
+                  </div>
+                );
+              }
+
+              if (!line.trim()) {
+                return <div key={lineIdx} className="h-1" />;
+              }
+
+              return (
+                <p key={lineIdx} className="text-slate-300 text-xs leading-normal">
+                  {line}
+                </p>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function SandboxPage() {
   const { data: modelsData } = useModelsListQuery();
@@ -33,133 +125,103 @@ export default function SandboxPage() {
   const agentsList = Array.isArray(agentsData) ? agentsData : [];
   const keysList = keysData?.data ?? [];
 
-  const [selectedModel, setSelectedModel] = useState<TargetModelOption>('prism-auto');
-  const [selectedRoutingPolicy, setSelectedRoutingPolicy] = useState<RoutingPolicyType>('balanced');
-  const [selectedKeyPrefix, setSelectedKeyPrefix] = useState<GatewayKeyPrefixOption>('auto');
-  const [selectedAgentId, setSelectedAgentId] = useState<AgentIdentityOption>('default');
-  const [enableStream, setEnableStream] = useState<boolean>(true);
+  const sandboxMutation = useSandboxExecutionMutation();
 
-  const [systemPrompt, setSystemPrompt] = useState<string>(
-    'You are an expert AI agent sandbox evaluator. Analyze code safety, boundary limits, and execute tools safely.'
-  );
-  const [userPrompt, setUserPrompt] = useState<string>(
-    'Write a Python function to validate JSON Schema definitions and estimate memory usage.'
-  );
-
-  const [isExecuting, setIsExecuting] = useState(false);
   const [executionOutput, setExecutionOutput] = useState<string>('');
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [tokenStats, setTokenStats] = useState<{ input: number; output: number } | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const handleRunSandbox = async () => {
-    if (!userPrompt.trim()) {
-      toast.error('Please enter code or prompt to execute');
-      return;
-    }
+  const form = useForm<SandboxFormValues>({
+    resolver: zodResolver(sandboxSchema),
+    defaultValues: {
+      model: 'prism-auto',
+      routingPolicy: 'balanced',
+      keyPrefix: 'auto',
+      agentId: 'default',
+      enableStream: true,
+      systemPrompt:
+        'You are an expert AI agent sandbox evaluator. Analyze code safety, boundary limits, and execute tools safely.',
+      userPrompt:
+        'Write a Python function to validate JSON Schema definitions and estimate memory usage.',
+    },
+  });
 
-    setIsExecuting(true);
+  const isExecuting = sandboxMutation.isPending;
+  const selectedModel = form.watch('model');
+
+  const handleCopyOutput = () => {
+    if (!executionOutput) return;
+    navigator.clipboard.writeText(executionOutput);
+    setCopied(true);
+    toast.success('Copied output to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const onSubmit = async (values: SandboxFormValues) => {
     setExecutionOutput('');
     setLatencyMs(null);
     setTokenStats(null);
     const startTime = Date.now();
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (selectedKeyPrefix !== 'auto') {
-      headers['X-Sandbox-Key-Prefix'] = selectedKeyPrefix;
-    }
-    if (selectedAgentId !== 'default') {
-      headers['X-Prism-Agent-ID'] = selectedAgentId;
-    }
-    if (selectedModel === 'prism-auto') {
-      headers['X-Prism-Routing-Policy'] = selectedRoutingPolicy;
-    }
-
     try {
-      const res = await fetch('/api/sandbox/chat/completions', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          temperature: 0.7,
-          stream: enableStream,
-        }),
+      const res = await sandboxMutation.mutateAsync({
+        keyPrefix: values.keyPrefix,
+        routingPolicy: values.routingPolicy,
+        agentId: values.agentId,
+        model: values.model,
+        messages: [
+          { role: 'system', content: values.systemPrompt },
+          { role: 'user', content: values.userPrompt },
+        ],
+        temperature: 0.7,
+        stream: values.enableStream,
       });
 
-      if (!res.ok) {
-        const elapsed = Date.now() - startTime;
-        setLatencyMs(elapsed);
-        const errText = await res.text();
-        setExecutionOutput(`[HTTP ${res.status} Error]\n${errText}`);
-        toast.error(`Execution failed: HTTP ${res.status}`);
-        return;
-      }
-
-      if (enableStream && res.body) {
+      if (values.enableStream && res.body) {
         const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let fullOutput = '';
-        let chunkBuffer = '';
+        const decoder = new TextDecoder('utf-8');
+        let accumulatedText = '';
+        let doneReading = false;
 
-        while (true) {
-          const { done, value } = await reader.read();
+        while (!doneReading) {
+          const { value, done } = await reader.read();
           if (done) break;
 
-          const chunkText = decoder.decode(value, { stream: true });
-          chunkBuffer += chunkText;
-          const lines = chunkBuffer.split('\n');
-          chunkBuffer = lines.pop() || '';
+          const chunkStr = decoder.decode(value, { stream: true });
+          const lines = chunkStr.split('\n');
 
           for (const line of lines) {
             const trimmed = line.trim();
-            if (trimmed.startsWith('data: ')) {
-              const dataStr = trimmed.slice(6);
-              if (dataStr === '[DONE]') continue;
-              try {
-                const parsed = JSON.parse(dataStr);
-                const content = parsed.choices?.[0]?.delta?.content || '';
-                if (content) {
-                  fullOutput += content;
-                  setExecutionOutput(fullOutput);
-                }
-              } catch {
-                // Raw SSE chunk fallback
-              }
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const dataStr = trimmed.replace(/^data:\s*/, '');
+            if (dataStr === '[DONE]') {
+              doneReading = true;
+              break;
             }
-          }
-        }
 
-        if (chunkBuffer.trim().startsWith('data: ')) {
-          const dataStr = chunkBuffer.trim().slice(6);
-          if (dataStr !== '[DONE]') {
             try {
               const parsed = JSON.parse(dataStr);
-              const content = parsed.choices?.[0]?.delta?.content || '';
-              if (content) {
-                fullOutput += content;
-                setExecutionOutput(fullOutput);
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta) {
+                accumulatedText += delta;
+                setExecutionOutput(accumulatedText);
+              }
+              if (parsed.usage) {
+                setTokenStats({
+                  input: parsed.usage.prompt_tokens || 0,
+                  output: parsed.usage.completion_tokens || 0,
+                });
               }
             } catch {
-              // ignore end chunk parse error
+              // Ignore partial SSE JSON chunks
             }
           }
         }
 
-        const elapsed = Date.now() - startTime;
-        setLatencyMs(elapsed);
-        if (!fullOutput) {
-          setExecutionOutput('[Stream Completed cleanly]');
-        }
-        toast.success('Sandbox SSE stream completed');
+        setLatencyMs(Date.now() - startTime);
+        toast.success('Sandbox stream execution completed');
       } else {
-        const elapsed = Date.now() - startTime;
-        setLatencyMs(elapsed);
         const data = await res.json();
         const choice = data.choices?.[0]?.message?.content ?? JSON.stringify(data, null, 2);
         setExecutionOutput(choice);
@@ -169,13 +231,12 @@ export default function SandboxPage() {
             output: data.usage.completion_tokens || 0,
           });
         }
+        setLatencyMs(Date.now() - startTime);
         toast.success('Sandbox execution completed');
       }
     } catch (err: unknown) {
       setExecutionOutput(`[Client Exception]\n${getErrorMessage(err)}`);
       toast.error('Sandbox execution error');
-    } finally {
-      setIsExecuting(false);
     }
   };
 
@@ -186,135 +247,212 @@ export default function SandboxPage() {
         description="Isolated execution container sandbox for live agent prompt evaluation, code execution, and boundary safety testing."
       />
 
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-        <Card className="flex flex-col justify-between">
-          <CardHeader>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column: Sandbox Controls with RHF & Molecule Form */}
+        <Card className="flex flex-col">
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Code2 className="h-4 w-4 text-[#8B5CF6]" />
               <span>Sandbox Execution Controls</span>
             </CardTitle>
-            <CardDescription>Select target model, bound agent identity, and prompt code payload</CardDescription>
+            <CardDescription className="text-xs">
+              Select target model, bound agent identity, and prompt code payload.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">Target Model</Label>
-                <Select value={selectedModel} onValueChange={setSelectedModel}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="prism-auto">prism-auto (Smart Router)</SelectItem>
-                    {modelsList.map((m: ApiModel) => (
-                      <SelectItem key={m.id} value={m.slug || m.name}>
-                        {m.displayName || m.name}
-                      </SelectItem>
-                    ))}
-                    {modelsList.length === 0 && (
-                      <>
-                        <SelectItem value="gpt-4o">OpenAI GPT-4o</SelectItem>
-                        <SelectItem value="claude-3-5-sonnet">Anthropic Claude 3.5 Sonnet</SelectItem>
-                        <SelectItem value="gemini-1.5-pro">Google Gemini 1.5 Pro</SelectItem>
-                      </>
+          <CardContent className="space-y-4 flex-1 flex flex-col justify-between">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-1 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Target Model */}
+                    <FormField
+                      control={form.control}
+                      name="model"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-semibold">Target Model</FormLabel>
+                          <FormControl>
+                            <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select model" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="prism-auto">prism-auto (Smart Router)</SelectItem>
+                                {modelsList.map((m: ApiModel) => (
+                                  <SelectItem key={m.id} value={m.slug}>
+                                    {m.displayName || m.name} ({m.providerId || m.providerName})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Smart Router Policy */}
+                    <FormField
+                      control={form.control}
+                      name="routingPolicy"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-semibold">Smart Router Policy</FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              disabled={isExecuting || selectedModel !== 'prism-auto'}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select policy" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="balanced">Balanced Policy</SelectItem>
+                                <SelectItem value="quality">Quality Policy</SelectItem>
+                                <SelectItem value="cheap">Cheap Policy</SelectItem>
+                                <SelectItem value="fast">Fast Policy</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Gateway API Key Context */}
+                    <FormField
+                      control={form.control}
+                      name="keyPrefix"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-semibold flex items-center gap-1">
+                            <span>Gateway API Key Context</span>
+                            <span className="text-destructive font-bold">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select key" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="auto">RoozyGateway (pk_live_auto...)</SelectItem>
+                                {keysList.map((k) => (
+                                  <SelectItem key={k.id} value={k.keyPrefix}>
+                                    {k.name} ({k.keyPrefix}...)
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Agent Context Boundary */}
+                    <FormField
+                      control={form.control}
+                      name="agentId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-semibold">Agent Context Boundary</FormLabel>
+                          <FormControl>
+                            <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select agent" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="default">Default Gateway Identity</SelectItem>
+                                {agentsList.map((a) => (
+                                  <SelectItem key={a.id} value={a.name}>
+                                    {a.displayName || a.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Enable SSE Response Streaming */}
+                  <FormField
+                    control={form.control}
+                    name="enableStream"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between p-3 rounded-md border border-border bg-card space-y-0">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-xs font-semibold cursor-pointer">
+                            Enable SSE Response Streaming
+                          </FormLabel>
+                          <p className="text-[11px] text-muted-foreground">Stream tokens live chunk-by-chunk in output console</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isExecuting} />
+                        </FormControl>
+                      </FormItem>
                     )}
-                  </SelectContent>
-                </Select>
-              </div>
+                  />
 
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">Smart Router Policy</Label>
-                <Select
-                  value={selectedRoutingPolicy}
-                  onValueChange={(val) => setSelectedRoutingPolicy(val as RoutingPolicyType)}
-                  disabled={selectedModel !== 'prism-auto'}
+                  {/* System Persona & Tool Rules */}
+                  <FormField
+                    control={form.control}
+                    name="systemPrompt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-semibold">System Persona & Tool Rules</FormLabel>
+                        <FormControl>
+                          <textarea
+                            {...field}
+                            disabled={isExecuting}
+                            className="w-full h-20 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                            placeholder="System role and safety boundaries..."
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Prompt / Code Instruction */}
+                  <FormField
+                    control={form.control}
+                    name="userPrompt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-semibold">Prompt / Code Instruction</FormLabel>
+                        <FormControl>
+                          <textarea
+                            {...field}
+                            disabled={isExecuting}
+                            className="w-full h-24 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                            placeholder="Enter code block or execution prompt..."
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="prismViolet"
+                  className="w-full gap-2 mt-4"
+                  disabled={isExecuting}
                 >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select policy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="balanced">Balanced Policy</SelectItem>
-                    <SelectItem value="quality">Quality Focus Policy</SelectItem>
-                    <SelectItem value="cheap">Cost Savings Policy</SelectItem>
-                    <SelectItem value="fast">Speed Priority Policy</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">Gateway API Key Context</Label>
-                <Select value={selectedKeyPrefix} onValueChange={setSelectedKeyPrefix}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Gateway Key" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Auto-select Default Key</SelectItem>
-                    {keysList.map((k) => (
-                      <SelectItem key={k.id} value={k.keyPrefix}>
-                        {k.name} ({k.keyPrefix}...)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">Agent Context Boundary</Label>
-                <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select agent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Default Gateway Identity</SelectItem>
-                    {agentsList.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.displayName || a.name} ({a.agentType})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card/60">
-              <div className="space-y-0.5">
-                <Label className="text-xs font-semibold cursor-pointer">Enable SSE Response Streaming</Label>
-                <p className="text-[11px] text-muted-foreground">Stream tokens live chunk-by-chunk in output console</p>
-              </div>
-              <Switch checked={enableStream} onCheckedChange={setEnableStream} />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">System Persona & Tool Rules</Label>
-              <textarea
-                className="w-full h-20 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                value={systemPrompt}
-                onChange={(e) => setSystemPrompt(e.target.value)}
-                placeholder="Enter system prompt..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Prompt / Code Instruction</Label>
-              <textarea
-                className="w-full h-32 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                value={userPrompt}
-                onChange={(e) => setUserPrompt(e.target.value)}
-                placeholder="Enter code block or execution prompt..."
-              />
-            </div>
-
-            <Button
-              variant="prismViolet"
-              className="w-full gap-2"
-              onClick={handleRunSandbox}
-              disabled={isExecuting}
-            >
-              {isExecuting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-              {isExecuting ? 'Executing in Sandbox...' : 'Run Sandbox Container'}
-            </Button>
+                  {isExecuting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                  {isExecuting ? 'Executing in Sandbox...' : 'Run Sandbox Container'}
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
 
+        {/* Right Column: Execution Output Console */}
         <Card className="flex flex-col">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -322,25 +460,35 @@ export default function SandboxPage() {
                 <Terminal className="h-4 w-4 text-[#8B5CF6]" />
                 <span>Execution Output Console</span>
               </CardTitle>
-              {latencyMs != null && (
-                <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                {latencyMs != null && (
                   <Badge variant="violet" className="font-mono text-[10px]">{latencyMs} ms</Badge>
-                  {tokenStats && (
-                    <Badge variant="outline" className="font-mono text-[10px]">{tokenStats.input + tokenStats.output} tokens</Badge>
-                  )}
-                </div>
-              )}
+                )}
+                {tokenStats && (
+                  <Badge variant="outline" className="font-mono text-[10px]">{tokenStats.input + tokenStats.output} tokens</Badge>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1.5 border-violet-500/20 hover:border-violet-500/40"
+                  onClick={handleCopyOutput}
+                  disabled={!executionOutput}
+                >
+                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-[#8B5CF6]" />}
+                  <span>{copied ? 'Copied!' : 'Copy Result'}</span>
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col">
-            <div className="flex-1 w-full min-h-[350px] p-3 rounded-md border border-border bg-muted/40 font-mono text-xs overflow-y-auto whitespace-pre-wrap">
+            <div className="flex-1 w-full max-h-[560px] min-h-[400px] p-4 rounded-lg border border-border/80 bg-[#0A0C10] font-mono text-xs overflow-y-auto custom-scrollbar shadow-inner">
               {isExecuting && !executionOutput ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#8B5CF6]" />
                   <span>Connecting to Prism Proxy Engine and evaluating sandbox safety...</span>
                 </div>
               ) : executionOutput ? (
-                executionOutput
+                <FormattedSandboxOutput content={executionOutput} />
               ) : (
                 <span className="text-muted-foreground italic">No output yet. Click &quot;Run Sandbox Container&quot; to execute prompt.</span>
               )}
