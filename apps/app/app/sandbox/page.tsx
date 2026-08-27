@@ -17,7 +17,7 @@ import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery';
 import { useGatewayKeysQuery } from '@/hooks/queries/useGatewayKeysQuery';
 import { usePoliciesQuery } from '@/hooks/queries/usePoliciesQuery';
-import { ApiModel } from '@/lib/api';
+import { ApiModel, ApiAgent } from '@/lib/api';
 import { Play, Terminal, RefreshCw, Code2, Copy, Check, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/types/ui';
@@ -160,6 +160,31 @@ export default function SandboxPage() {
     }
   }, [keysList, form]);
 
+  const selectedAgentId = form.watch('agentId');
+
+  React.useEffect(() => {
+    if (!selectedAgentId || selectedAgentId === 'default') {
+      form.setValue(
+        'systemPrompt',
+        'You are an expert AI agent sandbox evaluator. Analyze code safety, boundary limits, and execute tools safely.'
+      );
+      return;
+    }
+
+    const foundAgent = agentsList.find(
+      (a: ApiAgent) => a.id === selectedAgentId || a.name === selectedAgentId
+    );
+
+    if (foundAgent) {
+      const personaPrompt =
+        foundAgent.systemPromptOverride ||
+        (foundAgent.description
+          ? `You are ${foundAgent.displayName || foundAgent.name}. ${foundAgent.description}. Operate strictly within your agent context boundary rules and execute tools safely.`
+          : `You are ${foundAgent.displayName || foundAgent.name}, a specialized AI agent. Process instructions according to your agent context boundary rules.`);
+      form.setValue('systemPrompt', personaPrompt);
+    }
+  }, [selectedAgentId, agentsList, form]);
+
   const isExecuting = sandboxMutation.isPending;
   const selectedModel = form.watch('model');
 
@@ -272,9 +297,9 @@ export default function SandboxPage() {
         description="Isolated execution container sandbox for live agent prompt evaluation, code execution, and boundary safety testing."
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-w-0 flex-1">
         {/* Left Column: Sandbox Controls with RHF & Molecule Form */}
-        <Card className="flex flex-col">
+        <Card className="flex flex-col min-w-0 overflow-hidden">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Code2 className="h-4 w-4 text-[#8B5CF6]" />
@@ -490,7 +515,7 @@ export default function SandboxPage() {
         </Card>
 
         {/* Right Column: Execution Output Console */}
-        <Card className="flex flex-col">
+        <Card className="flex flex-col min-w-0 overflow-hidden">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">

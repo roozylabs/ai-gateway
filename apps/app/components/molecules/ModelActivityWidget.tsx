@@ -16,15 +16,19 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
   const [activeModel, setActiveModel] = useState<string>('prism-auto');
   const [activeCred, setActiveCred] = useState<string>('Gateway Key');
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [lastActiveTime, setLastActiveTime] = useState<number>(0);
+  const [isRecentlyActive, setIsRecentlyActive] = useState<boolean>(false);
 
   useEffect(() => {
     if (latestLog) {
+      const logTime = latestLog.createdAt ? new Date(latestLog.createdAt).getTime() : Date.now();
       setActiveModel(latestLog.model || 'prism-auto');
       setActiveCred(
         latestLog.credentialName ||
           (latestLog.gatewayApiKeyId ? `gw_sk_${latestLog.gatewayApiKeyId.slice(0, 6)}` : 'Gateway Key')
       );
       setLatencyMs(latestLog.latencyMs ?? null);
+      setLastActiveTime(logTime);
     }
   }, [latestLog]);
 
@@ -41,12 +45,15 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
           const payload = JSON.parse(event.data);
           if (payload.model) {
             setActiveModel(payload.model);
+            setLastActiveTime(Date.now());
           }
           if (payload.credentialName || payload.keyPrefix) {
             setActiveCred(payload.credentialName || payload.keyPrefix);
+            setLastActiveTime(Date.now());
           }
           if (typeof payload.latencyMs === 'number') {
             setLatencyMs(payload.latencyMs);
+            setLastActiveTime(Date.now());
           }
         } catch (_parseErr) {
           // Ignore partial or non-JSON SSE event data
@@ -67,13 +74,23 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
     };
   }, []);
 
+  // 15-second recency status ticker
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setIsRecentlyActive(now - lastActiveTime < 15000);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [lastActiveTime]);
+
   if (collapsed) {
     return (
       <div
         className="flex items-center justify-center py-2 text-[#8B5CF6]"
-        title={`Active Router (prism-auto) | SSE Live | Model: ${activeModel} | Key: ${activeCred}`}
+        title={`Active Router (prism-auto) | ${isRecentlyActive ? 'ACTIVE' : 'STANDBY'} | Model: ${isRecentlyActive ? activeModel : 'prism-auto'}`}
       >
-        <Activity className="h-4 w-4 animate-pulse text-emerald-400" />
+        <Activity className={`h-4 w-4 ${isRecentlyActive ? 'animate-pulse text-emerald-400' : 'text-muted-foreground'}`} />
       </div>
     );
   }
@@ -82,27 +99,37 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
     <div className="p-3 rounded-lg border border-border bg-card/60 backdrop-blur space-y-2 text-xs">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-muted-foreground font-semibold text-[11px]">
-          <Activity className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
+          <Activity className={`h-3.5 w-3.5 ${isRecentlyActive ? 'text-emerald-400 animate-pulse' : 'text-muted-foreground'}`} />
           <span className="uppercase tracking-wider">ACTIVE MODEL ROUTER</span>
         </div>
-        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded font-bold">SSE LIVE</span>
+        <span
+          className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+            isRecentlyActive
+              ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+              : 'text-muted-foreground bg-muted/40 border border-border'
+          }`}
+        >
+          {isRecentlyActive ? 'ACTIVE' : 'STANDBY'}
+        </span>
       </div>
 
       <div className="space-y-1 font-mono text-xs pt-0.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 font-bold text-foreground">
             <Layers className="h-3.5 w-3.5 text-[#8B5CF6]" />
-            <span className="truncate max-w-[110px]">{activeModel}</span>
+            <span className="truncate max-w-[110px]">{isRecentlyActive ? activeModel : 'prism-auto'}</span>
           </div>
           <span className="text-muted-foreground text-[10px]">
-            {latencyMs != null ? `${latencyMs}ms` : 'Ready'}
+            {isRecentlyActive && latencyMs != null ? `${latencyMs}ms` : 'Ready'}
           </span>
         </div>
 
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground pt-0.5 truncate">
-          <KeyRound className="h-3 w-3 text-violet-400 shrink-0" />
-          <span className="truncate">Key: {activeCred}</span>
-        </div>
+        {isRecentlyActive && (
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground pt-0.5 truncate">
+            <KeyRound className="h-3 w-3 text-violet-400 shrink-0" />
+            <span className="truncate">Key: {activeCred}</span>
+          </div>
+        )}
       </div>
     </div>
   );
