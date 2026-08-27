@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiTestTool, apiCreateTool, apiUpdateTool, apiDeleteTool, ApiTool, ApiCreateToolRequest } from '@/lib/api';
+import { apiTestTool, apiCreateTool, apiUpdateTool, apiDeleteTool, ApiCreateToolRequest } from '@/lib/api';
 
 export function useTestToolMutation() {
   return useMutation({

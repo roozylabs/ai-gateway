@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/molecules/Card';
@@ -10,11 +10,10 @@ import { Slider } from '@/components/atoms/Slider';
 import { Badge } from '@/components/atoms/Badge';
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
-import { Switch } from '@/components/atoms/Switch';
 import { usePoliciesQuery, useCreatePolicy, useUpdatePolicy, useDeletePolicy, useSetDefaultPolicy } from '@/hooks/queries/usePoliciesQuery';
 import { ApiRoutingPolicy } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Workflow, Plus, Save, SlidersHorizontal, Star, Trash2 } from 'lucide-react';
+import { Plus, Save, SlidersHorizontal, Star, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
 
