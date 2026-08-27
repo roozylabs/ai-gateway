@@ -19,6 +19,7 @@ import { ApiMCPServer } from '@/lib/api';
 import { apiTestMCPTool, ApiMCPToolExecutionResult } from '@/lib/api';
 import { Globe, Plus, RefreshCw, Pencil, Trash2, Loader2, Play, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/types/ui';
 
 function statusToDot(status: string) {
   switch (status) {
@@ -75,8 +76,8 @@ export default function MCPPage() {
       } else {
         toast.error(`MCP Tool error status: ${res.statusCode}`);
       }
-    } catch (err: any) {
-      toast.error(`Execution error: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Execution error: ${getErrorMessage(err)}`);
     } finally {
       setTestExecuting(false);
     }

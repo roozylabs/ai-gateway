@@ -629,7 +629,7 @@ export interface ApiRoutingSimulationRes {
 
 export async function apiSimulateRouting(req: ApiRoutingSimulationReq): Promise<ApiRoutingSimulationRes> {
   const response = await api.post<{ data: ApiRoutingSimulationRes }>('/routing/simulate', req);
-  return response.data?.data || (response.data as any);
+  return response.data?.data || (response.data as unknown as ApiRoutingSimulationRes);
 }
 
 export interface ApiCostRecommendation {

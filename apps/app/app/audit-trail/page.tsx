@@ -170,8 +170,9 @@ export default function AuditTrailPage() {
       key: 'status',
       render: (status) => {
         const s = String(status ?? '');
-        const variant = s === 'success' ? 'success' : s === 'denied' ? 'destructive' : s === 'flagged' ? 'warning' : 'info';
-        return <Badge variant={variant as any} className="text-[10px]">{s}</Badge>;
+        const variant: 'success' | 'destructive' | 'warning' | 'info' =
+          s === 'success' ? 'success' : s === 'denied' ? 'destructive' : s === 'flagged' ? 'warning' : 'info';
+        return <Badge variant={variant} className="text-[10px]">{s}</Badge>;
       },
     },
   ];
