@@ -915,7 +915,7 @@ export default function SandboxPage() {
                       variant="violet"
                       className="font-mono text-[10px] gap-1 border-violet-500/30"
                     >
-                      <LayersIcon className="h-3 w-3 text-primary" />
+                      <LayersIcon className="h-3 w-3" />
                       Model: {routedModel}
                     </Badge>
                   )}
