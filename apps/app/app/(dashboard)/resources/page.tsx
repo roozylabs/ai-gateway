@@ -134,7 +134,7 @@ export default function ResourcesPage() {
           }
         />
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
           {resourceList.map((resource) => (
             <Card key={resource.id} className="flex flex-col justify-between">
               <CardHeader>
