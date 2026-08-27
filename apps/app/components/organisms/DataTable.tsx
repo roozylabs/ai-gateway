@@ -59,7 +59,7 @@ export function DataTable<T extends object>({
   return (
     <div className={cn('space-y-3', className)}>
       {searchPlaceholder && (
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-row-reverse items-center justify-between gap-4">
           <div className="relative max-w-xs flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
