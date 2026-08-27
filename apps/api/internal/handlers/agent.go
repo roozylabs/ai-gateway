@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/prism/internal/models"
@@ -95,13 +97,32 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		maxBudgetCents = int(req.BudgetCapUSD * 100)
 	}
 
+	systemPrompt := req.SystemPromptOverride
+	if strings.TrimSpace(systemPrompt) == "" {
+		name := req.DisplayName
+		if name == "" {
+			name = req.Name
+		}
+		desc := req.Description
+		if desc == "" {
+			desc = "Operate strictly within your agent context boundary rules and execute tools safely."
+		}
+		systemPrompt = fmt.Sprintf("You are %s. %s.", name, desc)
+		if len(allowedTools) > 0 {
+			systemPrompt += fmt.Sprintf(" Allowed tools: %s.", strings.Join(allowedTools, ", "))
+		}
+		if len(allowedResources) > 0 {
+			systemPrompt += fmt.Sprintf(" Allowed resources: %s.", strings.Join(allowedResources, ", "))
+		}
+	}
+
 	agent := &models.Agent{
 		UserID:               userID,
 		Name:                 req.Name,
 		DisplayName:          req.DisplayName,
 		Description:          req.Description,
 		AgentType:            req.AgentType,
-		SystemPromptOverride: req.SystemPromptOverride,
+		SystemPromptOverride: systemPrompt,
 		AllowedModels:        allowedModels,
 		AllowedTools:         allowedTools,
 		AllowedResources:     allowedResources,
