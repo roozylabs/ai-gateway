@@ -360,20 +360,22 @@ export default function SandboxPage() {
   );
 
   React.useEffect(() => {
-    if (!activeJobId || !lastEvent) return;
+    if (!activeJobId || !lastEvent || !lastEvent.payload) return;
 
-    if (lastEvent.type === "async_job_updated") {
-      const payload = lastEvent.payload as any;
-      if (
-        payload &&
-        (payload.jobId === activeJobId || payload.job_id === activeJobId)
-      ) {
-        const status = payload.status;
+    const payload = lastEvent.payload as any;
+    const evtType = payload.type || lastEvent.type;
+    const data = payload.data || payload;
+
+    if (evtType === "async_job_updated" || payload.type === "async_job_updated") {
+      const jobId = data.jobId || data.job_id || payload.jobId || payload.job_id;
+      const status = data.status || payload.status;
+
+      if (jobId === activeJobId) {
         if (status === "completed") {
-          handleJobCompleted(activeJobId, payload.result, payload.model);
+          handleJobCompleted(activeJobId, data.result || payload.result, data.model || payload.model);
         } else if (status === "failed") {
-          setExecutionOutput(`Execution Failed:\n${payload.error}`);
-          toast.error(`Async Job ${activeJobId} failed: ${payload.error}`);
+          setExecutionOutput(`Execution Failed:\n${data.error || payload.error}`);
+          toast.error(`Async Job ${activeJobId} failed: ${data.error || payload.error}`);
           setActiveJobId(null);
           setIsAsyncExecuting(false);
         }
@@ -467,42 +469,31 @@ export default function SandboxPage() {
         setActiveJobId(jobId);
         toast.info(`Async Job ${jobId} queued successfully`);
 
-        let isDone = false;
-        let pollCount = 0;
-
-        while (!isDone && pollCount < 60) {
-          await new Promise((r) => setTimeout(r, 1000));
-          pollCount++;
-
-          if (completedJobRef.current === jobId) {
-            isDone = true;
-            break;
+        // Real-time SSE push handles completion via useSSE().
+        // Safety Fallback: single polling check after 15s if SSE is delayed.
+        setTimeout(async () => {
+          if (completedJobRef.current === jobId) return;
+          try {
+            const jobRes = await fetch(`/api/jobs/${jobId}`, {
+              headers: {
+                ...(token && { Authorization: `Bearer ${token}` }),
+              },
+            });
+            if (!jobRes.ok) return;
+            const jobData = await jobRes.json();
+            if (jobData.status === "completed") {
+              handleJobCompleted(jobId, jobData.result, jobData.model, startTime);
+            } else if (jobData.status === "failed") {
+              setExecutionOutput(`Request failed:\n${jobData.error}`);
+              form.setValue("userPrompt", savedPrompt);
+              toast.error(`Async job failed`);
+              setActiveJobId(null);
+              setIsAsyncExecuting(false);
+            }
+          } catch (_err) {
+            // Ignore fallback errors
           }
-
-          const jobRes = await fetch(`/api/jobs/${jobId}`, {
-            headers: {
-              ...(token && { Authorization: `Bearer ${token}` }),
-            },
-          });
-
-          if (!jobRes.ok) continue;
-
-          const jobData = await jobRes.json();
-          if (jobData.status === "completed") {
-            isDone = true;
-            handleJobCompleted(jobId, jobData.result, jobData.model, startTime);
-            break;
-          } else if (jobData.status === "failed") {
-            isDone = true;
-            setExecutionOutput(`Request failed:\n${jobData.error}`);
-            form.setValue("userPrompt", savedPrompt);
-            toast.error(`Async job failed`);
-            setActiveJobId(null);
-            setIsAsyncExecuting(false);
-            break;
-          }
-        }
-        setIsAsyncExecuting(false);
+        }, 15000);
         return;
       }
 
