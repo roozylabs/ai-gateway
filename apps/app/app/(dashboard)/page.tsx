@@ -172,7 +172,7 @@ export default function DashboardPage() {
           <CardContent className="space-y-4">
             {healthData && healthData.length > 0 ? (
               healthData.map((provider: ApiProviderHealth) => (
-                <div key={provider.name} className="flex items-center justify-between p-2.5 rounded-md border border-border bg-muted/20">
+                <div key={provider.name} className="flex items-center justify-between p-2.5 rounded-none border border-border bg-muted/20">
                   <div className="flex items-center gap-2">
                     <StatusDot status={providerStatusToDot(provider.status)} />
                     <span className="font-semibold text-xs">{provider.name}</span>
