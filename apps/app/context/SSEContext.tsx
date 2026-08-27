@@ -11,21 +11,32 @@ export interface SSEMessageEvent {
   timestamp: string;
 }
 
+type SSEListener = (evt: SSEMessageEvent) => void;
+
 interface SSEContextType {
   isConnected: boolean;
   lastEvent: SSEMessageEvent | null;
+  subscribeToSSE: (listener: SSEListener) => () => void;
 }
 
 const SSEContext = createContext<SSEContextType>({
   isConnected: false,
   lastEvent: null,
+  subscribeToSSE: () => () => {},
 });
 
 export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<SSEMessageEvent | null>(null);
+  const listenersRef = React.useRef<Set<SSEListener>>(new Set());
 
+  const subscribeToSSE = React.useCallback((listener: SSEListener) => {
+    listenersRef.current.add(listener);
+    return () => {
+      listenersRef.current.delete(listener);
+    };
+  }, []);
 
   useEffect(() => {
     const token = Cookies.get(CookieKeys.AUTH_TOKEN);
@@ -54,10 +65,20 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const handleData = (eventData: string, eventType: string) => {
           try {
             const data = JSON.parse(eventData);
-            setLastEvent({
+            const sseEvt: SSEMessageEvent = {
               type: eventType,
               payload: data,
               timestamp: new Date().toISOString(),
+            };
+            setLastEvent(sseEvt);
+
+            // Broadcast every event to active subscribers synchronously
+            listenersRef.current.forEach((listener) => {
+              try {
+                listener(sseEvt);
+              } catch (e) {
+                console.error('[SSE Listener Exception]', e);
+              }
             });
 
             // Live update React Query caches on actual gateway activity messages
@@ -118,9 +139,8 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [queryClient]);
 
-
   return (
-    <SSEContext.Provider value={{ isConnected, lastEvent }}>
+    <SSEContext.Provider value={{ isConnected, lastEvent, subscribeToSSE }}>
       {children}
     </SSEContext.Provider>
   );

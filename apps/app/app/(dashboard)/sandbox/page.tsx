@@ -288,7 +288,7 @@ export default function SandboxPage() {
   const policiesList = Array.isArray(policiesData) ? policiesData : [];
 
   const sandboxMutation = useSandboxExecutionMutation();
-  const { lastEvent } = useSSE();
+  const { subscribeToSSE } = useSSE();
 
   const [executionOutput, setExecutionOutput] = useState<string>("");
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
@@ -360,28 +360,34 @@ export default function SandboxPage() {
   );
 
   React.useEffect(() => {
-    if (!activeJobId || !lastEvent || !lastEvent.payload) return;
+    if (!activeJobId) return;
 
-    const payload = lastEvent.payload as any;
-    const evtType = payload.type || lastEvent.type;
-    const data = payload.data || payload;
+    const unsubscribe = subscribeToSSE((event) => {
+      if (!event || !event.payload) return;
 
-    if (evtType === "async_job_updated" || payload.type === "async_job_updated") {
-      const jobId = data.jobId || data.job_id || payload.jobId || payload.job_id;
-      const status = data.status || payload.status;
+      const payload = event.payload as any;
+      const evtType = payload.type || event.type;
+      const data = payload.data || payload;
 
-      if (jobId === activeJobId) {
-        if (status === "completed") {
-          handleJobCompleted(activeJobId, data.result || payload.result, data.model || payload.model);
-        } else if (status === "failed") {
-          setExecutionOutput(`Execution Failed:\n${data.error || payload.error}`);
-          toast.error(`Async Job ${activeJobId} failed: ${data.error || payload.error}`);
-          setActiveJobId(null);
-          setIsAsyncExecuting(false);
+      if (evtType === "async_job_updated" || payload.type === "async_job_updated") {
+        const jobId = data.jobId || data.job_id || payload.jobId || payload.job_id;
+        const status = data.status || payload.status;
+
+        if (jobId === activeJobId) {
+          if (status === "completed") {
+            handleJobCompleted(activeJobId, data.result || payload.result, data.model || payload.model);
+          } else if (status === "failed") {
+            setExecutionOutput(`Execution Failed:\n${data.error || payload.error}`);
+            toast.error(`Async Job ${activeJobId} failed: ${data.error || payload.error}`);
+            setActiveJobId(null);
+            setIsAsyncExecuting(false);
+          }
         }
       }
-    }
-  }, [lastEvent, activeJobId, handleJobCompleted]);
+    });
+
+    return () => unsubscribe();
+  }, [activeJobId, subscribeToSSE, handleJobCompleted]);
 
   const form = useForm<SandboxFormValues>({
     resolver: zodResolver(sandboxSchema),
@@ -469,38 +475,7 @@ export default function SandboxPage() {
         setActiveJobId(jobId);
         toast.info(`Async Job ${jobId} queued successfully`);
 
-        // Real-time SSE push + 2s interval polling for bulletproof async job completion
-        const pollInterval = setInterval(async () => {
-          if (completedJobRef.current === jobId) {
-            clearInterval(pollInterval);
-            return;
-          }
-          try {
-            const jobRes = await fetch(`/api/jobs/${jobId}`, {
-              headers: {
-                ...(token && { Authorization: `Bearer ${token}` }),
-              },
-            });
-            if (!jobRes.ok) return;
-            const jobData = await jobRes.json();
-            if (jobData.status === "completed") {
-              clearInterval(pollInterval);
-              handleJobCompleted(jobId, jobData.result, jobData.model, startTime);
-            } else if (jobData.status === "failed") {
-              clearInterval(pollInterval);
-              setExecutionOutput(`Request failed:\n${jobData.error}`);
-              form.setValue("userPrompt", savedPrompt);
-              toast.error(`Async job failed: ${jobData.error || 'Unknown error'}`);
-              setActiveJobId(null);
-              setIsAsyncExecuting(false);
-            }
-          } catch (_err) {
-            // Ignore temporary network errors during polling
-          }
-        }, 2000);
-
-        // Safety cleanup after 3 minutes max
-        setTimeout(() => clearInterval(pollInterval), 180000);
+        // Pure 100% SSE push handles completion via subscribeToSSE() listener
         return;
       }
 
