@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -402,55 +401,4 @@ func parseClientApp(ua string) string {
 		return "Web Sandbox"
 	}
 	return "Custom App"
-}
-
-func (h *GatewayHandler) recordAuditTrail(c *gin.Context, log *models.RequestLog, gatewayKey *models.GatewayAPIKey) {
-	if h.auditRecorder == nil || log == nil {
-		return
-	}
-
-	agentID := c.GetHeader("X-Prism-Agent-ID")
-	agentName := agentID
-	if agentName == "" {
-		agentName = "general-agent"
-	}
-
-	userRole := c.GetHeader("X-Prism-Role")
-	if userRole == "" {
-		userRole = "developer"
-	}
-
-	promptHash := utils.HashSHA256(log.Model + ":" + log.RequestID)
-	responseHash := utils.HashSHA256(log.Model + ":" + log.ProviderType + ":" + fmt.Sprintf("%d", log.TotalTokens))
-
-	trail := &models.AIAuditTrail{
-		RequestID:         log.RequestID,
-		UserID:            gatewayKey.UserID,
-		UserRole:          userRole,
-		ModelSlug:         log.Model,
-		FailoverChain:     []string{},
-		ToolsInvoked:      []string{},
-		ResourcesAccessed: []string{},
-		MCPServersCalled:  []string{},
-		PromptTokens:      log.InputTokens,
-		CompletionTokens:  log.OutputTokens,
-		TotalTokens:       log.TotalTokens,
-		TotalCostUSD:      log.CostUSD,
-		StatusCode:        log.StatusCode,
-		LatencyMS:         log.LatencyMs,
-		TTFTMS:            log.TTFTMs,
-		PromptHash:        promptHash,
-		ResponseHash:      responseHash,
-		ComplianceStatus:  "compliant",
-	}
-
-	if gatewayKey.ID != "" {
-		trail.GatewayKeyID = &gatewayKey.ID
-	}
-	if agentID != "" {
-		trail.AgentID = &agentID
-		trail.AgentName = &agentName
-	}
-
-	_ = h.auditRecorder.Record(c.Request.Context(), trail)
 }
