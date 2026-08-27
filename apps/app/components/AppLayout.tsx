@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -31,6 +31,7 @@ import { ThemeToggle } from '@/components/molecules/ThemeToggle';
 import { StatusDot } from '@/components/atoms/Badge';
 import { TenantSelector } from '@/components/TenantSelector';
 import { PermissionProvider } from '@/components/PermissionProvider';
+import { ModelActivityWidget } from '@/components/molecules/ModelActivityWidget';
 import { Avatar, AvatarFallback } from '@/components/atoms/Avatar';
 import { useSidebarStore } from '@/stores/useSidebarStore';
 import { useSystemStore } from '@/stores/useSystemStore';
@@ -94,7 +95,7 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { collapsed, toggleCollapsed } = useSidebarStore();
   const { status: systemStatus } = useSystemStore();
@@ -165,6 +166,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 })}
               </div>
             ))}
+          </div>
+
+          {/* Active Model Activity Widget */}
+          <div className="px-3 py-2 border-t border-border/60">
+            <ModelActivityWidget collapsed={collapsed} />
           </div>
 
           {/* Sidebar Footer User Section */}

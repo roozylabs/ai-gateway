@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import dynamic from 'next/dynamic';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 

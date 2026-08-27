@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
+import { Card, CardHeader, CardContent } from '@/components/molecules/Card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/molecules/Sheet';
 import { Button } from '@/components/atoms/Button';
 import { Input } from '@/components/atoms/Input';

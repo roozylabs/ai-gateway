@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import type { ReactNode } from 'react';
 import { ThemeToggle } from '@/components/molecules/ThemeToggle';
 import { Shield } from 'lucide-react';
 
-export function AuthLayout({ children }: { children: React.ReactNode }) {
+export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-6 lg:p-8">
       {/* Background Subtle Backdrop */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import type { ReactNode } from 'react';
 import { AlertTriangle, FolderOpen, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/atoms/Button';
 import { cn } from '@/lib/utils';
@@ -25,16 +25,17 @@ export function ErrorState({
         className
       )}
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-500">
-        <AlertTriangle className="h-5 w-5" />
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-400">
+        <AlertTriangle className="h-6 w-6" />
       </div>
       <div>
         <h4 className="text-sm font-semibold text-foreground">{title}</h4>
         <p className="text-xs text-muted-foreground max-w-sm mt-1">{description}</p>
       </div>
       {onRetry && (
-        <Button variant="outline" size="sm" onClick={onRetry} className="gap-2 text-xs mt-2">
-          <RefreshCw className="h-3.5 w-3.5" /> Try Again
+        <Button variant="outline" size="sm" onClick={onRetry} className="gap-1.5 text-xs">
+          <RefreshCw className="h-3.5 w-3.5" />
+          <span>Try Again</span>
         </Button>
       )}
     </div>
@@ -44,8 +45,8 @@ export function ErrorState({
 export interface EmptyStateProps {
   title?: string;
   description?: string;
-  icon?: React.ReactNode;
-  action?: React.ReactNode;
+  icon?: ReactNode;
+  action?: ReactNode;
   className?: string;
 }
 

@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/molecules/Card';

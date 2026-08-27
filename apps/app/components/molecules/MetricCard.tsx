@@ -1,4 +1,4 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { Card, CardContent } from '@/components/molecules/Card';
 import { cn } from '@/lib/utils';
 
@@ -8,7 +8,7 @@ export interface MetricCardProps {
   delta?: string;
   deltaType?: 'positive' | 'negative' | 'neutral';
   subtitle?: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   className?: string;
   loading?: boolean;
 }

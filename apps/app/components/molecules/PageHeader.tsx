@@ -1,11 +1,11 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface PageHeaderProps {
   title: string;
   description?: string;
-  extra?: React.ReactNode;
-  children?: React.ReactNode;
+  extra?: ReactNode;
+  children?: ReactNode;
   className?: string;
 }
 
