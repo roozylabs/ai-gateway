@@ -741,7 +741,7 @@ export async function apiDeleteTool(id: string): Promise<void> {
   await api.delete(`/tools/${id}`);
 }
 
-export async function apiTestTool(id: string, args: Record<string, any>): Promise<ApiToolExecutionResult> {
+export async function apiTestTool(id: string, args: Record<string, unknown>): Promise<ApiToolExecutionResult> {
   const response = await api.post<ApiToolExecutionResult>(`/tools/${id}/test`, { args });
   return response.data;
 }
@@ -752,7 +752,7 @@ export interface ApiResource {
   name: string;
   displayName: string;
   description: string;
-  parametersSchema: Record<string, any>;
+  parametersSchema: Record<string, unknown>;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
