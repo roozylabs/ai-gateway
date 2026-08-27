@@ -42,7 +42,7 @@ func (g *AgentGovernanceEngine) ValidateAgentModelAccess(ctx context.Context, us
 		}, nil
 	}
 
-	if len(ag.AllowedModels) == 0 {
+	if len(ag.AllowedModels) == 0 || strings.EqualFold(modelSlug, "prism-auto") || strings.EqualFold(modelSlug, "auto") {
 		return &models.AgentGovernanceCheckResult{AgentName: agentName, ModelAllowed: true}, nil
 	}
 

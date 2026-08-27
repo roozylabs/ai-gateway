@@ -305,7 +305,7 @@ export default function SandboxPage() {
                                 <SelectItem value="prism-auto">prism-auto (Smart Router)</SelectItem>
                                 {modelsList.map((m: ApiModel) => (
                                   <SelectItem key={m.id} value={m.slug}>
-                                    {m.displayName || m.name} ({m.providerId || m.providerName})
+                                    {m.displayName || m.name} ({m.providerName || m.slug})
                                   </SelectItem>
                                 ))}
                               </SelectContent>

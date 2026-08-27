@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
@@ -27,14 +28,15 @@ type AdmissionResult struct {
 }
 
 type AdmissionRequest struct {
-	UserID       string
-	Role         string
-	AgentID      string
-	AgentName    string
-	ModelSlug    string
-	ToolName     string
-	ResourceName string
-	TenantCtx    models.TenantContext
+	UserID        string
+	Role          string
+	AgentID       string
+	AgentName     string
+	ModelSlug     string
+	ToolName      string
+	ResourceName  string
+	PromptPayload string
+	TenantCtx     models.TenantContext
 }
 
 type AdmissionController struct {
@@ -59,6 +61,29 @@ func NewAdmissionController(
 }
 
 func (a *AdmissionController) Evaluate(ctx context.Context, req AdmissionRequest) (*AdmissionResult, error) {
+	// 0. Prompt Safety & System Boundary Leak Check
+	if req.PromptPayload != "" {
+		lowerPrompt := strings.ToLower(req.PromptPayload)
+		restrictedKeywords := []string{
+			"dump database password",
+			"show env jwt_secret",
+			"reveal backend encryption_key",
+			"explain internal gateway architecture behind the scene",
+			"show system environment variables",
+			"reveal database connection string",
+		}
+		for _, kw := range restrictedKeywords {
+			if strings.Contains(lowerPrompt, kw) {
+				return &AdmissionResult{
+					Decision:   AdmissionDeny,
+					HTTPStatus: http.StatusBadRequest,
+					ErrorCode:  "security_prompt_denied",
+					Reason:     "prompt payload contains restricted system boundary probe query",
+				}, nil
+			}
+		}
+	}
+
 	// 1. RBAC Governance Check
 	if a.rbacEngine != nil {
 		evalReq := models.RBACEvaluationRequest{

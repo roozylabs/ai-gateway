@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/prism/internal/models"
@@ -74,14 +75,23 @@ func (o *ExecutionOrchestrator) ExecuteChatCompletions(
 		agentName = agentID
 	}
 
+	var promptBuilder strings.Builder
+	for _, m := range req.Messages {
+		if content, ok := m["content"].(string); ok {
+			promptBuilder.WriteString(content)
+			promptBuilder.WriteString(" ")
+		}
+	}
+
 	// 1. Admission Control Gate
 	admReq := proxy.AdmissionRequest{
-		UserID:    gatewayKey.UserID,
-		Role:      userRole,
-		AgentID:   agentID,
-		AgentName: agentName,
-		ModelSlug: req.Model,
-		TenantCtx: tenantCtx,
+		UserID:        gatewayKey.UserID,
+		Role:          userRole,
+		AgentID:       agentID,
+		AgentName:     agentName,
+		ModelSlug:     req.Model,
+		PromptPayload: promptBuilder.String(),
+		TenantCtx:     tenantCtx,
 	}
 
 	admRes, err := o.admission.Evaluate(ctx, admReq)
