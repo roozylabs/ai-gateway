@@ -57,7 +57,7 @@ jobs:
       postgres:
         image: postgres:15-alpine
         env:
-          POSTGRES_DB: ai_gateway_test
+          POSTGRES_DB: prism_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgrespassword
         ports:
@@ -93,7 +93,7 @@ jobs:
         env:
           APP_ENV: test
           SERVER_PORT: "8080"
-          DATABASE_URL: "postgres://postgres:postgrespassword@localhost:5432/ai_gateway_test?sslmode=disable"
+          DATABASE_URL: "postgres://postgres:postgrespassword@localhost:5432/prism_test?sslmode=disable"
           REDIS_URL: "redis://localhost:6379"
           JWT_SECRET: "test-jwt-secret-key-minimum-32-bytes!"
           ENCRYPTION_KEY: "test-encryption-key-32-bytes!!"
