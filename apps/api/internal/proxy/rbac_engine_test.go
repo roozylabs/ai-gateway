@@ -67,4 +67,14 @@ func TestRBACEnginePrecedenceAndMatching(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res.Allowed)
 	assert.Equal(t, "p-allow", res.MatchedPolicy.ID)
+
+	// Case 3: Empty ResourceName (standard chat completion) skips specific payroll deny rule and hits allow rule
+	res, err = engine.Evaluate(context.Background(), "u1", models.RBACEvaluationRequest{
+		Role:         "developer",
+		AgentName:    "dev-agent",
+		ResourceName: "",
+	})
+	require.NoError(t, err)
+	assert.True(t, res.Allowed)
+	assert.Equal(t, "p-allow", res.MatchedPolicy.ID)
 }
