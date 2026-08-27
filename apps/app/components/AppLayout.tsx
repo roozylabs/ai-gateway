@@ -34,7 +34,7 @@ import { PermissionProvider } from '@/components/PermissionProvider';
 import { ModelActivityWidget } from '@/components/molecules/ModelActivityWidget';
 import { Avatar, AvatarFallback } from '@/components/atoms/Avatar';
 import { useSidebarStore } from '@/stores/useSidebarStore';
-import { useSystemStore } from '@/stores/useSystemStore';
+import { useSSE } from '@/context/SSEContext';
 import { AppRoutes } from '@/constants/routes';
 
 interface NavItem {
@@ -98,7 +98,10 @@ const navGroups: NavGroup[] = [
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { collapsed, toggleCollapsed } = useSidebarStore();
-  const { status: systemStatus } = useSystemStore();
+  const { isConnected: isSseConnected } = useSSE();
+
+  const systemStatus = isSseConnected ? 'operational' : 'degraded';
+  const systemStatusLabel = isSseConnected ? 'System operational' : 'System degraded';
 
   return (
     <PermissionProvider>
@@ -197,7 +200,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-6 backdrop-blur">
             <div className="flex items-center gap-4">
               <TenantSelector />
-              <StatusDot status={systemStatus} label={`System ${systemStatus}`} />
+              <StatusDot status={systemStatus} label={systemStatusLabel} />
             </div>
 
             <div className="flex items-center gap-3">
