@@ -144,7 +144,7 @@ export default function DashboardPage() {
           description="Monitor traffic, model latency, cost breakdown, and real-time credential health across all providers."
         />
         <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-          <Calendar className="h-4 w-4 text-[#8B5CF6] shrink-0" />
+          {/* <Calendar className="h-4 w-4 text-[#8B5CF6] shrink-0" /> */}
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-[200px] text-xs font-mono bg-card border-border">
               <SelectValue placeholder="Select period..." />
