@@ -19,6 +19,7 @@ import {
 import { ApiResource } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Database, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { toast } from 'sonner';
 
 export default function ResourcesPage() {
@@ -95,12 +96,10 @@ export default function ResourcesPage() {
   };
 
   const handleDelete = (resource: ApiResource) => {
-    if (window.confirm(`Delete resource "${resource.name}"? This cannot be undone.`)) {
-      deleteMutation.mutate(resource.id, {
-        onSuccess: () => toast.success(`Resource "${resource.name}" deleted`),
-        onError: (err: Error) => toast.error(`Failed to delete resource: ${err.message}`),
-      });
-    }
+    deleteMutation.mutate(resource.id, {
+      onSuccess: () => toast.success(`Resource "${resource.name}" deleted`),
+      onError: (err: Error) => toast.error(`Failed to delete resource: ${err.message}`),
+    });
   };
 
   const resourceList: ApiResource[] = (resources && Array.isArray(resources)) ? resources : [];
@@ -168,15 +167,22 @@ export default function ResourcesPage() {
                 >
                   <Pencil className="h-3.5 w-3.5" /> Edit
                 </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="flex-1 gap-1.5 text-xs"
-                  disabled={deleteMutation.isPending}
-                  onClick={() => handleDelete(resource)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> Delete
-                </Button>
+                <ConfirmDialog
+                  title="Delete Resource"
+                  description={`Delete resource "${resource.name}"? This cannot be undone.`}
+                  confirmText="Delete"
+                  onConfirm={() => handleDelete(resource)}
+                  trigger={
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  }
+                />
               </CardContent>
             </Card>
           ))}

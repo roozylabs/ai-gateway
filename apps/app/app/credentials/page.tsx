@@ -19,10 +19,16 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
 
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
+
+import { apiTestCredential, apiResetCredentialCooldown } from '@/lib/api';
+import { Activity, ShieldCheck, RefreshCw } from 'lucide-react';
+
 export default function CredentialsPage() {
-  const [selectedProviderId, setSelectedProviderId] = useState('openai');
-  const { data, isLoading, isError, refetch } = useCredentialsQuery(selectedProviderId);
+  const [selectedProviderId, setSelectedProviderId] = useState('all');
+  const { data, isLoading, isError, refetch } = useCredentialsQuery(selectedProviderId === 'all' ? 'openai' : selectedProviderId);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [testingId, setTestingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formKey, setFormKey] = useState('');
   const [formProviderId, setFormProviderId] = useState('');
@@ -46,6 +52,33 @@ export default function CredentialsPage() {
       toast.error(`Failed to create credential: ${error.message}`);
     },
   });
+
+  const handleTestKey = async (providerId: string, credId: string) => {
+    setTestingId(credId);
+    try {
+      const result = await apiTestCredential(providerId, credId);
+      if (result.success) {
+        toast.success(`Key Health Check Passed (${result.latencyMs}ms latency)`);
+      } else {
+        toast.error(`Key Health Check Failed: ${result.error || result.message || 'Invalid key or quota exceeded'}`);
+      }
+      refetch();
+    } catch (err: any) {
+      toast.error(`Health check failed: ${err.message}`);
+    } finally {
+      setTestingId(null);
+    }
+  };
+
+  const handleResetCooldown = async (providerId: string, credId: string) => {
+    try {
+      await apiResetCredentialCooldown(providerId, credId);
+      toast.success('Credential cooldown reset');
+      refetch();
+    } catch (err: any) {
+      toast.error(`Failed to reset cooldown: ${err.message}`);
+    }
+  };
 
   const credentialsList: ApiCredential[] = data?.data && Array.isArray(data.data) ? data.data : [];
 
@@ -84,21 +117,51 @@ export default function CredentialsPage() {
       title: 'Actions',
       key: 'actions',
       render: (_val, record) => (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
-          onClick={() => {
-            if (window.confirm(`Delete credential "${record.name}"? This cannot be undone.`)) {
+        <div className="flex items-center gap-1.5 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1"
+            disabled={testingId === record.id}
+            onClick={() => handleTestKey(record.providerId, record.id)}
+          >
+            {testingId === record.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Activity className="h-3 w-3 text-[#8B5CF6]" />}
+            Test Health
+          </Button>
+
+          {record.status === 'cooldown' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1 text-amber-500"
+              onClick={() => handleResetCooldown(record.providerId, record.id)}
+            >
+              <RefreshCw className="h-3 w-3" /> Reset Cooldown
+            </Button>
+          )}
+
+          <ConfirmDialog
+            title="Delete Credential"
+            description={`Delete credential "${record.name}"? This cannot be undone.`}
+            confirmText="Delete"
+            onConfirm={() => {
               deleteMutation.mutate(record.id, {
                 onSuccess: () => toast.success('Credential deleted'),
                 onError: (error: Error) => toast.error(`Failed to delete: ${error.message}`),
               });
+            }}
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 className="h-3 w-3" /> Delete
+              </Button>
             }
-          }}
-        >
-          <Trash2 className="h-3 w-3" /> Delete
-        </Button>
+          />
+        </div>
       ),
     },
   ];
@@ -122,6 +185,7 @@ export default function CredentialsPage() {
             <SelectValue placeholder="Select provider" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">All Providers (Global Pool)</SelectItem>
             {providers.map((p) => (
               <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
             ))}

@@ -19,6 +19,8 @@ import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
+
 export default function ModelsPage() {
   const { data, isLoading, isError, refetch } = useModelsListQuery();
   const { data: providers } = useProvidersQuery();
@@ -82,15 +84,13 @@ export default function ModelsPage() {
   };
 
   const handleDelete = (model: ApiModel) => {
-    if (window.confirm(`Remove model "${model.displayName || model.name}"? This cannot be undone.`)) {
-      deleteMutation.mutate(
-        { providerId: model.providerId, modelId: model.id },
-        {
-          onSuccess: () => toast.success(`${model.displayName || model.name} removed`),
-          onError: (err: Error) => toast.error(`Failed to remove: ${err.message}`),
-        }
-      );
-    }
+    deleteMutation.mutate(
+      { providerId: model.providerId, modelId: model.id },
+      {
+        onSuccess: () => toast.success(`${model.displayName || model.name} removed`),
+        onError: (err: Error) => toast.error(`Failed to remove: ${err.message}`),
+      }
+    );
   };
 
   const columns: Column<ApiModel>[] = [
@@ -124,34 +124,36 @@ export default function ModelsPage() {
       ),
     },
     {
-      title: 'Quality',
-      dataIndex: 'qualityScore',
-      key: 'qualityScore',
-      render: (score) => (
-        <Badge variant="violet" className="font-mono">Q: {score != null ? `${score}%` : '—'}</Badge>
-      ),
-    },
-    {
-      title: 'Speed',
-      dataIndex: 'speedScore',
-      key: 'speedScore',
-      render: (score) => (
-        <Badge variant="info" className="font-mono">S: {score != null ? `${score}%` : '—'}</Badge>
+      title: 'Scores (Q / S)',
+      key: 'scores',
+      render: (_, record) => (
+        <div className="flex gap-1.5 flex-wrap">
+          <Badge variant="violet" className="font-mono text-[10px]">Q: {record.qualityScore != null ? `${record.qualityScore}%` : '—'}</Badge>
+          <Badge variant="info" className="font-mono text-[10px]">S: {record.speedScore != null ? `${record.speedScore}%` : '—'}</Badge>
+          {record.codingScore != null && <Badge variant="outline" className="font-mono text-[10px]">Code: {record.codingScore}%</Badge>}
+        </div>
       ),
     },
     {
       title: '',
       key: 'actions',
       render: (_, record) => (
-        <Button
-          variant="destructive"
-          size="sm"
-          className="gap-1.5 text-xs"
-          disabled={deleteMutation.isPending}
-          onClick={() => handleDelete(record)}
-        >
-          <Trash2 className="h-3.5 w-3.5" /> Remove
-        </Button>
+        <ConfirmDialog
+          title="Remove Model"
+          description={`Remove model "${record.displayName || record.name}"? This cannot be undone.`}
+          confirmText="Remove"
+          onConfirm={() => handleDelete(record)}
+          trigger={
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-1.5 text-xs"
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Remove
+            </Button>
+          }
+        />
       ),
     },
   ];

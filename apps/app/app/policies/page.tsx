@@ -18,6 +18,9 @@ import { Workflow, Plus, Save, Sparkles, Star, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
 
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
+
 export default function PoliciesPage() {
   const { data: policies, isLoading, isError, refetch } = usePoliciesQuery();
   const createMutation = useCreatePolicy();
@@ -100,17 +103,15 @@ export default function PoliciesPage() {
   };
 
   const handleDelete = (policy: ApiRoutingPolicy) => {
-    if (window.confirm(`Delete policy "${policy.name}"? This cannot be undone.`)) {
-      deleteMutation.mutate(policy.id, {
-        onSuccess: () => {
-          toast.success(`Policy "${policy.name}" deleted`);
-          if (selectedPolicyId === policy.id) {
-            setSelectedPolicyId(policies?.find((p) => p.id !== policy.id)?.id ?? '');
-          }
-        },
-        onError: (err: Error) => toast.error(`Failed to delete: ${err.message}`),
-      });
-    }
+    deleteMutation.mutate(policy.id, {
+      onSuccess: () => {
+        toast.success(`Policy "${policy.name}" deleted`);
+        if (selectedPolicyId === policy.id) {
+          setSelectedPolicyId(policies?.find((p) => p.id !== policy.id)?.id ?? '');
+        }
+      },
+      onError: (err: Error) => toast.error(`Failed to delete: ${err.message}`),
+    });
   };
 
   const handleSetDefault = (policy: ApiRoutingPolicy) => {
@@ -169,17 +170,18 @@ export default function PoliciesPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold">Select Policy</Label>
-                  <select
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                    value={selectedPolicyId}
-                    onChange={(e) => setSelectedPolicyId(e.target.value)}
-                  >
-                    {policies.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}{p.isDefault ? ' (Default)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={selectedPolicyId} onValueChange={setSelectedPolicyId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a policy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {policies.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}{p.isDefault ? ' (Default)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -257,15 +259,22 @@ export default function PoliciesPage() {
                             <Star className="h-3 w-3" /> Set Default
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 gap-1 text-xs text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(policy)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="h-3 w-3" /> Delete
-                        </Button>
+                        <ConfirmDialog
+                          title="Delete Routing Policy"
+                          description={`Delete policy "${policy.name}"? This cannot be undone.`}
+                          confirmText="Delete"
+                          onConfirm={() => handleDelete(policy)}
+                          trigger={
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 gap-1 text-xs text-destructive hover:text-destructive"
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </Button>
+                          }
+                        />
                       </div>
                     </div>
                     <div className="flex gap-4 text-xs text-muted-foreground font-mono">

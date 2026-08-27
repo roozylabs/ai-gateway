@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescrip
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function ProvidersPage() {
@@ -44,12 +45,10 @@ export default function ProvidersPage() {
   });
 
   const handleDelete = (provider: ApiProvider) => {
-    if (window.confirm(`Remove provider "${provider.name}"? This cannot be undone.`)) {
-      deleteMutation.mutate(provider.id, {
-        onSuccess: () => toast.success(`${provider.name} removed`),
-        onError: (err: Error) => toast.error(`Failed to remove: ${err.message}`),
-      });
-    }
+    deleteMutation.mutate(provider.id, {
+      onSuccess: () => toast.success(`${provider.name} removed`),
+      onError: (err: Error) => toast.error(`Failed to remove: ${err.message}`),
+    });
   };
 
   const providers: ApiProvider[] = (data && Array.isArray(data)) ? data : [];
@@ -109,15 +108,22 @@ export default function ProvidersPage() {
                 </div>
               </CardContent>
               <CardFooter className="border-t border-border pt-3">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="w-full gap-1.5 text-xs"
-                  disabled={deleteMutation.isPending}
-                  onClick={() => handleDelete(provider)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> Remove
-                </Button>
+                <ConfirmDialog
+                  title="Remove Provider"
+                  description={`Remove provider "${provider.name}"? This cannot be undone.`}
+                  confirmText="Remove"
+                  onConfirm={() => handleDelete(provider)}
+                  trigger={
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full gap-1.5 text-xs"
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Remove
+                    </Button>
+                  }
+                />
               </CardFooter>
             </Card>
           ))}

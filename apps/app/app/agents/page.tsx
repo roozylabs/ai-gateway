@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescrip
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 
 const AGENT_TYPES = ['general', 'code', 'research', 'ops', 'custom'];
 
@@ -142,12 +143,10 @@ export default function AgentsPage() {
   };
 
   const handleDelete = (agent: ApiAgent) => {
-    if (window.confirm(`Delete agent "${agent.name}"? This cannot be undone.`)) {
-      deleteMutation.mutate(agent.id, {
-        onSuccess: () => toast.success(`Agent "${agent.name}" deleted`),
-        onError: (err: Error) => toast.error(`Failed to delete: ${err.message}`),
-      });
-    }
+    deleteMutation.mutate(agent.id, {
+      onSuccess: () => toast.success(`Agent "${agent.name}" deleted`),
+      onError: (err: Error) => toast.error(`Failed to delete: ${err.message}`),
+    });
   };
 
   const agents: ApiAgent[] = (data && Array.isArray(data)) ? data : [];
@@ -224,9 +223,17 @@ export default function AgentsPage() {
                 <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs" onClick={() => openEditDrawer(agent)}>
                   <Settings className="h-3.5 w-3.5" /> Configure
                 </Button>
-                <Button variant="destructive" size="sm" className="flex-1 gap-1.5 text-xs" disabled={isPending} onClick={() => handleDelete(agent)}>
-                  <Trash2 className="h-3.5 w-3.5" /> Delete
-                </Button>
+                <ConfirmDialog
+                  title="Delete Agent"
+                  description={`Delete agent "${agent.name}"? This cannot be undone.`}
+                  confirmText="Delete"
+                  onConfirm={() => handleDelete(agent)}
+                  trigger={
+                    <Button variant="destructive" size="sm" className="flex-1 gap-1.5 text-xs" disabled={isPending}>
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  }
+                />
               </CardFooter>
             </Card>
           ))}

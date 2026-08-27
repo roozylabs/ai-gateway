@@ -16,7 +16,8 @@ import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { useMCPServersQuery, useCreateMCPServer, useUpdateMCPServer, useDeleteMCPServer, useSyncMCPServer } from '@/hooks/queries/useMCPServersQuery';
 import { ApiMCPServer } from '@/lib/api';
-import { Globe, Plus, RefreshCw, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { apiTestMCPTool, ApiMCPToolExecutionResult } from '@/lib/api';
+import { Globe, Plus, RefreshCw, Pencil, Trash2, Loader2, Play, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
 
 function statusToDot(status: string) {
@@ -43,7 +44,43 @@ export default function MCPPage() {
   const [editingServer, setEditingServer] = useState<ApiMCPServer | null>(null);
   const [form, setForm] = useState(emptyForm);
 
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testingServer, setTestingServer] = useState<ApiMCPServer | null>(null);
+  const [testToolName, setTestToolName] = useState('ping');
+  const [testArgsJson, setTestArgsJson] = useState('{}');
+  const [testExecuting, setTestExecuting] = useState(false);
+  const [testResult, setTestResult] = useState<ApiMCPToolExecutionResult | null>(null);
+
   const servers: ApiMCPServer[] = (data && Array.isArray(data)) ? data : [];
+
+  const openTestModal = (server: ApiMCPServer) => {
+    setTestingServer(server);
+    setTestToolName('ping');
+    setTestArgsJson('{}');
+    setTestResult(null);
+    setTestModalOpen(true);
+  };
+
+  const handleRunMCPTest = async () => {
+    if (!testingServer || !testToolName.trim()) return;
+    setTestExecuting(true);
+    setTestResult(null);
+
+    try {
+      const parsedArgs = JSON.parse(testArgsJson);
+      const res = await apiTestMCPTool(testingServer.id, testToolName.trim(), parsedArgs);
+      setTestResult(res);
+      if (res.statusCode === 200) {
+        toast.success(`MCP Tool executed successfully (${res.latencyMs}ms)`);
+      } else {
+        toast.error(`MCP Tool error status: ${res.statusCode}`);
+      }
+    } catch (err: any) {
+      toast.error(`Execution error: ${err.message}`);
+    } finally {
+      setTestExecuting(false);
+    }
+  };
 
   const openCreate = () => {
     setEditingServer(null);
@@ -93,7 +130,7 @@ export default function MCPPage() {
   const handleDelete = (server: ApiMCPServer) => {
     deleteMutation.mutate(server.id, {
       onSuccess: () => toast.success(`${server.displayName} removed`),
-      onError: (err: Error) => toast.error(`Failed to remove: ${err.message}`),
+      onError: (err: Error) => toast.error(`Delete failed: ${err.message}`),
     });
   };
 
@@ -180,24 +217,31 @@ export default function MCPPage() {
                   />
                 </div>
               </CardContent>
-              <CardFooter className="border-t border-border pt-3 gap-2">
+              <CardFooter className="border-t border-border pt-3 gap-1.5">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 gap-1.5 text-xs"
-                  disabled={syncMutation.isPending}
-                  onClick={() => handleSync(server)}
+                  className="gap-1 text-xs px-2"
+                  onClick={() => openTestModal(server)}
                 >
-                  {syncMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  Sync
+                  <Play className="h-3 w-3 text-[#8B5CF6]" /> Test
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 gap-1.5 text-xs"
+                  className="gap-1 text-xs px-2"
+                  disabled={syncMutation.isPending}
+                  onClick={() => handleSync(server)}
+                >
+                  {syncMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} Sync
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-xs px-2"
                   onClick={() => openEdit(server)}
                 >
-                  <Pencil className="h-3.5 w-3.5" /> Edit
+                  <Pencil className="h-3 w-3" /> Edit
                 </Button>
                 <ConfirmDialog
                   title="Delete MCP Server"
@@ -205,8 +249,8 @@ export default function MCPPage() {
                   confirmText="Delete"
                   onConfirm={() => handleDelete(server)}
                   trigger={
-                    <Button variant="destructive" size="sm" className="gap-1.5 text-xs" disabled={deleteMutation.isPending}>
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <Button variant="destructive" size="sm" className="gap-1 text-xs px-2" disabled={deleteMutation.isPending}>
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   }
                 />
@@ -294,6 +338,66 @@ export default function MCPPage() {
               {isMutating ? 'Saving...' : editingServer ? 'Save Changes' : 'Connect Server'}
             </Button>
           </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={testModalOpen} onOpenChange={setTestModalOpen}>
+        <SheetContent className="sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Terminal className="h-4 w-4 text-[#8B5CF6]" />
+              <span>Test MCP Server Tool</span>
+            </SheetTitle>
+            <SheetDescription>
+              Execute tool on MCP Server &quot;{testingServer?.displayName || testingServer?.name}&quot;.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="mcp-tool-name">MCP Tool Name</Label>
+              <Input
+                id="mcp-tool-name"
+                value={testToolName}
+                onChange={(e) => setTestToolName(e.target.value)}
+                placeholder="e.g. query_db or calculate"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="mcp-args">Arguments (JSON)</Label>
+              <textarea
+                id="mcp-args"
+                className="w-full h-32 rounded-md border border-border bg-background p-2 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                value={testArgsJson}
+                onChange={(e) => setTestArgsJson(e.target.value)}
+              />
+            </div>
+
+            <Button
+              variant="prismViolet"
+              className="w-full gap-2"
+              onClick={handleRunMCPTest}
+              disabled={testExecuting || !testToolName.trim()}
+            >
+              <Play className="h-4 w-4" />
+              {testExecuting ? 'Executing MCP Tool...' : 'Execute MCP Tool'}
+            </Button>
+
+            {testResult && (
+              <div className="space-y-2 border-t border-border pt-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold">MCP Response</span>
+                  <Badge variant={testResult.statusCode === 200 ? 'success' : 'destructive'} className="font-mono text-[10px]">
+                    {testResult.latencyMs}ms
+                  </Badge>
+                </div>
+                <pre className="p-3 rounded-md border border-border bg-muted/40 font-mono text-xs overflow-x-auto max-h-48 whitespace-pre-wrap">
+                  {JSON.stringify(testResult.result, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
         </SheetContent>
       </Sheet>
     </AppLayout>

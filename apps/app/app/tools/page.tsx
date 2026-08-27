@@ -14,6 +14,9 @@ import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { useToolsQuery, useCreateTool, useUpdateTool, useDeleteTool } from '@/hooks/queries/useToolsQuery';
 import type { ApiTool } from '@/lib/api';
 import { Wrench, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
+import { apiTestTool, ApiToolExecutionResult } from '@/lib/api';
+import { Play, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ToolsPage() {
@@ -23,7 +26,40 @@ export default function ToolsPage() {
   const deleteMutation = useDeleteTool();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testingTool, setTestingTool] = useState<ApiTool | null>(null);
+  const [testArgsJson, setTestArgsJson] = useState('{}');
+  const [testExecuting, setTestExecuting] = useState(false);
+  const [testResult, setTestResult] = useState<ApiToolExecutionResult | null>(null);
   const [editingTool, setEditingTool] = useState<ApiTool | null>(null);
+
+  const openTestModal = (tool: ApiTool) => {
+    setTestingTool(tool);
+    setTestArgsJson(JSON.stringify(tool.inputSchema?.properties ? Object.fromEntries(Object.keys(tool.inputSchema.properties).map(k => [k, 'sample_value'])) : {}, null, 2));
+    setTestResult(null);
+    setTestModalOpen(true);
+  };
+
+  const handleRunToolTest = async () => {
+    if (!testingTool) return;
+    setTestExecuting(true);
+    setTestResult(null);
+
+    try {
+      const parsedArgs = JSON.parse(testArgsJson);
+      const res = await apiTestTool(testingTool.id, parsedArgs);
+      setTestResult(res);
+      if (res.statusCode === 200) {
+        toast.success(`Tool executed successfully (${res.latencyMs}ms)`);
+      } else {
+        toast.error(`Tool execution returned status ${res.statusCode}`);
+      }
+    } catch (err: any) {
+      toast.error(`Invalid JSON or request error: ${err.message}`);
+    } finally {
+      setTestExecuting(false);
+    }
+  };
 
   const [formName, setFormName] = useState('');
   const [formDisplayName, setFormDisplayName] = useState('');
@@ -90,8 +126,6 @@ export default function ToolsPage() {
   };
 
   const handleDelete = (tool: ApiTool) => {
-    if (!window.confirm(`Delete tool "${tool.displayName || tool.name}"? This action cannot be undone.`)) return;
-
     deleteMutation.mutate(tool.id, {
       onSuccess: () => toast.success('Tool deleted'),
       onError: () => toast.error('Failed to delete tool'),
@@ -158,21 +192,37 @@ export default function ToolsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Test tool execution"
+                      className="h-7 w-7 text-muted-foreground hover:text-[#8B5CF6]"
+                      onClick={() => openTestModal(tool)}
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       aria-label="Edit tool"
                       className="h-7 w-7 text-muted-foreground hover:text-foreground"
                       onClick={() => openEditDrawer(tool)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Delete tool"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDelete(tool)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <ConfirmDialog
+                      title="Delete Tool"
+                      description={`Delete tool "${tool.displayName || tool.name}"? This action cannot be undone.`}
+                      confirmText="Delete"
+                      onConfirm={() => handleDelete(tool)}
+                      trigger={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Delete tool"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      }
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -257,15 +307,63 @@ export default function ToolsPage() {
               onClick={handleSubmit}
               disabled={createMutation.isPending || updateMutation.isPending}
             >
-              {editingTool
-                ? updateMutation.isPending
-                  ? 'Updating...'
-                  : 'Update Tool'
-                : createMutation.isPending
-                  ? 'Creating...'
-                  : 'Register Tool'}
+              {createMutation.isPending || updateMutation.isPending
+                ? 'Saving...'
+                : editingTool
+                  ? 'Update Tool'
+                  : 'Create Tool'}
             </Button>
           </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={testModalOpen} onOpenChange={setTestModalOpen}>
+        <SheetContent className="sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Terminal className="h-4 w-4 text-[#8B5CF6]" />
+              <span>Test Tool Execution</span>
+            </SheetTitle>
+            <SheetDescription>
+              Execute function {testingTool?.name} through the Prism Tool Sandbox.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="test-args">Input Parameters (JSON)</Label>
+              <textarea
+                id="test-args"
+                className="w-full h-32 rounded-md border border-border bg-background p-2 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                value={testArgsJson}
+                onChange={(e) => setTestArgsJson(e.target.value)}
+              />
+            </div>
+
+            <Button
+              variant="prismViolet"
+              className="w-full gap-2"
+              onClick={handleRunToolTest}
+              disabled={testExecuting}
+            >
+              <Play className="h-4 w-4" />
+              {testExecuting ? 'Executing Function...' : 'Execute Tool Payload'}
+            </Button>
+
+            {testResult && (
+              <div className="space-y-2 border-t border-border pt-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold">Execution Output</span>
+                  <Badge variant={testResult.statusCode === 200 ? 'success' : 'destructive'} className="font-mono text-[10px]">
+                    {testResult.latencyMs}ms
+                  </Badge>
+                </div>
+                <pre className="p-3 rounded-md border border-border bg-muted/40 font-mono text-xs overflow-x-auto max-h-48 whitespace-pre-wrap">
+                  {JSON.stringify(testResult.result, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
         </SheetContent>
       </Sheet>
     </AppLayout>
