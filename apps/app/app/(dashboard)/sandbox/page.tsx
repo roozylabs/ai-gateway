@@ -13,16 +13,49 @@ import { Badge } from '@/components/atoms/Badge';
 import { Switch } from '@/components/atoms/Switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/molecules/Form';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/atoms/Tooltip';
 import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery';
 import { useGatewayKeysQuery } from '@/hooks/queries/useGatewayKeysQuery';
 import { usePoliciesQuery } from '@/hooks/queries/usePoliciesQuery';
 import { ApiModel } from '@/lib/api';
-import { Play, Terminal, RefreshCw, Code2, Copy, Check, Layers } from 'lucide-react';
+import {
+  Play,
+  Terminal,
+  RefreshCw,
+  Code2,
+  Copy,
+  Check,
+  Layers,
+  HelpCircle,
+  Sparkles,
+  Cpu,
+  Zap,
+  Clock,
+  CheckCircle2,
+  Loader2,
+} from 'lucide-[#8B5CF6]' ? LucideIcons : 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/types/ui';
 import { useSandboxExecutionMutation } from '@/hooks/mutations/useSandboxMutation';
 import { useSSE } from '@/hooks/useSSE';
+
+import {
+  Play as PlayIcon,
+  Terminal as TerminalIcon,
+  RefreshCw as RefreshCwIcon,
+  Code2 as Code2Icon,
+  Copy as CopyIcon,
+  Check as CheckIcon,
+  Layers as LayersIcon,
+  HelpCircle as HelpCircleIcon,
+  Sparkles as SparklesIcon,
+  Cpu as CpuIcon,
+  Zap as ZapIcon,
+  Clock as ClockIcon,
+  CheckCircle2 as CheckCircle2Icon,
+  Loader2 as Loader2Icon,
+} from 'lucide-react';
 
 const sandboxSchema = z.object({
   model: z.string().min(1, 'Target model is required'),
@@ -35,6 +68,36 @@ const sandboxSchema = z.object({
 });
 
 type SandboxFormValues = z.infer<typeof sandboxSchema>;
+
+function FormTooltipLabel({
+  label,
+  tooltip,
+  required,
+}: {
+  label: string;
+  tooltip: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 mb-1">
+      <span className="text-xs font-semibold text-foreground">{label}</span>
+      {required && <span className="text-destructive">*</span>}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-[#8B5CF6] transition-colors focus:outline-none"
+          >
+            <HelpCircleIcon className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed bg-[#141720] border-violet-500/30 text-slate-200 shadow-xl">
+          {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
 
 function renderInlineMarkdown(text: string): React.ReactNode {
   if (!text) return text;
@@ -89,7 +152,7 @@ function FormattedSandboxOutput({ content }: { content: string }) {
             <div key={index} className="my-3 rounded-md border border-violet-500/25 bg-[#0D0F14] overflow-hidden shadow-md">
               <div className="flex items-center justify-between px-3 py-1.5 bg-[#141720] border-b border-violet-500/20 text-[11px]">
                 <div className="flex items-center gap-1.5 text-[#8B5CF6] font-semibold font-mono">
-                  <Code2 className="h-3.5 w-3.5" />
+                  <Code2Icon className="h-3.5 w-3.5" />
                   <span className="uppercase tracking-wider">{language}</span>
                 </div>
                 <button
@@ -100,7 +163,7 @@ function FormattedSandboxOutput({ content }: { content: string }) {
                     toast.success(`Copied ${language} code block`);
                   }}
                 >
-                  <Copy className="h-3 w-3 text-[#8B5CF6]" />
+                  <CopyIcon className="h-3 w-3 text-[#8B5CF6]" />
                   <span>Copy Code</span>
                 </button>
               </div>
@@ -213,16 +276,16 @@ export default function SandboxPage() {
           if (payload.model) {
             setRoutedModel(payload.model);
           }
-          toast.success(`Async Job ${activeJobId} completed via SSE!`);
+          toast.success(`Tugas Async ${activeJobId} Selesai diproses!`);
           setActiveJobId(null);
           setIsAsyncExecuting(false);
         } else if (status === 'failed') {
-          setExecutionOutput(`Job ${activeJobId} Failed:\n${payload.error}`);
-          toast.error(`Async Job ${activeJobId} failed: ${payload.error}`);
+          setExecutionOutput(`Proses Gagal:\n${payload.error}`);
+          toast.error(`Tugas Async ${activeJobId} gagal: ${payload.error}`);
           setActiveJobId(null);
           setIsAsyncExecuting(false);
         } else if (status === 'processing') {
-          setExecutionOutput(`Status: PROCESSING (Job ID: ${activeJobId})\nExecuting on background worker pool...`);
+          setExecutionOutput(`Status: MEMPROSES (ID Tugas: ${activeJobId})\nSedang diproses oleh sistem latar belakang...`);
         }
       }
     }
@@ -237,8 +300,7 @@ export default function SandboxPage() {
       agentId: 'default',
       enableStream: true,
       enableAsync: false,
-      userPrompt:
-        '',
+      userPrompt: '',
     },
   });
 
@@ -257,7 +319,7 @@ export default function SandboxPage() {
     if (!executionOutput) return;
     navigator.clipboard.writeText(executionOutput);
     setCopied(true);
-    toast.success('Copied output to clipboard');
+    toast.success('Salinan hasil berhasil disimpan');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -271,7 +333,7 @@ export default function SandboxPage() {
     try {
       if (values.enableAsync) {
         setIsAsyncExecuting(true);
-        setExecutionOutput('Submitting request to Async Job Queue...');
+        setExecutionOutput('Mengirimkan permintaan ke Antrean Latar Belakang...');
         const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
         const asyncRes = await fetch('/api/sandbox/chat/completions/async', {
           method: 'POST',
@@ -292,14 +354,14 @@ export default function SandboxPage() {
         if (!asyncRes.ok) {
           const errData = await asyncRes.json();
           setIsAsyncExecuting(false);
-          throw new Error(errData?.error?.message || `Async submission failed with status ${asyncRes.status}`);
+          throw new Error(errData?.error?.message || `Gagal mengirimkan tugas async (Status ${asyncRes.status})`);
         }
 
         const asyncJob = await asyncRes.json();
         const jobId = asyncJob.job_id;
         setActiveJobId(jobId);
-        setExecutionOutput(`Status: QUEUED (Job ID: ${jobId})\nListening to real-time SSE stream & polling endpoint ${asyncJob.poll_url}...`);
-        toast.info(`Async Job ${jobId} queued successfully`);
+        setExecutionOutput(`Status: ANTREAN (ID Tugas: ${jobId})\nMendengarkan update live SSE & mengecek status di latar belakang...`);
+        toast.info(`Tugas Async ${jobId} berhasil masuk antrean`);
 
         let isDone = false;
         let pollCount = 0;
@@ -331,19 +393,19 @@ export default function SandboxPage() {
               setRoutedModel(jobData.model);
             }
             setLatencyMs(Date.now() - startTime);
-            toast.success(`Async Job ${jobId} completed successfully`);
+            toast.success(`Tugas Async ${jobId} selesai diproses`);
             setActiveJobId(null);
             setIsAsyncExecuting(false);
             break;
           } else if (jobData.status === 'failed') {
             isDone = true;
-            setExecutionOutput(`Job ${jobId} Failed:\n${jobData.error}`);
-            toast.error(`Job ${jobId} failed: ${jobData.error}`);
+            setExecutionOutput(`Tugas ${jobId} Gagal:\n${jobData.error}`);
+            toast.error(`Tugas ${jobId} gagal: ${jobData.error}`);
             setActiveJobId(null);
             setIsAsyncExecuting(false);
             break;
           } else {
-            setExecutionOutput(`Status: ${String(jobData.status).toUpperCase()} (Job ID: ${jobId})\nWaiting for worker execution... (${pollCount}s)`);
+            setExecutionOutput(`Status: ${String(jobData.status).toUpperCase()} (ID Tugas: ${jobId})\nMenunggu giliran eksekusi worker... (${pollCount}s)`);
           }
         }
         setIsAsyncExecuting(false);
@@ -355,9 +417,7 @@ export default function SandboxPage() {
         routingPolicy: values.routingPolicy,
         agentId: values.agentId,
         model: values.model,
-        messages: [
-          { role: 'user', content: values.userPrompt },
-        ],
+        messages: [{ role: 'user', content: values.userPrompt }],
         temperature: 0.7,
         stream: values.enableStream,
       });
@@ -412,7 +472,7 @@ export default function SandboxPage() {
         }
 
         setLatencyMs(Date.now() - startTime);
-        toast.success('Sandbox stream execution completed');
+        toast.success('Eksekusi stream selesai');
       } else {
         const data = await res.json();
         if (data.model) {
@@ -427,157 +487,267 @@ export default function SandboxPage() {
           });
         }
         setLatencyMs(Date.now() - startTime);
-        toast.success('Sandbox execution completed');
+        toast.success('Eksekusi berhasil dilakukan');
       }
     } catch (err: unknown) {
-      setExecutionOutput(`[Client Exception]\n${getErrorMessage(err)}`);
-      toast.error('Sandbox execution error');
+      setExecutionOutput(`[Kendala Sistem]\n${getErrorMessage(err)}`);
+      toast.error('Gagal menjalankan instruksi di Sandbox');
     }
   };
 
+  const isAsyncMode = form.watch('enableAsync') || activeJobId !== null;
+
   return (
-    <AppLayout>
-      <PageHeader
-        title="Developer Web Sandbox"
-        description="Isolated execution container sandbox for live agent prompt evaluation, code execution, and boundary safety testing."
-      />
+    <TooltipProvider>
+      <AppLayout>
+        <PageHeader
+          title="Sandbox Pengujian AI (Developer Web Sandbox)"
+          description="Ruang pengujian terisolasi untuk mencoba perintah prompt, mengevaluasi balasan AI, dan memverifikasi batas keamanan secara langsung."
+        />
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-w-0 flex-1">
-        {/* Left Column: Sandbox Controls with RHF & Molecule Form */}
-        <Card className="flex flex-col min-w-0 overflow-hidden">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Code2 className="h-4 w-4 text-[#8B5CF6]" />
-              <span>Sandbox Execution Controls</span>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Select target model, bound agent identity, and prompt code payload.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 flex-1 flex flex-col justify-between">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-1 flex flex-col justify-start">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Target Model */}
-                    <FormField
-                      control={form.control}
-                      name="model"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs font-semibold">Target Model</FormLabel>
-                          <FormControl>
-                            <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
-                              <SelectTrigger className="w-full min-w-0">
-                                <SelectValue placeholder="Select model" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="prism-auto">prism-auto (Smart Router)</SelectItem>
-                                {modelsList.map((m: ApiModel) => (
-                                  <SelectItem key={m.id} value={m.slug}>
-                                    {m.displayName || m.name} ({m.providerName || m.slug})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-w-0 flex-1">
+          {/* Left Column: Sandbox Controls */}
+          <Card className="flex flex-col min-w-0 overflow-hidden border-border/70 shadow-lg">
+            <CardHeader className="pb-3 border-b border-border/40 bg-card/50">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Code2Icon className="h-4 w-4 text-[#8B5CF6]" />
+                <span>Pengaturan Eksekusi Sandbox</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Atur model AI tujuan, Kunci API, identitas agen, dan opsi metode pengiriman.
+              </CardDescription>
+            </CardHeader>
 
-                    {/* Smart Router Policy (Dynamic from /api/policies) */}
-                    <FormField
-                      control={form.control}
-                      name="routingPolicy"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs font-semibold">Smart Router Policy</FormLabel>
-                          <FormControl>
-                            <Select
-                              value={field.value}
-                              onValueChange={field.onChange}
-                              disabled={isExecuting || selectedModel !== 'prism-auto'}
-                            >
-                              <SelectTrigger className="w-full min-w-0">
-                                <SelectValue placeholder="Select policy" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {policiesList.length > 0 ? (
-                                  policiesList.map((p) => (
-                                    <SelectItem key={p.id} value={p.name.toLowerCase()}>
-                                      {p.name} {p.isDefault ? '(Default)' : ''}
+            <CardContent className="space-y-4 flex-1 flex flex-col justify-between pt-4">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-1 flex flex-col justify-start">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Target Model */}
+                      <FormField
+                        control={form.control}
+                        name="model"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormTooltipLabel
+                              label="Model AI Tujuan"
+                              tooltip="Pilih model spesifik (seperti Gemini, Claude, OpenAI) atau gunakan 'prism-auto' agar sistem memilihkan model terbaik secara otomatis."
+                            />
+                            <FormControl>
+                              <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
+                                <SelectTrigger className="w-full min-w-0">
+                                  <SelectValue placeholder="Pilih model AI" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="prism-auto">prism-auto (Pemilihan Otomatis)</SelectItem>
+                                  {modelsList.map((m: ApiModel) => (
+                                    <SelectItem key={m.id} value={m.slug}>
+                                      {m.displayName || m.name} ({m.providerName || m.slug})
                                     </SelectItem>
-                                  ))
-                                ) : (
-                                  <>
-                                    <SelectItem value="balanced">Balanced Policy</SelectItem>
-                                    <SelectItem value="quality">Quality Policy</SelectItem>
-                                    <SelectItem value="cheap">Cheap Policy</SelectItem>
-                                    <SelectItem value="fast">Fast Policy</SelectItem>
-                                  </>
-                                )}
-                              </SelectContent>
-                            </Select>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Smart Router Policy */}
+                      <FormField
+                        control={form.control}
+                        name="routingPolicy"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormTooltipLabel
+                              label="Kebijakan Rute Pintar"
+                              tooltip="Aturan otomatis memilih model AI. Misalnya 'Balanced' untuk keseimbangan biaya & kecepatan, 'Quality' untuk hasil terbaik, atau 'Cheap' untuk biaya termurah."
+                            />
+                            <FormControl>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                disabled={isExecuting || selectedModel !== 'prism-auto'}
+                              >
+                                <SelectTrigger className="w-full min-w-0">
+                                  <SelectValue placeholder="Pilih kebijakan" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {policiesList.length > 0 ? (
+                                    policiesList.map((p) => (
+                                      <SelectItem key={p.id} value={p.name.toLowerCase()}>
+                                        {p.name} {p.isDefault ? '(Bawaan)' : ''}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <>
+                                      <SelectItem value="balanced">Balanced (Seimbang)</SelectItem>
+                                      <SelectItem value="quality">Quality (Kualitas Tinggi)</SelectItem>
+                                      <SelectItem value="cheap">Cheap (Hemat Biaya)</SelectItem>
+                                      <SelectItem value="fast">Fast (Kecepatan Tinggi)</SelectItem>
+                                    </>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Gateway API Key Context */}
+                      <FormField
+                        control={form.control}
+                        name="keyPrefix"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormTooltipLabel
+                              label="Kunci API Gateway"
+                              required
+                              tooltip="Kunci API yang digunakan untuk mengidentifikasi batasan kuota, anggaran, dan hak akses organisasi Anda."
+                            />
+                            <FormControl>
+                              <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
+                                <SelectTrigger className="w-full min-w-0">
+                                  <SelectValue placeholder="Pilih kunci API" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {keysList.map((k) => (
+                                    <SelectItem key={k.id} value={k.keyPrefix}>
+                                      <span className="truncate block max-w-[220px]">
+                                        {k.name} ({k.keyPrefix}...)
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Agent Context Boundary */}
+                      <FormField
+                        control={form.control}
+                        name="agentId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormTooltipLabel
+                              label="Batas Identitas Agen AI"
+                              tooltip="Identitas spesifik Agen AI yang membatasi aturan keamanan (RBAC) dan instrumen tools yang diperbolehkan."
+                            />
+                            <FormControl>
+                              <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
+                                <SelectTrigger className="w-full min-w-0">
+                                  <SelectValue placeholder="Pilih agen AI" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default">Identitas Gateway Bawaan</SelectItem>
+                                  {agentsList.map((a) => (
+                                    <SelectItem key={a.id} value={a.name}>
+                                      <span className="truncate block max-w-[220px]">
+                                        {a.displayName || a.name}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Enable SSE Response Streaming */}
+                    <FormField
+                      control={form.control}
+                      name="enableStream"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-card/60 hover:bg-card transition-colors space-y-0">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <FormLabel className="text-xs font-semibold cursor-pointer">
+                                Respon AI Langsung (Live Stream)
+                              </FormLabel>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="text-muted-foreground hover:text-[#8B5CF6]">
+                                    <HelpCircleIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs text-[11px] bg-[#141720] border-violet-500/30 text-slate-200">
+                                  Balasan AI akan muncul secara langsung kata demi kata (streaming SSE) sehingga Anda tidak perlu menunggu seluruh teks selesai.
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              Tampilkan teks balasan secara langsung saat sedang dibuat oleh AI
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isExecuting || form.watch('enableAsync')}
+                            />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    {/* Gateway API Key Context */}
+                    {/* Enable Async Execution (HTTP 202) */}
                     <FormField
                       control={form.control}
-                      name="keyPrefix"
+                      name="enableAsync"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs font-semibold" required>
-                            Gateway API Key Context
-                          </FormLabel>
+                        <FormItem className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-card/60 hover:bg-card transition-colors space-y-0">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <FormLabel className="text-xs font-semibold cursor-pointer">
+                                Proses Latar Belakang (Async Queue)
+                              </FormLabel>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="text-muted-foreground hover:text-[#8B5CF6]">
+                                    <HelpCircleIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs text-[11px] bg-[#141720] border-violet-500/30 text-slate-200">
+                                  Perintah dikirimkan ke antrean latar belakang (Redis). Sangat berguna untuk tugas panjang agar tidak membuat halaman terhenti.
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              Kirimkan ke antrean kerja tanpa menahan koneksi halaman browser
+                            </p>
+                          </div>
                           <FormControl>
-                            <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
-                              <SelectTrigger className="w-full min-w-0">
-                                <SelectValue placeholder="Select key" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {keysList.map((k) => (
-                                  <SelectItem key={k.id} value={k.keyPrefix}>
-                                    <span className="truncate block max-w-[220px]">
-                                      {k.name} ({k.keyPrefix}...)
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isExecuting} />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    {/* Agent Context Boundary */}
+                    {/* Prompt / Code Instruction */}
                     <FormField
                       control={form.control}
-                      name="agentId"
+                      name="userPrompt"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-semibold">Agent Context Boundary</FormLabel>
+                          <FormTooltipLabel
+                            label="Instruksi Perintah / Prompt"
+                            required
+                            tooltip="Tuliskan pertanyaan, petunjuk tugas, atau kode yang ingin diproses oleh sistem AI."
+                          />
                           <FormControl>
-                            <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
-                              <SelectTrigger className="w-full min-w-0">
-                                <SelectValue placeholder="Select agent" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="default">Default Gateway Identity</SelectItem>
-                                {agentsList.map((a) => (
-                                  <SelectItem key={a.id} value={a.name}>
-                                    <span className="truncate block max-w-[220px]">
-                                      {a.displayName || a.name}
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <textarea
+                              {...field}
+                              disabled={isExecuting}
+                              className="w-full h-28 rounded-lg border border-border bg-background p-3 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed custom-scrollbar"
+                              placeholder="Tuliskan instruksi atau prompt Anda di sini..."
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -585,129 +755,156 @@ export default function SandboxPage() {
                     />
                   </div>
 
-                  {/* Enable SSE Response Streaming */}
-                  <FormField
-                    control={form.control}
-                    name="enableStream"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center justify-between p-3 rounded-md border border-border bg-card space-y-0">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-xs font-semibold cursor-pointer">
-                            Enable SSE Response Streaming
-                          </FormLabel>
-                          <p className="text-[11px] text-muted-foreground">Stream tokens live chunk-by-chunk in output console</p>
-                        </div>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isExecuting || form.watch('enableAsync')} />
-                        </FormControl>
-                      </FormItem>
+                  <Button
+                    type="submit"
+                    variant="prismViolet"
+                    className="w-full gap-2 mt-4 py-2.5 font-semibold text-xs shadow-md transition-all duration-200"
+                    disabled={isExecuting}
+                  >
+                    {isExecuting ? (
+                      <RefreshCwIcon className="h-4 w-4 animate-spin text-white" />
+                    ) : (
+                      <PlayIcon className="h-4 w-4 fill-white" />
                     )}
-                  />
+                    {isExecuting
+                      ? isAsyncMode
+                        ? 'Memproses di Antrean Latar Belakang...'
+                        : 'Menjalankan Instruksi AI...'
+                      : 'Jalankan Instruksi (Run Container)'}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
 
-                  {/* Enable Async Execution (HTTP 202) */}
-                  <FormField
-                    control={form.control}
-                    name="enableAsync"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center justify-between p-3 rounded-md border border-border bg-card space-y-0">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-xs font-semibold cursor-pointer">
-                            Enable Async Queue Execution (HTTP 202)
-                          </FormLabel>
-                          <p className="text-[11px] text-muted-foreground">Enqueue job to Redis worker queue and poll status</p>
-                        </div>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isExecuting} />
-                        </FormControl>
-                      </FormItem>
+          {/* Right Column: Execution Output Console */}
+          <Card className="flex flex-col min-w-0 overflow-hidden border-border/70 shadow-lg">
+            <CardHeader className="pb-3 border-b border-border/40 bg-card/50">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <TerminalIcon className="h-4 w-4 text-[#8B5CF6]" />
+                  <span>Konsol Hasil Eksekusi (Output Console)</span>
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {routedModel && (
+                    <Badge variant="violet" className="font-mono text-[10px] gap-1 border-violet-500/30">
+                      <LayersIcon className="h-3 w-3 text-[#8B5CF6]" />
+                      Model: {routedModel}
+                    </Badge>
+                  )}
+                  {latencyMs != null && (
+                    <Badge variant="violet" className="font-mono text-[10px] gap-1">
+                      <ClockIcon className="h-3 w-3" />
+                      {latencyMs} ms
+                    </Badge>
+                  )}
+                  {tokenStats && (
+                    <Badge variant="outline" className="font-mono text-[10px] gap-1">
+                      <ZapIcon className="h-3 w-3 text-amber-400" />
+                      {tokenStats.input + tokenStats.output} token
+                    </Badge>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2.5 text-xs gap-1.5 border-violet-500/20 hover:border-violet-500/40"
+                    onClick={handleCopyOutput}
+                    disabled={!executionOutput || isExecuting}
+                  >
+                    {copied ? (
+                      <CheckIcon className="h-3.5 w-3.5 text-emerald-400" />
+                    ) : (
+                      <CopyIcon className="h-3.5 w-3.5 text-[#8B5CF6]" />
                     )}
-                  />
-
-                  {/* Prompt / Code Instruction */}
-                  <FormField
-                    control={form.control}
-                    name="userPrompt"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-semibold" required>Prompt / Code Instruction</FormLabel>
-                        <FormControl>
-                          <textarea
-                            {...field}
-                            disabled={isExecuting}
-                            className="w-full h-24 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-                            placeholder="Enter code block or execution prompt..."
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <span>{copied ? 'Tersalin!' : 'Salin Hasil'}</span>
+                  </Button>
                 </div>
-
-                <Button
-                  type="submit"
-                  variant="prismViolet"
-                  className="w-full gap-2 mt-4"
-                  disabled={isExecuting}
-                >
-                  {isExecuting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                  {isExecuting ? 'Executing in Sandbox...' : 'Run Sandbox Container'}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        {/* Right Column: Execution Output Console */}
-        <Card className="flex flex-col min-w-0 overflow-hidden">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Terminal className="h-4 w-4 text-[#8B5CF6]" />
-                <span>Execution Output Console</span>
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                {routedModel && (
-                  <Badge variant="violet" className="font-mono text-[10px] gap-1 border-violet-500/30">
-                    <Layers className="h-3 w-3 text-[#8B5CF6]" />
-                    Routed: {routedModel}
-                  </Badge>
-                )}
-                {latencyMs != null && (
-                  <Badge variant="violet" className="font-mono text-[10px]">{latencyMs} ms</Badge>
-                )}
-                {tokenStats && (
-                  <Badge variant="outline" className="font-mono text-[10px]">{tokenStats.input + tokenStats.output} tokens</Badge>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2 text-xs gap-1.5 border-violet-500/20 hover:border-violet-500/40"
-                  onClick={handleCopyOutput}
-                  disabled={!executionOutput}
-                >
-                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-[#8B5CF6]" />}
-                  <span>{copied ? 'Copied!' : 'Copy Result'}</span>
-                </Button>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col">
-            <div className="flex-1 w-full max-h-[560px] min-h-[400px] p-4 rounded-lg border border-border/80 bg-[#0A0C10] font-mono text-xs overflow-y-auto custom-scrollbar shadow-inner">
-              {isExecuting && !executionOutput ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#8B5CF6]" />
-                  <span>Connecting to Prism Proxy Engine and evaluating sandbox safety...</span>
-                </div>
-              ) : executionOutput ? (
-                <FormattedSandboxOutput content={executionOutput} />
-              ) : (
-                <span className="text-muted-foreground italic">No output yet. Click &quot;Run Sandbox Container&quot; to execute prompt.</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </AppLayout>
+            </CardHeader>
+
+            <CardContent className="flex-1 flex flex-col pt-4">
+              <div className="flex-1 w-full max-h-[580px] min-h-[420px] p-4 rounded-lg border border-border/80 bg-[#0A0C10] font-mono text-xs overflow-y-auto custom-scrollbar shadow-inner relative">
+                {/* Modern Animated Loading Progress Screen */}
+                {isExecuting && !executionOutput ? (
+                  <div className="h-full flex flex-col items-center justify-center space-y-5 p-6 text-center">
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-full bg-violet-500/10 border border-violet-500/30 flex items-center justify-center animate-pulse">
+                        {isAsyncMode ? (
+                          <CpuIcon className="h-7 w-7 text-[#8B5CF6] animate-bounce" />
+                        ) : (
+                          <SparklesIcon className="h-7 w-7 text-[#06B6D4] animate-spin" />
+                        )}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#8B5CF6] flex items-center justify-center">
+                        <Loader2Icon className="h-3 w-3 text-white animate-spin" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 max-w-sm">
+                      <h4 className="text-sm font-semibold text-slate-100 flex items-center justify-center gap-2">
+                        <span>{isAsyncMode ? 'Tugas Async Sedang Diproses' : 'Menghubungkan ke Mesin AI'}</span>
+                      </h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {isAsyncMode
+                          ? 'Perintah telah masuk antrean latar belakang. Sistem sedang memproses instruksi via worker pool.'
+                          : 'Mengevaluasi batas keamanan RBAC & memilih model AI terbaik...'}
+                      </p>
+                    </div>
+
+                    {/* Visual Progress Steps */}
+                    <div className="w-full max-w-xs space-y-2 border border-violet-500/20 bg-[#12151E] p-3 rounded-lg text-[11px] text-left">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-emerald-400 font-semibold">
+                          <CheckCircle2Icon className="h-3.5 w-3.5" />
+                          <span>1. Kirim Perintah (Request)</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-400/80 font-mono">OK</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-[#8B5CF6] font-semibold">
+                          <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+                          <span>2. Eksekusi Model AI</span>
+                        </span>
+                        <span className="text-[10px] text-[#8B5CF6] font-mono animate-pulse">PROSES</span>
+                      </div>
+                      <div className="flex items-center justify-between text-muted-foreground opacity-60">
+                        <span className="flex items-center gap-2">
+                          <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/40 flex items-center justify-center text-[9px]">3</span>
+                          <span>3. Terima Balasan Teks</span>
+                        </span>
+                        <span className="text-[10px] font-mono">NANTI</span>
+                      </div>
+                    </div>
+
+                    {/* Animated Shimmer Line */}
+                    <div className="w-full max-w-xs h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-[#8B5CF6] via-[#06B6D4] to-[#8B5CF6] rounded-full animate-pulse w-full" />
+                    </div>
+                  </div>
+                ) : executionOutput ? (
+                  <div>
+                    <FormattedSandboxOutput content={executionOutput} />
+                    {/* Blinking cursor effect during active streaming */}
+                    {isExecuting && (
+                      <span className="inline-block w-2 h-4 bg-[#8B5CF6] animate-pulse ml-1 align-middle rounded-sm" />
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 text-muted-foreground space-y-3">
+                    <TerminalIcon className="h-10 w-10 text-muted-foreground/30" />
+                    <div className="space-y-1 max-w-xs">
+                      <p className="text-xs font-semibold text-slate-300">Konsol Siap Digunakan</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Tuliskan instruksi prompt di panel sebelah kiri lalu klik tombol &quot;Jalankan Instruksi&quot; untuk melihat balasan.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </AppLayout>
+    </TooltipProvider>
   );
 }
