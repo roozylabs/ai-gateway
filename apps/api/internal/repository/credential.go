@@ -21,12 +21,25 @@ func NewCredentialRepository(db *sql.DB) *CredentialRepository {
 }
 
 func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID string) ([]models.Credential, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
+	var query string
+	var args []interface{}
+	if _, err := uuid.Parse(providerID); err == nil {
+		query = `SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE provider_id = $1 ORDER BY COALESCE(health_score, 100.00) DESC, priority ASC`, providerID,
-	)
+		 FROM credentials WHERE provider_id = $1 ORDER BY COALESCE(health_score, 100.00) DESC, priority ASC`
+		args = []interface{}{providerID}
+	} else {
+		query = `SELECT c.id, c.provider_id, c.name, c.encrypted_key, c.key_prefix, c.masked_key, COALESCE(c.auth_type, 'api_key'), c.encrypted_metadata, c.priority, c.enabled, c.status, COALESCE(c.health_score, 100.00),
+		        c.last_used_at, c.request_count, c.error_count, c.last_error, c.last_error_at,
+		        c.created_at, c.updated_at
+		 FROM credentials c LEFT JOIN providers p ON p.id = c.provider_id
+		 WHERE (p.type = $1 OR p.name ILIKE $1)
+		 ORDER BY COALESCE(c.health_score, 100.00) DESC, c.priority ASC`
+		args = []interface{}{providerID}
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +48,8 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 	var credentials []models.Credential
 	for rows.Next() {
 		var c models.Credential
-		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
-			&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
+		if err := rows.Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey,
+			&c.AuthType, &c.EncryptedMetadata, &c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 			&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -61,9 +74,15 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 	if providerID != "" && providerID != "all" {
 		args = append(args, providerID)
 		countArgs = append(countArgs, providerID)
-		filter := fmt.Sprintf(" AND c.provider_id = $%d", len(args))
-		query += filter
-		countQuery += filter
+		if _, pErr := uuid.Parse(providerID); pErr == nil {
+			filter := fmt.Sprintf(" AND c.provider_id = $%d", len(args))
+			query += filter
+			countQuery += filter
+		} else {
+			filter := fmt.Sprintf(" AND (p.type = $%d OR p.name ILIKE $%d)", len(args), len(args))
+			query += filter
+			countQuery += filter
+		}
 	}
 
 	if search != "" {
@@ -168,13 +187,22 @@ func (r *CredentialRepository) Delete(ctx context.Context, id string) error {
 
 func (r *CredentialRepository) FindActiveByProviderID(ctx context.Context, providerID string) (*models.Credential, error) {
 	c := &models.Credential{}
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
+	var query string
+	if _, err := uuid.Parse(providerID); err == nil {
+		query = `SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
 		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status NOT IN ('invalid', 'disabled')
-		 ORDER BY COALESCE(health_score, 100.00) DESC, priority ASC LIMIT 1`, providerID,
-	).Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
+		 ORDER BY COALESCE(health_score, 100.00) DESC, priority ASC LIMIT 1`
+	} else {
+		query = `SELECT c.id, c.provider_id, c.name, c.encrypted_key, c.key_prefix, c.masked_key, COALESCE(c.auth_type, 'api_key'), c.encrypted_metadata, c.priority, c.enabled, c.status, COALESCE(c.health_score, 100.00),
+		        c.last_used_at, c.request_count, c.error_count, c.last_error, c.last_error_at,
+		        c.created_at, c.updated_at
+		 FROM credentials c LEFT JOIN providers p ON p.id = c.provider_id
+		 WHERE (p.type = $1 OR p.name ILIKE $1) AND c.enabled = true AND c.status NOT IN ('invalid', 'disabled')
+		 ORDER BY COALESCE(c.health_score, 100.00) DESC, c.priority ASC LIMIT 1`
+	}
+	err := r.db.QueryRowContext(ctx, query, providerID).Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
 		&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 		&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
@@ -184,13 +212,22 @@ func (r *CredentialRepository) FindActiveByProviderID(ctx context.Context, provi
 }
 
 func (r *CredentialRepository) FindAllActiveByProviderID(ctx context.Context, providerID string, excludeIDs []string) ([]models.Credential, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
+	var query string
+	if _, err := uuid.Parse(providerID); err == nil {
+		query = `SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
 		 FROM credentials WHERE provider_id = $1 AND enabled = true AND status NOT IN ('invalid', 'disabled')
-		 ORDER BY COALESCE(health_score, 100.00) DESC, priority ASC`, providerID,
-	)
+		 ORDER BY COALESCE(health_score, 100.00) DESC, priority ASC`
+	} else {
+		query = `SELECT c.id, c.provider_id, c.name, c.encrypted_key, c.key_prefix, c.masked_key, COALESCE(c.auth_type, 'api_key'), c.encrypted_metadata, c.priority, c.enabled, c.status, COALESCE(c.health_score, 100.00),
+		        c.last_used_at, c.request_count, c.error_count, c.last_error, c.last_error_at,
+		        c.created_at, c.updated_at
+		 FROM credentials c LEFT JOIN providers p ON p.id = c.provider_id
+		 WHERE (p.type = $1 OR p.name ILIKE $1) AND c.enabled = true AND c.status NOT IN ('invalid', 'disabled')
+		 ORDER BY COALESCE(c.health_score, 100.00) DESC, c.priority ASC`
+	}
+	rows, err := r.db.QueryContext(ctx, query, providerID)
 	if err != nil {
 		return nil, err
 	}
