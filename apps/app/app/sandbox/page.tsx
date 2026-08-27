@@ -17,7 +17,7 @@ import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery';
 import { useGatewayKeysQuery } from '@/hooks/queries/useGatewayKeysQuery';
 import { usePoliciesQuery } from '@/hooks/queries/usePoliciesQuery';
-import { ApiModel, ApiAgent } from '@/lib/api';
+import { ApiModel } from '@/lib/api';
 import { Play, Terminal, RefreshCw, Code2, Copy, Check, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/types/ui';
@@ -29,7 +29,6 @@ const sandboxSchema = z.object({
   keyPrefix: z.string().min(1, 'Gateway API Key Context is required'),
   agentId: z.string().default('default'),
   enableStream: z.boolean().default(true),
-  systemPrompt: z.string(),
   userPrompt: z.string().min(1, 'Prompt / Code Instruction is required'),
 });
 
@@ -144,8 +143,6 @@ export default function SandboxPage() {
       keyPrefix: keysList[0]?.keyPrefix || '',
       agentId: 'default',
       enableStream: true,
-      systemPrompt:
-        'You are an expert AI agent sandbox evaluator. Analyze code safety, boundary limits, and execute tools safely.',
       userPrompt:
         'Write a Python function to validate JSON Schema definitions and estimate memory usage.',
     },
@@ -159,31 +156,6 @@ export default function SandboxPage() {
       }
     }
   }, [keysList, form]);
-
-  const selectedAgentId = form.watch('agentId');
-
-  React.useEffect(() => {
-    if (!selectedAgentId || selectedAgentId === 'default') {
-      form.setValue(
-        'systemPrompt',
-        'You are an expert AI agent sandbox evaluator. Analyze code safety, boundary limits, and execute tools safely.'
-      );
-      return;
-    }
-
-    const foundAgent = agentsList.find(
-      (a: ApiAgent) => a.id === selectedAgentId || a.name === selectedAgentId
-    );
-
-    if (foundAgent) {
-      const personaPrompt =
-        foundAgent.systemPromptOverride ||
-        (foundAgent.description
-          ? `You are ${foundAgent.displayName || foundAgent.name}. ${foundAgent.description}. Operate strictly within your agent context boundary rules and execute tools safely.`
-          : `You are ${foundAgent.displayName || foundAgent.name}, a specialized AI agent. Process instructions according to your agent context boundary rules.`);
-      form.setValue('systemPrompt', personaPrompt);
-    }
-  }, [selectedAgentId, agentsList, form]);
 
   const isExecuting = sandboxMutation.isPending;
   const selectedModel = form.watch('model');
@@ -210,7 +182,6 @@ export default function SandboxPage() {
         agentId: values.agentId,
         model: values.model,
         messages: [
-          { role: 'system', content: values.systemPrompt },
           { role: 'user', content: values.userPrompt },
         ],
         temperature: 0.7,
@@ -455,26 +426,6 @@ export default function SandboxPage() {
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isExecuting} />
                         </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* System Persona & Tool Rules */}
-                  <FormField
-                    control={form.control}
-                    name="systemPrompt"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-semibold">System Persona & Tool Rules</FormLabel>
-                        <FormControl>
-                          <textarea
-                            {...field}
-                            disabled={isExecuting}
-                            className="w-full h-20 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-                            placeholder="System role and safety boundaries..."
-                          />
-                        </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
