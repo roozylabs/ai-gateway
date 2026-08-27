@@ -57,8 +57,8 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 		        COALESCE(rl.cost_usd, 0), rl.error_message, rl.retry_count, COALESCE(rl.client_ip, ''), COALESCE(rl.user_agent, ''),
 		        COALESCE(rl.client_app, ''), COALESCE(rl.is_stream, false), COALESCE(rl.ttft_ms, 0), rl.created_at
 		 FROM request_logs rl
-		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
-		 WHERE gak.user_id = $1
+		 LEFT JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE (gak.user_id = $1 OR rl.gateway_api_key_id IS NULL OR $1 = '')
 		 ORDER BY rl.created_at DESC
 		 LIMIT $2 OFFSET $3`, userID, limit, offset,
 	)
@@ -96,10 +96,15 @@ type LogFilter struct {
 }
 
 func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) ([]models.RequestLog, int, error) {
-	where := []string{"(gak.user_id = $1 OR rl.gateway_api_key_id IS NULL OR $1 = '')"}
-	args := []interface{}{f.UserID}
-	argIdx := 2
+	where := []string{}
+	args := []interface{}{}
+	argIdx := 1
 
+	if f.UserID != "" {
+		where = append(where, fmt.Sprintf("(gak.user_id = $%d OR rl.gateway_api_key_id IS NULL)", argIdx))
+		args = append(args, f.UserID)
+		argIdx++
+	}
 	if f.Provider != "" {
 		where = append(where, fmt.Sprintf("p.slug = $%d", argIdx))
 		args = append(args, f.Provider)
@@ -121,7 +126,10 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 		argIdx++
 	}
 
-	whereClause := strings.Join(where, " AND ")
+	whereClause := "1=1"
+	if len(where) > 0 {
+		whereClause = strings.Join(where, " AND ")
+	}
 
 	countQuery := fmt.Sprintf(
 		`SELECT COUNT(*) FROM request_logs rl
