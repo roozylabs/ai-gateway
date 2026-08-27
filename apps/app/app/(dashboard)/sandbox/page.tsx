@@ -300,9 +300,64 @@ export default function SandboxPage() {
   const [copied, setCopied] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [isAsyncExecuting, setIsAsyncExecuting] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
   const isExecuting =
-    sandboxMutation.isPending || activeJobId !== null || isAsyncExecuting;
+    sandboxMutation.isPending ||
+    activeJobId !== null ||
+    isAsyncExecuting ||
+    isTyping;
+
+  const typewriterRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completedJobRef = React.useRef<string | null>(null);
+
+  const typewrite = React.useCallback((text: string, onComplete?: () => void) => {
+    if (typewriterRef.current) clearTimeout(typewriterRef.current);
+    setIsTyping(true);
+    let i = 0;
+    const step = () => {
+      // Append 2-5 characters per tick for smooth 1-by-1 natural typing effect
+      i += Math.min(text.length - i, Math.floor(Math.random() * 4) + 2);
+      setExecutionOutput(text.slice(0, i));
+      if (i < text.length) {
+        typewriterRef.current = setTimeout(step, 16 + Math.random() * 8);
+      } else {
+        setIsTyping(false);
+        if (onComplete) onComplete();
+      }
+    };
+    step();
+  }, []);
+
+  const handleJobCompleted = React.useCallback(
+    (jobId: string, result: any, model?: string, startTime?: number) => {
+      if (completedJobRef.current === jobId) return;
+      completedJobRef.current = jobId;
+
+      const content =
+        result?.choices?.[0]?.message?.content || JSON.stringify(result, null, 2);
+
+      if (result?.usage) {
+        setTokenStats({
+          input: result.usage.prompt_tokens || 0,
+          output: result.usage.completion_tokens || 0,
+        });
+      }
+      if (model) {
+        setRoutedModel(model);
+      }
+      if (startTime) {
+        setLatencyMs(Date.now() - startTime);
+      }
+
+      toast.success("Async job completed");
+      setActiveJobId(null);
+      setIsAsyncExecuting(false);
+
+      typewrite(content);
+    },
+    [typewrite],
+  );
 
   React.useEffect(() => {
     if (!activeJobId || !lastEvent) return;
@@ -315,35 +370,16 @@ export default function SandboxPage() {
       ) {
         const status = payload.status;
         if (status === "completed") {
-          const res = payload.result;
-          const content =
-            res?.choices?.[0]?.message?.content || JSON.stringify(res, null, 2);
-          setExecutionOutput(content);
-          if (res?.usage) {
-            setTokenStats({
-              input: res.usage.prompt_tokens || 0,
-              output: res.usage.completion_tokens || 0,
-            });
-          }
-          if (payload.model) {
-            setRoutedModel(payload.model);
-          }
-          toast.success(`Async Job ${activeJobId} completed processing!`);
-          setActiveJobId(null);
-          setIsAsyncExecuting(false);
+          handleJobCompleted(activeJobId, payload.result, payload.model);
         } else if (status === "failed") {
           setExecutionOutput(`Execution Failed:\n${payload.error}`);
           toast.error(`Async Job ${activeJobId} failed: ${payload.error}`);
           setActiveJobId(null);
           setIsAsyncExecuting(false);
-        } else if (status === "processing") {
-          setExecutionOutput(
-            `Status: PROCESSING (Job ID: ${activeJobId})\nExecuting on background worker pool...`,
-          );
         }
       }
     }
-  }, [lastEvent, activeJobId]);
+  }, [lastEvent, activeJobId, handleJobCompleted]);
 
   const form = useForm<SandboxFormValues>({
     resolver: zodResolver(sandboxSchema),
@@ -381,23 +417,9 @@ export default function SandboxPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Typewriter effect for non-stream results
-  const typewriterRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const typewrite = (text: string, speed = 12) => {
-    if (typewriterRef.current) clearTimeout(typewriterRef.current);
-    let i = 0;
-    const step = () => {
-      i += Math.max(1, Math.floor(Math.random() * 3));
-      setExecutionOutput(text.slice(0, i));
-      if (i < text.length) {
-        typewriterRef.current = setTimeout(step, speed + Math.random() * 8);
-      }
-    };
-    step();
-  };
-
   const onSubmit = async (values: SandboxFormValues) => {
     const savedPrompt = values.userPrompt;
+    completedJobRef.current = null;
     setExecutionOutput("");
     setLatencyMs(null);
     setTokenStats(null);
@@ -408,7 +430,6 @@ export default function SandboxPage() {
     try {
       if (values.enableAsync) {
         setIsAsyncExecuting(true);
-        setExecutionOutput("Submitting request to Background Queue...");
         const token =
           typeof window !== "undefined"
             ? localStorage.getItem("access_token")
@@ -425,7 +446,7 @@ export default function SandboxPage() {
           },
           body: JSON.stringify({
             model: values.model,
-            messages: [{ role: "user", content: values.userPrompt }],
+            messages: [{ role: "user", content: savedPrompt }],
             temperature: 0.7,
             stream: false,
           }),
@@ -434,6 +455,7 @@ export default function SandboxPage() {
         if (!asyncRes.ok) {
           const errData = await asyncRes.json();
           setIsAsyncExecuting(false);
+          form.setValue("userPrompt", savedPrompt);
           throw new Error(
             errData?.error?.message ||
               `Failed to submit async job (Status ${asyncRes.status})`,
@@ -443,9 +465,6 @@ export default function SandboxPage() {
         const asyncJob = await asyncRes.json();
         const jobId = asyncJob.job_id;
         setActiveJobId(jobId);
-        setExecutionOutput(
-          `Status: QUEUED (Job ID: ${jobId})\nListening to real-time SSE stream & polling status in background...`,
-        );
         toast.info(`Async Job ${jobId} queued successfully`);
 
         let isDone = false;
@@ -454,6 +473,11 @@ export default function SandboxPage() {
         while (!isDone && pollCount < 60) {
           await new Promise((r) => setTimeout(r, 1000));
           pollCount++;
+
+          if (completedJobRef.current === jobId) {
+            isDone = true;
+            break;
+          }
 
           const jobRes = await fetch(`/api/jobs/${jobId}`, {
             headers: {
@@ -466,23 +490,7 @@ export default function SandboxPage() {
           const jobData = await jobRes.json();
           if (jobData.status === "completed") {
             isDone = true;
-            const content =
-              jobData.result?.choices?.[0]?.message?.content ||
-              JSON.stringify(jobData.result, null, 2);
-            typewrite(content);
-            if (jobData.result?.usage) {
-              setTokenStats({
-                input: jobData.result.usage.prompt_tokens || 0,
-                output: jobData.result.usage.completion_tokens || 0,
-              });
-            }
-            if (jobData.model) {
-              setRoutedModel(jobData.model);
-            }
-            setLatencyMs(Date.now() - startTime);
-            toast.success(`Async job completed`);
-            setActiveJobId(null);
-            setIsAsyncExecuting(false);
+            handleJobCompleted(jobId, jobData.result, jobData.model, startTime);
             break;
           } else if (jobData.status === "failed") {
             isDone = true;
@@ -492,10 +500,6 @@ export default function SandboxPage() {
             setActiveJobId(null);
             setIsAsyncExecuting(false);
             break;
-          } else {
-            setExecutionOutput(
-              `Status: ${String(jobData.status).toUpperCase()} (Job ID: ${jobId})\nWaiting for worker execution... (${pollCount}s)`,
-            );
           }
         }
         setIsAsyncExecuting(false);
@@ -507,7 +511,7 @@ export default function SandboxPage() {
         routingPolicy: values.routingPolicy,
         agentId: values.agentId,
         model: values.model,
-        messages: [{ role: "user", content: values.userPrompt }],
+        messages: [{ role: "user", content: savedPrompt }],
         temperature: 0.7,
         stream: values.enableStream,
       });
@@ -570,7 +574,6 @@ export default function SandboxPage() {
         }
         const choice =
           data.choices?.[0]?.message?.content ?? JSON.stringify(data, null, 2);
-        typewrite(choice);
         if (data.usage) {
           setTokenStats({
             input: data.usage.prompt_tokens || 0,
@@ -579,6 +582,7 @@ export default function SandboxPage() {
         }
         setLatencyMs(Date.now() - startTime);
         toast.success("Sandbox execution completed");
+        typewrite(choice);
       }
     } catch (err: unknown) {
       setExecutionOutput(`[System Exception]\n${getErrorMessage(err)}`);
