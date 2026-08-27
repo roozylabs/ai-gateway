@@ -20,6 +20,7 @@ import {
 } from '@/hooks/queries/useGovernanceQuery';
 import type { ApiGovernancePolicy, ApiCreateGovernancePolicyRequest } from '@/lib/api';
 import { Plus, Shield, Pencil, Trash2 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { toast } from 'sonner';
 
 const defaultForm: ApiCreateGovernancePolicyRequest = {
@@ -100,12 +101,10 @@ export default function GovernancePage() {
   };
 
   const handleDelete = (policy: ApiGovernancePolicy) => {
-    if (window.confirm(`Delete policy "${policy.name}"? This cannot be undone.`)) {
-      deleteMutation.mutate(policy.id, {
-        onSuccess: () => toast.success(`${policy.name} deleted`),
-        onError: (err: Error) => toast.error(`Delete failed: ${err.message}`),
-      });
-    }
+    deleteMutation.mutate(policy.id, {
+      onSuccess: () => toast.success(`${policy.name} deleted`),
+      onError: (err: Error) => toast.error(`Delete failed: ${err.message}`),
+    });
   };
 
   const setField = (field: keyof ApiCreateGovernancePolicyRequest, value: string | number | boolean) => {
@@ -127,6 +126,7 @@ export default function GovernancePage() {
     },
     { title: 'Agent', dataIndex: 'agentPattern', key: 'agentPattern', className: 'font-mono text-[11px]' },
     { title: 'Model', dataIndex: 'modelPattern', key: 'modelPattern', className: 'font-mono text-[11px]' },
+    { title: 'Tool', dataIndex: 'toolPattern', key: 'toolPattern', className: 'font-mono text-[11px]' },
     {
       title: 'Priority',
       dataIndex: 'priority',
@@ -149,9 +149,17 @@ export default function GovernancePage() {
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(record)}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(record)}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          <ConfirmDialog
+            title="Delete Governance Policy"
+            description={`Delete policy "${record.name}"? This cannot be undone.`}
+            confirmText="Delete"
+            onConfirm={() => handleDelete(record)}
+            trigger={
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            }
+          />
         </div>
       ),
       className: 'w-[70px]',
