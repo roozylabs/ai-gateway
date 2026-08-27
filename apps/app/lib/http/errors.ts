@@ -20,6 +20,8 @@ export class ApiError extends Error {
   public readonly code: ApiErrorCode;
   public readonly status: number;
   public readonly requestId?: string;
+  public readonly policyId?: string;
+  public readonly policyName?: string;
   public readonly details?: ApiErrorDetail[];
   public readonly retryable: boolean;
 
@@ -28,6 +30,8 @@ export class ApiError extends Error {
     code?: ApiErrorCode;
     status?: number;
     requestId?: string;
+    policyId?: string;
+    policyName?: string;
     details?: ApiErrorDetail[];
     retryable?: boolean;
   }) {
@@ -36,6 +40,8 @@ export class ApiError extends Error {
     this.code = params.code || 'INTERNAL_ERROR';
     this.status = params.status || 500;
     this.requestId = params.requestId;
+    this.policyId = params.policyId;
+    this.policyName = params.policyName;
     this.details = params.details;
     this.retryable = params.retryable ?? (this.status >= 500 || this.status === 429);
 
@@ -58,6 +64,9 @@ export function parseApiError(error: unknown, defaultMessage = 'An unexpected AP
             message?: string;
             type?: string;
             code?: string;
+            policy_id?: string;
+            policy_name?: string;
+            request_id?: string;
             details?: ApiErrorDetail[];
           };
           message?: string;
@@ -69,7 +78,7 @@ export function parseApiError(error: unknown, defaultMessage = 'An unexpected AP
     const status = errObj.status || errObj.response?.status || 500;
     const errPayload = errObj.response?.data?.error;
     const message = errPayload?.message || errObj.response?.data?.message || defaultMessage;
-    const requestId = errObj.response?.headers?.['x-request-id'];
+    const requestId = errPayload?.request_id || errObj.response?.headers?.['x-request-id'];
 
     let code: ApiErrorCode = 'INTERNAL_ERROR';
     if (status === 401) code = 'AUTH_REQUIRED';
@@ -84,6 +93,8 @@ export function parseApiError(error: unknown, defaultMessage = 'An unexpected AP
       code,
       status,
       requestId,
+      policyId: errPayload?.policy_id,
+      policyName: errPayload?.policy_name,
       details: errPayload?.details,
     });
   }

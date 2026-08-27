@@ -5,7 +5,43 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
+
+type ApiErrorDetail struct {
+	Field   string `json:"field,omitempty"`
+	Message string `json:"message"`
+	Code    string `json:"code,omitempty"`
+}
+
+type ApiErrorPayload struct {
+	Message    string           `json:"message"`
+	Type       string           `json:"type"`
+	Code       string           `json:"code"`
+	PolicyID   string           `json:"policy_id,omitempty"`
+	PolicyName string           `json:"policy_name,omitempty"`
+	RequestID  string           `json:"request_id,omitempty"`
+	Details    []ApiErrorDetail `json:"details,omitempty"`
+}
+
+func RespondWithError(c *gin.Context, status int, errType string, message string, code string, policyID string, policyName string) {
+	reqID := c.GetString("requestId")
+	if reqID == "" {
+		reqID = c.GetHeader("X-Request-ID")
+	}
+
+	payload := ApiErrorPayload{
+		Message:    message,
+		Type:       errType,
+		Code:       code,
+		PolicyID:   policyID,
+		PolicyName: policyName,
+		RequestID:  reqID,
+	}
+
+	c.JSON(status, gin.H{"error": payload})
+}
 
 // Standard User-Friendly Messages
 const (

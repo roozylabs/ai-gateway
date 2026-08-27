@@ -24,6 +24,8 @@ type AdmissionResult struct {
 	HTTPStatus   int
 	ErrorCode    string
 	Reason       string
+	PolicyID     string
+	PolicyName   string
 	BudgetStatus string
 }
 
@@ -98,11 +100,19 @@ func (a *AdmissionController) Evaluate(ctx context.Context, req AdmissionRequest
 			return nil, fmt.Errorf("rbac evaluate: %w", err)
 		}
 		if !rbacRes.Allowed {
+			policyID := ""
+			policyName := ""
+			if rbacRes.MatchedPolicy != nil {
+				policyID = rbacRes.MatchedPolicy.ID
+				policyName = rbacRes.MatchedPolicy.Name
+			}
 			return &AdmissionResult{
 				Decision:   AdmissionDeny,
 				HTTPStatus: http.StatusForbidden,
 				ErrorCode:  "governance_policy_denied",
 				Reason:     rbacRes.Reason,
+				PolicyID:   policyID,
+				PolicyName: policyName,
 			}, nil
 		}
 	}

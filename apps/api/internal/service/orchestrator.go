@@ -17,11 +17,13 @@ import (
 type OrchestrationResult struct {
 	Denied       bool                   `json:"denied"`
 	HTTPStatus   int                    `json:"httpStatus"`
-	ErrorCode    string                 `json:"errorCode"`
-	ErrorMessage string                 `json:"errorMessage"`
-	RequestID    string                 `json:"requestId"`
+	ErrorCode    string                  `json:"errorCode"`
+	ErrorMessage string                  `json:"errorMessage"`
+	PolicyID     string                  `json:"policyId"`
+	PolicyName   string                  `json:"policyName"`
+	RequestID    string                  `json:"requestId"`
 	Response     *proxy.ProviderResponse `json:"response,omitempty"`
-	RequestLog   *models.RequestLog     `json:"requestLog,omitempty"`
+	RequestLog   *models.RequestLog      `json:"requestLog,omitempty"`
 }
 
 type ExecutionOrchestrator struct {
@@ -108,6 +110,8 @@ func (o *ExecutionOrchestrator) ExecuteChatCompletions(
 			HTTPStatus:   admRes.HTTPStatus,
 			ErrorCode:    admRes.ErrorCode,
 			ErrorMessage: admRes.Reason,
+			PolicyID:     admRes.PolicyID,
+			PolicyName:   admRes.PolicyName,
 			RequestID:    requestID,
 		}, nil
 	}
