@@ -1,26 +1,46 @@
 'use client';
 
+import React, { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
 import { Badge } from '@/components/atoms/Badge';
+import { Button } from '@/components/atoms/Button';
 import { DataTable, Column } from '@/components/organisms/DataTable';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
 import { useLogsQuery } from '@/hooks/queries/useLogsQuery';
 import { ApiRequestLog } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Activity } from 'lucide-react';
+import { Activity, Eye, RefreshCw, Server } from 'lucide-react';
 
 export default function LogsPage() {
   const { data, isLoading, isError, refetch } = useLogsQuery();
+  const [selectedLog, setSelectedLog] = useState<ApiRequestLog | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const logsList = (data?.data ?? []) as ApiRequestLog[];
+
+  const openLogInspector = (log: ApiRequestLog) => {
+    setSelectedLog(log);
+    setDrawerOpen(true);
+  };
 
   const columns: Column<ApiRequestLog>[] = [
     {
       title: 'Timestamp',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (t) => <span className="font-mono text-muted-foreground">{t}</span>,
+      render: (t) => <span className="font-mono text-muted-foreground text-xs">{t ? new Date(String(t)).toLocaleString() : '—'}</span>,
+    },
+    {
+      title: 'Client App / IP',
+      key: 'client',
+      render: (_, record) => (
+        <span className="text-xs">
+          <span className="font-semibold text-foreground block">{record.clientApp || 'API Client'}</span>
+          <span className="font-mono text-muted-foreground text-[10px]">{record.clientIp || '127.0.0.1'}</span>
+        </span>
+      ),
     },
     {
       title: 'Resolved Model',
@@ -29,32 +49,51 @@ export default function LogsPage() {
       render: (mod) => <Badge variant="outline">{mod}</Badge>,
     },
     {
-      title: 'HTTP Status',
+      title: 'Status',
       dataIndex: 'statusCode',
       key: 'statusCode',
       render: (code) => (
-        <Badge variant={code === 200 ? 'success' : 'destructive'} className="font-mono">
+        <Badge variant={code === 200 ? 'success' : 'destructive'} className="font-mono text-[10px]">
           {code}
         </Badge>
       ),
     },
     {
-      title: 'Latency',
-      dataIndex: 'latencyMs',
-      key: 'latencyMs',
-      render: (lat) => <span className="font-mono">{lat} ms</span>,
+      title: 'Latency (TTFT)',
+      key: 'latency',
+      render: (_, record) => (
+        <span className="font-mono text-xs">
+          {record.latencyMs} ms {record.ttftMs ? <span className="text-muted-foreground text-[10px]">({record.ttftMs}ms)</span> : null}
+        </span>
+      ),
     },
     {
-      title: 'Token Count',
-      dataIndex: 'totalTokens',
-      key: 'totalTokens',
-      render: (tok) => <span className="font-mono text-muted-foreground">{Number(tok || 0).toLocaleString()}</span>,
+      title: 'Tokens & Cost',
+      key: 'tokensCost',
+      render: (_, record) => (
+        <span className="font-mono text-xs">
+          {Number(record.totalTokens || 0).toLocaleString()} tok / <span className="text-emerald-500">${record.estimatedCost != null ? Number(record.estimatedCost).toFixed(4) : '0.0000'}</span>
+        </span>
+      ),
     },
     {
-      title: 'Cost',
-      dataIndex: 'estimatedCost',
-      key: 'estimatedCost',
-      render: (cost) => <span className="font-mono">{cost != null ? `$${Number(cost).toFixed(4)}` : '—'}</span>,
+      title: 'Retries',
+      dataIndex: 'retryCount',
+      key: 'retryCount',
+      render: (retries) => (
+        <Badge variant={Number(retries || 0) > 0 ? 'warning' : 'outline'} className="font-mono text-[10px]">
+          {Number(retries || 0)} failovers
+        </Badge>
+      ),
+    },
+    {
+      title: 'Inspect',
+      key: 'actions',
+      render: (_, record) => (
+        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => openLogInspector(record)}>
+          <Eye className="h-3.5 w-3.5 text-[#8B5CF6]" /> Details
+        </Button>
+      ),
     },
   ];
 
@@ -62,7 +101,7 @@ export default function LogsPage() {
     <AppLayout>
       <PageHeader
         title="Live Request Logs & HTTP Inspector"
-        description="Inspect all incoming proxy requests, TTFT latency breakdown, HTTP status codes, and model routing decisions."
+        description="Inspect all incoming proxy requests, TTFT latency breakdown, HTTP status codes, and failover execution chains."
       />
 
       <Card>
@@ -91,11 +130,93 @@ export default function LogsPage() {
               rowKey="id"
               loading={isLoading}
               pageSize={10}
-              searchPlaceholder="Search logs by path or model..."
+              searchPlaceholder="Search logs by path, model, or client app..."
             />
           )}
         </CardContent>
       </Card>
+
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Server className="h-4 w-4 text-[#8B5CF6]" />
+              <span>Proxy Request Details</span>
+            </SheetTitle>
+            <SheetDescription className="font-mono text-xs text-muted-foreground">
+              Request ID: {selectedLog?.id}
+            </SheetDescription>
+          </SheetHeader>
+
+          {selectedLog && (
+            <div className="space-y-4 py-4 text-xs">
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-md border border-border bg-muted/20">
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">RESOLVED MODEL</span>
+                  <span className="font-bold text-foreground font-mono">{selectedLog.model}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">PROVIDER</span>
+                  <span className="font-bold text-foreground font-mono">{selectedLog.providerId || 'Prism Router'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">STATUS CODE</span>
+                  <Badge variant={selectedLog.statusCode === 200 ? 'success' : 'destructive'} className="font-mono">
+                    {selectedLog.statusCode}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">LATENCY (TTFT)</span>
+                  <span className="font-mono font-bold text-foreground">{selectedLog.latencyMs} ms ({selectedLog.ttftMs ?? 0}ms TTFT)</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">TOKENS (IN / OUT)</span>
+                  <span className="font-mono font-bold text-foreground">{selectedLog.inputTokens} / {selectedLog.outputTokens} ({selectedLog.totalTokens} total)</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">ESTIMATED COST</span>
+                  <span className="font-mono font-bold text-emerald-500">${Number(selectedLog.estimatedCost || 0).toFixed(6)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <span className="font-semibold text-foreground block">Client Metadata</span>
+                <div className="p-3 rounded-md border border-border bg-muted/40 space-y-1 font-mono text-[11px]">
+                  <p><span className="text-muted-foreground">Client App:</span> {selectedLog.clientApp || 'API Client'}</p>
+                  <p><span className="text-muted-foreground">Client IP:</span> {selectedLog.clientIp || '127.0.0.1'}</p>
+                  <p><span className="text-muted-foreground">User Agent:</span> {selectedLog.userAgent || '—'}</p>
+                  <p><span className="text-muted-foreground">Is Stream:</span> {selectedLog.isStream ? 'Yes (SSE)' : 'No (JSON)'}</p>
+                </div>
+              </div>
+
+              {selectedLog.errorMessage && (
+                <div className="space-y-1">
+                  <span className="font-semibold text-destructive block">Error Message</span>
+                  <div className="p-3 rounded-md border border-destructive/30 bg-destructive/10 font-mono text-destructive text-[11px]">
+                    {selectedLog.errorMessage}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5 text-[#8B5CF6]" />
+                  <span>Failover Retries</span>
+                </span>
+                <div className="p-3 rounded-md border border-border bg-muted/40 font-mono text-[11px]">
+                  {selectedLog.retryCount > 0 ? (
+                    <p className="text-amber-500 font-semibold">{selectedLog.retryCount} failover attempt(s) executed automatically by Prism Gateway.</p>
+                  ) : (
+                    <p className="text-muted-foreground italic">Executed directly on first attempt without failover rerouting.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }
+
+
