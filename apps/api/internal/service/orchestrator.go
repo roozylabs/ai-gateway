@@ -72,8 +72,6 @@ func (o *ExecutionOrchestrator) ExecuteChatCompletions(
 	}
 	if agentName == "" && agentID != "" {
 		agentName = agentID
-	} else if agentName == "" {
-		agentName = "general-agent"
 	}
 
 	// 1. Admission Control Gate
