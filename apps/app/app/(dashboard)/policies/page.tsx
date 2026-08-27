@@ -161,7 +161,7 @@ export default function PoliciesPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <SlidersHorizontal className="h-5 w-5 text-[#8B5CF6]" />
+                  <SlidersHorizontal className="h-5 w-5 text-primary" />
                   <span>Tune Policy Weights</span>
                 </CardTitle>
                 <CardDescription>Select a policy and adjust its routing weight sliders</CardDescription>
@@ -186,7 +186,7 @@ export default function PoliciesPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-foreground">Quality Factor</span>
-                    <span className="font-mono font-bold text-[#8B5CF6]">{qualityWeight}%</span>
+                    <span className="font-mono font-bold text-primary">{qualityWeight}%</span>
                   </div>
                   <Slider
                     value={[qualityWeight]}
@@ -307,7 +307,7 @@ export default function PoliciesPage() {
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
                 <Label className="font-semibold">Quality</Label>
-                <span className="font-mono font-bold text-[#8B5CF6]">{formQuality}%</span>
+                <span className="font-mono font-bold text-primary">{formQuality}%</span>
               </div>
               <Slider
                 value={[formQuality]}

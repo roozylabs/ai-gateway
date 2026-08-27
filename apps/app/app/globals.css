@@ -25,6 +25,12 @@
     --ring: 262 83% 58%;
     --radius: 0.375rem;
 
+    --brand-violet: 262 83% 58%;   /* #8B5CF6 */
+    --brand-cyan: 188 95% 42%;     /* #06B6D4 */
+    --console-bg: 220 18% 5%;      /* #0A0C10 */
+    --console-card: 220 18% 8%;    /* #0D0F14 */
+    --console-header: 220 18% 10%; /* #141720 */
+
     --chart-1: 262 83% 58%; /* Violet */
     --chart-2: 188 95% 42%; /* Cyan */
     --chart-3: 160 84% 39%; /* Emerald */
@@ -57,6 +63,12 @@
     --input: 220 18% 13%;
     --ring: 262 83% 58%;
 
+    --brand-violet: 262 83% 58%;
+    --brand-cyan: 188 95% 42%;
+    --console-bg: 220 18% 5%;
+    --console-card: 220 18% 8%;
+    --console-header: 220 18% 10%;
+
     --chart-1: 262 83% 58%;
     --chart-2: 188 95% 42%;
     --chart-3: 160 84% 39%;
@@ -75,6 +87,36 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .text-prism-violet {
+    color: hsl(var(--primary));
+  }
+  .bg-prism-violet {
+    background-color: hsl(var(--primary));
+  }
+  .border-prism-violet {
+    border-color: hsl(var(--primary));
+  }
+  .text-prism-cyan {
+    color: hsl(var(--brand-cyan));
+  }
+  .bg-prism-cyan {
+    background-color: hsl(var(--brand-cyan));
+  }
+  .border-prism-cyan {
+    border-color: hsl(var(--brand-cyan));
+  }
+  .bg-console {
+    background-color: hsl(var(--console-bg));
+  }
+  .bg-console-card {
+    background-color: hsl(var(--console-card));
+  }
+  .bg-console-header {
+    background-color: hsl(var(--console-header));
   }
 }
 
@@ -183,4 +225,3 @@
 [data-sonner-toast][data-type="warning"] [data-icon] {
   color: #F59E0B !important;
 }
-

@@ -201,7 +201,7 @@ export default function ToolsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    <Wrench className="h-4 w-4 text-[#8B5CF6]" />
+                    <Wrench className="h-4 w-4 text-primary" />
                     <span className="font-semibold text-sm">{tool.displayName || tool.name}</span>
                   </div>
                   <Badge variant={tool.enabled ? 'success' : 'secondary'} className="text-[10px]">
@@ -218,7 +218,7 @@ export default function ToolsPage() {
 
                 <div className="flex items-center justify-between pt-2 border-t border-border">
                   <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => openTestModal(tool)}>
-                    <Play className="h-3 w-3 text-[#8B5CF6]" />
+                    <Play className="h-3 w-3 text-primary" />
                     <span>Test Tool</span>
                   </Button>
                   <div className="flex items-center gap-1">
@@ -308,7 +308,7 @@ export default function ToolsPage() {
         <SheetContent className="sm:max-w-lg">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <Terminal className="h-4 w-4 text-[#8B5CF6]" />
+              <Terminal className="h-4 w-4 text-primary" />
               <span>Test Tool Execution: {testingTool?.displayName || testingTool?.name}</span>
             </SheetTitle>
             <SheetDescription>Provide JSON argument payload and evaluate execution output.</SheetDescription>

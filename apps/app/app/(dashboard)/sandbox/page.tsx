@@ -71,12 +71,12 @@ function FormTooltipLabel({
         <TooltipTrigger asChild>
           <button
             type="button"
-            className="text-muted-foreground hover:text-[#8B5CF6] transition-colors focus:outline-none"
+            className="text-muted-foreground hover:text-primary transition-colors focus:outline-none"
           >
             <HelpCircleIcon className="h-3.5 w-3.5" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed bg-[#141720] border-violet-500/30 text-slate-200 shadow-xl">
+        <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed bg-console-header border-violet-500/30 text-slate-200 shadow-xl">
           {tooltip}
         </TooltipContent>
       </Tooltip>
@@ -104,7 +104,7 @@ function renderInlineMarkdown(text: string): React.ReactNode {
     }
     if (token.startsWith('`') && token.endsWith('`') && token.length >= 2) {
       return (
-        <code key={i} className="px-1.5 py-0.5 rounded bg-violet-500/15 text-[#06B6D4] font-mono text-[11px]">
+        <code key={i} className="px-1.5 py-0.5 rounded bg-violet-500/15 text-prism-cyan font-mono text-[11px]">
           {token.slice(1, -1)}
         </code>
       );
@@ -134,9 +134,9 @@ function FormattedSandboxOutput({ content }: { content: string }) {
           const codeBody = part.slice(firstLineEnd + 1, -3).trim();
 
           return (
-            <div key={index} className="my-3 rounded-md border border-violet-500/25 bg-[#0D0F14] overflow-hidden shadow-md">
-              <div className="flex items-center justify-between px-3 py-1.5 bg-[#141720] border-b border-violet-500/20 text-[11px]">
-                <div className="flex items-center gap-1.5 text-[#8B5CF6] font-semibold font-mono">
+            <div key={index} className="my-3 rounded-md border border-violet-500/25 bg-console-card overflow-hidden shadow-md">
+              <div className="flex items-center justify-between px-3 py-1.5 bg-console-header border-b border-violet-500/20 text-[11px]">
+                <div className="flex items-center gap-1.5 text-primary font-semibold font-mono">
                   <Code2Icon className="h-3.5 w-3.5" />
                   <span className="uppercase tracking-wider">{language}</span>
                 </div>
@@ -148,11 +148,11 @@ function FormattedSandboxOutput({ content }: { content: string }) {
                     toast.success(`Copied ${language} code block`);
                   }}
                 >
-                  <CopyIcon className="h-3 w-3 text-[#8B5CF6]" />
+                  <CopyIcon className="h-3 w-3 text-primary" />
                   <span>Copy Code</span>
                 </button>
               </div>
-              <pre className="p-3 overflow-x-auto text-[#06B6D4] whitespace-pre font-mono text-[11px] leading-relaxed custom-scrollbar">
+              <pre className="p-3 overflow-x-auto text-prism-cyan whitespace-pre font-mono text-[11px] leading-relaxed custom-scrollbar">
                 {codeBody}
               </pre>
             </div>
@@ -169,8 +169,8 @@ function FormattedSandboxOutput({ content }: { content: string }) {
               if (/^#{1,6}\s+/.test(trimmed)) {
                 const headingText = trimmed.replace(/^#{1,6}\s+/, '');
                 return (
-                  <h4 key={lineIdx} className="text-[#8B5CF6] font-bold text-xs pt-3 pb-1 border-b border-violet-500/20 flex items-center gap-1.5">
-                    <span className="text-[#06B6D4]">#</span>
+                  <h4 key={lineIdx} className="text-primary font-bold text-xs pt-3 pb-1 border-b border-violet-500/20 flex items-center gap-1.5">
+                    <span className="text-prism-cyan">#</span>
                     <span>{renderInlineMarkdown(headingText)}</span>
                   </h4>
                 );
@@ -184,7 +184,7 @@ function FormattedSandboxOutput({ content }: { content: string }) {
               if (numMatch) {
                 return (
                   <div key={lineIdx} className="flex items-start gap-2 pl-2 text-slate-200">
-                    <span className="text-[#8B5CF6] font-semibold min-w-[16px] text-[11px] font-mono">{numMatch[1]}.</span>
+                    <span className="text-primary font-semibold min-w-[16px] text-[11px] font-mono">{numMatch[1]}.</span>
                     <div className="flex-1">{renderInlineMarkdown(numMatch[2])}</div>
                   </div>
                 );
@@ -194,7 +194,7 @@ function FormattedSandboxOutput({ content }: { content: string }) {
                 const itemText = trimmed.replace(/^[*|-]\s*/, '');
                 return (
                   <div key={lineIdx} className="flex items-start gap-2 pl-2 text-slate-200">
-                    <span className="text-[#8B5CF6] font-bold mt-0.5">•</span>
+                    <span className="text-primary font-bold mt-0.5">•</span>
                     <div className="flex-1">{renderInlineMarkdown(itemText)}</div>
                   </div>
                 );
@@ -495,7 +495,7 @@ export default function SandboxPage() {
           <Card className="flex flex-col min-w-0 overflow-hidden border-border/70 shadow-lg">
             <CardHeader className="pb-3 border-b border-border/40 bg-card/50">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Code2Icon className="h-4 w-4 text-[#8B5CF6]" />
+                <Code2Icon className="h-4 w-4 text-primary" />
                 <span>Sandbox Execution Controls</span>
               </CardTitle>
               <CardDescription className="text-xs">
@@ -658,11 +658,11 @@ export default function SandboxPage() {
                               </FormLabel>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <button type="button" className="text-muted-foreground hover:text-[#8B5CF6]">
+                                  <button type="button" className="text-muted-foreground hover:text-primary">
                                     <HelpCircleIcon className="h-3.5 w-3.5" />
                                   </button>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs text-[11px] bg-[#141720] border-violet-500/30 text-slate-200">
+                                <TooltipContent side="top" className="max-w-xs text-[11px] bg-console-header border-violet-500/30 text-slate-200">
                                   Receive AI responses word-by-word in real time (SSE streaming) without waiting for full completion.
                                 </TooltipContent>
                               </Tooltip>
@@ -695,11 +695,11 @@ export default function SandboxPage() {
                               </FormLabel>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <button type="button" className="text-muted-foreground hover:text-[#8B5CF6]">
+                                  <button type="button" className="text-muted-foreground hover:text-primary">
                                     <HelpCircleIcon className="h-3.5 w-3.5" />
                                   </button>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs text-[11px] bg-[#141720] border-violet-500/30 text-slate-200">
+                                <TooltipContent side="top" className="max-w-xs text-[11px] bg-console-header border-violet-500/30 text-slate-200">
                                   Offloads requests to a background Redis queue. Ideal for long-running prompts without keeping the browser connection waiting.
                                 </TooltipContent>
                               </Tooltip>
@@ -767,13 +767,13 @@ export default function SandboxPage() {
             <CardHeader className="pb-3 border-b border-border/40 bg-card/50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <TerminalIcon className="h-4 w-4 text-[#8B5CF6]" />
+                  <TerminalIcon className="h-4 w-4 text-primary" />
                   <span>Execution Output Console</span>
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {routedModel && (
                     <Badge variant="violet" className="font-mono text-[10px] gap-1 border-violet-500/30">
-                      <LayersIcon className="h-3 w-3 text-[#8B5CF6]" />
+                      <LayersIcon className="h-3 w-3 text-primary" />
                       Model: {routedModel}
                     </Badge>
                   )}
@@ -799,7 +799,7 @@ export default function SandboxPage() {
                     {copied ? (
                       <CheckIcon className="h-3.5 w-3.5 text-emerald-400" />
                     ) : (
-                      <CopyIcon className="h-3.5 w-3.5 text-[#8B5CF6]" />
+                      <CopyIcon className="h-3.5 w-3.5 text-primary" />
                     )}
                     <span>{copied ? 'Copied!' : 'Copy Result'}</span>
                   </Button>
@@ -808,19 +808,19 @@ export default function SandboxPage() {
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col pt-4">
-              <div className="flex-1 w-full max-h-[580px] min-h-[420px] p-4 rounded-none border border-border/80 bg-[#0A0C10] font-mono text-xs overflow-y-auto custom-scrollbar shadow-inner relative">
+              <div className="flex-1 w-full max-h-[580px] min-h-[420px] p-4 border border-border/80 bg-console font-mono text-xs overflow-y-auto custom-scrollbar shadow-inner relative">
                 {/* Modern Animated Loading Progress Screen */}
                 {isExecuting && !executionOutput ? (
                   <div className="h-full flex flex-col items-center justify-center space-y-5 p-6 text-center">
                     <div className="relative">
                       <div className="w-14 h-14 rounded-full bg-violet-500/10 border border-violet-500/30 flex items-center justify-center animate-pulse">
                         {isAsyncMode ? (
-                          <CpuIcon className="h-7 w-7 text-[#8B5CF6] animate-bounce" />
+                          <CpuIcon className="h-7 w-7 text-primary animate-bounce" />
                         ) : (
-                          <SparklesIcon className="h-7 w-7 text-[#06B6D4] animate-spin" />
+                          <SparklesIcon className="h-7 w-7 text-prism-cyan animate-spin" />
                         )}
                       </div>
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#8B5CF6] flex items-center justify-center">
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                         <Loader2Icon className="h-3 w-3 text-white animate-spin" />
                       </div>
                     </div>
@@ -837,7 +837,7 @@ export default function SandboxPage() {
                     </div>
 
                     {/* Visual Progress Steps */}
-                    <div className="w-full max-w-xs space-y-2 border border-violet-500/20 bg-[#12151E] p-3 rounded-lg text-[11px] text-left">
+                    <div className="w-full max-w-xs space-y-2 border border-violet-500/20 bg-console-card p-3 rounded-lg text-[11px] text-left">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-2 text-emerald-400 font-semibold">
                           <CheckCircle2Icon className="h-3.5 w-3.5" />
@@ -846,11 +846,11 @@ export default function SandboxPage() {
                         <span className="text-[10px] text-emerald-400/80 font-mono">OK</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 text-[#8B5CF6] font-semibold">
+                        <span className="flex items-center gap-2 text-primary font-semibold">
                           <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
                           <span>2. Execute AI Model</span>
                         </span>
-                        <span className="text-[10px] text-[#8B5CF6] font-mono animate-pulse">PROCESSING</span>
+                        <span className="text-[10px] text-primary font-mono animate-pulse">PROCESSING</span>
                       </div>
                       <div className="flex items-center justify-between text-muted-foreground opacity-60">
                         <span className="flex items-center gap-2">
@@ -863,7 +863,7 @@ export default function SandboxPage() {
 
                     {/* Animated Shimmer Line */}
                     <div className="w-full max-w-xs h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#8B5CF6] via-[#06B6D4] to-[#8B5CF6] rounded-full animate-pulse w-full" />
+                      <div className="h-full bg-gradient-to-r from-primary via-prism-cyan to-primary rounded-full animate-pulse w-full" />
                     </div>
                   </div>
                 ) : executionOutput ? (
@@ -871,7 +871,7 @@ export default function SandboxPage() {
                     <FormattedSandboxOutput content={executionOutput} />
                     {/* Blinking cursor effect during active streaming */}
                     {isExecuting && (
-                      <span className="inline-block w-2 h-4 bg-[#8B5CF6] animate-pulse ml-1 align-middle rounded-sm" />
+                      <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1 align-middle rounded-sm" />
                     )}
                   </div>
                 ) : (

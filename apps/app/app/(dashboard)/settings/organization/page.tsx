@@ -57,7 +57,7 @@ export default function SettingsOrganizationPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Settings className="h-4 w-4 text-[#8B5CF6]" />
+              <Settings className="h-4 w-4 text-primary" />
               <span>Organization Parameters</span>
             </CardTitle>
           </CardHeader>

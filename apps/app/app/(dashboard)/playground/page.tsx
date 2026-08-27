@@ -70,7 +70,7 @@ export default function PlaygroundPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Zap className="h-4 w-4 text-[#8B5CF6]" />
+                <Zap className="h-4 w-4 text-primary" />
                 <span>Simulation Prompt Input</span>
               </CardTitle>
               <div className="w-[180px]">
@@ -118,7 +118,7 @@ export default function PlaygroundPage() {
 
               <Button variant="outline" asChild className="gap-2 text-xs border-violet-500/30">
                 <Link href="/sandbox">
-                  <Box className="h-4 w-4 text-[#8B5CF6]" />
+                  <Box className="h-4 w-4 text-primary" />
                   <span>Live Sandbox</span>
                 </Link>
               </Button>
@@ -131,7 +131,7 @@ export default function PlaygroundPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-[#8B5CF6]" />
+                <Cpu className="h-4 w-4 text-primary" />
                 <span>Candidate Ranking & Decision Matrix</span>
               </CardTitle>
               {decisionDetails && (

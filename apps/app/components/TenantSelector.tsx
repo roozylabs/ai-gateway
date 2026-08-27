@@ -30,7 +30,7 @@ export function TenantSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 gap-2 px-2.5 text-xs font-medium">
-          <Building2 className="h-3.5 w-3.5 text-[#8B5CF6]" />
+          <Building2 className="h-3.5 w-3.5 text-primary" />
           <span className="max-w-[120px] truncate">{selectedOrg}</span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
@@ -43,7 +43,7 @@ export function TenantSelector() {
         {mockOrgs.map((org) => (
           <DropdownMenuItem key={org.id} onClick={() => setSelectedOrg(org.name)}>
             <span className="flex-1 truncate">{org.name}</span>
-            {selectedOrg === org.name && <Check className="h-3.5 w-3.5 text-[#8B5CF6]" />}
+            {selectedOrg === org.name && <Check className="h-3.5 w-3.5 text-primary" />}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

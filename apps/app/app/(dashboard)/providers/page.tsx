@@ -88,7 +88,7 @@ export default function ProvidersPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Server className="h-5 w-5 text-[#8B5CF6]" />
+                    <Server className="h-5 w-5 text-primary" />
                     <span>{provider.name}</span>
                   </CardTitle>
                   <StatusDot status={provider.enabled ? 'healthy' : 'cooldown'} />

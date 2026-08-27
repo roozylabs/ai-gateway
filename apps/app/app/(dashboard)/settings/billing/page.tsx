@@ -50,7 +50,7 @@ export default function BillingPage() {
                 return (
                   <Card
                     key={plan.id}
-                    className={`flex flex-col justify-between ${isCurrent ? 'border-[#8B5CF6] shadow-md relative' : 'border-border'}`}
+                    className={`flex flex-col justify-between ${isCurrent ? 'border-primary shadow-md relative' : 'border-border'}`}
                   >
                     {isCurrent && <Badge variant="violet" className="absolute -top-2.5 right-4">CURRENT</Badge>}
                     <CardHeader>
@@ -67,12 +67,12 @@ export default function BillingPage() {
                       <ul className="space-y-2 text-xs text-muted-foreground">
                         {plan.features.map((feat, i) => (
                           <li key={i} className="flex items-center gap-2">
-                            <Check className={`h-3.5 w-3.5 ${isCurrent ? 'text-[#8B5CF6]' : 'text-emerald-500'}`} />
+                            <Check className={`h-3.5 w-3.5 ${isCurrent ? 'text-primary' : 'text-emerald-500'}`} />
                             {feat}
                           </li>
                         ))}
                         <li className="flex items-center gap-2">
-                          <Check className={`h-3.5 w-3.5 ${isCurrent ? 'text-[#8B5CF6]' : 'text-emerald-500'}`} />
+                          <Check className={`h-3.5 w-3.5 ${isCurrent ? 'text-primary' : 'text-emerald-500'}`} />
                           {(plan.includedTokens / 1000).toLocaleString()}K tokens/mo
                         </li>
                       </ul>
@@ -100,7 +100,7 @@ export default function BillingPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-[#8B5CF6]" />
+                <CreditCard className="h-4 w-4 text-primary" />
                 <span>Invoice History</span>
               </CardTitle>
             </CardHeader>

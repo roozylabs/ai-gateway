@@ -140,7 +140,7 @@ export default function ResourcesPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Database className="h-5 w-5 text-[#8B5CF6]" />
+                    <Database className="h-5 w-5 text-primary" />
                     <span>{resource.displayName || resource.name}</span>
                   </CardTitle>
                   <StatusDot status={resource.enabled ? 'healthy' : 'disabled'} />

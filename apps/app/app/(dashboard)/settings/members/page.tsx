@@ -54,7 +54,7 @@ export default function MembersPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4 text-[#8B5CF6]" />
+              <Users className="h-4 w-4 text-primary" />
               <span>Active Team Members</span>
             </CardTitle>
           </CardHeader>
@@ -67,7 +67,7 @@ export default function MembersPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 rounded-md border border-border bg-muted/20">
                   <div className="flex items-center gap-3">
-                    <Shield className="h-4 w-4 text-[#8B5CF6]" />
+                    <Shield className="h-4 w-4 text-primary" />
                     <div>
                       <span className="font-bold text-xs text-foreground block">{data.primaryRole || data.roleSlug}</span>
                       <span className="text-[11px] text-muted-foreground">User ID: {data.userId}</span>
