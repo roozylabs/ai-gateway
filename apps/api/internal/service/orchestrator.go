@@ -205,21 +205,30 @@ func (o *ExecutionOrchestrator) publishEvents(c *gin.Context, ctx context.Contex
 		return
 	}
 
+	keyPrefix := ""
+	gatewayKeyName := ""
+	if gatewayKey != nil {
+		keyPrefix = gatewayKey.KeyPrefix
+		gatewayKeyName = gatewayKey.Name
+	}
+
 	eventData := map[string]interface{}{
-		"requestId":    requestID,
-		"model":        log.Model,
-		"provider":     log.ProviderType,
-		"statusCode":   log.StatusCode,
-		"latencyMs":    log.LatencyMs,
-		"inputTokens":  log.InputTokens,
-		"outputTokens": log.OutputTokens,
-		"totalTokens":  log.TotalTokens,
-		"costUsd":      log.CostUSD,
-		"clientApp":    log.ClientApp,
-		"orgId":        log.OrgID,
-		"workspaceId":  log.WorkspaceID,
-		"projectId":    log.ProjectID,
-		"timestamp":    log.CreatedAt,
+		"requestId":      requestID,
+		"model":          log.Model,
+		"provider":       log.ProviderType,
+		"statusCode":     log.StatusCode,
+		"latencyMs":      log.LatencyMs,
+		"inputTokens":    log.InputTokens,
+		"outputTokens":   log.OutputTokens,
+		"totalTokens":    log.TotalTokens,
+		"costUsd":        log.CostUSD,
+		"clientApp":      log.ClientApp,
+		"orgId":          log.OrgID,
+		"workspaceId":    log.WorkspaceID,
+		"projectId":      log.ProjectID,
+		"keyPrefix":      keyPrefix,
+		"gatewayKeyName": gatewayKeyName,
+		"timestamp":      log.CreatedAt,
 	}
 
 	_ = o.eventPublisher.Publish(ctx, "request_log_created", eventData)

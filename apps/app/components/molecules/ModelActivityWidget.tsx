@@ -42,8 +42,9 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
       setActiveModel(payload.model);
       setLastActiveTime(Date.now());
     }
-    if (payload.credentialName || payload.keyPrefix) {
-      setActiveCred(payload.credentialName || payload.keyPrefix);
+    const credName = payload.gatewayKeyName || payload.credentialName || payload.keyPrefix;
+    if (credName) {
+      setActiveCred(credName);
       setLastActiveTime(Date.now());
     }
     if (typeof payload.latencyMs === 'number') {
@@ -51,7 +52,6 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
       setLastActiveTime(Date.now());
     }
   }, [lastEvent]);
-
 
   // 15-second recency status ticker
   useEffect(() => {
@@ -67,7 +67,7 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
     return (
       <div
         className="flex items-center justify-center py-2 text-[#8B5CF6]"
-        title={`Active Router (prism-auto) | ${isRecentlyActive ? 'ACTIVE' : 'STANDBY'} | Model: ${isRecentlyActive ? activeModel : 'prism-auto'}`}
+        title={`Active Router (prism-auto) | ${isRecentlyActive ? 'ACTIVE' : 'STANDBY'} | Model: ${isRecentlyActive ? activeModel : 'prism-auto'} | Key: ${activeCred}`}
       >
         <Activity className={`h-4 w-4 ${isRecentlyActive ? 'animate-pulse text-emerald-400' : 'text-muted-foreground'}`} />
       </div>
@@ -79,6 +79,7 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-muted-foreground font-semibold text-[11px]">
           <Activity className={`h-3.5 w-3.5 ${isRecentlyActive ? 'text-emerald-400 animate-pulse' : 'text-muted-foreground'}`} />
+          <span className="uppercase tracking-wider">ACTIVE MODEL ROUTER</span>
         </div>
         <span
           className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
@@ -102,12 +103,10 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
           </span>
         </div>
 
-        {isRecentlyActive && (
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground pt-0.5 truncate">
-            <KeyRound className="h-3 w-3 text-violet-400 shrink-0" />
-            <span className="truncate">Key: {activeCred}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground pt-0.5 truncate">
+          <KeyRound className="h-3 w-3 text-violet-400 shrink-0" />
+          <span className="truncate">Key: {activeCred}</span>
+        </div>
       </div>
     </div>
   );

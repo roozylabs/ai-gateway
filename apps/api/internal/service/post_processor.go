@@ -133,21 +133,30 @@ func (p *AsyncPostProcessor) processTask(task *PostProcessTask) {
 
 	// 3. Publish Redis SSE telemetry event
 	if p.eventPublisher != nil {
+		keyPrefix := ""
+		gatewayKeyName := ""
+		if task.GatewayKey != nil {
+			keyPrefix = task.GatewayKey.KeyPrefix
+			gatewayKeyName = task.GatewayKey.Name
+		}
+
 		eventData := map[string]interface{}{
-			"requestId":    task.RequestID,
-			"model":        task.Log.Model,
-			"provider":     task.Log.ProviderType,
-			"statusCode":   task.Log.StatusCode,
-			"latencyMs":    task.Log.LatencyMs,
-			"inputTokens":  task.Log.InputTokens,
-			"outputTokens": task.Log.OutputTokens,
-			"totalTokens":  task.Log.TotalTokens,
-			"costUsd":      task.Log.CostUSD,
-			"clientApp":    task.Log.ClientApp,
-			"orgId":        task.Log.OrgID,
-			"workspaceId":  task.Log.WorkspaceID,
-			"projectId":    task.Log.ProjectID,
-			"timestamp":    task.Log.CreatedAt,
+			"requestId":      task.RequestID,
+			"model":          task.Log.Model,
+			"provider":       task.Log.ProviderType,
+			"statusCode":     task.Log.StatusCode,
+			"latencyMs":      task.Log.LatencyMs,
+			"inputTokens":    task.Log.InputTokens,
+			"outputTokens":   task.Log.OutputTokens,
+			"totalTokens":    task.Log.TotalTokens,
+			"costUsd":        task.Log.CostUSD,
+			"clientApp":      task.Log.ClientApp,
+			"orgId":          task.Log.OrgID,
+			"workspaceId":    task.Log.WorkspaceID,
+			"projectId":      task.Log.ProjectID,
+			"keyPrefix":      keyPrefix,
+			"gatewayKeyName": gatewayKeyName,
+			"timestamp":      task.Log.CreatedAt,
 		}
 		_ = p.eventPublisher.Publish(ctx, "request_log_created", eventData)
 	}
