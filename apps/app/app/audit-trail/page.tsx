@@ -1,13 +1,16 @@
 'use client';
 
+import React from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/molecules/Tabs';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import { DataTable, Column } from '@/components/organisms/DataTable';
 import { useAuditLogsQuery } from '@/hooks/queries/useAuditLogsQuery';
-import { ApiAuditLogItem } from '@/lib/api';
+import { useAuditTrailsQuery, useVerifyAuditIntegrity } from '@/hooks/queries/useAuditTrailsQuery';
+import { ApiAuditLogItem, ApiAIAuditTrail, apiExportAuditLogs } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import {
   DropdownMenu,
@@ -15,13 +18,29 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/molecules/DropdownMenu';
-import { ScrollText, Download, FileSpreadsheet, FileCode } from 'lucide-react';
+import { ScrollText, Download, FileSpreadsheet, FileCode, ShieldCheck, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiExportAuditLogs } from '@/lib/api';
 
 export default function AuditTrailPage() {
-  const { data, isLoading, isError, refetch } = useAuditLogsQuery();
-  const auditLogsList: ApiAuditLogItem[] = data?.data ?? [];
+  const { data: logsData, isLoading: logsLoading, isError: logsError, refetch: refetchLogs } = useAuditLogsQuery();
+  const { data: trailsData, isLoading: trailsLoading, isError: trailsError, refetch: refetchTrails } = useAuditTrailsQuery();
+  const verifyMutation = useVerifyAuditIntegrity();
+
+  const auditLogsList: ApiAuditLogItem[] = logsData?.data ?? [];
+  const aiAuditTrailsList: ApiAIAuditTrail[] = trailsData?.data ?? [];
+
+  const handleVerify = (id: string) => {
+    verifyMutation.mutate(id, {
+      onSuccess: (res) => {
+        if (res.valid) {
+          toast.success(`Signature Verified! SHA-256 hash intact. (Signature: ${res.signatureHash ? res.signatureHash.substring(0, 10) : 'OK'}...)`);
+        } else {
+          toast.error(`Verification Failed! ${res.message || 'Hash mismatch detected.'}`);
+        }
+      },
+      onError: (err: Error) => toast.error(`Verification error: ${err.message}`),
+    });
+  };
 
   const handleExportCsv = async () => {
     try {
@@ -53,7 +72,74 @@ export default function AuditTrailPage() {
     }
   };
 
-  const columns: Column<ApiAuditLogItem>[] = [
+  const aiTrailColumns: Column<ApiAIAuditTrail>[] = [
+    {
+      title: 'Timestamp',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (val) => <span className="font-mono text-muted-foreground">{new Date(String(val)).toLocaleString()}</span>,
+    },
+    {
+      title: 'Request ID',
+      dataIndex: 'requestId',
+      key: 'requestId',
+      render: (val) => <span className="font-mono text-xs text-[#8B5CF6] truncate max-w-[120px] block">{String(val)}</span>,
+    },
+    {
+      title: 'User / Role',
+      dataIndex: 'userRole',
+      key: 'userRole',
+      render: (role, record) => (
+        <span className="text-xs">
+          <span className="font-semibold text-foreground">{record.agentName || record.userId}</span>
+          <span className="text-muted-foreground font-mono block text-[10px]">({role})</span>
+        </span>
+      ),
+    },
+    {
+      title: 'Model',
+      dataIndex: 'modelSlug',
+      key: 'modelSlug',
+      render: (model) => <Badge variant="outline">{model}</Badge>,
+    },
+    {
+      title: 'Tokens & Cost',
+      key: 'tokensCost',
+      render: (_, record) => (
+        <span className="font-mono text-xs">
+          {record.totalTokens.toLocaleString()} tok / <span className="text-emerald-500">${record.totalCostUsd.toFixed(4)}</span>
+        </span>
+      ),
+    },
+    {
+      title: 'Compliance',
+      dataIndex: 'complianceStatus',
+      key: 'compliance',
+      render: (status) => (
+        <Badge variant={status === 'compliant' ? 'success' : 'destructive'} className="text-[10px]">
+          {status}
+        </Badge>
+      ),
+    },
+    {
+      title: 'Integrity Signature',
+      key: 'signature',
+      render: (_, record) => (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs gap-1 font-mono"
+          disabled={verifyMutation.isPending}
+          onClick={() => handleVerify(record.id)}
+        >
+          <ShieldCheck className="h-3.5 w-3.5 text-[#8B5CF6]" />
+          Verify Hash
+        </Button>
+      ),
+    },
+  ];
+
+  const adminLogColumns: Column<ApiAuditLogItem>[] = [
     {
       title: 'Timestamp',
       dataIndex: 'createdAt',
@@ -93,8 +179,8 @@ export default function AuditTrailPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Audit Trail"
-        description="Immutable system audit logs with actor, action, and status details."
+        title="Audit Trail & Compliance Ledger"
+        description="End-to-end cryptographic AI request audit trails with SHA-256 verification and administrative action logs."
         extra={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -114,37 +200,81 @@ export default function AuditTrailPage() {
         }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <ScrollText className="h-4 w-4 text-[#8B5CF6]" />
-            <span>Audit Logs</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isError ? (
-            <ErrorState
-              title="Failed to load audit logs"
-              description="Could not connect to the Audit Trail database."
-              onRetry={refetch}
-            />
-          ) : !isLoading && auditLogsList.length === 0 ? (
-            <EmptyState
-              title="No Audit Logs Found"
-              description="There are no audit trail records recorded in this system yet."
-            />
-          ) : (
-            <DataTable
-              dataSource={auditLogsList}
-              columns={columns}
-              rowKey="id"
-              loading={isLoading}
-              pageSize={10}
-              searchPlaceholder="Search audit logs by actor or action..."
-            />
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="ai-audit" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="ai-audit">AI Cryptographic Audit Trails</TabsTrigger>
+          <TabsTrigger value="admin-logs">System Admin Audit Logs</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ai-audit">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-[#8B5CF6]" />
+                <span>End-to-End Signed AI Request Audit Ledger</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {trailsError ? (
+                <ErrorState
+                  title="Failed to load AI audit trails"
+                  description="Could not connect to Cryptographic Audit Ledger."
+                  onRetry={refetchTrails}
+                />
+              ) : !trailsLoading && aiAuditTrailsList.length === 0 ? (
+                <EmptyState
+                  title="No AI Audit Trails Recorded"
+                  description="No cryptographic AI request audit trails have been recorded yet."
+                />
+              ) : (
+                <DataTable
+                  dataSource={aiAuditTrailsList}
+                  columns={aiTrailColumns}
+                  rowKey="id"
+                  loading={trailsLoading}
+                  pageSize={10}
+                  searchPlaceholder="Search by request ID, model, or user..."
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="admin-logs">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <ScrollText className="h-4 w-4 text-[#8B5CF6]" />
+                <span>System Administration Action Logs</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {logsError ? (
+                <ErrorState
+                  title="Failed to load system audit logs"
+                  description="Could not connect to System Audit Log database."
+                  onRetry={refetchLogs}
+                />
+              ) : !logsLoading && auditLogsList.length === 0 ? (
+                <EmptyState
+                  title="No Admin Audit Logs Found"
+                  description="There are no system administration action logs recorded yet."
+                />
+              ) : (
+                <DataTable
+                  dataSource={auditLogsList}
+                  columns={adminLogColumns}
+                  rowKey="id"
+                  loading={logsLoading}
+                  pageSize={10}
+                  searchPlaceholder="Search by actor, action, or resource..."
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </AppLayout>
   );
 }
+
