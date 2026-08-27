@@ -90,9 +90,14 @@ func (o *ExecutionOrchestrator) ExecuteChatCompletions(
 		}
 	}
 
+	userID := ""
+	if gatewayKey != nil {
+		userID = gatewayKey.UserID
+	}
+
 	// 1. Admission Control Gate
 	admReq := proxy.AdmissionRequest{
-		UserID:        gatewayKey.UserID,
+		UserID:        userID,
 		Role:          userRole,
 		AgentID:       agentID,
 		AgentName:     agentName,
@@ -237,9 +242,14 @@ func (o *ExecutionOrchestrator) recordDeniedAuditTrail(
 
 	promptHash := utils.HashSHA256(modelSlug + ":" + requestID)
 
+	userID := ""
+	if gatewayKey != nil {
+		userID = gatewayKey.UserID
+	}
+
 	trail := &models.AIAuditTrail{
 		RequestID:         requestID,
-		UserID:            gatewayKey.UserID,
+		UserID:            userID,
 		UserRole:          userRole,
 		ModelSlug:         modelSlug,
 		FailoverChain:     []string{},
@@ -258,7 +268,7 @@ func (o *ExecutionOrchestrator) recordDeniedAuditTrail(
 		ComplianceStatus:  "denied",
 	}
 
-	if gatewayKey.ID != "" {
+	if gatewayKey != nil && gatewayKey.ID != "" {
 		trail.GatewayKeyID = &gatewayKey.ID
 	}
 	if agentID != "" {
@@ -286,9 +296,14 @@ func (o *ExecutionOrchestrator) recordAuditTrail(
 	promptHash := utils.HashSHA256(log.Model + ":" + log.RequestID)
 	responseHash := utils.HashSHA256(log.Model + ":" + log.ProviderType + ":" + fmt.Sprintf("%d", log.TotalTokens))
 
+	userID := ""
+	if gatewayKey != nil {
+		userID = gatewayKey.UserID
+	}
+
 	trail := &models.AIAuditTrail{
 		RequestID:         log.RequestID,
-		UserID:            gatewayKey.UserID,
+		UserID:            userID,
 		UserRole:          userRole,
 		ModelSlug:         log.Model,
 		FailoverChain:     failoverChain,
@@ -307,7 +322,7 @@ func (o *ExecutionOrchestrator) recordAuditTrail(
 		ComplianceStatus:  "compliant",
 	}
 
-	if gatewayKey.ID != "" {
+	if gatewayKey != nil && gatewayKey.ID != "" {
 		trail.GatewayKeyID = &gatewayKey.ID
 	}
 	if agentID != "" {

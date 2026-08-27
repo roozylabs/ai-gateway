@@ -566,8 +566,16 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			c.Header("X-Roozy-Provider", route.Provider.Type)
 		}
 
+		var gwKeyIDPtr *string
+		gwKeyIDStr := ""
+		if gatewayKey != nil && gatewayKey.ID != "" {
+			kID := gatewayKey.ID
+			gwKeyIDPtr = &kID
+			gwKeyIDStr = gatewayKey.ID
+		}
+
 		log := &models.RequestLog{
-			GatewayAPIKeyID: &gatewayKey.ID,
+			GatewayAPIKeyID: gwKeyIDPtr,
 			ProviderID:      &route.Provider.ID,
 			ProviderType:    route.Provider.Type,
 			CredentialID:    &route.Credential.ID,
@@ -588,7 +596,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			log.ErrorMessage = sql.NullString{String: resp.Error.Message, Valid: true}
 		}
 
-		telemetry.RecordRequestMetrics(c.Request.Context(), log.Model, log.ProviderType, strconv.Itoa(log.StatusCode), gatewayKey.ID, float64(log.LatencyMs)/1000.0, log.InputTokens, log.OutputTokens, log.CostUSD)
+		telemetry.RecordRequestMetrics(ctx, log.Model, log.ProviderType, strconv.Itoa(log.StatusCode), gwKeyIDStr, float64(log.LatencyMs)/1000.0, log.InputTokens, log.OutputTokens, log.CostUSD)
 
 		if e.toolCalls != nil {
 			if recs := ExtractToolCallsFromResponse(resp); len(recs) > 0 {
@@ -1003,8 +1011,16 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		costUSD := inputCost + outputCost
 		e.backfillActualCost(reqID, costUSD)
 
+		var gwKeyIDPtr *string
+		gwKeyIDStr := ""
+		if gatewayKey != nil && gatewayKey.ID != "" {
+			kID := gatewayKey.ID
+			gwKeyIDPtr = &kID
+			gwKeyIDStr = gatewayKey.ID
+		}
+
 		log := &models.RequestLog{
-			GatewayAPIKeyID: &gatewayKey.ID,
+			GatewayAPIKeyID: gwKeyIDPtr,
 			ProviderID:      &route.Provider.ID,
 			ProviderType:    route.Provider.Type,
 			CredentialID:    &route.Credential.ID,
@@ -1021,7 +1037,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			Attempts:        MarshalAttempts(attempts),
 		}
 
-		telemetry.RecordRequestMetrics(c.Request.Context(), log.Model, log.ProviderType, strconv.Itoa(log.StatusCode), gatewayKey.ID, float64(latency)/1000.0, log.InputTokens, log.OutputTokens, log.CostUSD)
+		telemetry.RecordRequestMetrics(ctx, log.Model, log.ProviderType, strconv.Itoa(log.StatusCode), gwKeyIDStr, float64(latency)/1000.0, log.InputTokens, log.OutputTokens, log.CostUSD)
 
 		return log, nil
 	}
