@@ -469,10 +469,12 @@ export default function SandboxPage() {
         setActiveJobId(jobId);
         toast.info(`Async Job ${jobId} queued successfully`);
 
-        // Real-time SSE push handles completion via useSSE().
-        // Safety Fallback: single polling check after 15s if SSE is delayed.
-        setTimeout(async () => {
-          if (completedJobRef.current === jobId) return;
+        // Real-time SSE push + 2s interval polling for bulletproof async job completion
+        const pollInterval = setInterval(async () => {
+          if (completedJobRef.current === jobId) {
+            clearInterval(pollInterval);
+            return;
+          }
           try {
             const jobRes = await fetch(`/api/jobs/${jobId}`, {
               headers: {
@@ -482,18 +484,23 @@ export default function SandboxPage() {
             if (!jobRes.ok) return;
             const jobData = await jobRes.json();
             if (jobData.status === "completed") {
+              clearInterval(pollInterval);
               handleJobCompleted(jobId, jobData.result, jobData.model, startTime);
             } else if (jobData.status === "failed") {
+              clearInterval(pollInterval);
               setExecutionOutput(`Request failed:\n${jobData.error}`);
               form.setValue("userPrompt", savedPrompt);
-              toast.error(`Async job failed`);
+              toast.error(`Async job failed: ${jobData.error || 'Unknown error'}`);
               setActiveJobId(null);
               setIsAsyncExecuting(false);
             }
           } catch (_err) {
-            // Ignore fallback errors
+            // Ignore temporary network errors during polling
           }
-        }, 15000);
+        }, 2000);
+
+        // Safety cleanup after 3 minutes max
+        setTimeout(() => clearInterval(pollInterval), 180000);
         return;
       }
 
