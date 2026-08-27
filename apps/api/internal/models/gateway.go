@@ -83,6 +83,9 @@ type Model struct {
 type GatewayAPIKey struct {
 	ID            string     `json:"id" db:"id"`
 	UserID        string     `json:"userId" db:"user_id"`
+	OrgID         *string    `json:"orgId,omitempty" db:"org_id"`
+	WorkspaceID   *string    `json:"workspaceId,omitempty" db:"workspace_id"`
+	ProjectID     *string    `json:"projectId,omitempty" db:"project_id"`
 	ProviderID    *string    `json:"providerId,omitempty" db:"provider_id"`
 	Name          string     `json:"name" db:"name"`
 	KeyHash       string     `json:"-" db:"key_hash"`
@@ -100,6 +103,10 @@ type GatewayAPIKey struct {
 type RequestLog struct {
 	ID              string         `json:"id" db:"id"`
 	RequestID       string         `json:"requestId" db:"request_id"`
+	OrgID           string         `json:"orgId" db:"org_id"`
+	WorkspaceID     string         `json:"workspaceId" db:"workspace_id"`
+	ProjectID       string         `json:"projectId" db:"project_id"`
+	AgentID         *string        `json:"agentId,omitempty" db:"agent_id"`
 	GatewayAPIKeyID *string        `json:"gatewayApiKeyId,omitempty" db:"gateway_api_key_id"`
 	ProviderID      *string        `json:"providerId,omitempty" db:"provider_id"`
 	ProviderType    string         `json:"providerType,omitempty" db:"-"`
