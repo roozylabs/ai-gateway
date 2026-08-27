@@ -89,7 +89,7 @@ function SearchableSelect({
 
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-          className="z-50 min-w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
+          className="z-50 min-w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-none border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
           sideOffset={4}
           align="start"
           style={{ width: 'var(--radix-popover-trigger-width)' }}
@@ -126,7 +126,7 @@ function SearchableSelect({
                   type="button"
                   disabled={option.disabled}
                   className={cn(
-                    'relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+                    'relative flex w-full cursor-pointer select-none items-center rounded-none py-1.5 pl-8 pr-2 text-xs outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
                     option.disabled && 'pointer-events-none opacity-50',
                     value === option.value && 'font-medium'
                   )}
