@@ -21,6 +21,7 @@ import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { useGatewayKeysQuery, useCreateGatewayKey, useDeleteGatewayKey } from '@/hooks/queries/useGatewayKeysQuery';
 import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
 import type { ApiGatewayKey } from '@/lib/api';
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { KeyRound, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -73,8 +74,6 @@ export default function GatewayKeysPage() {
   };
 
   const handleDelete = (key: ApiGatewayKey) => {
-    if (!window.confirm(`Delete key "${key.name}"? This action cannot be undone.`)) return;
-
     deleteMutation.mutate(key.id, {
       onSuccess: () => toast.success('Key deleted'),
       onError: () => toast.error('Failed to delete key'),
@@ -93,6 +92,19 @@ export default function GatewayKeysPage() {
       dataIndex: 'keyPrefix',
       key: 'keyPrefix',
       render: (val) => <span className="font-mono text-muted-foreground">{String(val)}</span>,
+    },
+    {
+      title: 'Allowed Models',
+      key: 'allowedModels',
+      render: (_, record) => (
+        <div className="flex gap-1 flex-wrap">
+          {record.allowedModels && record.allowedModels.length > 0 ? (
+            record.allowedModels.map((m) => <Badge key={m} variant="outline" className="text-[10px] font-mono">{m}</Badge>)
+          ) : (
+            <Badge variant="violet" className="text-[10px]">All Models (*)</Badge>
+          )}
+        </div>
+      ),
     },
     {
       title: 'Rate Limit',
@@ -120,15 +132,22 @@ export default function GatewayKeysPage() {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Delete key"
-          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-          onClick={() => handleDelete(record)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <ConfirmDialog
+          title="Delete Gateway Key"
+          description={`Delete key "${record.name}"? This action cannot be undone.`}
+          confirmText="Delete"
+          onConfirm={() => handleDelete(record)}
+          trigger={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Delete key"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          }
+        />
       ),
     },
   ];
