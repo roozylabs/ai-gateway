@@ -133,8 +133,7 @@ export default function CredentialsPage() {
         if (record.status === 'exhausted' || record.status === 'disabled' || record.status === 'invalid') dotStatus = 'disabled';
         return (
           <div className="flex items-center gap-2">
-            <StatusDot status={dotStatus} />
-            <span className="capitalize text-xs font-mono">{record.status || 'healthy'}</span>
+            <StatusDot status={dotStatus} className="font-mono" />
           </div>
         );
       },
