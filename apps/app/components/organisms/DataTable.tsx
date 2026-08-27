@@ -78,7 +78,7 @@ export function DataTable<T extends object>({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <div className="overflow-hidden rounded-none border border-border bg-card shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="border-b border-border bg-muted/40 uppercase tracking-wider text-muted-foreground font-mono text-[11px]">
