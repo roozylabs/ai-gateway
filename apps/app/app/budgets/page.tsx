@@ -10,28 +10,123 @@ import { Badge } from '@/components/atoms/Badge';
 import { Button } from '@/components/atoms/Button';
 import { DataTable, Column } from '@/components/organisms/DataTable';
 import { useBudgetsQuery, useBudgetStatusQuery, useCreateBudget, useDeleteBudget } from '@/hooks/queries/useBudgetsQuery';
-import { ApiBudget } from '@/lib/api';
+import { useQuotasQuery, useUpdateQuota } from '@/hooks/queries/useQuotasQuery';
+import { ApiBudget, ApiTenantQuota } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Wallet, Plus, Trash2 } from 'lucide-react';
+import { Wallet, Plus, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Switch } from '@/components/atoms/Switch';
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 
 export default function BudgetsPage() {
   const { data: budgets, isLoading: budgetsLoading, isError: budgetsError, refetch: refetchBudgets } = useBudgetsQuery();
   const { data: budgetStatus, isLoading: statusLoading, isError: statusError, refetch: refetchStatus } = useBudgetStatusQuery();
+  const { data: quotasData, isLoading: quotasLoading, isError: quotasError, refetch: refetchQuotas } = useQuotasQuery();
   const createMutation = useCreateBudget();
   const deleteMutation = useDeleteBudget();
+  const updateQuotaMutation = useUpdateQuota();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [quotaSheetOpen, setQuotaSheetOpen] = useState(false);
+  const [editingQuota, setEditingQuota] = useState<ApiTenantQuota | null>(null);
+
   const [formName, setFormName] = useState('');
   const [formMonthlyLimit, setFormMonthlyLimit] = useState('');
   const [formDailyLimit, setFormDailyLimit] = useState('');
   const [formHardLimit, setFormHardLimit] = useState(true);
   const [formWarningThreshold, setFormWarningThreshold] = useState('80');
   const [formCriticalThreshold, setFormCriticalThreshold] = useState('95');
+
+  // Quota form states
+  const [quotaMonthlyUsd, setQuotaMonthlyUsd] = useState('');
+  const [quotaDailyUsd, setQuotaDailyUsd] = useState('');
+  const [quotaDailyReq, setQuotaDailyReq] = useState('');
+  const [quotaMaxStreams, setQuotaMaxStreams] = useState('');
+
+  const quotasList: ApiTenantQuota[] = quotasData?.data ?? [];
+
+  const openQuotaEdit = (q: ApiTenantQuota) => {
+    setEditingQuota(q);
+    setQuotaMonthlyUsd(String(q.monthlySpendLimitUsd ?? 0));
+    setQuotaDailyUsd(String(q.dailySpendLimitUsd ?? 0));
+    setQuotaDailyReq(String(q.dailyRequestLimit ?? 0));
+    setQuotaMaxStreams(String(q.maxConcurrentStreams ?? 0));
+    setQuotaSheetOpen(true);
+  };
+
+  const handleUpdateQuota = () => {
+    if (!editingQuota) return;
+    updateQuotaMutation.mutate(
+      {
+        targetType: editingQuota.targetType,
+        targetId: editingQuota.targetId,
+        data: {
+          monthlySpendLimitUsd: parseFloat(quotaMonthlyUsd) || 0,
+          dailySpendLimitUsd: parseFloat(quotaDailyUsd) || 0,
+          dailyRequestLimit: parseInt(quotaDailyReq, 10) || 0,
+          maxConcurrentStreams: parseInt(quotaMaxStreams, 10) || 0,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success(`Quota for ${editingQuota.targetType}:${editingQuota.targetId} updated`);
+          setQuotaSheetOpen(false);
+        },
+        onError: (err: Error) => toast.error(`Quota update failed: ${err.message}`),
+      }
+    );
+  };
+
+  const quotaColumns: Column<ApiTenantQuota>[] = [
+    {
+      title: 'Target Type',
+      dataIndex: 'targetType',
+      key: 'targetType',
+      render: (type) => <Badge variant="violet">{String(type).toUpperCase()}</Badge>,
+    },
+    {
+      title: 'Target ID',
+      dataIndex: 'targetId',
+      key: 'targetId',
+      render: (id) => <span className="font-mono text-xs text-foreground font-semibold">{String(id)}</span>,
+    },
+    {
+      title: 'Monthly Limit ($)',
+      dataIndex: 'monthlySpendLimitUsd',
+      key: 'monthlyLimit',
+      render: (val) => <span className="font-mono text-xs font-bold text-emerald-500">${(val as number ?? 0).toFixed(2)}</span>,
+    },
+    {
+      title: 'Daily Limit ($)',
+      dataIndex: 'dailySpendLimitUsd',
+      key: 'dailyLimit',
+      render: (val) => <span className="font-mono text-xs">${(val as number ?? 0).toFixed(2)}</span>,
+    },
+    {
+      title: 'Daily Req Limit',
+      dataIndex: 'dailyRequestLimit',
+      key: 'dailyReq',
+      render: (val) => <span className="font-mono text-xs">{(val as number ?? 0).toLocaleString()} reqs</span>,
+    },
+    {
+      title: 'Max Streams',
+      dataIndex: 'maxConcurrentStreams',
+      key: 'maxStreams',
+      render: (val) => <span className="font-mono text-xs">{String(val ?? 0)}</span>,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => openQuotaEdit(record)}>
+          <Pencil className="h-3 w-3" /> Edit Quota
+        </Button>
+      ),
+    },
+  ];
 
   const monthlySpent = budgetStatus?.monthlySpent ?? 0;
   const monthlyLimit = budgetStatus?.budget?.monthlyLimit ?? 0;
@@ -71,12 +166,10 @@ export default function BudgetsPage() {
   };
 
   const handleDelete = (budget: ApiBudget) => {
-    if (window.confirm(`Delete budget "${budget.name}"? This cannot be undone.`)) {
-      deleteMutation.mutate(budget.id, {
-        onSuccess: () => toast.success(`Budget "${budget.name}" deleted`),
-        onError: (err: Error) => toast.error(`Failed to delete budget: ${err.message}`),
-      });
-    }
+    deleteMutation.mutate(budget.id, {
+      onSuccess: () => toast.success(`Budget "${budget.name}" deleted`),
+      onError: (err: Error) => toast.error(`Failed to delete budget: ${err.message}`),
+    });
   };
 
   const budgetColumns: Column<ApiBudget>[] = [
@@ -131,15 +224,22 @@ export default function BudgetsPage() {
       title: '',
       key: 'actions',
       render: (_, record) => (
-        <Button
-          variant="destructive"
-          size="sm"
-          className="gap-1.5 text-xs"
-          disabled={deleteMutation.isPending}
-          onClick={() => handleDelete(record)}
-        >
-          <Trash2 className="h-3.5 w-3.5" /> Delete
-        </Button>
+        <ConfirmDialog
+          title="Delete Budget"
+          description={`Delete budget "${record.name}"? This cannot be undone.`}
+          confirmText="Delete"
+          onConfirm={() => handleDelete(record)}
+          trigger={
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-1.5 text-xs"
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </Button>
+          }
+        />
       ),
     },
   ];
@@ -241,12 +341,33 @@ export default function BudgetsPage() {
         <TabsContent value="quotas" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold">Workspace Token & Request Rate Limits</CardTitle>
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-[#8B5CF6]" />
+                <span>Multi-Tenant Workspace & Agent Quotas</span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-muted-foreground">
-                Configured rate limits for Production, Staging, and Development workspaces.
-              </p>
+              {quotasError ? (
+                <ErrorState
+                  title="Failed to load quotas"
+                  description="Could not connect to Prism Multi-Tenant Quota engine."
+                  onRetry={refetchQuotas}
+                />
+              ) : !quotasLoading && quotasList.length === 0 ? (
+                <EmptyState
+                  title="No Quotas Configured"
+                  description="There are no specific multi-tenant quotas set yet."
+                />
+              ) : (
+                <DataTable
+                  dataSource={quotasList}
+                  columns={quotaColumns}
+                  rowKey="id"
+                  loading={quotasLoading}
+                  pageSize={10}
+                  searchPlaceholder="Search quotas by target..."
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -299,6 +420,49 @@ export default function BudgetsPage() {
               disabled={!formName.trim() || !formMonthlyLimit || createMutation.isPending}
             >
               {createMutation.isPending ? 'Creating...' : 'Create Budget'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={quotaSheetOpen} onOpenChange={setQuotaSheetOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Edit Quota Limits</SheetTitle>
+            <SheetDescription>
+              Update rate and spend limits for {editingQuota?.targetType}:{editingQuota?.targetId}.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="quota-monthly">Monthly Spend Limit ($)</Label>
+                <Input id="quota-monthly" type="number" step="0.01" value={quotaMonthlyUsd} onChange={(e) => setQuotaMonthlyUsd(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quota-daily">Daily Spend Limit ($)</Label>
+                <Input id="quota-daily" type="number" step="0.01" value={quotaDailyUsd} onChange={(e) => setQuotaDailyUsd(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="quota-reqs">Daily Request Limit</Label>
+                <Input id="quota-reqs" type="number" value={quotaDailyReq} onChange={(e) => setQuotaDailyReq(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quota-streams">Max Concurrent Streams</Label>
+                <Input id="quota-streams" type="number" value={quotaMaxStreams} onChange={(e) => setQuotaMaxStreams(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <SheetFooter>
+            <Button variant="outline" onClick={() => setQuotaSheetOpen(false)}>Cancel</Button>
+            <Button
+              variant="prismViolet"
+              onClick={handleUpdateQuota}
+              disabled={updateQuotaMutation.isPending}
+            >
+              {updateQuotaMutation.isPending ? 'Saving...' : 'Update Quota'}
             </Button>
           </SheetFooter>
         </SheetContent>
