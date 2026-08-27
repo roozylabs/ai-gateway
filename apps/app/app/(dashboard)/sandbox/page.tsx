@@ -189,6 +189,9 @@ export default function SandboxPage() {
   const [routedModel, setRoutedModel] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [isAsyncExecuting, setIsAsyncExecuting] = useState(false);
+
+  const isExecuting = sandboxMutation.isPending || activeJobId !== null || isAsyncExecuting;
 
   React.useEffect(() => {
     if (!activeJobId || !lastEvent) return;
@@ -212,10 +215,12 @@ export default function SandboxPage() {
           }
           toast.success(`Async Job ${activeJobId} completed via SSE!`);
           setActiveJobId(null);
+          setIsAsyncExecuting(false);
         } else if (status === 'failed') {
           setExecutionOutput(`Job ${activeJobId} Failed:\n${payload.error}`);
           toast.error(`Async Job ${activeJobId} failed: ${payload.error}`);
           setActiveJobId(null);
+          setIsAsyncExecuting(false);
         } else if (status === 'processing') {
           setExecutionOutput(`Status: PROCESSING (Job ID: ${activeJobId})\nExecuting on background worker pool...`);
         }
@@ -246,7 +251,6 @@ export default function SandboxPage() {
     }
   }, [keysList, form]);
 
-  const isExecuting = sandboxMutation.isPending;
   const selectedModel = form.watch('model');
 
   const handleCopyOutput = () => {
@@ -266,6 +270,7 @@ export default function SandboxPage() {
 
     try {
       if (values.enableAsync) {
+        setIsAsyncExecuting(true);
         setExecutionOutput('Submitting request to Async Job Queue...');
         const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
         const asyncRes = await fetch('/api/sandbox/chat/completions/async', {
@@ -286,6 +291,7 @@ export default function SandboxPage() {
 
         if (!asyncRes.ok) {
           const errData = await asyncRes.json();
+          setIsAsyncExecuting(false);
           throw new Error(errData?.error?.message || `Async submission failed with status ${asyncRes.status}`);
         }
 
@@ -326,16 +332,21 @@ export default function SandboxPage() {
             }
             setLatencyMs(Date.now() - startTime);
             toast.success(`Async Job ${jobId} completed successfully`);
+            setActiveJobId(null);
+            setIsAsyncExecuting(false);
             break;
           } else if (jobData.status === 'failed') {
             isDone = true;
             setExecutionOutput(`Job ${jobId} Failed:\n${jobData.error}`);
             toast.error(`Job ${jobId} failed: ${jobData.error}`);
+            setActiveJobId(null);
+            setIsAsyncExecuting(false);
             break;
           } else {
             setExecutionOutput(`Status: ${String(jobData.status).toUpperCase()} (Job ID: ${jobId})\nWaiting for worker execution... (${pollCount}s)`);
           }
         }
+        setIsAsyncExecuting(false);
         return;
       }
 
