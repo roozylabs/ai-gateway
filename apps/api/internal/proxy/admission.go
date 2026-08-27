@@ -1,0 +1,175 @@
+package proxy
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+
+	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/repository"
+)
+
+type AdmissionDecision string
+
+const (
+	AdmissionAllow     AdmissionDecision = "ALLOW"
+	AdmissionDeny      AdmissionDecision = "DENY"
+	AdmissionDowngrade AdmissionDecision = "DOWNGRADE"
+	AdmissionWarn      AdmissionDecision = "WARN"
+)
+
+type AdmissionResult struct {
+	Decision     AdmissionDecision
+	HTTPStatus   int
+	ErrorCode    string
+	Reason       string
+	BudgetStatus string
+}
+
+type AdmissionRequest struct {
+	UserID       string
+	Role         string
+	AgentID      string
+	AgentName    string
+	ModelSlug    string
+	ToolName     string
+	ResourceName string
+	TenantCtx    models.TenantContext
+}
+
+type AdmissionController struct {
+	rbacEngine      *RBACEngine
+	agentGovernance *AgentGovernanceEngine
+	quotaRepo       *repository.QuotaRepository
+	budgetManager   *BudgetManager
+}
+
+func NewAdmissionController(
+	rbacEngine *RBACEngine,
+	agentGovernance *AgentGovernanceEngine,
+	quotaRepo *repository.QuotaRepository,
+	budgetManager *BudgetManager,
+) *AdmissionController {
+	return &AdmissionController{
+		rbacEngine:      rbacEngine,
+		agentGovernance: agentGovernance,
+		quotaRepo:       quotaRepo,
+		budgetManager:   budgetManager,
+	}
+}
+
+func (a *AdmissionController) Evaluate(ctx context.Context, req AdmissionRequest) (*AdmissionResult, error) {
+	// 1. RBAC Governance Check
+	if a.rbacEngine != nil {
+		evalReq := models.RBACEvaluationRequest{
+			Role:         req.Role,
+			AgentName:    req.AgentName,
+			ModelSlug:    req.ModelSlug,
+			ToolName:     req.ToolName,
+			ResourceName: req.ResourceName,
+		}
+		rbacRes, err := a.rbacEngine.Evaluate(ctx, req.UserID, evalReq)
+		if err != nil {
+			return nil, fmt.Errorf("rbac evaluate: %w", err)
+		}
+		if !rbacRes.Allowed {
+			return &AdmissionResult{
+				Decision:   AdmissionDeny,
+				HTTPStatus: http.StatusForbidden,
+				ErrorCode:  "governance_policy_denied",
+				Reason:     rbacRes.Reason,
+			}, nil
+		}
+	}
+
+	// 2. Agent Governance Check (Model & Tool access)
+	if a.agentGovernance != nil && req.AgentName != "" {
+		if req.ModelSlug != "" {
+			agRes, err := a.agentGovernance.ValidateAgentModelAccess(ctx, req.UserID, req.AgentName, req.ModelSlug)
+			if err != nil {
+				return nil, fmt.Errorf("agent model governance: %w", err)
+			}
+			if !agRes.ModelAllowed {
+				return &AdmissionResult{
+					Decision:   AdmissionDeny,
+					HTTPStatus: http.StatusForbidden,
+					ErrorCode:  "agent_model_denied",
+					Reason:     agRes.Reason,
+				}, nil
+			}
+		}
+
+		if req.ToolName != "" {
+			agToolRes, err := a.agentGovernance.ValidateAgentToolAccess(ctx, req.UserID, req.AgentName, req.ToolName)
+			if err != nil {
+				return nil, fmt.Errorf("agent tool governance: %w", err)
+			}
+			if !agToolRes.ToolAllowed {
+				return &AdmissionResult{
+					Decision:   AdmissionDeny,
+					HTTPStatus: http.StatusForbidden,
+					ErrorCode:  "agent_tool_denied",
+					Reason:     agToolRes.Reason,
+				}, nil
+			}
+		}
+	}
+
+	// 3. Tenant Quota Check (Organization & Workspace quotas)
+	if a.quotaRepo != nil {
+		orgID := req.TenantCtx.OrgID
+		if orgID != "" {
+			quotaRes, err := a.quotaRepo.EvaluateQuota(ctx, "organization", orgID)
+			if err == nil && !quotaRes.Allowed {
+				return &AdmissionResult{
+					Decision:   AdmissionDeny,
+					HTTPStatus: http.StatusTooManyRequests,
+					ErrorCode:  "quota_exceeded_error",
+					Reason:     quotaRes.Reason,
+				}, nil
+			}
+		}
+	}
+
+	// 4. Multi-Level Budget Check
+	var budgetStatusStr string
+	if a.budgetManager != nil {
+		budgetStatus, err := a.budgetManager.GetStatus(ctx, req.UserID)
+		if err == nil && budgetStatus != nil {
+			budgetStatusStr = budgetStatus.Status
+			if budgetStatus.Status == "exceeded" && budgetStatus.Budget != nil && budgetStatus.Budget.HardLimit {
+				return &AdmissionResult{
+					Decision:     AdmissionDeny,
+					HTTPStatus:   http.StatusTooManyRequests,
+					ErrorCode:    "budget_exceeded_error",
+					Reason:       fmt.Sprintf("Monthly or daily budget limit ($%.2f) exceeded", budgetStatus.Budget.MonthlyLimit),
+					BudgetStatus: budgetStatus.Status,
+				}, nil
+			}
+
+			if budgetStatus.Status == "critical" {
+				return &AdmissionResult{
+					Decision:     AdmissionDowngrade,
+					HTTPStatus:   http.StatusOK,
+					Reason:       "Budget usage critical; model downgrade penalty applied",
+					BudgetStatus: budgetStatus.Status,
+				}, nil
+			}
+
+			if budgetStatus.Status == "warning" {
+				return &AdmissionResult{
+					Decision:     AdmissionWarn,
+					HTTPStatus:   http.StatusOK,
+					Reason:       "Budget usage approaching limit threshold",
+					BudgetStatus: budgetStatus.Status,
+				}, nil
+			}
+		}
+	}
+
+	return &AdmissionResult{
+		Decision:     AdmissionAllow,
+		HTTPStatus:   http.StatusOK,
+		BudgetStatus: budgetStatusStr,
+	}, nil
+}
