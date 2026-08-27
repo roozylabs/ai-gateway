@@ -59,11 +59,8 @@ import {
   Check as CheckIcon,
   Layers as LayersIcon,
   HelpCircle as HelpCircleIcon,
-  Sparkles as SparklesIcon,
-  Cpu as CpuIcon,
   Zap as ZapIcon,
   Clock as ClockIcon,
-  CheckCircle2 as CheckCircle2Icon,
   Loader2 as Loader2Icon,
 } from "lucide-react";
 
@@ -384,11 +381,28 @@ export default function SandboxPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Typewriter effect for non-stream results
+  const typewriterRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typewrite = (text: string, speed = 12) => {
+    if (typewriterRef.current) clearTimeout(typewriterRef.current);
+    let i = 0;
+    const step = () => {
+      i += Math.max(1, Math.floor(Math.random() * 3));
+      setExecutionOutput(text.slice(0, i));
+      if (i < text.length) {
+        typewriterRef.current = setTimeout(step, speed + Math.random() * 8);
+      }
+    };
+    step();
+  };
+
   const onSubmit = async (values: SandboxFormValues) => {
+    const savedPrompt = values.userPrompt;
     setExecutionOutput("");
     setLatencyMs(null);
     setTokenStats(null);
     setRoutedModel(null);
+    form.setValue("userPrompt", "");
     const startTime = Date.now();
 
     try {
@@ -455,7 +469,7 @@ export default function SandboxPage() {
             const content =
               jobData.result?.choices?.[0]?.message?.content ||
               JSON.stringify(jobData.result, null, 2);
-            setExecutionOutput(content);
+            typewrite(content);
             if (jobData.result?.usage) {
               setTokenStats({
                 input: jobData.result.usage.prompt_tokens || 0,
@@ -466,14 +480,15 @@ export default function SandboxPage() {
               setRoutedModel(jobData.model);
             }
             setLatencyMs(Date.now() - startTime);
-            toast.success(`Async Job ${jobId} completed successfully`);
+            toast.success(`Async job completed`);
             setActiveJobId(null);
             setIsAsyncExecuting(false);
             break;
           } else if (jobData.status === "failed") {
             isDone = true;
-            setExecutionOutput(`Job ${jobId} Failed:\n${jobData.error}`);
-            toast.error(`Job ${jobId} failed: ${jobData.error}`);
+            setExecutionOutput(`Request failed:\n${jobData.error}`);
+            form.setValue("userPrompt", savedPrompt);
+            toast.error(`Async job failed`);
             setActiveJobId(null);
             setIsAsyncExecuting(false);
             break;
@@ -555,7 +570,7 @@ export default function SandboxPage() {
         }
         const choice =
           data.choices?.[0]?.message?.content ?? JSON.stringify(data, null, 2);
-        setExecutionOutput(choice);
+        typewrite(choice);
         if (data.usage) {
           setTokenStats({
             input: data.usage.prompt_tokens || 0,
@@ -567,7 +582,8 @@ export default function SandboxPage() {
       }
     } catch (err: unknown) {
       setExecutionOutput(`[System Exception]\n${getErrorMessage(err)}`);
-      toast.error("Failed to run Sandbox container instruction");
+      form.setValue("userPrompt", savedPrompt);
+      toast.error("Execution failed");
     }
   };
 
@@ -965,71 +981,21 @@ export default function SandboxPage() {
 
             <CardContent className="flex-1 flex flex-col pt-4">
               <div className="flex-1 w-full max-h-[580px] min-h-[420px] p-4 border border-border/80 bg-console font-mono text-xs overflow-y-auto custom-scrollbar shadow-inner relative">
-                {/* Modern Animated Loading Progress Screen */}
+                {/* Simple Loading Indicator */}
                 {isExecuting && !executionOutput ? (
-                  <div className="h-full flex flex-col items-center justify-center space-y-5 p-6 text-center">
-                    <div className="relative">
-                      <div className="w-14 h-14 rounded-full bg-violet-500/10 border border-violet-500/30 flex items-center justify-center animate-pulse">
-                        {isAsyncMode ? (
-                          <CpuIcon className="h-7 w-7 text-primary animate-bounce" />
-                        ) : (
-                          <SparklesIcon className="h-7 w-7 text-prism-cyan animate-spin" />
-                        )}
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <Loader2Icon className="h-3 w-3 text-white animate-spin" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 max-w-sm">
-                      <h4 className="text-sm font-semibold text-slate-100 flex items-center justify-center gap-2">
-                        <span>
-                          {isAsyncMode
-                            ? "Async Job Processing in Background"
-                            : "Connecting to Prism AI Engine"}
-                        </span>
-                      </h4>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
+                  <div className="h-full flex flex-col items-center justify-center space-y-4 p-6 text-center">
+                    <Loader2Icon className="h-8 w-8 text-primary animate-spin" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-foreground">
                         {isAsyncMode
-                          ? "Request has been queued. Background worker pool is executing the job."
-                          : "Evaluating RBAC security policies & selecting optimal AI model..."}
+                          ? "Processing in background..."
+                          : "Generating response..."}
                       </p>
-                    </div>
-
-                    {/* Visual Progress Steps */}
-                    <div className="w-full max-w-xs space-y-2 border border-violet-500/20 bg-console-card p-3 rounded-lg text-[11px] text-left">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 text-emerald-400 font-semibold">
-                          <CheckCircle2Icon className="h-3.5 w-3.5" />
-                          <span>1. Dispatch Request</span>
-                        </span>
-                        <span className="text-[10px] text-emerald-400/80 font-mono">
-                          OK
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 text-primary font-semibold">
-                          <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
-                          <span>2. Execute AI Model</span>
-                        </span>
-                        <span className="text-[10px] text-primary font-mono animate-pulse">
-                          PROCESSING
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-muted-foreground opacity-60">
-                        <span className="flex items-center gap-2">
-                          <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/40 flex items-center justify-center text-[9px]">
-                            3
-                          </span>
-                          <span>3. Receive Response</span>
-                        </span>
-                        <span className="text-[10px] font-mono">PENDING</span>
-                      </div>
-                    </div>
-
-                    {/* Animated Shimmer Line */}
-                    <div className="w-full max-w-xs h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-primary via-prism-cyan to-primary rounded-full animate-pulse w-full" />
+                      <p className="text-[11px] text-muted-foreground">
+                        {isAsyncMode
+                          ? "Your request is queued and being processed."
+                          : "Connecting to AI model and waiting for output."}
+                      </p>
                     </div>
                   </div>
                 ) : executionOutput ? (
