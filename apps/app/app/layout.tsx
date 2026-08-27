@@ -35,7 +35,7 @@ export default function RootLayout({
           <SSEProvider>
             <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
               {children}
-              <Toaster position="top-right" richColors closeButton />
+              <Toaster position="top-right" theme="dark" />
             </ThemeProvider>
           </SSEProvider>
         </QueryProvider>

@@ -118,3 +118,61 @@
   background: rgba(139, 92, 246, 0.65);
 }
 
+/* Custom Sonner Toast Styling matching Prism Theme */
+[data-sonner-toaster] {
+  font-family: var(--font-inter), sans-serif !important;
+}
+
+[data-sonner-toast] {
+  background-color: #0F1115 !important;
+  border: 1px solid #1B1F27 !important;
+  color: #F8FAFC !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6) !important;
+  font-size: 13px !important;
+}
+
+[data-sonner-toast] [data-close-button] {
+  display: none !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  background-color: #0F1115 !important;
+  color: #F8FAFC !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: #10B981 !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  background-color: #0F1115 !important;
+  color: #F8FAFC !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: #EF4444 !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  border-color: rgba(139, 92, 246, 0.35) !important;
+  background-color: #0F1115 !important;
+  color: #F8FAFC !important;
+}
+
+[data-sonner-toast][data-type="info"] [data-icon] {
+  color: #8B5CF6 !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  background-color: #0F1115 !important;
+  color: #F8FAFC !important;
+}
+
+[data-sonner-toast][data-type="warning"] [data-icon] {
+  color: #F59E0B !important;
+}
+
