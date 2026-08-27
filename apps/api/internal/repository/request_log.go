@@ -24,6 +24,9 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 	if log.ID == "" {
 		log.ID = uuid.New().String()
 	}
+	if log.RequestID == "" {
+		log.RequestID = fmt.Sprintf("req_%d", time.Now().UnixNano())
+	}
 	if log.CreatedAt.IsZero() {
 		log.CreatedAt = time.Now()
 	}
@@ -36,6 +39,10 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 	if log.ProjectID == "" {
 		log.ProjectID = "proj_default"
 	}
+	attemptsJSON := string(log.Attempts)
+	if attemptsJSON == "" || attemptsJSON == "null" {
+		attemptsJSON = "[]"
+	}
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO request_logs (id, request_id, org_id, workspace_id, project_id, agent_id, gateway_api_key_id, provider_id, credential_id, model,
 		                          status_code, latency_ms, input_tokens, output_tokens, total_tokens,
@@ -45,7 +52,7 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 		log.ID, log.RequestID, log.OrgID, log.WorkspaceID, log.ProjectID, log.AgentID, log.GatewayAPIKeyID, log.ProviderID, log.CredentialID, log.Model,
 		log.StatusCode, log.LatencyMs, log.InputTokens, log.OutputTokens, log.TotalTokens,
 		log.CostUSD, log.ErrorMessage, log.RetryCount, log.ClientIP, log.UserAgent, log.ClientApp,
-		log.IsStream, log.TTFTMs, log.ResponseHash, log.ResponseBytes, log.Attempts, log.CreatedAt,
+		log.IsStream, log.TTFTMs, log.ResponseHash, log.ResponseBytes, attemptsJSON, log.CreatedAt,
 	)
 	return err
 }
