@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import Link from 'next/link';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
@@ -8,23 +8,22 @@ import { Button } from '@/components/atoms/Button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 import { Textarea } from '@/components/atoms/Textarea';
 import { Badge } from '@/components/atoms/Badge';
-import { Play, Cpu, Send, RefreshCw } from 'lucide-react';
+import { Cpu, Send, RefreshCw, Box, Layers, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaygroundStore } from '@/stores/usePlaygroundStore';
 import { useSimulateRoutingMutation } from '@/hooks/mutations/usePlaygroundMutations';
 import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 import { getErrorMessage } from '@/types/ui';
+import { ApiModelScoreDetail } from '@/lib/api';
 
 export default function PlaygroundPage() {
   const {
     model,
     prompt,
-    response,
     decisionDetails,
     isStreaming,
     setModel,
     setPrompt,
-    setResponse,
     setDecisionDetails,
     setIsStreaming,
   } = usePlaygroundStore();
@@ -33,10 +32,9 @@ export default function PlaygroundPage() {
   const models = modelsData?.data ?? [];
   const simulateMutation = useSimulateRoutingMutation();
 
-  const handleExecute = async () => {
+  const handleSimulate = async () => {
     try {
       setIsStreaming(true);
-      setResponse(null);
       setDecisionDetails(null);
 
       const decision = await simulateMutation.mutateAsync({ prompt });
@@ -51,55 +49,9 @@ export default function PlaygroundPage() {
         candidates: candidateList,
       });
 
-      // Pass authorization bearer token or fallback token header to pass gateway auth cleanly
-      const token = typeof window !== 'undefined' ? localStorage.getItem('prism_token') || 'pk_live_default_gateway_key' : 'pk_live_default_gateway_key';
-
-      const res = await fetch('/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          model: model === 'prism-auto' ? 'prism-auto' : model,
-          messages: [{ role: 'user', content: prompt }],
-          stream: true,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorBody = await res.text();
-        throw new Error(errorBody || `Request failed with status ${res.status}`);
-      }
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = '';
-
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-            try {
-              const json = JSON.parse(line.slice(6));
-              const tokenStr = json.choices?.[0]?.delta?.content;
-              if (tokenStr) {
-                fullResponse += tokenStr;
-                setResponse(fullResponse);
-              }
-            } catch (_parseError) {
-              // Ignore partial SSE JSON chunks
-            }
-          }
-        }
-      }
-
-      toast.success(`Prompt executed successfully via ${model}!`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Execution failed: ${message}`);
+      toast.success(`Dry-run simulation completed! Selected candidate: ${decision.selectedModel}`);
+    } catch (error: unknown) {
+      toast.error(`Simulation failed: ${getErrorMessage(error)}`);
     } finally {
       setIsStreaming(false);
     }
@@ -108,8 +60,8 @@ export default function PlaygroundPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Interactive AI Playground"
-        description="Test LLM requests live through Prism Smart Routing engine and inspect multi-factor routing score breakdowns in real time."
+        title="Routing Simulator & Dry-Run Playground"
+        description="Dry-run simulator for Prism Smart Router. Evaluate multi-factor candidate scoring, policy decision matrices, and candidate rankings without consuming API keys or token budgets."
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -118,8 +70,8 @@ export default function PlaygroundPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Play className="h-4 w-4 text-[#8B5CF6]" />
-                <span>Prompt Request Payload</span>
+                <Zap className="h-4 w-4 text-[#8B5CF6]" />
+                <span>Simulation Prompt Input</span>
               </CardTitle>
               <div className="w-[180px]">
                 <Select value={model} onValueChange={setModel}>
@@ -142,26 +94,35 @@ export default function PlaygroundPage() {
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Type your system or user prompt here..."
+              placeholder="Type your system or user prompt here to evaluate dry-run routing decision..."
               className="flex-1 min-h-[220px] font-mono text-xs p-3"
             />
 
-            <Button
-              variant="prismViolet"
-              className="w-full gap-2"
-              onClick={handleExecute}
-              disabled={isStreaming || !prompt.trim()}
-            >
-              {isStreaming ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" /> Routing request...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" /> Execute Prompt
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="prismViolet"
+                className="flex-1 gap-2"
+                onClick={handleSimulate}
+                disabled={isStreaming || !prompt.trim()}
+              >
+                {isStreaming ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" /> Simulating Routing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" /> Run Dry-Run Simulation
+                  </>
+                )}
+              </Button>
+
+              <Button variant="outline" asChild className="gap-2 text-xs border-violet-500/30">
+                <Link href="/sandbox">
+                  <Box className="h-4 w-4 text-[#8B5CF6]" />
+                  <span>Live Sandbox</span>
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -171,25 +132,26 @@ export default function PlaygroundPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Cpu className="h-4 w-4 text-[#8B5CF6]" />
-                <span>Response & Candidate Decision Matrix</span>
+                <span>Candidate Ranking & Decision Matrix</span>
               </CardTitle>
               {decisionDetails && (
-                <Badge variant="violet" className="font-mono text-[10px]">
+                <Badge variant="violet" className="font-mono text-[10px] gap-1">
+                  <Layers className="h-3 w-3" />
                   {decisionDetails.selectedModel}
                 </Badge>
               )}
             </div>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col space-y-4">
-            {decisionDetails && (
-              <div className="space-y-2">
+            {decisionDetails ? (
+              <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2 p-3 rounded-md border border-border bg-muted/20 font-mono text-[11px]">
                   <div>
-                    <span className="text-muted-foreground block text-[10px]">SELECTED MODEL</span>
+                    <span className="text-muted-foreground block text-[10px]">WINNING CANDIDATE</span>
                     <span className="font-bold text-foreground">{decisionDetails.selectedModel}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-[10px]">POLICY</span>
+                    <span className="text-muted-foreground block text-[10px]">EVALUATED POLICY</span>
                     <span className="font-bold text-foreground">{decisionDetails.routingPolicy || 'Auto Score'}</span>
                   </div>
                   <div>
@@ -199,28 +161,34 @@ export default function PlaygroundPage() {
                 </div>
 
                 {decisionDetails.candidates && decisionDetails.candidates.length > 0 && (
-                  <div className="p-2 rounded-md border border-border bg-muted/10 space-y-1 text-[11px]">
-                    <span className="font-semibold text-muted-foreground text-[10px] block">CANDIDATE RANKING BREAKDOWN</span>
-                    {decisionDetails.candidates.slice(0, 3).map((cand: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center font-mono text-[10px] border-t border-border/40 pt-1">
-                        <span>#{idx + 1} {cand.modelSlug}</span>
-                        <span className="text-[#8B5CF6]">Score: {Math.round((cand.score || 0) * 100)}%</span>
+                  <div className="p-3 rounded-md border border-border bg-muted/10 space-y-2 text-[11px]">
+                    <span className="font-semibold text-muted-foreground text-[10px] block">CANDIDATE FACTOR BREAKDOWN RANKING</span>
+                    {decisionDetails.candidates.map((cand: ApiModelScoreDetail, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center font-mono text-[11px] border-t border-border/40 pt-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#8B5CF6] font-bold">#{idx + 1}</span>
+                          <span className="font-semibold">{cand.displayName || cand.slug || cand.modelId}</span>
+                          <span className="text-muted-foreground text-[10px]">({cand.providerName})</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-emerald-400 text-[10px]">${cand.inputPrice1M}/1M</span>
+                          <Badge variant="outline" className="font-mono text-[10px]">
+                            {Math.round((cand.score || 0) * 100)}%
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            )}
-
-            <div className="flex-1 rounded-md border border-border bg-muted/40 p-3 font-mono text-xs overflow-y-auto min-h-[220px]">
-              {response ? (
-                <pre className="whitespace-pre-wrap">{response}</pre>
-              ) : (
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center rounded-md border border-border bg-muted/40 p-6 text-center">
+                <Cpu className="h-8 w-8 text-muted-foreground/40 mb-2" />
                 <span className="text-muted-foreground text-xs italic">
-                  Response output and smart routing decision details will be displayed here...
+                  Enter a prompt and click &quot;Run Dry-Run Simulation&quot; to inspect candidate rankings and scoring breakdown without consuming API keys.
                 </span>
-              )}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
