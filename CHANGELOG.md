@@ -5,6 +5,26 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-08-27
+
+### Added
+- **Production-Ready API Error Envelope & Snake Case Standardization**:
+  - Standardized JSON error response envelope across `apps/api` and `apps/app` returning `message`, `type`, `code`, `policy_id`, `policy_name`, and `request_id` in `snake_case`.
+  - Implemented `utils.RespondWithError` helper in `apps/api/internal/utils/errors.go` and updated `ApiError` parser in `apps/app/lib/http/errors.ts`.
+- **Behind-the-Scenes Agent System Persona Pre-Compilation**:
+  - Pre-compiles Agent System Persona, Allowed Tools, and Allowed Resources 1x at creation/update time in `apps/api/internal/handlers/agent.go` and saves to `agents.system_prompt_override`.
+  - Auto-injects pre-compiled System Persona in `gateway.go` when `req.Messages` lacks a `system` message.
+  - Simplified Developer Sandbox UI (`apps/app/app/(dashboard)/sandbox/page.tsx`) to send pure user payloads (`messages: [{ role: "user", content: ... }]`).
+- **Frontend Architecture Hardening & 16 Feature Modules**:
+  - Re-organized Next.js routes into 3 lifecycle route groups: `(auth)`, `(onboarding)`, and `(dashboard)` while preserving 100% of public URLs.
+  - Decoupled `lib/api.ts` God module into hardened HTTP client (`lib/http/client.ts`) and modular API client adapters.
+  - Extracted 16 self-contained feature modules under `apps/app/features/` with multi-tenant-aware Query Key Factories (`providersKeys`, `credentialsKeys`, `agentsKeys`, etc.) and Zod form schemas.
+  - Created `.agents/rules/atomic-commits-and-conventional-commits.md` enforcing atomic change isolation and conventional commit discipline (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`).
+
+### Fixed
+- **RBAC Governance Pattern Matching Fix**:
+  - Fixed pattern matching in `apps/api/internal/proxy/rbac_engine.go` so specific resource deny policies (e.g., `Deny Developer Cross-Domain Payroll Access`) skip non-matching requests (`ResourceName: ""`), allowing standard chat completions while blocking restricted database queries.
+
 ## [2.4.1] - 2026-08-27
 
 ### Added
