@@ -28,6 +28,7 @@
 | 3.1 | 26 August 2026, 18:50 WIB | Added Multi-Tenant Quota & Limit Enforcement Engine specifications: /v1/quotas REST endpoints, migration 066, target scope limits (org/workspace/agent/user), and Next.js Quotas UI |
 | 3.2 | 26 August 2026, 18:56 WIB | Added Multi-Tier Billing & Pricing Engine specifications: /v1/billing REST endpoints, migration 067, subscription tier pricing cards, invoice history table, and permission guarding (billing:read) |
 | 3.3 | 27 August 2026, 09:30 WIB | Added Organizational AI Control Plane Architecture specifications: ExecutionOrchestrator, AdmissionController, Authoritative Tenant Security, Credential Health State Machine, and Denied Golden Path Verification |
+| 3.4 | 27 August 2026, 12:45 WIB | Added Developer Web Sandbox Overhaul, React Hook Form & Custom Mutation Architecture, and Strict Developer Rules (no-unknown-type, no-empty catch, FormLabel required) specifications |
 
 ---
 

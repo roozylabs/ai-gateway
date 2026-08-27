@@ -82,7 +82,8 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 - **🛡️ High Availability & Circuit Breaker**: Automatic 50x error detection, 60-second credential quarantine, and instant fallback cascades to ensure zero downtime.
 - **💰 AI FinOps & Budget Manager**: Configurable spend limits, velocity alert thresholds (`healthy`, `warning`, `critical`, `exceeded`), burn-rate forecasting, and automatic model cost recommendations.
 - **⚡ Instant Zero-Delay Rotation & HTTP Pooling**: **Round Robin**, **LRU**, and **Fallback Cascade** allocation strategies with HTTP/2 connection pooling (`MaxIdleConnsPerHost: 50`).
-- **🧪 Routing Simulation & Playground**: Interactive simulation page (`/playground`) to test Smart Router behavior and inspect classification → scoring → selection pipelines in real-time.
+- **🧪 Developer Web Sandbox & Execution Console (`/sandbox`)**: Isolated prompt evaluation sandbox featuring React Hook Form (`useForm`), Zod validation, custom React Query mutation hooks (`useSandboxExecutionMutation`), real-time SSE streaming (< 500ms TTFT), required Gateway Key context (`gw_sk_...`), copy result feedback, and rich code block formatting (`FormattedSandboxOutput`).
+- **📐 Strict Developer Guidelines & Type Enforcement**: Repository rules enforcing zero `any` policy (`@typescript-eslint/no-explicit-any`), concrete JSON primitive types (`JsonValue`, `JsonObject`) over loose `unknown`, prohibition of empty `catch` blocks (`no-empty`), and mandatory typechecked production builds (`pnpm build`).
 
 ---
 

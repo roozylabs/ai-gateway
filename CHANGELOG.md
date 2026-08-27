@@ -5,6 +5,28 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-08-27
+
+### Added
+- **Developer Web Sandbox UI & Architecture Overhaul (`/sandbox`)**:
+  - Full React Hook Form (`useForm`) and Zod schema validation (`sandboxSchema`) integration.
+  - Form fields wrapped in `@/components/molecules/Form.tsx` components (`Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage`).
+  - Encapsulated sandbox HTTP POST executions in custom React Query mutation hook `useSandboxExecutionMutation` (`apps/app/hooks/mutations/useSandboxMutation.ts`).
+  - Automated form control disabling (`disabled={isExecuting}`) across all selects, textareas, switches, and buttons during in-flight executions.
+  - Mandatory Gateway API Key Context required field (`<FormLabel required>`) with red asterisk support and automatic sync to user's active `gw_sk_...` keys.
+  - Enhanced Execution Output Console featuring Copy Result button, Prism Violet scrollbar (`.custom-scrollbar`), code block formatting (`FormattedSandboxOutput`), and per-block Copy Code actions.
+  - Real-time SSE Response Streaming (`stream: true`) latency optimization documentation (< 500ms TTFT).
+
+- **Dedicated React Query Mutation Hooks Architecture (`apps/app/hooks/mutations/`)**:
+  - Centralized API mutations for credentials (`useCredentialMutations`), tools (`useToolMutations`), MCP servers (`useMCPMutations`), playground (`usePlaygroundMutations`), audit trail export (`useAuditLogMutations`), and sandbox (`useSandboxMutation`).
+
+- **Repository Guidelines & Strict ESLint Rules (`.agents/rules/`)**:
+  - **Prohibition of Loose `unknown` Types (`no-unknown-type-policy.md`)**: Enforced concrete JSON primitive types (`JsonValue`, `JsonObject`) and domain interfaces across Next.js UI.
+  - **Prohibition of Empty Catch Blocks (`.eslintrc.json`)**: Configured `"no-empty": ["error", { "allowEmptyCatch": false }]` and refactored all empty catch blocks across `apps/app`.
+  - **Form & Mutation Guidelines (`react-form-and-mutation-guidelines.md`)**: Mandatory RHF and React Query `useMutation` encapsulation rule.
+  - **Strict Build Verification (`strict-eslint-and-build-verification.md`)**: Mandatory typecheck on `pnpm build` (`tsc --noEmit && next build`).
+  - **Iconography Rules (`ui-icon-guidelines.md`)**: Enforced professional iconography and banned AI magic sparkles icons.
+
 ## [2.3.0] - 2026-08-27
 
 ### Added
