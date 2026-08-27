@@ -21,7 +21,6 @@ import {
   DollarSign,
   CheckCircle2,
   Server,
-  Sparkles,
 } from 'lucide-react';
 
 function providerStatusToDot(status: ApiProviderHealth['status']): StatusType {
@@ -195,7 +194,7 @@ export default function DashboardPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-[#8B5CF6]" />
+              <Activity className="h-4 w-4 text-[#8B5CF6]" />
               <span>Recent AI Gateway Activity Logs</span>
             </CardTitle>
           </div>

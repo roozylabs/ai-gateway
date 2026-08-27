@@ -8,7 +8,7 @@ import { Button } from '@/components/atoms/Button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 import { Textarea } from '@/components/atoms/Textarea';
 import { Badge } from '@/components/atoms/Badge';
-import { Play, Sparkles, Send, RefreshCw } from 'lucide-react';
+import { Play, Cpu, Send, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaygroundStore } from '@/stores/usePlaygroundStore';
 import { apiSimulateRouting } from '@/lib/api';
@@ -166,7 +166,7 @@ export default function PlaygroundPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[#8B5CF6]" />
+                <Cpu className="h-4 w-4 text-[#8B5CF6]" />
                 <span>Response & Candidate Decision Matrix</span>
               </CardTitle>
               {decisionDetails && (

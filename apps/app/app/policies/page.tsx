@@ -14,7 +14,7 @@ import { Switch } from '@/components/atoms/Switch';
 import { usePoliciesQuery, useCreatePolicy, useUpdatePolicy, useDeletePolicy, useSetDefaultPolicy } from '@/hooks/queries/usePoliciesQuery';
 import { ApiRoutingPolicy } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Workflow, Plus, Save, Sparkles, Star, Trash2 } from 'lucide-react';
+import { Workflow, Plus, Save, SlidersHorizontal, Star, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
 
@@ -162,7 +162,7 @@ export default function PoliciesPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-[#8B5CF6]" />
+                  <SlidersHorizontal className="h-5 w-5 text-[#8B5CF6]" />
                   <span>Tune Policy Weights</span>
                 </CardTitle>
                 <CardDescription>Select a policy and adjust its routing weight sliders</CardDescription>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ThemeToggle } from '@/components/molecules/ThemeToggle';
-import { Shield, Sparkles } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (

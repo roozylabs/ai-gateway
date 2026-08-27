@@ -9,7 +9,7 @@ import { Badge } from '@/components/atoms/Badge';
 import { useBillingPlansQuery, useBillingSubscriptionQuery, useBillingInvoicesQuery, useUpgradeSubscription } from '@/hooks/queries/useBillingQuery';
 import { ApiBillingPlan, ApiBillingInvoice } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { CreditCard, Check, Sparkles } from 'lucide-react';
+import { CreditCard, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function BillingPage() {
