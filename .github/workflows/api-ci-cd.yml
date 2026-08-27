@@ -173,6 +173,53 @@ jobs:
               git pull origin main || git pull origin master || true
             fi
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose pull api || true
-            docker compose up -d --force-recreate --remove-orphans api
+
+            # Determine active container color for api
+            if docker ps --format '{{.Names}}' | grep -q 'prism-api-green'; then
+              TARGET_SVC="api"
+              TARGET_CONTAINER="prism-api"
+              OLD_SVC="api-green"
+              OLD_CONTAINER="prism-api-green"
+              TARGET_PORT="8080"
+            else
+              TARGET_SVC="api-green"
+              TARGET_CONTAINER="prism-api-green"
+              OLD_SVC="api"
+              OLD_CONTAINER="prism-api"
+              TARGET_PORT="8085"
+            fi
+
+            echo "=== Blue-Green Deploying API to $TARGET_SVC ($TARGET_CONTAINER) on port $TARGET_PORT ==="
+            docker compose pull $TARGET_SVC || true
+            docker compose up -d --no-deps $TARGET_SVC
+
+            echo "Waiting for $TARGET_CONTAINER health check..."
+            HEALTHY=false
+            for i in $(seq 1 20); do
+              STATUS=$(docker inspect --format='{{json .State.Health.Status}}' $TARGET_CONTAINER 2>/dev/null || echo '"unknown"')
+              if [ "$STATUS" = '"healthy"' ]; then
+                HEALTHY=true
+                echo "$TARGET_CONTAINER is healthy!"
+                break
+              fi
+              echo "Health status: $STATUS (attempt $i/20)..."
+              sleep 3
+            done
+
+            if [ "$HEALTHY" = "false" ]; then
+              echo "Error: $TARGET_CONTAINER failed health check. Rolling back..."
+              docker compose stop $TARGET_SVC || true
+              exit 1
+            fi
+
+            # Reload Nginx to route traffic
+            if docker ps --format '{{.Names}}' | grep -q 'nginx'; then
+              docker exec $(docker ps --format '{{.Names}}' | grep 'nginx' | head -n 1) nginx -s reload || true
+            elif command -v nginx >/dev/null 2>&1; then
+              sudo nginx -s reload || nginx -s reload || true
+            fi
+
+            echo "Stopping old container $OLD_CONTAINER..."
+            docker compose stop $OLD_SVC || true
             docker image prune -f || true
+

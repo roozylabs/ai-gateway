@@ -1,5 +1,5 @@
 services:
-  # Go API Gateway Backend
+  # Go API Gateway Backend (Blue - Default)
   api:
     image: ghcr.io/roozylabs/prism-api:latest
     build:
@@ -32,11 +32,50 @@ services:
       - prism-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-  # Next.js Frontend Dashboard
+  # Go API Gateway Backend (Green)
+  api-green:
+    image: ghcr.io/roozylabs/prism-api:latest
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: prism-api-green
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-prism}?sslmode=disable
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-secret}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-secret}
+      HASH_KEY: ${HASH_KEY:-secret}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      CLOUDFLARE_SECRET_KEY: ${CLOUDFLARE_SECRET_KEY:-}
+      NEXT_PUBLIC_CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
+      CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://app.prism.roozylabs.com,https://prism.roozylabs.com,https://api.prism.roozylabs.com,http://localhost:3000}
+    ports:
+      - "${API_GREEN_PORT:-8085}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - prism-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Next.js Frontend Dashboard (Blue - Default)
   app:
     image: ghcr.io/roozylabs/prism-app:latest
     build:
@@ -60,12 +99,41 @@ services:
       - prism-network
     healthcheck:
       test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/login | grep -E '^(200|302|307|308)$' || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-  # Astro Landing Page Website
+  # Next.js Frontend Dashboard (Green)
+  app-green:
+    image: ghcr.io/roozylabs/prism-app:latest
+    build:
+      context: ./apps/app
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
+    container_name: prism-app-green
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_GREEN_PORT:-3005}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      API_URL: http://api:8080
+      NEXT_PUBLIC_CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
+      NODE_OPTIONS: "--max-old-space-size=512"
+    depends_on:
+      - api
+    networks:
+      - prism-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/login | grep -E '^(200|302|307|308)$' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Astro Landing Page Website (Blue - Default)
   web:
     image: ghcr.io/roozylabs/prism-web:latest
     build:
@@ -83,10 +151,33 @@ services:
       - prism-network
     healthcheck:
       test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/ | grep -E '^(200|302)$' || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # Astro Landing Page Website (Green)
+  web-green:
+    image: ghcr.io/roozylabs/prism-web:latest
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: prism-web-green
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_GREEN_PORT:-3006}:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      NODE_OPTIONS: "--max-old-space-size=512"
+    networks:
+      - prism-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/ | grep -E '^(200|302)$' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # PostgreSQL Database
   postgres:
