@@ -22,11 +22,11 @@ import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 
 import { apiTestCredential, apiResetCredentialCooldown } from '@/lib/api';
-import { Activity, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Activity, RefreshCw } from 'lucide-react';
 
 export default function CredentialsPage() {
   const [selectedProviderId, setSelectedProviderId] = useState('all');
-  const { data, isLoading, isError, refetch } = useCredentialsQuery(selectedProviderId === 'all' ? 'openai' : selectedProviderId);
+  const { data, isLoading, isError, refetch } = useCredentialsQuery(selectedProviderId);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
