@@ -29,6 +29,7 @@ const sandboxSchema = z.object({
   keyPrefix: z.string().min(1, 'Gateway API Key Context is required'),
   agentId: z.string().default('default'),
   enableStream: z.boolean().default(true),
+  enableAsync: z.boolean().default(false),
   userPrompt: z.string().min(1, 'Prompt / Code Instruction is required'),
 });
 
@@ -194,6 +195,7 @@ export default function SandboxPage() {
       keyPrefix: keysList[0]?.keyPrefix || '',
       agentId: 'default',
       enableStream: true,
+      enableAsync: false,
       userPrompt:
         '',
     },
@@ -227,6 +229,79 @@ export default function SandboxPage() {
     const startTime = Date.now();
 
     try {
+      if (values.enableAsync) {
+        setExecutionOutput('Submitting request to Async Job Queue...');
+        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+        const asyncRes = await fetch('/api/sandbox/chat/completions/async', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Sandbox-Key-Prefix': values.keyPrefix,
+            ...(values.agentId !== 'default' && { 'X-Prism-Agent-ID': values.agentId }),
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          body: JSON.stringify({
+            model: values.model,
+            messages: [{ role: 'user', content: values.userPrompt }],
+            temperature: 0.7,
+            stream: false,
+          }),
+        });
+
+        if (!asyncRes.ok) {
+          const errData = await asyncRes.json();
+          throw new Error(errData?.error?.message || `Async submission failed with status ${asyncRes.status}`);
+        }
+
+        const asyncJob = await asyncRes.json();
+        setExecutionOutput(`Status: QUEUED (Job ID: ${asyncJob.job_id})\nPolling endpoint ${asyncJob.poll_url}...`);
+        toast.info(`Async Job ${asyncJob.job_id} queued successfully`);
+
+        const jobId = asyncJob.job_id;
+        let isDone = false;
+        let pollCount = 0;
+
+        while (!isDone && pollCount < 60) {
+          await new Promise((r) => setTimeout(r, 1000));
+          pollCount++;
+
+          const jobRes = await fetch(`/api/jobs/${jobId}`, {
+            headers: {
+              ...(token && { Authorization: `Bearer ${token}` }),
+            },
+          });
+
+          if (!jobRes.ok) continue;
+
+          const jobData = await jobRes.json();
+          if (jobData.status === 'completed') {
+            isDone = true;
+            const content = jobData.result?.choices?.[0]?.message?.content || JSON.stringify(jobData.result, null, 2);
+            setExecutionOutput(content);
+            if (jobData.result?.usage) {
+              setTokenStats({
+                input: jobData.result.usage.prompt_tokens || 0,
+                output: jobData.result.usage.completion_tokens || 0,
+              });
+            }
+            if (jobData.model) {
+              setRoutedModel(jobData.model);
+            }
+            setLatencyMs(Date.now() - startTime);
+            toast.success(`Async Job ${jobId} completed successfully`);
+            break;
+          } else if (jobData.status === 'failed') {
+            isDone = true;
+            setExecutionOutput(`Job ${jobId} Failed:\n${jobData.error}`);
+            toast.error(`Job ${jobId} failed: ${jobData.error}`);
+            break;
+          } else {
+            setExecutionOutput(`Status: ${String(jobData.status).toUpperCase()} (Job ID: ${jobId})\nWaiting for worker execution... (${pollCount}s)`);
+          }
+        }
+        return;
+      }
+
       const res = await sandboxMutation.mutateAsync({
         keyPrefix: values.keyPrefix,
         routingPolicy: values.routingPolicy,
@@ -473,6 +548,25 @@ export default function SandboxPage() {
                             Enable SSE Response Streaming
                           </FormLabel>
                           <p className="text-[11px] text-muted-foreground">Stream tokens live chunk-by-chunk in output console</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isExecuting || form.watch('enableAsync')} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Enable Async Execution (HTTP 202) */}
+                  <FormField
+                    control={form.control}
+                    name="enableAsync"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between p-3 rounded-md border border-border bg-card space-y-0">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-xs font-semibold cursor-pointer">
+                            Enable Async Queue Execution (HTTP 202)
+                          </FormLabel>
+                          <p className="text-[11px] text-muted-foreground">Enqueue job to Redis worker queue and poll status</p>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isExecuting} />

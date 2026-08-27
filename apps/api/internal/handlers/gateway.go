@@ -14,6 +14,7 @@ import (
 	"github.com/roozylabs/prism/internal/middleware"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
+	"github.com/roozylabs/prism/internal/queue"
 	goredis "github.com/roozylabs/prism/internal/redis"
 	"github.com/roozylabs/prism/internal/repository"
 	"github.com/roozylabs/prism/internal/service"
@@ -33,6 +34,7 @@ type GatewayHandler struct {
 	modelRepo       *repository.ModelRepository
 	agentRepo       *repository.AgentRepository
 	orchestrator    *service.ExecutionOrchestrator
+	jobQueue        *queue.JobQueue
 }
 
 func NewGatewayHandler(
@@ -63,6 +65,10 @@ func NewGatewayHandler(
 		agentRepo:       agentRepo,
 		orchestrator:    orchestrator,
 	}
+}
+
+func (h *GatewayHandler) SetJobQueue(q *queue.JobQueue) {
+	h.jobQueue = q
 }
 
 // ChatCompletions godoc
@@ -358,6 +364,178 @@ func (h *GatewayHandler) SandboxChatCompletions(c *gin.Context) {
 
 	c.Set("gatewayKey", gatewayKey)
 	h.ChatCompletions(c)
+}
+
+func (h *GatewayHandler) AsyncChatCompletions(c *gin.Context) {
+	if h.jobQueue == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": gin.H{
+				"message": "Async job queue service is unavailable",
+				"type":    "service_unavailable",
+			},
+		})
+		return
+	}
+
+	gatewayKey, exists := c.Get("gatewayKey")
+	if !exists || gatewayKey == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": gin.H{
+				"message": "Gateway API Key required",
+				"type":    "auth_required",
+			},
+		})
+		return
+	}
+	keyObj, isKey := gatewayKey.(*models.GatewayAPIKey)
+	if !isKey || keyObj == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": gin.H{
+				"message": "Invalid Gateway API Key context",
+				"type":    "auth_required",
+			},
+		})
+		return
+	}
+
+	var req proxy.ProxyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": gin.H{
+				"message": fmt.Sprintf("Invalid request payload: %v", err),
+				"type":    "invalid_request_error",
+			},
+		})
+		return
+	}
+
+	tenantCtx := middleware.GetTenantContext(c)
+	requestID := c.GetHeader("X-Request-ID")
+	if requestID == "" {
+		requestID = fmt.Sprintf("req_%d", time.Now().UnixNano())
+	}
+	jobID := fmt.Sprintf("job_%d_%s", time.Now().Unix(), utils.HashSHA256(requestID)[:8])
+
+	agentID := c.GetHeader("X-Prism-Agent-ID")
+	if agentID == "" {
+		agentID = c.GetHeader("X-Agent-Name")
+	}
+	agentName := c.GetHeader("X-Prism-Agent-Name")
+	if agentName == "" {
+		agentName = c.GetHeader("X-Agent-Name")
+	}
+	userRole := c.GetHeader("X-Prism-Role")
+	clientIP := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
+	clientApp := parseClientApp(userAgent)
+
+	job := &queue.AsyncJob{
+		JobID:          jobID,
+		RequestID:      requestID,
+		UserID:         keyObj.UserID,
+		Status:         queue.StatusQueued,
+		Model:          req.Model,
+		AgentID:        agentID,
+		AgentName:      agentName,
+		UserRole:       userRole,
+		ClientIP:       clientIP,
+		UserAgent:      userAgent,
+		ClientApp:      clientApp,
+		RequestPayload: &req,
+		GatewayKey:     keyObj,
+		TenantCtx:      tenantCtx,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+
+	if err := h.jobQueue.EnqueueJob(c.Request.Context(), job); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{
+				"message": fmt.Sprintf("Failed to enqueue async job: %v", err),
+				"type":    "internal_error",
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"job_id":     job.JobID,
+		"request_id": job.RequestID,
+		"status":     string(job.Status),
+		"model":      job.Model,
+		"poll_url":   fmt.Sprintf("/v1/jobs/%s", job.JobID),
+		"created_at": job.CreatedAt,
+	})
+}
+
+func (h *GatewayHandler) AsyncSandboxChatCompletions(c *gin.Context) {
+	keyPrefix := c.GetHeader("X-Sandbox-Key-Prefix")
+	var gatewayKey *models.GatewayAPIKey
+	var err error
+
+	if keyPrefix != "" {
+		gatewayKey, err = h.gatewayKeys.FindByKeyPrefix(c.Request.Context(), keyPrefix)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"message": "Invalid API key prefix", "type": "invalid_request_error"}})
+			return
+		}
+	} else {
+		userID := c.GetString("userID")
+		if userID == "" {
+			userID = c.GetString("user_id")
+		}
+		if userID != "" {
+			keys, lErr := h.gatewayKeys.ListByUserID(c.Request.Context(), userID)
+			if lErr == nil {
+				for _, k := range keys {
+					if k.Enabled {
+						keyObj := k
+						gatewayKey = &keyObj
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if gatewayKey == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": gin.H{
+				"message": "No active Gateway API key found. Please create or select a Gateway Key in Gateway Keys page.",
+				"type":    "invalid_request_error",
+			},
+		})
+		return
+	}
+
+	c.Set("gatewayKey", gatewayKey)
+	h.AsyncChatCompletions(c)
+}
+
+func (h *GatewayHandler) GetJobStatus(c *gin.Context) {
+	if h.jobQueue == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": gin.H{
+				"message": "Async job queue service is unavailable",
+				"type":    "service_unavailable",
+			},
+		})
+		return
+	}
+
+	jobID := c.Param("jobId")
+	if jobID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"message": "jobId parameter is required", "type": "invalid_request_error"}})
+		return
+	}
+
+	job, err := h.jobQueue.GetJob(c.Request.Context(), jobID)
+	if err != nil || job == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"message": "Job not found or expired", "type": "not_found"}})
+		return
+	}
+
+	c.JSON(http.StatusOK, job)
 }
 
 // Models godoc

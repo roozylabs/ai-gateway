@@ -34,6 +34,7 @@ type ExecutionOrchestrator struct {
 	eventPublisher *goredis.EventPublisher
 	pricingRepo    *repository.ModelPricingRepository
 	auditRecorder  *proxy.AuditRecorder
+	postProcessor  *AsyncPostProcessor
 }
 
 func NewExecutionOrchestrator(
@@ -54,6 +55,10 @@ func NewExecutionOrchestrator(
 		pricingRepo:    pricingRepo,
 		auditRecorder:  auditRecorder,
 	}
+}
+
+func (o *ExecutionOrchestrator) SetPostProcessor(p *AsyncPostProcessor) {
+	o.postProcessor = p
 }
 
 func (o *ExecutionOrchestrator) ExecuteChatCompletions(
@@ -155,17 +160,30 @@ func (o *ExecutionOrchestrator) ExecuteChatCompletions(
 			log.CostUSD = o.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
 		}
 
-		// Save request log to database
-		_ = o.requestLogs.Create(ctx, log)
-
-		// Increment gateway key usage
-		_ = o.gatewayKeys.IncrementUsage(ctx, gatewayKey.ID)
-
-		// Publish SSE events
-		o.publishEvents(c, ctx, requestID, log, gatewayKey)
-
-		// Record complete cryptographic audit trail
-		o.recordAuditTrail(ctx, log, gatewayKey, agentID, agentName, userRole)
+		if o.postProcessor != nil {
+			o.postProcessor.Enqueue(&PostProcessTask{
+				Ctx:        ctx,
+				RequestID:  requestID,
+				Log:        log,
+				GatewayKey: gatewayKey,
+				AgentID:    agentID,
+				AgentName:  agentName,
+				UserRole:   userRole,
+				ClientIP:   clientIP,
+				UserAgent:  userAgent,
+				ClientApp:  clientApp,
+			})
+		} else {
+			// Save request log to database
+			if o.requestLogs != nil {
+				_ = o.requestLogs.Create(ctx, log)
+			}
+			if o.gatewayKeys != nil && gatewayKey != nil {
+				_ = o.gatewayKeys.IncrementUsage(ctx, gatewayKey.ID)
+			}
+			o.publishEvents(c, ctx, requestID, log, gatewayKey)
+			o.recordAuditTrail(ctx, log, gatewayKey, agentID, agentName, userRole)
+		}
 	}
 
 	return &OrchestrationResult{

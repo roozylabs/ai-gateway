@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 	"github.com/roozylabs/prism/internal/handlers"
 	"github.com/roozylabs/prism/internal/middleware"
 	"github.com/roozylabs/prism/internal/proxy"
+	"github.com/roozylabs/prism/internal/queue"
 	goredis "github.com/roozylabs/prism/internal/redis"
 	"github.com/roozylabs/prism/internal/repository"
 	"github.com/roozylabs/prism/internal/service"
@@ -134,6 +136,42 @@ func main() {
 	admissionCtrl := proxy.NewAdmissionController(rbacEngine, agentGovernance, quotaRepo, budgetMgr)
 	orchestrator := service.NewExecutionOrchestrator(engine, admissionCtrl, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, auditRecorder)
 	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, idemStore, agentGovernance, rbacEngine, auditRecorder, modelRepo, agentRepo, orchestrator)
+
+	// Async Side-Effect Post Processor
+	postProcessor := service.NewAsyncPostProcessor(requestLogRepo, gatewayKeyRepo, eventPublisher, auditRecorder, 2000, 10)
+	defer postProcessor.Stop()
+	orchestrator.SetPostProcessor(postProcessor)
+
+	// Async Job Queue & Worker Pool
+	jobQueue := queue.NewJobQueue(rdb)
+	gatewayHandler.SetJobQueue(jobQueue)
+
+	jobWorkerCtx, jobWorkerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer jobWorkerStop()
+
+	jobQueue.StartWorkerPool(jobWorkerCtx, 5, func(job *queue.AsyncJob) (*proxy.ProviderResponse, error) {
+		res, execErr := orchestrator.ExecuteChatCompletions(
+			nil,
+			context.Background(),
+			job.RequestPayload,
+			job.GatewayKey,
+			job.TenantCtx,
+			job.AgentID,
+			job.AgentName,
+			job.UserRole,
+			job.RequestID,
+			job.ClientIP,
+			job.UserAgent,
+			job.ClientApp,
+		)
+		if execErr != nil {
+			return nil, execErr
+		}
+		if res.Denied {
+			return nil, fmt.Errorf("job denied by policy %s: %s", res.PolicyName, res.ErrorMessage)
+		}
+		return res.Response, nil
+	})
 	paperclipHandler := handlers.NewPaperclipHandler(paperclipAdapter, gatewayHandler)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo, healthStore)
@@ -380,6 +418,8 @@ func main() {
 
 			// Sandbox
 			protected.POST("/sandbox/chat/completions", gatewayHandler.SandboxChatCompletions)
+			protected.POST("/sandbox/chat/completions/async", gatewayHandler.AsyncSandboxChatCompletions)
+			protected.GET("/jobs/:jobId", gatewayHandler.GetJobStatus)
 		}
 	}
 
@@ -391,6 +431,8 @@ func main() {
 		rg.Use(middleware.AgentPolicyMiddleware(agentRepo))
 		rg.Use(proxy.IdempotencyMiddleware(idemStore))
 		rg.POST("/chat/completions", gatewayHandler.ChatCompletions)
+		rg.POST("/chat/completions/async", gatewayHandler.AsyncChatCompletions)
+		rg.GET("/jobs/:jobId", gatewayHandler.GetJobStatus)
 		rg.GET("/models", gatewayHandler.Models)
 		rg.POST("/tools/:toolName/execute", toolGatewayHandler.ExecuteTool)
 		rg.POST("/resources/:resourceName/query", resourceGatewayHandler.ExecuteQuery)
