@@ -144,7 +144,7 @@ export default function SandboxPage() {
       agentId: 'default',
       enableStream: true,
       userPrompt:
-        'Write a Python function to validate JSON Schema definitions and estimate memory usage.',
+        '',
     },
   });
 

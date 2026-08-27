@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -121,6 +122,34 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	agentID := c.GetHeader("X-Prism-Agent-ID")
 	agentName := c.GetHeader("X-Prism-Agent-Name")
 	userRole := c.GetHeader("X-Prism-Role")
+
+	// Behind-the-scenes Agent System Persona & Tool/Resource Rules Injection
+	if agentObj, ok := c.Get("agentObject"); ok {
+		if ag, isAgent := agentObj.(*models.Agent); isAgent && ag != nil {
+			hasSystem := false
+			for _, m := range req.Messages {
+				if role, rOk := m["role"].(string); rOk && role == "system" {
+					hasSystem = true
+					break
+				}
+			}
+			if !hasSystem {
+				systemContent := ag.SystemPromptOverride
+				if systemContent == "" {
+					systemContent = fmt.Sprintf("You are %s. %s. Operate strictly within your agent context boundary rules and execute tools safely.", ag.DisplayName, ag.Description)
+				}
+				if len(ag.AllowedTools) > 0 {
+					systemContent += fmt.Sprintf(" Allowed tools: %s.", strings.Join(ag.AllowedTools, ", "))
+				}
+				if len(ag.AllowedResources) > 0 {
+					systemContent += fmt.Sprintf(" Allowed resources: %s.", strings.Join(ag.AllowedResources, ", "))
+				}
+				req.Messages = append([]map[string]interface{}{
+					{"role": "system", "content": systemContent},
+				}, req.Messages...)
+			}
+		}
+	}
 
 	// Delegate Pipeline Execution to ExecutionOrchestrator
 	if h.orchestrator != nil {
