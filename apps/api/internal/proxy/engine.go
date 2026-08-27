@@ -852,8 +852,9 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		}()
 
 		c.Header("Content-Type", "text/event-stream")
-		c.Header("Cache-Control", "no-cache")
+		c.Header("Cache-Control", "no-cache, no-transform")
 		c.Header("Connection", "keep-alive")
+		c.Header("X-Accel-Buffering", "no")
 		c.Header("X-Prism-Model", route.Model.Slug)
 		c.Header("X-Prism-Provider", route.Provider.Type)
 		c.Header("X-Roozy-Model", route.Model.Slug)

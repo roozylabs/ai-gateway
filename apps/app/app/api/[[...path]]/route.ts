@@ -61,11 +61,19 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
     responseHeaders.delete('content-length');
 
     const contentType = responseHeaders.get('content-type') || '';
-    const isEventStream = contentType.includes('text/event-stream') || subPath.includes('sse');
+    const transferEncoding = responseHeaders.get('transfer-encoding') || '';
+    const isEventStream =
+      contentType.includes('text/event-stream') ||
+      contentType.includes('application/x-ndjson') ||
+      transferEncoding.includes('chunked') ||
+      subPath.includes('sse');
+
     const isNoBodyStatus = backendResponse.status === 204 || backendResponse.status === 304;
 
     if (isEventStream) {
-      responseHeaders.set('Content-Type', 'text/event-stream');
+      if (!contentType.includes('text/event-stream')) {
+        responseHeaders.set('Content-Type', 'text/event-stream');
+      }
       responseHeaders.set('Cache-Control', 'no-cache, no-transform');
       responseHeaders.set('Connection', 'keep-alive');
       responseHeaders.set('X-Accel-Buffering', 'no');

@@ -21,7 +21,6 @@ import {
   DollarSign,
   CheckCircle2,
   Server,
-  Calendar,
 } from 'lucide-react';
 import {
   Select,
