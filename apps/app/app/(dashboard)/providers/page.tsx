@@ -104,7 +104,7 @@ export default function ProvidersPage() {
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Base URL</span>
-                  <span className="font-mono text-xs text-muted-foreground truncate max-w-[160px]">{provider.baseUrl || '—'}</span>
+                  <span className="font-mono text-xs text-muted-foreground truncate max-w-[200px]">{provider.baseUrl || '—'}</span>
                 </div>
               </CardContent>
               <CardFooter className="border-t border-border pt-3">
