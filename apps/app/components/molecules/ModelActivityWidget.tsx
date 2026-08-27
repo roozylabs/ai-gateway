@@ -141,10 +141,12 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
           </span>
         </div>
 
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground pt-0.5 truncate">
-          <KeyRound className="h-3 w-3 text-violet-400 shrink-0" />
-          <span className="truncate">{activeCred}</span>
-        </div>
+        {isRecentlyActive && activeCred && (
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground pt-0.5 truncate">
+            <KeyRound className="h-3 w-3 text-violet-400 shrink-0" />
+            <span className="truncate">{activeCred}</span>
+          </div>
+        )}
       </div>
     </div>
   );
