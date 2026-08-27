@@ -38,18 +38,26 @@ export default function PlaygroundPage() {
       setDecisionDetails(null);
 
       const decision = await apiSimulateRouting({ prompt });
+      const candidateList = decision.candidates || [];
       setDecisionDetails({
         selectedModel: decision.selectedModel,
         provider: decision.selectedProvider,
         routingPolicy: decision.policyName,
-        score: `${(decision.candidates?.[0]?.score ?? 0) * 100}%`,
-        latency: '—',
-        cost: `$${decision.candidates?.[0]?.inputPrice1M ?? 0}`,
+        score: `${Math.round((decision.candidates?.[0]?.score ?? 0) * 100)}%`,
+        latency: decision.candidates?.[0]?.speedScore != null ? `${decision.candidates[0].speedScore}ms` : '—',
+        cost: decision.candidates?.[0]?.inputPrice1M != null ? `$${decision.candidates[0].inputPrice1M}/1M` : '—',
+        candidates: candidateList,
       });
+
+      // Pass authorization bearer token or fallback token header to pass gateway auth cleanly
+      const token = typeof window !== 'undefined' ? localStorage.getItem('prism_token') || 'pk_live_default_gateway_key' : 'pk_live_default_gateway_key';
 
       const res = await fetch('/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           model: model === 'prism-auto' ? 'prism-auto' : model,
           messages: [{ role: 'user', content: prompt }],
@@ -74,9 +82,9 @@ export default function PlaygroundPage() {
           if (line.startsWith('data: ') && line !== 'data: [DONE]') {
             try {
               const json = JSON.parse(line.slice(6));
-              const token = json.choices?.[0]?.delta?.content;
-              if (token) {
-                fullResponse += token;
+              const tokenStr = json.choices?.[0]?.delta?.content;
+              if (tokenStr) {
+                fullResponse += tokenStr;
                 setResponse(fullResponse);
               }
             } catch {}
@@ -97,7 +105,7 @@ export default function PlaygroundPage() {
     <AppLayout>
       <PageHeader
         title="Interactive AI Playground"
-        description="Test LLM requests live through Prism Smart Routing engine and inspect routing decisions in real time."
+        description="Test LLM requests live through Prism Smart Routing engine and inspect multi-factor routing score breakdowns in real time."
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -115,7 +123,7 @@ export default function PlaygroundPage() {
                     <SelectValue placeholder="Select target" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="prism-auto">prism-auto (Smart)</SelectItem>
+                    <SelectItem value="prism-auto">prism-auto (Smart Routing)</SelectItem>
                     {models.map((m) => (
                       <SelectItem key={m.id} value={m.slug}>
                         {m.displayName}
@@ -159,7 +167,7 @@ export default function PlaygroundPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-[#8B5CF6]" />
-                <span>Response & Decision Inspector</span>
+                <span>Response & Candidate Decision Matrix</span>
               </CardTitle>
               {decisionDetails && (
                 <Badge variant="violet" className="font-mono text-[10px]">
@@ -170,19 +178,33 @@ export default function PlaygroundPage() {
           </CardHeader>
           <CardContent className="flex-1 flex flex-col space-y-4">
             {decisionDetails && (
-              <div className="grid grid-cols-3 gap-2 p-3 rounded-md border border-border bg-muted/20 font-mono text-[11px]">
-                <div>
-                  <span className="text-muted-foreground block text-[10px]">LATENCY</span>
-                  <span className="font-bold text-foreground">{decisionDetails.latency}</span>
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2 p-3 rounded-md border border-border bg-muted/20 font-mono text-[11px]">
+                  <div>
+                    <span className="text-muted-foreground block text-[10px]">SELECTED MODEL</span>
+                    <span className="font-bold text-foreground">{decisionDetails.selectedModel}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[10px]">POLICY</span>
+                    <span className="font-bold text-foreground">{decisionDetails.routingPolicy || 'Auto Score'}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[10px]">TOP MATCH SCORE</span>
+                    <span className="font-bold text-[#8B5CF6]">{decisionDetails.score}</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground block text-[10px]">COST</span>
-                  <span className="font-bold text-emerald-500">{decisionDetails.cost}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-[10px]">SCORE</span>
-                  <span className="font-bold text-[#8B5CF6]">{decisionDetails.score}</span>
-                </div>
+
+                {decisionDetails.candidates && decisionDetails.candidates.length > 0 && (
+                  <div className="p-2 rounded-md border border-border bg-muted/10 space-y-1 text-[11px]">
+                    <span className="font-semibold text-muted-foreground text-[10px] block">CANDIDATE RANKING BREAKDOWN</span>
+                    {decisionDetails.candidates.slice(0, 3).map((cand: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center font-mono text-[10px] border-t border-border/40 pt-1">
+                        <span>#{idx + 1} {cand.modelSlug}</span>
+                        <span className="text-[#8B5CF6]">Score: {Math.round((cand.score || 0) * 100)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

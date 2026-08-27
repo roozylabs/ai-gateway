@@ -7,6 +7,7 @@ export interface DecisionInspectorState {
   score: string;
   latency: string;
   cost: string;
+  candidates?: any[];
 }
 
 interface PlaygroundState {
