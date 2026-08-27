@@ -23,8 +23,8 @@ type OTelShutdownFunc func(ctx context.Context) error
 // InitOTel initializes OpenTelemetry TracerProvider, MeterProvider, and W3C Propagator.
 func InitOTel(ctx context.Context) (OTelShutdownFunc, error) {
 	enabled := os.Getenv("OTEL_ENABLED")
-	if enabled == "false" || enabled == "0" {
-		fmt.Println("[OTel] OpenTelemetry disabled via OTEL_ENABLED=false")
+	if enabled != "true" && enabled != "1" {
+		fmt.Println("[OTel] OpenTelemetry exporter disabled (set OTEL_ENABLED=true to enable)")
 		return func(ctx context.Context) error { return nil }, nil
 	}
 
