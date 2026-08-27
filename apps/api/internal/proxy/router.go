@@ -241,14 +241,31 @@ func (r *Router) selectByStrategy(ctx context.Context, providerID, strategy stri
 	if cooldown != nil {
 		coolingIDs, _ = cooldown.GetCoolingIDs(ctx)
 	}
+
+	var rawCreds []models.Credential
+	var err error
 	switch strategy {
 	case "lru":
-		return r.creds.FindLRU(ctx, providerID, coolingIDs)
+		rawCreds, err = r.creds.FindLRU(ctx, providerID, coolingIDs)
 	case "fallback_cascade":
-		return r.creds.FindAllActiveByProviderID(ctx, providerID, coolingIDs)
+		rawCreds, err = r.creds.FindAllActiveByProviderID(ctx, providerID, coolingIDs)
 	default:
-		return r.creds.FindRoundRobin(ctx, providerID, coolingIDs)
+		rawCreds, err = r.creds.FindRoundRobin(ctx, providerID, coolingIDs)
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter out explicitly disabled or exhausted credentials
+	var healthyCreds []models.Credential
+	for _, c := range rawCreds {
+		if c.Status == models.CredentialStatusDisabled || c.Status == models.CredentialStatusExhausted {
+			continue
+		}
+		healthyCreds = append(healthyCreds, c)
+	}
+
+	return healthyCreds, nil
 }
 
 // requestState caches per-request lookups so the ResolveSemantic winner loop
