@@ -225,7 +225,7 @@ func (e *Engine) resolveRoutes(c *gin.Context, req *ProxyRequest, gatewayKey *mo
 
 		routes, decision, err := e.router.ResolveSemantic(ctx, req, gatewayKey, e.cooldown, e.telemetry, sPolicy, budgetStatus)
 		if err == nil && decision != nil {
-			decision.RequestID = c.GetString("requestID")
+			decision.RequestID = safeGetString(c, "requestID")
 			// Log routing decision asynchronously
 			if userID != "" {
 				go e.logRoutingDecision(context.Background(), userID, decision)
@@ -612,7 +612,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		return resp, log, nil
 	}
 
-	if len(attempts) > 0 {
+	if len(attempts) > 0 && c != nil {
 		c.Set(CtxFailoverInfo, &FailoverInfo{
 			Attempts:   MarshalAttempts(attempts),
 			LastStatus: lastAttemptStatus,
@@ -1042,7 +1042,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		return log, nil
 	}
 
-	if len(attempts) > 0 {
+	if len(attempts) > 0 && c != nil {
 		c.Set(CtxFailoverInfo, &FailoverInfo{
 			Attempts:   MarshalAttempts(attempts),
 			LastStatus: lastAttemptStatus,
