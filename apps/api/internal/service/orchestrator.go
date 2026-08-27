@@ -104,9 +104,9 @@ func (o *ExecutionOrchestrator) ExecuteChatCompletions(
 		}, nil
 	}
 
-	// Attach budget status to proxy request if downgraded or warned
-	if admRes.BudgetStatus != "" {
-		// Budget pressure communicated to ProxyEngine
+	// Attach budget status to proxy response header if downgraded or warned
+	if admRes.BudgetStatus != "" && c != nil {
+		c.Header("X-Prism-Budget-Status", admRes.BudgetStatus)
 	}
 
 	// 2. Stream vs Non-Stream Proxy Execution
