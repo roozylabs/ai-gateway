@@ -326,9 +326,8 @@ export default function SandboxPage() {
                       name="keyPrefix"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-semibold flex items-center gap-1">
-                            <span>Gateway API Key Context</span>
-                            <span className="text-destructive font-bold">*</span>
+                          <FormLabel className="text-xs font-semibold" required>
+                            Gateway API Key Context
                           </FormLabel>
                           <FormControl>
                             <Select value={field.value} onValueChange={field.onChange} disabled={isExecuting}>
