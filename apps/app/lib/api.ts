@@ -908,7 +908,7 @@ export async function apiCreateMCPServer(data: ApiCreateMCPServerRequest): Promi
   return response.data;
 }
 
-export async function apiUpdateMCPServer(id: string, data: ApiCreateMCPServerRequest): Promise<ApiMCPServerWithTools> {
+export async function apiUpdateMCPServer(id: string, data: Partial<ApiCreateMCPServerRequest>): Promise<ApiMCPServerWithTools> {
   const response = await api.put<ApiMCPServerWithTools>(`/mcp/servers/${id}`, data);
   return response.data;
 }
