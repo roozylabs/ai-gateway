@@ -581,7 +581,7 @@ export default function SandboxPage() {
                     name="userPrompt"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs font-semibold">Prompt / Code Instruction</FormLabel>
+                        <FormLabel className="text-xs font-semibold" required>Prompt / Code Instruction</FormLabel>
                         <FormControl>
                           <textarea
                             {...field}
