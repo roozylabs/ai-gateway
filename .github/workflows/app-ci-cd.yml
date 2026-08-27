@@ -162,12 +162,16 @@ jobs:
               exit 1
             fi
 
-            # Reload Nginx to route traffic
+            # Update Nginx upstream config and reload
+            if [ -d "/etc/nginx/conf.d" ]; then
+              echo "upstream prism_app_backend { server 127.0.0.1:$TARGET_PORT; }" | sudo tee /etc/nginx/conf.d/upstream_app.conf > /dev/null || true
+            fi
             if docker ps --format '{{.Names}}' | grep -q 'nginx'; then
               docker exec $(docker ps --format '{{.Names}}' | grep 'nginx' | head -n 1) nginx -s reload || true
             elif command -v nginx >/dev/null 2>&1; then
               sudo nginx -s reload || nginx -s reload || true
             fi
+
 
             echo "Stopping old container $OLD_CONTAINER..."
             docker compose stop $OLD_SVC || true
