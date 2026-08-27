@@ -5,6 +5,25 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-08-27
+
+### Added
+- **Developer Web Sandbox & Routing Simulator Audit (`/sandbox` & `/playground`)**:
+  - **Responsive Select Layout Alignment**: Fixed `SelectTrigger` container width (`w-full min-w-0`) and added string truncation (`truncate block max-w-[220px]`) to `Gateway API Key Context` and `Agent Context Boundary` selects, eliminating padding misalignment on mobile and tablet screens.
+  - **Routed Model Console Badge**: Extracted HTTP response model header (`X-Prism-Selected-Model`) and rendered `Routed: {model}` badge in the Execution Output Console header.
+  - **Dynamic Smart Router Policies**: Integrated `usePoliciesQuery()` from `@/hooks/queries/usePoliciesQuery` to populate the Smart Router Policy select dropdown with live database policies from `/api/policies`.
+  - **Pure Dry-Run Playground Simulator (`/playground`)**: Converted `/playground` into a pure dry-run simulator calling `/v1/routing/simulate`. Displays candidate rankings, top match scores, and cost/speed factor breakdowns without requiring API keys or consuming token budgets, with 1-click link to live `/sandbox`.
+  - **Agent Context Boundary Header Correction**: Updated `useSandboxMutation.ts` to transmit `X-Prism-Agent-ID`, `X-Prism-Agent-Name`, and `X-Agent-Name` headers for agent system persona injection in the Go proxy backend.
+
+- **Active Model Router Activity Sidebar Widget**:
+  - Created `<ModelActivityWidget>` molecule component displaying real-time `prism-auto` model router status, active provider count, and `ONLINE` status dot.
+  - Embedded the widget in `AppLayout.tsx` in the Admin Console Sidebar footer above the platform admin profile.
+
+- **Compiler-Enforced Code Hygiene & Unused Import Policy**:
+  - Enabled `"noUnusedLocals": true` and `"noUnusedParameters": true` in `apps/app/tsconfig.json` to trigger build failures (`tsc --noEmit`) on any unused import or local variable.
+  - Created repository rule `.agents/rules/no-unused-imports-policy.md` banning unused imports and unnecessary default `import React from 'react'` in Next.js 13+.
+  - Conducted codebase-wide audit and refactored 23 components and pages across `apps/app` to remove all unused imports, icons, components, and types.
+
 ## [2.4.0] - 2026-08-27
 
 ### Added

@@ -29,6 +29,7 @@
 | 3.2 | 26 August 2026, 18:56 WIB | Added Multi-Tier Billing & Pricing Engine specifications: /v1/billing REST endpoints, migration 067, subscription tier pricing cards, invoice history table, and permission guarding (billing:read) |
 | 3.3 | 27 August 2026, 09:30 WIB | Added Organizational AI Control Plane Architecture specifications: ExecutionOrchestrator, AdmissionController, Authoritative Tenant Security, Credential Health State Machine, and Denied Golden Path Verification |
 | 3.4 | 27 August 2026, 12:45 WIB | Added Developer Web Sandbox Overhaul, React Hook Form & Custom Mutation Architecture, and Strict Developer Rules (no-unknown-type, no-empty catch, FormLabel required) specifications |
+| 3.5 | 27 August 2026, 13:50 WIB | Added Web Sandbox & Routing Simulator Audit, Active Model Sidebar Widget, Dry-Run Playground Separation, Agent Context Boundary System Persona Injection, Dynamic Policies, and Compiler-Enforced Code Hygiene Policy (noUnusedLocals, no-unused-imports-policy.md) |
 
 ---
 
