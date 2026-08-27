@@ -329,6 +329,19 @@ export default function SandboxPage() {
     step();
   }, []);
 
+  const form = useForm<SandboxFormValues>({
+    resolver: zodResolver(sandboxSchema),
+    defaultValues: {
+      model: "prism-auto",
+      routingPolicy: "balanced",
+      keyPrefix: keysList[0]?.keyPrefix || "",
+      agentId: "default",
+      enableStream: true,
+      enableAsync: false,
+      userPrompt: "",
+    },
+  });
+
   const handleJobCompleted = React.useCallback(
     (jobId: string, result: any, model?: string, startTime?: number) => {
       if (completedJobRef.current === jobId) return;
@@ -353,10 +366,11 @@ export default function SandboxPage() {
       toast.success("Async job completed");
       setActiveJobId(null);
       setIsAsyncExecuting(false);
+      form.setValue("userPrompt", "");
 
       typewrite(content);
     },
-    [typewrite],
+    [typewrite, form],
   );
 
   React.useEffect(() => {
@@ -389,19 +403,6 @@ export default function SandboxPage() {
     return () => unsubscribe();
   }, [activeJobId, subscribeToSSE, handleJobCompleted]);
 
-  const form = useForm<SandboxFormValues>({
-    resolver: zodResolver(sandboxSchema),
-    defaultValues: {
-      model: "prism-auto",
-      routingPolicy: "balanced",
-      keyPrefix: keysList[0]?.keyPrefix || "",
-      agentId: "default",
-      enableStream: true,
-      enableAsync: false,
-      userPrompt: "",
-    },
-  });
-
   React.useEffect(() => {
     if (keysList.length > 0) {
       const currentPrefix = form.getValues("keyPrefix");
@@ -432,7 +433,6 @@ export default function SandboxPage() {
     setLatencyMs(null);
     setTokenStats(null);
     setRoutedModel(null);
-    form.setValue("userPrompt", "");
     const startTime = Date.now();
 
     try {
@@ -539,6 +539,7 @@ export default function SandboxPage() {
         }
 
         setLatencyMs(Date.now() - startTime);
+        form.setValue("userPrompt", "");
         toast.success("Stream execution completed");
       } else {
         const data = await res.json();
@@ -554,6 +555,7 @@ export default function SandboxPage() {
           });
         }
         setLatencyMs(Date.now() - startTime);
+        form.setValue("userPrompt", "");
         toast.success("Sandbox execution completed");
         typewrite(choice);
       }
