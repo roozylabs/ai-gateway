@@ -282,7 +282,7 @@ export default function SandboxPage() {
           </CardHeader>
           <CardContent className="space-y-4 flex-1 flex flex-col justify-between">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-1 flex flex-col justify-between">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-1 flex flex-col justify-start">
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Target Model */}
