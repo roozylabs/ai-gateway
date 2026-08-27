@@ -22,6 +22,7 @@ import { Play, Terminal, RefreshCw, Code2, Copy, Check, Layers } from 'lucide-re
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/types/ui';
 import { useSandboxExecutionMutation } from '@/hooks/mutations/useSandboxMutation';
+import { useSSE } from '@/hooks/useSSE';
 
 const sandboxSchema = z.object({
   model: z.string().min(1, 'Target model is required'),
@@ -180,12 +181,47 @@ export default function SandboxPage() {
   const policiesList = Array.isArray(policiesData) ? policiesData : [];
 
   const sandboxMutation = useSandboxExecutionMutation();
+  const { lastEvent } = useSSE();
 
   const [executionOutput, setExecutionOutput] = useState<string>('');
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [tokenStats, setTokenStats] = useState<{ input: number; output: number } | null>(null);
   const [routedModel, setRoutedModel] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!activeJobId || !lastEvent) return;
+
+    if (lastEvent.type === 'async_job_updated') {
+      const payload = lastEvent.payload as any;
+      if (payload && (payload.jobId === activeJobId || payload.job_id === activeJobId)) {
+        const status = payload.status;
+        if (status === 'completed') {
+          const res = payload.result;
+          const content = res?.choices?.[0]?.message?.content || JSON.stringify(res, null, 2);
+          setExecutionOutput(content);
+          if (res?.usage) {
+            setTokenStats({
+              input: res.usage.prompt_tokens || 0,
+              output: res.usage.completion_tokens || 0,
+            });
+          }
+          if (payload.model) {
+            setRoutedModel(payload.model);
+          }
+          toast.success(`Async Job ${activeJobId} completed via SSE!`);
+          setActiveJobId(null);
+        } else if (status === 'failed') {
+          setExecutionOutput(`Job ${activeJobId} Failed:\n${payload.error}`);
+          toast.error(`Async Job ${activeJobId} failed: ${payload.error}`);
+          setActiveJobId(null);
+        } else if (status === 'processing') {
+          setExecutionOutput(`Status: PROCESSING (Job ID: ${activeJobId})\nExecuting on background worker pool...`);
+        }
+      }
+    }
+  }, [lastEvent, activeJobId]);
 
   const form = useForm<SandboxFormValues>({
     resolver: zodResolver(sandboxSchema),
@@ -254,10 +290,11 @@ export default function SandboxPage() {
         }
 
         const asyncJob = await asyncRes.json();
-        setExecutionOutput(`Status: QUEUED (Job ID: ${asyncJob.job_id})\nPolling endpoint ${asyncJob.poll_url}...`);
-        toast.info(`Async Job ${asyncJob.job_id} queued successfully`);
-
         const jobId = asyncJob.job_id;
+        setActiveJobId(jobId);
+        setExecutionOutput(`Status: QUEUED (Job ID: ${jobId})\nListening to real-time SSE stream & polling endpoint ${asyncJob.poll_url}...`);
+        toast.info(`Async Job ${jobId} queued successfully`);
+
         let isDone = false;
         let pollCount = 0;
 

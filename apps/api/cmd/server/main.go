@@ -144,6 +144,7 @@ func main() {
 
 	// Async Job Queue & Worker Pool
 	jobQueue := queue.NewJobQueue(rdb)
+	jobQueue.SetEventPublisher(eventPublisher)
 	gatewayHandler.SetJobQueue(jobQueue)
 
 	jobWorkerCtx, jobWorkerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

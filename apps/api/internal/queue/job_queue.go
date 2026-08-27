@@ -11,6 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
+	goredis "github.com/roozylabs/prism/internal/redis"
 )
 
 type JobStatus string
@@ -44,12 +45,13 @@ type AsyncJob struct {
 }
 
 type JobQueue struct {
-	rdb       *redis.Client
-	queueKey  string
-	jobKeyPfx string
-	ttl       time.Duration
-	wg        sync.WaitGroup
-	stopChan  chan struct{}
+	rdb            *redis.Client
+	eventPublisher *goredis.EventPublisher
+	queueKey       string
+	jobKeyPfx      string
+	ttl            time.Duration
+	wg             sync.WaitGroup
+	stopChan       chan struct{}
 }
 
 func NewJobQueue(rdb *redis.Client) *JobQueue {
@@ -60,6 +62,29 @@ func NewJobQueue(rdb *redis.Client) *JobQueue {
 		ttl:       24 * time.Hour,
 		stopChan:  make(chan struct{}),
 	}
+}
+
+func (q *JobQueue) SetEventPublisher(pub *goredis.EventPublisher) {
+	q.eventPublisher = pub
+}
+
+func (q *JobQueue) publishJobEvent(ctx context.Context, job *AsyncJob) {
+	if q.eventPublisher == nil || job == nil {
+		return
+	}
+
+	eventData := map[string]interface{}{
+		"jobId":     job.JobID,
+		"requestId": job.RequestID,
+		"userId":    job.UserID,
+		"status":    string(job.Status),
+		"model":     job.Model,
+		"result":    job.Result,
+		"error":     job.Error,
+		"timestamp": job.UpdatedAt,
+	}
+
+	_ = q.eventPublisher.Publish(ctx, "async_job_updated", eventData)
 }
 
 func (q *JobQueue) EnqueueJob(ctx context.Context, job *AsyncJob) error {
@@ -88,6 +113,7 @@ func (q *JobQueue) EnqueueJob(ctx context.Context, job *AsyncJob) error {
 		return fmt.Errorf("rpush redis queue: %w", err)
 	}
 
+	q.publishJobEvent(ctx, job)
 	return nil
 }
 
@@ -125,7 +151,11 @@ func (q *JobQueue) UpdateJob(ctx context.Context, job *AsyncJob) error {
 	}
 
 	jobKey := q.jobKeyPfx + job.JobID
-	return q.rdb.Set(ctx, jobKey, data, q.ttl).Err()
+	err = q.rdb.Set(ctx, jobKey, data, q.ttl).Err()
+	if err == nil {
+		q.publishJobEvent(ctx, job)
+	}
+	return err
 }
 
 func (q *JobQueue) StartWorkerPool(ctx context.Context, workersCount int, executor func(job *AsyncJob) (*proxy.ProviderResponse, error)) {
@@ -175,19 +205,30 @@ func (q *JobQueue) workerLoop(ctx context.Context, workerID int, executor func(j
 			job.Status = StatusProcessing
 			_ = q.UpdateJob(ctx, job)
 
-			// Execute completion payload
-			resp, execErr := executor(job)
-			if execErr != nil {
-				job.Status = StatusFailed
-				job.Error = execErr.Error()
-				_ = q.UpdateJob(ctx, job)
-				log.Printf("[JobQueue Worker %d] Job %s failed: %v", workerID, jobID, execErr)
-			} else {
-				job.Status = StatusCompleted
-				job.Result = resp
-				_ = q.UpdateJob(ctx, job)
-				log.Printf("[JobQueue Worker %d] Job %s completed successfully", workerID, jobID)
-			}
+			// Safely execute completion payload with panic recovery
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						job.Status = StatusFailed
+						job.Error = fmt.Sprintf("panic in worker: %v", r)
+						_ = q.UpdateJob(ctx, job)
+						log.Printf("[JobQueue Worker %d] Job %s panicked: %v", workerID, jobID, r)
+					}
+				}()
+
+				resp, execErr := executor(job)
+				if execErr != nil {
+					job.Status = StatusFailed
+					job.Error = execErr.Error()
+					_ = q.UpdateJob(ctx, job)
+					log.Printf("[JobQueue Worker %d] Job %s failed: %v", workerID, jobID, execErr)
+				} else {
+					job.Status = StatusCompleted
+					job.Result = resp
+					_ = q.UpdateJob(ctx, job)
+					log.Printf("[JobQueue Worker %d] Job %s completed successfully", workerID, jobID)
+				}
+			}()
 		}
 	}
 }

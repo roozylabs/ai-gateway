@@ -131,12 +131,26 @@ func (r *ProxyRequest) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func safeContext(c *gin.Context) context.Context {
+	if c != nil && c.Request != nil {
+		return c.Request.Context()
+	}
+	return context.Background()
+}
+
+func safeGetString(c *gin.Context, key string) string {
+	if c != nil {
+		return c.GetString(key)
+	}
+	return ""
+}
+
 func (e *Engine) resolveRoutes(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) ([]*Route, error) {
-	ctx := c.Request.Context()
+	ctx := safeContext(c)
 
 	// Persist full conversation payload asynchronously (never blocks the hot path)
 	if e.payloads != nil {
-		requestID := c.GetString("requestID")
+		requestID := safeGetString(c, "requestID")
 		var keyID *string
 		if gatewayKey != nil {
 			k := gatewayKey.ID
@@ -275,13 +289,14 @@ func (e *Engine) logRoutingDecision(ctx context.Context, userID string, decision
 
 func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) (*ProviderResponse, *models.RequestLog, error) {
 	start := time.Now()
+	ctx := safeContext(c)
 
 	gwKeyID := ""
 	if gatewayKey != nil {
 		gwKeyID = gatewayKey.ID
 	}
 
-	reqID := c.GetString("requestID")
+	reqID := safeGetString(c, "requestID")
 	if reqID == "" {
 		reqID = uuid.New().String()
 	}
@@ -296,10 +311,10 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		activeCredName = getCredentialDisplayName(routes[0].Credential)
 	}
 
-	_ = e.cooldown.TrackActiveStream(c.Request.Context(), reqID, req.Model, gwKeyID, activeCredName)
+	_ = e.cooldown.TrackActiveStream(ctx, reqID, req.Model, gwKeyID, activeCredName)
 	if e.publisher != nil {
-		if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
-			_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
+		if summary, err := e.cooldown.GetActiveStreams(ctx); err == nil {
+			_ = e.publisher.Publish(ctx, "active_streams_update", summary)
 		}
 	}
 
@@ -321,10 +336,10 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 	for i, route := range routes {
 		if i > 0 {
 			retryCount++
-			_ = e.cooldown.TrackActiveStream(c.Request.Context(), reqID, req.Model, gwKeyID, getCredentialDisplayName(route.Credential))
+			_ = e.cooldown.TrackActiveStream(ctx, reqID, req.Model, gwKeyID, getCredentialDisplayName(route.Credential))
 			if e.publisher != nil {
-				if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
-					_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
+				if summary, err := e.cooldown.GetActiveStreams(ctx); err == nil {
+					_ = e.publisher.Publish(ctx, "active_streams_update", summary)
 				}
 			}
 		}
@@ -345,7 +360,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 				lastErr = fmt.Errorf("unmarshal metadata json failed: %w", err)
 				continue
 			}
-			accessToken, err := e.oauthMgr.GetAccessToken(c.Request.Context(), route.Credential.ID, meta)
+			accessToken, err := e.oauthMgr.GetAccessToken(ctx, route.Credential.ID, meta)
 			if err != nil {
 				lastErr = fmt.Errorf("fetch oauth access token: %w", err)
 				continue
@@ -386,8 +401,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			continue
 		}
 
-		_ = e.throttler.Wait(c.Request.Context(), route.Provider.Type)
-		release, err := e.concurrency.Acquire(c.Request.Context(), route.Provider.Type)
+		_ = e.throttler.Wait(ctx, route.Provider.Type)
+		release, err := e.concurrency.Acquire(ctx, route.Provider.Type)
 		if err != nil {
 			lastErr = fmt.Errorf("concurrency limit wait: %w", err)
 			continue
@@ -398,9 +413,9 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		if err != nil {
 			release()
 			lastErr = fmt.Errorf("execute request: %w", err)
-			if isQuarantined, _ := e.cooldown.RecordServerError(c.Request.Context(), route.Credential.ID, 504); isQuarantined {
+			if isQuarantined, _ := e.cooldown.RecordServerError(ctx, route.Credential.ID, 504); isQuarantined {
 				if e.publisher != nil {
-					_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_QUARANTINED", map[string]interface{}{
+					_ = e.publisher.Publish(ctx, "CREDENTIAL_QUARANTINED", map[string]interface{}{
 						"credentialId": route.Credential.ID,
 						"reason":       "circuit_breaker_50x",
 						"statusCode":   504,
@@ -426,11 +441,11 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		if httpResp.StatusCode == http.StatusTooManyRequests {
 			bodyStr := string(body)
 			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
-			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
-			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+			e.extractAndSaveQuota(ctx, route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
+			_ = e.cooldown.SetCooldown(ctx, route.Credential.ID, retryAfter)
 			go e.syncCredentialHealth(context.Background(), route.Credential, true, false)
 			if e.publisher != nil {
-				_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_COOLDOWN_STARTED", map[string]interface{}{
+				_ = e.publisher.Publish(ctx, "CREDENTIAL_COOLDOWN_STARTED", map[string]interface{}{
 					"credentialId": route.Credential.ID,
 					"retryAfter":   retryAfter,
 					"model":        req.Model,
@@ -449,8 +464,8 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			bodyLower := strings.ToLower(bodyStr)
 			if strings.Contains(bodyLower, "quota") || strings.Contains(bodyLower, "limit") || strings.Contains(bodyLower, "exhausted") || strings.Contains(bodyLower, "too many") || strings.Contains(bodyLower, "resource_exhausted") {
 				retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
-				e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
-				_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+				e.extractAndSaveQuota(ctx, route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
+				_ = e.cooldown.SetCooldown(ctx, route.Credential.ID, retryAfter)
 				go e.syncCredentialHealth(context.Background(), route.Credential, true, true)
 				lastErr = fmt.Errorf("upstream rate/quota limit (%d) on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
 				lastAttemptStatus = httpResp.StatusCode
@@ -458,7 +473,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 				continue
 			}
 
-			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
+			_ = e.creds.UpdateStatus(ctx, route.Credential.ID, "invalid")
 			go e.syncCredentialHealth(context.Background(), route.Credential, false, false)
 			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
 			lastAttemptStatus = httpResp.StatusCode
@@ -468,9 +483,9 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		// 5xx → Circuit Breaker recording and retry
 		if httpResp.StatusCode >= 500 {
-			if isQuarantined, _ := e.cooldown.RecordServerError(c.Request.Context(), route.Credential.ID, httpResp.StatusCode); isQuarantined {
+			if isQuarantined, _ := e.cooldown.RecordServerError(ctx, route.Credential.ID, httpResp.StatusCode); isQuarantined {
 				if e.publisher != nil {
-					_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_QUARANTINED", map[string]interface{}{
+					_ = e.publisher.Publish(ctx, "CREDENTIAL_QUARANTINED", map[string]interface{}{
 						"credentialId": route.Credential.ID,
 						"reason":       "circuit_breaker_50x",
 						"statusCode":   httpResp.StatusCode,
@@ -487,9 +502,9 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		}
 
 		// Success → reset 50x error count
-		_ = e.cooldown.RecordSuccess(c.Request.Context(), route.Credential.ID)
-		_ = e.creds.IncrementUsage(c.Request.Context(), route.Credential.ID)
-		e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, false, 0, "")
+		_ = e.cooldown.RecordSuccess(ctx, route.Credential.ID)
+		_ = e.creds.IncrementUsage(ctx, route.Credential.ID)
+		e.extractAndSaveQuota(ctx, route.Credential.ID, httpResp.Header, false, 0, "")
 		go e.syncCredentialHealth(context.Background(), route.Credential, false, false)
 
 		resp, err := route.Adapter.ParseResponse(bytes.NewReader(body))
@@ -544,10 +559,12 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		costUSD := inputCost + outputCost
 		e.backfillActualCost(reqID, costUSD)
 
-		c.Header("X-Prism-Model", route.Model.Slug)
-		c.Header("X-Prism-Provider", route.Provider.Type)
-		c.Header("X-Roozy-Model", route.Model.Slug)
-		c.Header("X-Roozy-Provider", route.Provider.Type)
+		if c != nil {
+			c.Header("X-Prism-Model", route.Model.Slug)
+			c.Header("X-Prism-Provider", route.Provider.Type)
+			c.Header("X-Roozy-Model", route.Model.Slug)
+			c.Header("X-Roozy-Provider", route.Provider.Type)
+		}
 
 		log := &models.RequestLog{
 			GatewayAPIKeyID: &gatewayKey.ID,
@@ -600,6 +617,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *models.GatewayAPIKey) (*models.RequestLog, error) {
 	start := time.Now()
+	ctx := safeContext(c)
 	var ttftMs int
 	var ttftCaptured bool
 
@@ -608,7 +626,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		gwKeyID = gatewayKey.ID
 	}
 
-	reqID := c.GetString("requestID")
+	reqID := safeGetString(c, "requestID")
 	if reqID == "" {
 		reqID = uuid.New().String()
 	}
@@ -623,10 +641,10 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		activeCredName = getCredentialDisplayName(routes[0].Credential)
 	}
 
-	_ = e.cooldown.TrackActiveStream(c.Request.Context(), reqID, req.Model, gwKeyID, activeCredName)
+	_ = e.cooldown.TrackActiveStream(ctx, reqID, req.Model, gwKeyID, activeCredName)
 	if e.publisher != nil {
-		if summary, err := e.cooldown.GetActiveStreams(c.Request.Context()); err == nil {
-			_ = e.publisher.Publish(c.Request.Context(), "active_streams_update", summary)
+		if summary, err := e.cooldown.GetActiveStreams(ctx); err == nil {
+			_ = e.publisher.Publish(ctx, "active_streams_update", summary)
 		}
 	}
 
