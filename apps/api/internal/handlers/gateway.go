@@ -11,10 +11,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/roozylabs/prism/internal/middleware"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	goredis "github.com/roozylabs/prism/internal/redis"
 	"github.com/roozylabs/prism/internal/repository"
+	"github.com/roozylabs/prism/internal/service"
 	"github.com/roozylabs/prism/internal/utils"
 )
 
@@ -29,6 +31,7 @@ type GatewayHandler struct {
 	rbacEngine      *proxy.RBACEngine
 	auditRecorder   *proxy.AuditRecorder
 	modelRepo       *repository.ModelRepository
+	orchestrator    *service.ExecutionOrchestrator
 }
 
 func NewGatewayHandler(
@@ -42,6 +45,7 @@ func NewGatewayHandler(
 	rbacEngine *proxy.RBACEngine,
 	auditRecorder *proxy.AuditRecorder,
 	modelRepo *repository.ModelRepository,
+	orchestrator *service.ExecutionOrchestrator,
 ) *GatewayHandler {
 	return &GatewayHandler{
 		engine:          engine,
@@ -54,6 +58,7 @@ func NewGatewayHandler(
 		rbacEngine:      rbacEngine,
 		auditRecorder:   auditRecorder,
 		modelRepo:       modelRepo,
+		orchestrator:    orchestrator,
 	}
 }
 
@@ -99,80 +104,84 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
-	clientIP := c.ClientIP()
-	userAgent := c.GetHeader("User-Agent")
-	clientApp := parseClientApp(userAgent)
-
-	if req.Stream {
-		log, err := h.engine.ProxyStream(c, &req, gatewayKey)
-		if err != nil {
-			h.handleProxyError(c, err, gatewayKey, &req, requestID, clientIP, userAgent, clientApp, true)
-			return
-		}
-		if log != nil {
-			log.RequestID = requestID
-			log.ClientIP = clientIP
-			log.UserAgent = userAgent
-			log.ClientApp = clientApp
-			log.IsStream = true
-			if log.CostUSD == 0 && h.pricingRepo != nil {
-				log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
-			}
-			_ = h.requestLogs.Create(c.Request.Context(), log)
-			_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
-			h.publishEvents(c, requestID, log, gatewayKey)
-			h.recordAuditTrail(c, log, gatewayKey)
-
-			c.Header("X-Request-ID", requestID)
-			c.Header("X-Prism-Model", log.Model)
-			c.Header("X-Prism-Provider", log.ProviderType)
-			c.Header("X-Roozy-Model", log.Model)
-			c.Header("X-Roozy-Provider", log.ProviderType)
-		}
-		proxy.SaveIdempotencyResult(c, h.idemStore)
-		return
-	}
-
-	resp, log, err := h.engine.Proxy(c, &req, gatewayKey)
+	// Resolve Canonical TenantContext with Strict Ownership Security
+	tenantCtx, err := middleware.ResolveCanonicalTenantContext(c, gatewayKey)
 	if err != nil {
-		h.handleProxyError(c, err, gatewayKey, &req, requestID, clientIP, userAgent, clientApp, false)
-		return
-	}
-
-	if log != nil {
-		log.RequestID = requestID
-		log.ClientIP = clientIP
-		log.UserAgent = userAgent
-		log.ClientApp = clientApp
-		log.IsStream = false
-		if log.CostUSD == 0 && h.pricingRepo != nil {
-			log.CostUSD = h.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
-		}
-		_ = h.requestLogs.Create(c.Request.Context(), log)
-		_ = h.gatewayKeys.IncrementUsage(c.Request.Context(), gatewayKey.ID)
-		h.publishEvents(c, requestID, log, gatewayKey)
-		h.recordAuditTrail(c, log, gatewayKey)
-
-		c.Header("X-Request-ID", requestID)
-		c.Header("X-Prism-Model", log.Model)
-		c.Header("X-Prism-Provider", log.ProviderType)
-		c.Header("X-Roozy-Model", log.Model)
-		c.Header("X-Roozy-Provider", log.ProviderType)
-	}
-
-	if resp != nil && resp.Error != nil {
-		c.JSON(http.StatusBadGateway, gin.H{
+		c.JSON(http.StatusForbidden, gin.H{
 			"error": gin.H{
-				"message": resp.Error.Message,
-				"type":    resp.Error.Type,
-				"code":    resp.Error.Code,
+				"message": err.Error(),
+				"type":    "tenant_security_error",
 			},
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
-	proxy.SaveIdempotencyResult(c, h.idemStore)
+	clientIP := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
+	clientApp := parseClientApp(userAgent)
+	agentID := c.GetHeader("X-Prism-Agent-ID")
+	agentName := c.GetHeader("X-Prism-Agent-Name")
+	userRole := c.GetHeader("X-Prism-Role")
+
+	// Delegate Pipeline Execution to ExecutionOrchestrator
+	if h.orchestrator != nil {
+		res, err := h.orchestrator.ExecuteChatCompletions(
+			c,
+			c.Request.Context(),
+			&req,
+			gatewayKey,
+			tenantCtx,
+			agentID,
+			agentName,
+			userRole,
+			requestID,
+			clientIP,
+			userAgent,
+			clientApp,
+		)
+		if err != nil {
+			h.handleProxyError(c, err, gatewayKey, &req, requestID, clientIP, userAgent, clientApp, req.Stream)
+			return
+		}
+
+		if res.Denied {
+			c.JSON(res.HTTPStatus, gin.H{
+				"error": gin.H{
+					"message": res.ErrorMessage,
+					"type":    res.ErrorCode,
+				},
+			})
+			return
+		}
+
+		if req.Stream {
+			proxy.SaveIdempotencyResult(c, h.idemStore)
+			return
+		}
+
+		if res.RequestLog != nil {
+			c.Header("X-Request-ID", requestID)
+			c.Header("X-Prism-Model", res.RequestLog.Model)
+			c.Header("X-Prism-Provider", res.RequestLog.ProviderType)
+			c.Header("X-Roozy-Model", res.RequestLog.Model)
+			c.Header("X-Roozy-Provider", res.RequestLog.ProviderType)
+		}
+
+		if res.Response != nil && res.Response.Error != nil {
+			c.JSON(http.StatusBadGateway, gin.H{
+				"error": gin.H{
+					"message": res.Response.Error.Message,
+					"type":    res.Response.Error.Type,
+					"code":    res.Response.Error.Code,
+				},
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, res.Response)
+		proxy.SaveIdempotencyResult(c, h.idemStore)
+		return
+	}
 }
 
 func (h *GatewayHandler) publishEvents(c *gin.Context, requestID string, log *models.RequestLog, key *models.GatewayAPIKey) {

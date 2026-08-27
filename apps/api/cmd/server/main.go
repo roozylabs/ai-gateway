@@ -131,7 +131,9 @@ func main() {
 	credentialHandler := handlers.NewCredentialHandler(credentialRepo, providerRepo, gatewayKeyRepo, cooldown, eventPublisher, cfg.EncryptionKey)
 	modelHandler := handlers.NewModelHandler(modelRepo, providerRepo, gatewayKeyRepo, cooldown)
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo, credentialRepo)
-	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, idemStore, agentGovernance, rbacEngine, auditRecorder, modelRepo)
+	admissionCtrl := proxy.NewAdmissionController(rbacEngine, agentGovernance, quotaRepo, budgetMgr)
+	orchestrator := service.NewExecutionOrchestrator(engine, admissionCtrl, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, auditRecorder)
+	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, idemStore, agentGovernance, rbacEngine, auditRecorder, modelRepo, orchestrator)
 	paperclipHandler := handlers.NewPaperclipHandler(paperclipAdapter, gatewayHandler)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo, healthStore)
@@ -384,6 +386,7 @@ func main() {
 	// Gateway routes (authenticated with gw_sk_* keys) - accessible at /v1 and /api/v1
 	registerGatewayRoutes := func(rg *gin.RouterGroup) {
 		rg.Use(middleware.GatewayAuthMiddleware(gatewayKeyCache))
+		rg.Use(middleware.TenantMiddleware())
 		rg.Use(middleware.GatewayRateLimitMiddleware(rdb, cfg.RateLimitPerKey))
 		rg.Use(middleware.AgentPolicyMiddleware(agentRepo))
 		rg.Use(proxy.IdempotencyMiddleware(idemStore))
