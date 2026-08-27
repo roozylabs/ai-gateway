@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
@@ -20,7 +19,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/molecules/DropdownMenu';
-import { ScrollText, Download, FileSpreadsheet, FileCode, ShieldCheck, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ScrollText, Download, FileSpreadsheet, FileCode, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AuditTrailPage() {

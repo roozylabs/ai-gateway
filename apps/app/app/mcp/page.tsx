@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/molecules/Card';
+import { Card, CardHeader, CardContent, CardDescription, CardFooter } from '@/components/molecules/Card';
 import { Button } from '@/components/atoms/Button';
 import { Badge, StatusDot } from '@/components/atoms/Badge';
 import { Input } from '@/components/atoms/Input';
