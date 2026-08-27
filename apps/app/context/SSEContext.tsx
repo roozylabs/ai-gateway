@@ -30,7 +30,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     const token = Cookies.get(CookieKeys.AUTH_TOKEN);
-    if (pathname === AppRoutes.LOGIN || !token) {
+    if (!token) {
       setIsConnected(false);
       return;
     }
@@ -40,7 +40,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const connect = () => {
       const currentToken = Cookies.get(CookieKeys.AUTH_TOKEN);
-      if (pathname === AppRoutes.LOGIN || !currentToken) {
+      if (!currentToken) {
         setIsConnected(false);
         return;
       }
@@ -95,7 +95,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             eventSource.close();
           }
           const activeToken = Cookies.get(CookieKeys.AUTH_TOKEN);
-          if (pathname !== AppRoutes.LOGIN && activeToken) {
+          if (activeToken) {
             reconnectTimeout = setTimeout(connect, 5000);
           }
         };
@@ -103,7 +103,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('[SSE Initialization Error]', err);
         setIsConnected(false);
         const activeToken = Cookies.get(CookieKeys.AUTH_TOKEN);
-        if (pathname !== AppRoutes.LOGIN && activeToken) {
+        if (activeToken) {
           reconnectTimeout = setTimeout(connect, 5000);
         }
       }
@@ -117,7 +117,8 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         eventSource.close();
       }
     };
-  }, [queryClient, pathname]);
+  }, [queryClient]);
+
 
   return (
     <SSEContext.Provider value={{ isConnected, lastEvent }}>

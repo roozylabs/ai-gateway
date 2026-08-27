@@ -155,7 +155,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     >
                       {/* Left Active Line Indicator */}
                       {isActive && (
-                        <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r bg-[#8B5CF6]" />
+                        <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-none bg-[#8B5CF6]" />
                       )}
                       <span className={cn('shrink-0', isActive ? 'text-[#8B5CF6]' : 'text-muted-foreground group-hover:text-foreground')}>
                         {item.icon}
