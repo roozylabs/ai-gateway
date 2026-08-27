@@ -16,7 +16,7 @@ export function useSandboxExecutionMutation() {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      if (payload.keyPrefix && payload.keyPrefix !== 'auto') {
+      if (payload.keyPrefix) {
         headers['X-Sandbox-Key-Prefix'] = payload.keyPrefix;
       }
       if (payload.model === 'prism-auto') {

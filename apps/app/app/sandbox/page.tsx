@@ -137,7 +137,7 @@ export default function SandboxPage() {
     defaultValues: {
       model: 'prism-auto',
       routingPolicy: 'balanced',
-      keyPrefix: 'auto',
+      keyPrefix: keysList[0]?.keyPrefix || '',
       agentId: 'default',
       enableStream: true,
       systemPrompt:
@@ -146,6 +146,15 @@ export default function SandboxPage() {
         'Write a Python function to validate JSON Schema definitions and estimate memory usage.',
     },
   });
+
+  React.useEffect(() => {
+    if (keysList.length > 0) {
+      const currentPrefix = form.getValues('keyPrefix');
+      if (!currentPrefix || currentPrefix === 'auto' || !keysList.some((k) => k.keyPrefix === currentPrefix)) {
+        form.setValue('keyPrefix', keysList[0].keyPrefix);
+      }
+    }
+  }, [keysList, form]);
 
   const isExecuting = sandboxMutation.isPending;
   const selectedModel = form.watch('model');
@@ -335,7 +344,6 @@ export default function SandboxPage() {
                                 <SelectValue placeholder="Select key" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="auto">RoozyGateway (pk_live_auto...)</SelectItem>
                                 {keysList.map((k) => (
                                   <SelectItem key={k.id} value={k.keyPrefix}>
                                     {k.name} ({k.keyPrefix}...)
