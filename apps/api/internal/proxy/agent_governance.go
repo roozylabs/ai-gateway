@@ -2,6 +2,8 @@ package proxy
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -27,6 +29,9 @@ func (g *AgentGovernanceEngine) ValidateAgentModelAccess(ctx context.Context, us
 
 	ag, err := g.agents.FindByUserAndName(ctx, userID, agentName)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || strings.Contains(err.Error(), "no rows") || strings.Contains(err.Error(), "not found") {
+			return &models.AgentGovernanceCheckResult{AgentName: agentName, ModelAllowed: true}, nil
+		}
 		return nil, fmt.Errorf("resolve agent %q: %w", agentName, err)
 	}
 	if !ag.Enabled {
@@ -61,6 +66,9 @@ func (g *AgentGovernanceEngine) ValidateAgentToolAccess(ctx context.Context, use
 
 	ag, err := g.agents.FindByUserAndName(ctx, userID, agentName)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || strings.Contains(err.Error(), "no rows") || strings.Contains(err.Error(), "not found") {
+			return &models.AgentGovernanceCheckResult{AgentName: agentName, ToolAllowed: true}, nil
+		}
 		return nil, fmt.Errorf("resolve agent %q: %w", agentName, err)
 	}
 	if !ag.Enabled {
