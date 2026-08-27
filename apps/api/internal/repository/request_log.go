@@ -96,7 +96,7 @@ type LogFilter struct {
 }
 
 func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) ([]models.RequestLog, int, error) {
-	where := []string{"gak.user_id = $1"}
+	where := []string{"(gak.user_id = $1 OR rl.gateway_api_key_id IS NULL OR $1 = '')"}
 	args := []interface{}{f.UserID}
 	argIdx := 2
 
@@ -125,7 +125,7 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 
 	countQuery := fmt.Sprintf(
 		`SELECT COUNT(*) FROM request_logs rl
-		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 LEFT JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 LEFT JOIN providers p ON rl.provider_id = p.id
 		 WHERE %s`, whereClause)
 
@@ -147,7 +147,7 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 		        COALESCE(rl.cost_usd, 0), rl.error_message, rl.retry_count, COALESCE(rl.client_ip, ''), COALESCE(rl.user_agent, ''),
 		        COALESCE(rl.client_app, ''), COALESCE(rl.is_stream, false), COALESCE(rl.ttft_ms, 0), rl.created_at
 		 FROM request_logs rl
-		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 LEFT JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
 		 LEFT JOIN providers p ON rl.provider_id = p.id
 		 LEFT JOIN credentials c ON rl.credential_id = c.id
 		 WHERE %s
