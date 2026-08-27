@@ -1,0 +1,50 @@
+import { useMutation } from '@tanstack/react-query';
+
+export interface SandboxExecutionPayload {
+  keyPrefix: string;
+  routingPolicy: string;
+  agentId: string;
+  model: string;
+  messages: Array<{ role: string; content: string }>;
+  temperature: number;
+  stream: boolean;
+}
+
+export function useSandboxExecutionMutation() {
+  return useMutation({
+    mutationFn: async (payload: SandboxExecutionPayload) => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (payload.keyPrefix && payload.keyPrefix !== 'auto') {
+        headers['X-Sandbox-Key-Prefix'] = payload.keyPrefix;
+      }
+      if (payload.model === 'prism-auto') {
+        headers['X-Routing-Policy'] = payload.routingPolicy;
+      }
+      if (payload.agentId && payload.agentId !== 'default') {
+        headers['X-Agent-Name'] = payload.agentId;
+      }
+
+      const body = {
+        model: payload.model,
+        messages: payload.messages,
+        temperature: payload.temperature,
+        stream: payload.stream,
+      };
+
+      const res = await fetch('/api/sandbox/chat/completions', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson?.error?.message || `HTTP ${res.status} ${res.statusText}`);
+      }
+
+      return res;
+    },
+  });
+}
