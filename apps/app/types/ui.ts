@@ -28,17 +28,23 @@ export interface AsyncState<T> {
   error?: string;
 }
 
+export type PrimitiveValue = string | number | boolean | null;
+export type JsonValue = PrimitiveValue | { [key: string]: JsonValue } | JsonValue[];
+export type JsonObject = { [key: string]: JsonValue };
+
+export type AppError = Error | { message: string } | string;
+
 /**
- * Safely extracts error message from caught unknown error
+ * Safely extracts error message from caught Error or error objects
  */
-export function getErrorMessage(err: unknown): string {
+export function getErrorMessage(err: AppError | unknown): string {
   if (err instanceof Error) {
     return err.message;
   }
   if (typeof err === 'string') {
     return err;
   }
-  if (err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
+  if (err && typeof err === 'object' && 'message' in err && typeof (err as { message: string }).message === 'string') {
     return (err as { message: string }).message;
   }
   return 'An unexpected error occurred';
