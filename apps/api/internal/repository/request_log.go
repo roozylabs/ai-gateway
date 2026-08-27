@@ -27,13 +27,22 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 	if log.CreatedAt.IsZero() {
 		log.CreatedAt = time.Now()
 	}
+	if log.OrgID == "" {
+		log.OrgID = "org_default"
+	}
+	if log.WorkspaceID == "" {
+		log.WorkspaceID = "ws_default"
+	}
+	if log.ProjectID == "" {
+		log.ProjectID = "proj_default"
+	}
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO request_logs (id, request_id, gateway_api_key_id, provider_id, credential_id, model,
+		`INSERT INTO request_logs (id, request_id, org_id, workspace_id, project_id, agent_id, gateway_api_key_id, provider_id, credential_id, model,
 		                          status_code, latency_ms, input_tokens, output_tokens, total_tokens,
 		                          cost_usd, error_message, retry_count, client_ip, user_agent, client_app,
 		                          is_stream, ttft_ms, response_hash, response_bytes, attempts, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22::jsonb, $23)`,
-		log.ID, log.RequestID, log.GatewayAPIKeyID, log.ProviderID, log.CredentialID, log.Model,
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26::jsonb, $27)`,
+		log.ID, log.RequestID, log.OrgID, log.WorkspaceID, log.ProjectID, log.AgentID, log.GatewayAPIKeyID, log.ProviderID, log.CredentialID, log.Model,
 		log.StatusCode, log.LatencyMs, log.InputTokens, log.OutputTokens, log.TotalTokens,
 		log.CostUSD, log.ErrorMessage, log.RetryCount, log.ClientIP, log.UserAgent, log.ClientApp,
 		log.IsStream, log.TTFTMs, log.ResponseHash, log.ResponseBytes, log.Attempts, log.CreatedAt,
