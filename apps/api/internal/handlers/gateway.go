@@ -264,14 +264,41 @@ func (h *GatewayHandler) handleProxyError(c *gin.Context, err error, key *models
 
 func (h *GatewayHandler) SandboxChatCompletions(c *gin.Context) {
 	keyPrefix := c.GetHeader("X-Sandbox-Key-Prefix")
-	if keyPrefix == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"message": "Missing X-Sandbox-Key-Prefix header", "type": "invalid_request_error"}})
-		return
+	var gatewayKey *models.GatewayAPIKey
+	var err error
+
+	if keyPrefix != "" {
+		gatewayKey, err = h.gatewayKeys.FindByKeyPrefix(c.Request.Context(), keyPrefix)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"message": "Invalid API key prefix", "type": "invalid_request_error"}})
+			return
+		}
+	} else {
+		userID := c.GetString("userID")
+		if userID == "" {
+			userID = c.GetString("user_id")
+		}
+		if userID != "" {
+			keys, lErr := h.gatewayKeys.ListByUserID(c.Request.Context(), userID)
+			if lErr == nil {
+				for _, k := range keys {
+					if k.Enabled {
+						keyObj := k
+						gatewayKey = &keyObj
+						break
+					}
+				}
+			}
+		}
 	}
 
-	gatewayKey, err := h.gatewayKeys.FindByKeyPrefix(c.Request.Context(), keyPrefix)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"message": "Invalid API key prefix", "type": "invalid_request_error"}})
+	if gatewayKey == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": gin.H{
+				"message": "No active Gateway API key found. Please create or select a Gateway Key in Gateway Keys page.",
+				"type":    "invalid_request_error",
+			},
+		})
 		return
 	}
 
