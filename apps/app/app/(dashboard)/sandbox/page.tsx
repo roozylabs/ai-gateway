@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import { Switch } from '@/components/atoms/Switch';
+import { Textarea } from '@/components/atoms/Textarea';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/molecules/Form';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/atoms/Tooltip';
@@ -649,7 +650,7 @@ export default function SandboxPage() {
                       control={form.control}
                       name="enableStream"
                       render={({ field }) => (
-                        <FormItem className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-card/60 hover:bg-card transition-colors space-y-0">
+                        <FormItem className="flex items-center justify-between p-3.5 border border-border bg-card/60 hover:bg-card transition-colors space-y-0">
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5">
                               <FormLabel className="text-xs font-semibold cursor-pointer">
@@ -686,7 +687,7 @@ export default function SandboxPage() {
                       control={form.control}
                       name="enableAsync"
                       render={({ field }) => (
-                        <FormItem className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-card/60 hover:bg-card transition-colors space-y-0">
+                        <FormItem className="flex items-center justify-between p-3.5 border border-border bg-card/60 hover:bg-card transition-colors space-y-0">
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5">
                               <FormLabel className="text-xs font-semibold cursor-pointer">
@@ -726,10 +727,10 @@ export default function SandboxPage() {
                             tooltip="Enter the instruction, prompt text, or code block for the AI sandbox to evaluate."
                           />
                           <FormControl>
-                            <textarea
+                            <Textarea
                               {...field}
                               disabled={isExecuting}
-                              className="w-full h-28 rounded-lg border border-border bg-background p-3 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed custom-scrollbar"
+                              className="h-28 text-xs font-mono custom-scrollbar"
                               placeholder="Type your prompt or code instructions here..."
                             />
                           </FormControl>
@@ -807,7 +808,7 @@ export default function SandboxPage() {
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col pt-4">
-              <div className="flex-1 w-full max-h-[580px] min-h-[420px] p-4 rounded-lg border border-border/80 bg-[#0A0C10] font-mono text-xs overflow-y-auto custom-scrollbar shadow-inner relative">
+              <div className="flex-1 w-full max-h-[580px] min-h-[420px] p-4 rounded-none border border-border/80 bg-[#0A0C10] font-mono text-xs overflow-y-auto custom-scrollbar shadow-inner relative">
                 {/* Modern Animated Loading Progress Screen */}
                 {isExecuting && !executionOutput ? (
                   <div className="h-full flex flex-col items-center justify-center space-y-5 p-6 text-center">

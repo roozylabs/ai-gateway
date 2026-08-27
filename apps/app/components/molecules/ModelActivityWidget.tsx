@@ -96,7 +96,7 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
   }
 
   return (
-    <div className="p-3 rounded-lg border border-border bg-card/60 backdrop-blur space-y-2 text-xs">
+    <div className="p-3 rounded-none border border-border bg-card/60 backdrop-blur space-y-2 text-xs">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-muted-foreground font-semibold text-[11px]">
           <Activity className={`h-3.5 w-3.5 ${isRecentlyActive ? 'text-emerald-400 animate-pulse' : 'text-muted-foreground'}`} />
