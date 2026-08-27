@@ -36,9 +36,16 @@ type SandboxFormValues = z.infer<typeof sandboxSchema>;
 
 function renderInlineMarkdown(text: string): React.ReactNode {
   if (!text) return text;
-  const tokens = text.split(/(\*\*.*?\*\*|`.*?`|\*.*?\*)/g);
+  const tokens = text.split(/(\*\*\*.*?\*\*\*|\*\*.*?\*\*|__.*?__|`.*?`|\*.*?\*|_.*?_)/g);
   return tokens.map((token, i) => {
-    if (token.startsWith('**') && token.endsWith('**') && token.length >= 4) {
+    if (token.startsWith('***') && token.endsWith('***') && token.length >= 6) {
+      return (
+        <strong key={i} className="font-semibold italic text-slate-100">
+          {token.slice(3, -3)}
+        </strong>
+      );
+    }
+    if ((token.startsWith('**') && token.endsWith('**') && token.length >= 4) || (token.startsWith('__') && token.endsWith('__') && token.length >= 4)) {
       return (
         <strong key={i} className="font-semibold text-slate-100">
           {token.slice(2, -2)}
@@ -54,7 +61,7 @@ function renderInlineMarkdown(text: string): React.ReactNode {
     }
     if ((token.startsWith('*') && token.endsWith('*') && token.length >= 2) || (token.startsWith('_') && token.endsWith('_') && token.length >= 2)) {
       return (
-        <em key={i} className="italic text-slate-300">
+        <em key={i} className="italic opacity-90">
           {token.slice(1, -1)}
         </em>
       );
