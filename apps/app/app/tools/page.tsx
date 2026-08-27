@@ -11,44 +11,71 @@ import { Label } from '@/components/atoms/Label';
 import { Badge } from '@/components/atoms/Badge';
 import { Switch } from '@/components/atoms/Switch';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { useToolsQuery, useCreateTool, useUpdateTool, useDeleteTool } from '@/hooks/queries/useToolsQuery';
+import { useToolsQuery } from '@/hooks/queries/useToolsQuery';
 import type { ApiTool } from '@/lib/api';
-import { Wrench, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Wrench, Plus, Pencil, Trash2, Play, Terminal } from 'lucide-react';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
-import { apiTestTool, ApiToolExecutionResult } from '@/lib/api';
-import { Play, Terminal } from 'lucide-react';
+import { ApiToolExecutionResult } from '@/lib/api';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/types/ui';
+import {
+  useTestToolMutation,
+  useCreateToolMutation,
+  useUpdateToolMutation,
+  useDeleteToolMutation,
+} from '@/hooks/mutations/useToolMutations';
+
+interface ToolFormData {
+  name: string;
+  displayName: string;
+  description: string;
+  enabled: boolean;
+}
+
+const initialToolFormData: ToolFormData = {
+  name: '',
+  displayName: '',
+  description: '',
+  enabled: true,
+};
 
 export default function ToolsPage() {
   const { data: tools, isLoading, isError, refetch } = useToolsQuery();
-  const createMutation = useCreateTool();
-  const updateMutation = useUpdateTool();
-  const deleteMutation = useDeleteTool();
+  const testToolMutation = useTestToolMutation();
+  const createMutation = useCreateToolMutation();
+  const updateMutation = useUpdateToolMutation();
+  const deleteMutation = useDeleteToolMutation();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [testingTool, setTestingTool] = useState<ApiTool | null>(null);
   const [testArgsJson, setTestArgsJson] = useState('{}');
-  const [testExecuting, setTestExecuting] = useState(false);
   const [testResult, setTestResult] = useState<ApiToolExecutionResult | null>(null);
   const [editingTool, setEditingTool] = useState<ApiTool | null>(null);
+  const [formData, setFormData] = useState<ToolFormData>(initialToolFormData);
 
   const openTestModal = (tool: ApiTool) => {
     setTestingTool(tool);
-    setTestArgsJson(JSON.stringify(tool.inputSchema?.properties ? Object.fromEntries(Object.keys(tool.inputSchema.properties).map(k => [k, 'sample_value'])) : {}, null, 2));
+    setTestArgsJson(
+      JSON.stringify(
+        tool.inputSchema?.properties
+          ? Object.fromEntries(Object.keys(tool.inputSchema.properties).map((k) => [k, 'sample_value']))
+          : {},
+        null,
+        2
+      )
+    );
     setTestResult(null);
     setTestModalOpen(true);
   };
 
   const handleRunToolTest = async () => {
     if (!testingTool) return;
-    setTestExecuting(true);
     setTestResult(null);
 
     try {
       const parsedArgs = JSON.parse(testArgsJson);
-      const res = await apiTestTool(testingTool.id, parsedArgs);
+      const res = await testToolMutation.mutateAsync({ toolId: testingTool.id, args: parsedArgs });
       setTestResult(res);
       if (res.statusCode === 200) {
         toast.success(`Tool executed successfully (${res.latencyMs}ms)`);
@@ -57,21 +84,11 @@ export default function ToolsPage() {
       }
     } catch (err: unknown) {
       toast.error(`Invalid JSON or request error: ${getErrorMessage(err)}`);
-    } finally {
-      setTestExecuting(false);
     }
   };
 
-  const [formName, setFormName] = useState('');
-  const [formDisplayName, setFormDisplayName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formEnabled, setFormEnabled] = useState(true);
-
   const resetForm = () => {
-    setFormName('');
-    setFormDisplayName('');
-    setFormDescription('');
-    setFormEnabled(true);
+    setFormData(initialToolFormData);
     setEditingTool(null);
   };
 
@@ -82,144 +99,145 @@ export default function ToolsPage() {
 
   const openEditDrawer = (tool: ApiTool) => {
     setEditingTool(tool);
-    setFormName(tool.name);
-    setFormDisplayName(tool.displayName);
-    setFormDescription(tool.description);
-    setFormEnabled(tool.enabled);
+    setFormData({
+      name: tool.name,
+      displayName: tool.displayName,
+      description: tool.description,
+      enabled: tool.enabled,
+    });
     setDrawerOpen(true);
   };
 
   const handleSubmit = () => {
-    if (!formName.trim()) {
+    if (!formData.name.trim()) {
       toast.error('Tool name is required');
       return;
     }
 
     const payload = {
-      name: formName.trim(),
-      displayName: formDisplayName.trim() || formName.trim(),
-      description: formDescription.trim(),
-      enabled: formEnabled,
+      name: formData.name.trim(),
+      displayName: formData.displayName.trim() || formData.name.trim(),
+      description: formData.description.trim(),
+      enabled: formData.enabled,
     };
 
     if (editingTool) {
       updateMutation.mutate(
-        { id: editingTool.id, data: payload },
+        { id: editingTool.id, toolData: payload },
         {
           onSuccess: () => {
-            toast.success('Tool updated');
+            toast.success('Tool updated successfully');
             setDrawerOpen(false);
             resetForm();
           },
-          onError: () => toast.error('Failed to update tool'),
+          onError: (error) => {
+            toast.error(`Failed to update tool: ${getErrorMessage(error)}`);
+          },
         }
       );
     } else {
       createMutation.mutate(payload, {
         onSuccess: () => {
-          toast.success('Tool created');
+          toast.success('Tool created successfully');
           setDrawerOpen(false);
           resetForm();
         },
-        onError: () => toast.error('Failed to create tool'),
+        onError: (error) => {
+          toast.error(`Failed to create tool: ${getErrorMessage(error)}`);
+        },
       });
     }
   };
 
-  const handleDelete = (tool: ApiTool) => {
-    deleteMutation.mutate(tool.id, {
-      onSuccess: () => toast.success('Tool deleted'),
-      onError: () => toast.error('Failed to delete tool'),
-    });
-  };
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
-  const getParamCount = (schema: Record<string, any>): number => {
-    if (!schema || typeof schema !== 'object') return 0;
-    return Object.keys(schema.properties || schema).length;
-  };
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <PageHeader title="Tool Gateway & Function Registry" description="Register and manage dynamic function call schemas for AI agent execution." />
+        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Loading tools...</CardContent></Card>
+      </AppLayout>
+    );
+  }
+
+  if (isError) {
+    return (
+      <AppLayout>
+        <PageHeader title="Tool Gateway & Function Registry" description="Register and manage dynamic function call schemas for AI agent execution." />
+        <Card><CardContent className="py-8"><ErrorState title="Failed to load tool registry" onRetry={() => refetch()} /></CardContent></Card>
+      </AppLayout>
+    );
+  }
+
+  const toolList = Array.isArray(tools) ? tools : [];
 
   return (
     <AppLayout>
       <PageHeader
-        title="Tool Gateway & Security Boundaries"
-        description="Register executable tools, API functions, and security sandboxes for LLM function calling."
+        title="Tool Gateway & Function Registry"
+        description="Register and manage dynamic function call schemas for AI agent execution."
         extra={
-          <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={openCreateDrawer}>
-            <Plus className="h-4 w-4" /> Register Tool
+          <Button variant="prismViolet" onClick={openCreateDrawer} className="gap-2">
+            <Plus className="h-4 w-4" />
+            <span>Register Tool</span>
           </Button>
         }
       />
 
-      {isError ? (
-        <ErrorState onRetry={refetch} />
-      ) : !isLoading && tools?.length === 0 ? (
+      {toolList.length === 0 ? (
         <EmptyState
-          title="No tools registered"
-          description="Register your first tool to enable LLM function calling through the gateway."
-          icon={<Wrench className="h-6 w-6" />}
+          title="No Tools Registered"
+          description="Register custom tools and function calling schemas for AI agent execution."
           action={
-            <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={openCreateDrawer}>
-              <Plus className="h-4 w-4" /> Register Tool
+            <Button variant="prismViolet" onClick={openCreateDrawer}>
+              Register Tool
             </Button>
           }
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tools?.map((tool) => (
-            <Card key={tool.id} className="relative group">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {toolList.map((tool) => (
+            <Card key={tool.id} className="flex flex-col justify-between">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <Wrench className="h-4 w-4 text-[#8B5CF6] shrink-0" />
-                      <span className="truncate">{tool.displayName || tool.name}</span>
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground font-mono">{tool.name}</p>
+                  <div className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-[#8B5CF6]" />
+                    <span className="font-semibold text-sm">{tool.displayName || tool.name}</span>
                   </div>
-                  <Badge variant={tool.enabled ? 'success' : 'outline'}>
-                    {tool.enabled ? 'Active' : 'Disabled'}
+                  <Badge variant={tool.enabled ? 'success' : 'secondary'} className="text-[10px]">
+                    {tool.enabled ? 'Enabled' : 'Disabled'}
                   </Badge>
                 </div>
+                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{tool.description || 'No description provided'}</p>
               </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
-                  {tool.description || 'No description provided'}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    {getParamCount(tool.inputSchema)} parameter{getParamCount(tool.inputSchema) !== 1 ? 's' : ''}
-                  </span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Test tool execution"
-                      className="h-7 w-7 text-muted-foreground hover:text-[#8B5CF6]"
-                      onClick={() => openTestModal(tool)}
-                    >
-                      <Play className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Edit tool"
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                      onClick={() => openEditDrawer(tool)}
-                    >
+
+              <CardContent className="pt-0 space-y-3">
+                <div className="text-[11px] font-mono bg-muted/40 p-2 rounded border border-border">
+                  <span className="text-muted-foreground">Function:</span> <span className="text-foreground font-semibold">{tool.name}</span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => openTestModal(tool)}>
+                    <Play className="h-3 w-3 text-[#8B5CF6]" />
+                    <span>Test Tool</span>
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={() => openEditDrawer(tool)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <ConfirmDialog
                       title="Delete Tool"
-                      description={`Delete tool "${tool.displayName || tool.name}"? This action cannot be undone.`}
+                      description={`Are you sure you want to delete tool "${tool.displayName || tool.name}"?`}
                       confirmText="Delete"
-                      onConfirm={() => handleDelete(tool)}
+                      variant="destructive"
+                      onConfirm={() => {
+                        deleteMutation.mutate(tool.id, {
+                          onSuccess: () => toast.success('Tool deleted successfully'),
+                          onError: (err) => toast.error(`Delete failed: ${getErrorMessage(err)}`),
+                        });
+                      }}
                       trigger={
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Delete tool"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        >
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       }
@@ -232,136 +250,96 @@ export default function ToolsPage() {
         </div>
       )}
 
+      {/* Create / Edit Drawer */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent>
+        <SheetContent className="sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>{editingTool ? 'Edit Tool' : 'Register Tool'}</SheetTitle>
-            <SheetDescription>
-              {editingTool
-                ? 'Update the tool configuration and settings.'
-                : 'Register a new tool for LLM function calling through the gateway.'}
-            </SheetDescription>
+            <SheetTitle>{editingTool ? 'Edit Registered Tool' : 'Register New Tool'}</SheetTitle>
+            <SheetDescription>Configure function call schema for agent tool execution.</SheetDescription>
           </SheetHeader>
-
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="tool-name">Name *</Label>
+              <Label htmlFor="tool-name">Function Name (snake_case)</Label>
               <Input
                 id="tool-name"
-                placeholder="e.g. get_weather"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                disabled={!!editingTool}
+                value={formData.name}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., search_web"
               />
-              <p className="text-xs text-muted-foreground">
-                Unique identifier for the tool (letters, numbers, underscores)
-              </p>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="tool-display-name">Display Name</Label>
+              <Label htmlFor="tool-display">Display Name</Label>
               <Input
-                id="tool-display-name"
-                placeholder="e.g. Get Weather"
-                value={formDisplayName}
-                onChange={(e) => setFormDisplayName(e.target.value)}
+                id="tool-display"
+                value={formData.displayName}
+                onChange={(e) => setFormData((prev) => ({ ...prev, displayName: e.target.value }))}
+                placeholder="e.g., Web Search Engine"
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="tool-description">Description</Label>
+              <Label htmlFor="tool-desc">Description</Label>
               <Input
-                id="tool-description"
-                placeholder="Brief description of what this tool does"
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
+                id="tool-desc"
+                value={formData.description}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe tool purpose for AI model..."
               />
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="tool-enabled">Enabled</Label>
-                <p className="text-xs text-muted-foreground">
-                  {formEnabled ? 'Tool is active and available' : 'Tool is disabled'}
-                </p>
-              </div>
+            <div className="flex items-center justify-between p-3 rounded border border-border bg-card">
+              <Label htmlFor="tool-enabled" className="text-xs font-semibold cursor-pointer">Tool Enabled</Label>
               <Switch
                 id="tool-enabled"
-                checked={formEnabled}
-                onCheckedChange={setFormEnabled}
+                checked={formData.enabled}
+                onCheckedChange={(val) => setFormData((prev) => ({ ...prev, enabled: val }))}
               />
             </div>
           </div>
-
           <SheetFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDrawerOpen(false);
-                resetForm();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="prismViolet"
-              onClick={handleSubmit}
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
-              {createMutation.isPending || updateMutation.isPending
-                ? 'Saving...'
-                : editingTool
-                  ? 'Update Tool'
-                  : 'Create Tool'}
+            <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
+            <Button variant="prismViolet" onClick={handleSubmit} disabled={isSubmitting || !formData.name.trim()}>
+              {isSubmitting ? 'Saving...' : editingTool ? 'Save Changes' : 'Register Tool'}
             </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
 
+      {/* Test Execution Modal Sheet */}
       <Sheet open={testModalOpen} onOpenChange={setTestModalOpen}>
         <SheetContent className="sm:max-w-lg">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Terminal className="h-4 w-4 text-[#8B5CF6]" />
-              <span>Test Tool Execution</span>
+              <span>Test Tool Execution: {testingTool?.displayName || testingTool?.name}</span>
             </SheetTitle>
-            <SheetDescription>
-              Execute function {testingTool?.name} through the Prism Tool Sandbox.
-            </SheetDescription>
+            <SheetDescription>Provide JSON argument payload and evaluate execution output.</SheetDescription>
           </SheetHeader>
-
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="test-args">Input Parameters (JSON)</Label>
+              <Label className="text-xs font-semibold">Input Arguments (JSON)</Label>
               <textarea
-                id="test-args"
-                className="w-full h-32 rounded-md border border-border bg-background p-2 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-32 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 value={testArgsJson}
                 onChange={(e) => setTestArgsJson(e.target.value)}
+                placeholder="{}"
               />
             </div>
 
-            <Button
-              variant="prismViolet"
-              className="w-full gap-2"
-              onClick={handleRunToolTest}
-              disabled={testExecuting}
-            >
+            <Button variant="prismViolet" className="w-full gap-2" onClick={handleRunToolTest} disabled={testToolMutation.isPending}>
               <Play className="h-4 w-4" />
-              {testExecuting ? 'Executing Function...' : 'Execute Tool Payload'}
+              <span>{testToolMutation.isPending ? 'Executing Tool...' : 'Execute Tool Test'}</span>
             </Button>
 
             {testResult && (
-              <div className="space-y-2 border-t border-border pt-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold">Execution Output</span>
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">Execution Output</Label>
                   <Badge variant={testResult.statusCode === 200 ? 'success' : 'destructive'} className="font-mono text-[10px]">
-                    {testResult.latencyMs}ms
+                    Status {testResult.statusCode} ({testResult.latencyMs}ms)
                   </Badge>
                 </div>
-                <pre className="p-3 rounded-md border border-border bg-muted/40 font-mono text-xs overflow-x-auto max-h-48 whitespace-pre-wrap">
-                  {JSON.stringify(testResult.result, null, 2)}
-                </pre>
+                <div className="p-3 rounded-md border border-border bg-muted/40 font-mono text-xs overflow-y-auto max-h-48 whitespace-pre-wrap">
+                  {typeof testResult.result === 'object' ? JSON.stringify(testResult.result, null, 2) : String(testResult.result)}
+                </div>
               </div>
             )}
           </div>

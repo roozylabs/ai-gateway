@@ -11,8 +11,9 @@ import { Badge } from '@/components/atoms/Badge';
 import { Play, Cpu, Send, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaygroundStore } from '@/stores/usePlaygroundStore';
-import { apiSimulateRouting } from '@/lib/api';
+import { useSimulateRoutingMutation } from '@/hooks/mutations/usePlaygroundMutations';
 import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
+import { getErrorMessage } from '@/types/ui';
 
 export default function PlaygroundPage() {
   const {
@@ -30,6 +31,7 @@ export default function PlaygroundPage() {
 
   const { data: modelsData } = useModelsListQuery();
   const models = modelsData?.data ?? [];
+  const simulateMutation = useSimulateRoutingMutation();
 
   const handleExecute = async () => {
     try {
@@ -37,7 +39,7 @@ export default function PlaygroundPage() {
       setResponse(null);
       setDecisionDetails(null);
 
-      const decision = await apiSimulateRouting({ prompt });
+      const decision = await simulateMutation.mutateAsync({ prompt });
       const candidateList = decision.candidates || [];
       setDecisionDetails({
         selectedModel: decision.selectedModel,
@@ -124,7 +126,7 @@ export default function PlaygroundPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="prism-auto">prism-auto (Smart Routing)</SelectItem>
-                    {models.map((m) => (
+                    {models.map((m: { id: string; slug: string; displayName: string }) => (
                       <SelectItem key={m.id} value={m.slug}>
                         {m.displayName}
                       </SelectItem>

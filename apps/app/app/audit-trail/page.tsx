@@ -10,7 +10,9 @@ import { Badge } from '@/components/atoms/Badge';
 import { DataTable, Column } from '@/components/organisms/DataTable';
 import { useAuditLogsQuery } from '@/hooks/queries/useAuditLogsQuery';
 import { useAuditTrailsQuery, useVerifyAuditIntegrity } from '@/hooks/queries/useAuditTrailsQuery';
-import { ApiAuditLogItem, ApiAIAuditTrail, apiExportAuditLogs } from '@/lib/api';
+import { ApiAuditLogItem, ApiAIAuditTrail } from '@/lib/api';
+import { useExportAuditLogsMutation } from '@/hooks/mutations/useAuditLogMutations';
+import { getErrorMessage } from '@/types/ui';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import {
   DropdownMenu,
@@ -25,6 +27,7 @@ export default function AuditTrailPage() {
   const { data: logsData, isLoading: logsLoading, isError: logsError, refetch: refetchLogs } = useAuditLogsQuery();
   const { data: trailsData, isLoading: trailsLoading, isError: trailsError, refetch: refetchTrails } = useAuditTrailsQuery();
   const verifyMutation = useVerifyAuditIntegrity();
+  const exportMutation = useExportAuditLogsMutation();
 
   const auditLogsList: ApiAuditLogItem[] = logsData?.data ?? [];
   const aiAuditTrailsList: ApiAIAuditTrail[] = trailsData?.data ?? [];
@@ -44,7 +47,7 @@ export default function AuditTrailPage() {
 
   const handleExportCsv = async () => {
     try {
-      const blob = await apiExportAuditLogs({ format: 'csv' });
+      const blob = await exportMutation.mutateAsync({ format: 'csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -52,14 +55,14 @@ export default function AuditTrailPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Exported audit logs as CSV');
-    } catch {
-      toast.error('Failed to export audit logs');
+    } catch (err: unknown) {
+      toast.error(`Failed to export audit logs: ${getErrorMessage(err)}`);
     }
   };
 
   const handleExportJson = async () => {
     try {
-      const blob = await apiExportAuditLogs({ format: 'json' });
+      const blob = await exportMutation.mutateAsync({ format: 'json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -67,8 +70,8 @@ export default function AuditTrailPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Exported audit logs as JSON');
-    } catch {
-      toast.error('Failed to export audit logs');
+    } catch (err: unknown) {
+      toast.error(`Failed to export audit logs: ${getErrorMessage(err)}`);
     }
   };
 
