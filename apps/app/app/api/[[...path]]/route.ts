@@ -32,7 +32,7 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
     try {
       body = await request.arrayBuffer();
-    } catch {
+    } catch (_bodyErr) {
       body = undefined;
     }
   }

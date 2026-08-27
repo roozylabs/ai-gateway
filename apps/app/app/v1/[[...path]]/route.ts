@@ -23,7 +23,7 @@ async function proxyV1Handler(request: NextRequest, { params }: { params: Promis
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
     try {
       body = await request.arrayBuffer();
-    } catch {
+    } catch (_bodyErr) {
       body = undefined;
     }
   }

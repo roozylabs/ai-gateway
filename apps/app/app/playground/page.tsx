@@ -89,7 +89,9 @@ export default function PlaygroundPage() {
                 fullResponse += tokenStr;
                 setResponse(fullResponse);
               }
-            } catch {}
+            } catch (_parseError) {
+              // Ignore partial SSE JSON chunks
+            }
           }
         }
       }

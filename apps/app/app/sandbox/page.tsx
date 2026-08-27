@@ -213,7 +213,7 @@ export default function SandboxPage() {
                   output: parsed.usage.completion_tokens || 0,
                 });
               }
-            } catch {
+            } catch (_parseError) {
               // Ignore partial SSE JSON chunks
             }
           }
