@@ -174,9 +174,10 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 
 		if res.Denied {
 			code := "FORBIDDEN"
-			if res.HTTPStatus == http.StatusBadRequest {
+			switch res.HTTPStatus {
+			case http.StatusBadRequest:
 				code = "BAD_REQUEST"
-			} else if res.HTTPStatus == http.StatusTooManyRequests {
+			case http.StatusTooManyRequests:
 				code = "TOO_MANY_REQUESTS"
 			}
 			utils.RespondWithError(c, res.HTTPStatus, res.ErrorCode, res.ErrorMessage, code, res.PolicyID, res.PolicyName)
