@@ -19,22 +19,6 @@ import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery';
 import { useGatewayKeysQuery } from '@/hooks/queries/useGatewayKeysQuery';
 import { usePoliciesQuery } from '@/hooks/queries/usePoliciesQuery';
 import { ApiModel } from '@/lib/api';
-import {
-  Play,
-  Terminal,
-  RefreshCw,
-  Code2,
-  Copy,
-  Check,
-  Layers,
-  HelpCircle,
-  Sparkles,
-  Cpu,
-  Zap,
-  Clock,
-  CheckCircle2,
-  Loader2,
-} from 'lucide-[#8B5CF6]' ? LucideIcons : 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/types/ui';
 import { useSandboxExecutionMutation } from '@/hooks/mutations/useSandboxMutation';
