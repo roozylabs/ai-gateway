@@ -94,6 +94,7 @@ func (a *AdmissionController) Evaluate(ctx context.Context, req AdmissionRequest
 			ModelSlug:    req.ModelSlug,
 			ToolName:     req.ToolName,
 			ResourceName: req.ResourceName,
+			UserPrompt:   req.PromptPayload,
 		}
 		rbacRes, err := a.rbacEngine.Evaluate(ctx, req.UserID, evalReq)
 		if err != nil {

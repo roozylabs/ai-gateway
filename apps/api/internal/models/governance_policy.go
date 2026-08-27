@@ -27,6 +27,7 @@ type RBACEvaluationRequest struct {
 	ModelSlug    string `json:"modelSlug"`
 	ToolName     string `json:"toolName"`
 	ResourceName string `json:"resourceName"`
+	UserPrompt   string `json:"userPrompt"`
 }
 
 type RBACEvaluationResult struct {

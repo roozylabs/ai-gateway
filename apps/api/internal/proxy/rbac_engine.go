@@ -76,14 +76,26 @@ func (e *RBACEngine) Evaluate(ctx context.Context, userID string, req models.RBA
 			continue
 		}
 
-		// Match Tool Pattern (if policy targets specific tool, request tool must match)
-		if p.ToolPattern != "" && p.ToolPattern != "*" && !matchPattern(p.ToolPattern, req.ToolName) {
-			continue
+		// Match Tool Pattern (if policy targets specific tool, request tool or prompt payload must match)
+		if p.ToolPattern != "" && p.ToolPattern != "*" {
+			matched := matchPattern(p.ToolPattern, req.ToolName)
+			if !matched && req.UserPrompt != "" {
+				matched = matchPattern(p.ToolPattern, req.UserPrompt)
+			}
+			if !matched {
+				continue
+			}
 		}
 
-		// Match Resource Pattern (if policy targets specific resource, request resource must match)
-		if p.ResourcePattern != "" && p.ResourcePattern != "*" && !matchPattern(p.ResourcePattern, req.ResourceName) {
-			continue
+		// Match Resource Pattern (if policy targets specific resource, request resource or prompt payload must match)
+		if p.ResourcePattern != "" && p.ResourcePattern != "*" {
+			matched := matchPattern(p.ResourcePattern, req.ResourceName)
+			if !matched && req.UserPrompt != "" {
+				matched = matchPattern(p.ResourcePattern, req.UserPrompt)
+			}
+			if !matched {
+				continue
+			}
 		}
 
 		// If policy matches:

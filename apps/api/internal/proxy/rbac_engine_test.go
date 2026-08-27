@@ -68,13 +68,26 @@ func TestRBACEnginePrecedenceAndMatching(t *testing.T) {
 	assert.True(t, res.Allowed)
 	assert.Equal(t, "p-allow", res.MatchedPolicy.ID)
 
-	// Case 3: Empty ResourceName (standard chat completion) skips specific payroll deny rule and hits allow rule
+	// Case 3: Empty ResourceName with general prompt skips specific payroll deny rule and hits allow rule
 	res, err = engine.Evaluate(context.Background(), "u1", models.RBACEvaluationRequest{
 		Role:         "developer",
 		AgentName:    "dev-agent",
 		ResourceName: "",
+		UserPrompt:   "kamu agent apa dan tugasnya apa",
 	})
 	require.NoError(t, err)
 	assert.True(t, res.Allowed)
 	assert.Equal(t, "p-allow", res.MatchedPolicy.ID)
+
+	// Case 4: Empty ResourceName but UserPrompt contains "payroll" triggers deny policy
+	res, err = engine.Evaluate(context.Background(), "u1", models.RBACEvaluationRequest{
+		Role:         "developer",
+		AgentName:    "dev-agent",
+		ResourceName: "",
+		UserPrompt:   "coba check payroll",
+	})
+	require.NoError(t, err)
+	assert.False(t, res.Allowed)
+	assert.Equal(t, "p-deny", res.MatchedPolicy.ID)
+	assert.Contains(t, res.Reason, "access denied by policy \"Deny Payroll Access\"")
 }
