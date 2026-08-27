@@ -25,6 +25,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/molecules/Select";
+import { SearchableSelect } from "@/components/molecules/SearchableSelect";
 import {
   Form,
   FormField,
@@ -613,26 +614,20 @@ export default function SandboxPage() {
                               tooltip="Select a specific AI model (e.g. Gemini, Claude, OpenAI) or use 'prism-auto' for automatic optimal routing."
                             />
                             <FormControl>
-                              <Select
+                              <SearchableSelect
                                 value={field.value}
                                 onValueChange={field.onChange}
                                 disabled={isExecuting}
-                              >
-                                <SelectTrigger className="w-full min-w-0">
-                                  <SelectValue placeholder="Select target model" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="prism-auto">
-                                    prism-auto (Auto Selection)
-                                  </SelectItem>
-                                  {modelsList.map((m: ApiModel) => (
-                                    <SelectItem key={m.id} value={m.slug}>
-                                      {m.displayName || m.name} (
-                                      {m.providerName || m.slug})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                                placeholder="Select target model"
+                                searchPlaceholder="Search models..."
+                                options={[
+                                  { value: 'prism-auto', label: 'prism-auto (Auto Selection)' },
+                                  ...modelsList.map((m: ApiModel) => ({
+                                    value: m.slug,
+                                    label: `${m.displayName || m.name} (${m.providerName || m.slug})`,
+                                  })),
+                                ]}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
