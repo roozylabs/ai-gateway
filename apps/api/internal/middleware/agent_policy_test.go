@@ -23,6 +23,13 @@ func (m *mockAgentFinder) FindByID(ctx context.Context, id, userID string) (*mod
 	return m.agent, nil
 }
 
+func (m *mockAgentFinder) FindByUserAndName(ctx context.Context, userID, name string) (*models.Agent, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.agent, nil
+}
+
 func TestAgentPolicyMiddleware_NoHeaderPasses(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

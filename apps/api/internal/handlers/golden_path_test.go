@@ -50,7 +50,7 @@ func TestGoldenPathTenantSecurity_CrossOrgHeaderRejected(t *testing.T) {
 	rbacEngine := proxy.NewRBACEngine(&mockPolicyFinder{})
 	admissionCtrl := proxy.NewAdmissionController(rbacEngine, nil, nil, nil)
 	orchestrator := service.NewExecutionOrchestrator(nil, admissionCtrl, nil, nil, nil, nil, nil)
-	gatewayHandler := handlers.NewGatewayHandler(nil, nil, nil, nil, nil, nil, nil, rbacEngine, nil, nil, orchestrator)
+	gatewayHandler := handlers.NewGatewayHandler(nil, nil, nil, nil, nil, nil, nil, rbacEngine, nil, nil, nil, orchestrator)
 
 	router := gin.New()
 	rg := router.Group("/v1")
@@ -114,7 +114,7 @@ func TestGoldenPathDeniedByRBAC_ZeroProviderCalls(t *testing.T) {
 	rbacEngine := proxy.NewRBACEngine(policyFinder)
 	admissionCtrl := proxy.NewAdmissionController(rbacEngine, nil, nil, nil)
 	orchestrator := service.NewExecutionOrchestrator(nil, admissionCtrl, nil, nil, nil, nil, nil)
-	gatewayHandler := handlers.NewGatewayHandler(nil, nil, nil, nil, nil, nil, nil, rbacEngine, nil, nil, orchestrator)
+	gatewayHandler := handlers.NewGatewayHandler(nil, nil, nil, nil, nil, nil, nil, rbacEngine, nil, nil, nil, orchestrator)
 
 	router := gin.New()
 	rg := router.Group("/v1")
@@ -169,7 +169,7 @@ func TestSDKAndCLIGovernanceConsistency(t *testing.T) {
 	rbacEngine := proxy.NewRBACEngine(policyFinder)
 	admissionCtrl := proxy.NewAdmissionController(rbacEngine, nil, nil, nil)
 	orchestrator := service.NewExecutionOrchestrator(nil, admissionCtrl, nil, nil, nil, nil, nil)
-	gatewayHandler := handlers.NewGatewayHandler(nil, nil, nil, nil, nil, nil, nil, rbacEngine, nil, nil, orchestrator)
+	gatewayHandler := handlers.NewGatewayHandler(nil, nil, nil, nil, nil, nil, nil, rbacEngine, nil, nil, nil, orchestrator)
 
 	router := gin.New()
 	rg := router.Group("/v1")

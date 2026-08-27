@@ -31,6 +31,7 @@ type GatewayHandler struct {
 	rbacEngine      *proxy.RBACEngine
 	auditRecorder   *proxy.AuditRecorder
 	modelRepo       *repository.ModelRepository
+	agentRepo       *repository.AgentRepository
 	orchestrator    *service.ExecutionOrchestrator
 }
 
@@ -45,6 +46,7 @@ func NewGatewayHandler(
 	rbacEngine *proxy.RBACEngine,
 	auditRecorder *proxy.AuditRecorder,
 	modelRepo *repository.ModelRepository,
+	agentRepo *repository.AgentRepository,
 	orchestrator *service.ExecutionOrchestrator,
 ) *GatewayHandler {
 	return &GatewayHandler{
@@ -58,6 +60,7 @@ func NewGatewayHandler(
 		rbacEngine:      rbacEngine,
 		auditRecorder:   auditRecorder,
 		modelRepo:       modelRepo,
+		agentRepo:       agentRepo,
 		orchestrator:    orchestrator,
 	}
 }
@@ -120,34 +123,54 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	userAgent := c.GetHeader("User-Agent")
 	clientApp := parseClientApp(userAgent)
 	agentID := c.GetHeader("X-Prism-Agent-ID")
+	if agentID == "" {
+		agentID = c.GetHeader("X-Agent-Name")
+	}
 	agentName := c.GetHeader("X-Prism-Agent-Name")
+	if agentName == "" {
+		agentName = c.GetHeader("X-Agent-Name")
+	}
 	userRole := c.GetHeader("X-Prism-Role")
 
 	// Behind-the-scenes Agent System Persona & Tool/Resource Rules Injection
+	var agent *models.Agent
 	if agentObj, ok := c.Get("agentObject"); ok {
 		if ag, isAgent := agentObj.(*models.Agent); isAgent && ag != nil {
-			hasSystem := false
-			for _, m := range req.Messages {
-				if role, rOk := m["role"].(string); rOk && role == "system" {
-					hasSystem = true
-					break
-				}
+			agent = ag
+		}
+	}
+	if agent == nil && agentID != "" && h.agentRepo != nil {
+		if _, uuidErr := uuid.Parse(agentID); uuidErr == nil {
+			agent, _ = h.agentRepo.FindByID(c.Request.Context(), agentID, "")
+		}
+		if agent == nil {
+			agent, _ = h.agentRepo.FindByUserAndName(c.Request.Context(), "", agentID)
+		}
+	}
+
+	if agent != nil {
+		c.Set("agentObject", agent)
+		hasSystem := false
+		for _, m := range req.Messages {
+			if role, rOk := m["role"].(string); rOk && role == "system" {
+				hasSystem = true
+				break
 			}
-			if !hasSystem {
-				systemContent := ag.SystemPromptOverride
-				if systemContent == "" {
-					systemContent = fmt.Sprintf("You are %s. %s. Operate strictly within your agent context boundary rules and execute tools safely.", ag.DisplayName, ag.Description)
-				}
-				if len(ag.AllowedTools) > 0 {
-					systemContent += fmt.Sprintf(" Allowed tools: %s.", strings.Join(ag.AllowedTools, ", "))
-				}
-				if len(ag.AllowedResources) > 0 {
-					systemContent += fmt.Sprintf(" Allowed resources: %s.", strings.Join(ag.AllowedResources, ", "))
-				}
-				req.Messages = append([]map[string]interface{}{
-					{"role": "system", "content": systemContent},
-				}, req.Messages...)
+		}
+		if !hasSystem {
+			systemContent := agent.SystemPromptOverride
+			if systemContent == "" {
+				systemContent = fmt.Sprintf("You are %s. %s. Operate strictly within your agent context boundary rules and execute tools safely.", agent.DisplayName, agent.Description)
 			}
+			if len(agent.AllowedTools) > 0 {
+				systemContent += fmt.Sprintf(" Allowed tools: %s.", strings.Join(agent.AllowedTools, ", "))
+			}
+			if len(agent.AllowedResources) > 0 {
+				systemContent += fmt.Sprintf(" Allowed resources: %s.", strings.Join(agent.AllowedResources, ", "))
+			}
+			req.Messages = append([]map[string]interface{}{
+				{"role": "system", "content": systemContent},
+			}, req.Messages...)
 		}
 	}
 

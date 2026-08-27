@@ -133,7 +133,7 @@ func main() {
 	gatewayKeyHandler := handlers.NewGatewayKeyHandler(gatewayKeyRepo, credentialRepo)
 	admissionCtrl := proxy.NewAdmissionController(rbacEngine, agentGovernance, quotaRepo, budgetMgr)
 	orchestrator := service.NewExecutionOrchestrator(engine, admissionCtrl, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, auditRecorder)
-	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, idemStore, agentGovernance, rbacEngine, auditRecorder, modelRepo, orchestrator)
+	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, idemStore, agentGovernance, rbacEngine, auditRecorder, modelRepo, agentRepo, orchestrator)
 	paperclipHandler := handlers.NewPaperclipHandler(paperclipAdapter, gatewayHandler)
 	logsHandler := handlers.NewLogsHandler(requestLogRepo)
 	dashboardHandler := handlers.NewDashboardHandler(requestLogRepo, healthStore)
