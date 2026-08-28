@@ -191,6 +191,14 @@ jobs:
 
             echo "=== Blue-Green Deploying API to $TARGET_SVC ($TARGET_CONTAINER) on port $TARGET_PORT ==="
             docker compose pull $TARGET_SVC || true
+
+            # Run schema migration once as a one-shot job before starting the green container.
+            # This prevents runtime API containers from racing DDL locks at startup.
+            if [ -f "docker-compose.yml" ] && grep -q "migrator:" docker-compose.yml; then
+              echo "Running one-shot database migration (migrator)..."
+              docker compose run --rm migrator || exit 1
+            fi
+
             docker compose up -d --no-deps $TARGET_SVC
 
             echo "Waiting for $TARGET_CONTAINER health check..."

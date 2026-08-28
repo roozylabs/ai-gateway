@@ -18,6 +18,7 @@ type Config struct {
 	MaxRetries      int
 	CooldownSeconds int
 	RateLimitPerKey int
+	RunMigrations   bool
 }
 
 func Load() (*Config, error) {
@@ -34,6 +35,7 @@ func Load() (*Config, error) {
 		MaxRetries:      getEnvInt("MAX_RETRIES", 2),
 		CooldownSeconds: getEnvInt("COOLDOWN_SECONDS", 60),
 		RateLimitPerKey: getEnvInt("RATE_LIMIT_PER_KEY", 100),
+		RunMigrations:   getEnvBool("RUN_MIGRATIONS", true),
 	}, nil
 }
 
@@ -48,6 +50,15 @@ func getEnvInt(key string, fallback int) int {
 	if v := os.Getenv(key); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			return n
+		}
+	}
+	return fallback
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	if v := os.Getenv(key); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			return b
 		}
 	}
 	return fallback

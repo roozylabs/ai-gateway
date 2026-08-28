@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -33,14 +34,28 @@ import (
 // @BasePath        /api/v1
 
 func main() {
+	migrateOnly := flag.Bool("migrate-only", false, "Run database migrations and exit without starting the HTTP server")
+	flag.Parse()
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal("Failed to load config:", err)
 	}
 
-	// Run migrations
-	if err := database.RunMigrations(cfg.DatabaseURL, "./migrations"); err != nil {
-		log.Printf("[Migration Warning] Database migration step returned warning: %v", err)
+	// Run migrations. When --migrate-only is given (one-shot migrator job),
+	// apply migrations and exit without binding the HTTP server so that
+	// runtime API containers start fast and never race DDL locks.
+	if cfg.RunMigrations || *migrateOnly {
+		if err := database.RunMigrations(cfg.DatabaseURL, "./migrations"); err != nil {
+			if *migrateOnly {
+				log.Fatalf("Migration failed in migrate-only mode: %v", err)
+			}
+			log.Printf("[Migration Warning] Database migration step returned warning: %v", err)
+		}
+	}
+	if *migrateOnly {
+		log.Println("Migrations complete. Exiting (migrate-only mode).")
+		return
 	}
 
 	// Connect to PostgreSQL
