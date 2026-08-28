@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **SSE** transport for servers such as Firecrawl.
   - Optional `Authorization: Bearer <token>` header derived from the stored encrypted auth token.
 - **MCP Integration Tests**: Replaced the plain JSON-RPC mock tests with real in-process MCP servers (Streamable HTTP and SSE) verifying the full sync/execute flow.
+- **Agent Tool / Resource / MCP Binding**: Agent create & edit forms can now bind `allowedTools`, `allowedResources`, and (new) `allowedMcpServers` via a reusable `MultiSelect`. Backend stores `allowed_mcp_servers` (new migration `071`), injects the bound servers into the generated system prompt, and the agent catalog cards show binding counts. Tools & resources were already stored by the backend but are now exposed in the UI.
 
 ## [2.8.0] - 2026-08-28
 
