@@ -10,11 +10,18 @@ import (
 )
 
 const (
-	RequestIDHeader  = "X-Request-ID"
-	RequestIDKey     = "requestID"
-	ExecutionIDKey   = "executionID"
-	CtxRequestIDKey  = "request_id"
-	CtxExecutionIDKey = "execution_id"
+	RequestIDHeader = "X-Request-ID"
+	RequestIDKey    = "requestID"
+	ExecutionIDKey  = "executionID"
+)
+
+// ctxKey is a private type used as the context key to avoid the staticcheck
+// SA1029 collision warning for built-in types as context keys.
+type ctxKey string
+
+const (
+	ctxRequestIDKey   ctxKey = "request_id"
+	ctxExecutionIDKey ctxKey = "execution_id"
 )
 
 var validIDRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
@@ -44,8 +51,8 @@ func CorrelationMiddleware() gin.HandlerFunc {
 
 		// Set stdlib Context values for downstream propagation
 		ctx := c.Request.Context()
-		ctx = context.WithValue(ctx, CtxRequestIDKey, requestID)
-		ctx = context.WithValue(ctx, CtxExecutionIDKey, executionID)
+		ctx = context.WithValue(ctx, ctxRequestIDKey, requestID)
+		ctx = context.WithValue(ctx, ctxExecutionIDKey, executionID)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
