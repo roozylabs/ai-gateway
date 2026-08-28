@@ -12,7 +12,7 @@ import { useResourcesQuery } from '@/hooks/queries/useResourcesQuery';
 import { useMCPServersQuery } from '@/hooks/queries/useMCPServersQuery';
 import { ApiAgent } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Bot, Plus, Settings, Trash2 } from 'lucide-react';
+import { Bot, Plus, Settings, Trash2, Pencil, Link as LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
 import { Input } from '@/components/atoms/Input';
@@ -26,6 +26,16 @@ const AGENT_TYPES = ['general', 'code', 'research', 'ops', 'custom'];
 
 function formatBudgetCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}/mo`;
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 interface AgentFormProps {
@@ -48,6 +58,8 @@ interface AgentFormProps {
   onAllowedToolsChange: (v: string[]) => void;
   onAllowedResourcesChange: (v: string[]) => void;
   onAllowedMcpServersChange: (v: string[]) => void;
+  nameLocked: boolean;
+  onToggleNameLock: (locked: boolean) => void;
 }
 
 function AgentFormFields({
@@ -56,16 +68,37 @@ function AgentFormFields({
   toolOptions, resourceOptions, mcpServerOptions,
   onNameChange, onDisplayNameChange, onDescriptionChange, onAgentTypeChange, onMaxBudgetCentsChange,
   onAllowedToolsChange, onAllowedResourcesChange, onAllowedMcpServersChange,
+  nameLocked, onToggleNameLock,
 }: AgentFormProps) {
   return (
     <div className="space-y-4 py-4">
       <div className="space-y-2">
-        <Label htmlFor="agent-name">Agent Name *</Label>
-        <Input id="agent-name" value={name} onChange={(e) => onNameChange(e.target.value)} placeholder="e.g., code-reviewer" />
-      </div>
-      <div className="space-y-2">
         <Label htmlFor="agent-display-name">Display Name</Label>
         <Input id="agent-display-name" value={displayName} onChange={(e) => onDisplayNameChange(e.target.value)} placeholder="e.g., Code Reviewer" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="agent-name">Agent Name *</Label>
+        <div className="relative">
+          <Input
+            id="agent-name"
+            value={name}
+            readOnly={nameLocked}
+            onChange={(e) => onNameChange(e.target.value)}
+            placeholder="auto-from-display-name"
+            className={nameLocked ? 'pr-10 bg-muted/50 text-muted-foreground' : 'pr-10'}
+          />
+          <button
+            type="button"
+            aria-label={nameLocked ? 'Edit agent name' : 'Auto-generate from display name'}
+            onClick={() => onToggleNameLock(!nameLocked)}
+            className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {nameLocked ? <Pencil className="h-3.5 w-3.5" /> : <LinkIcon className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+        {nameLocked && (
+          <p className="text-[10px] text-muted-foreground">Auto-generated from Display Name. Click the pencil to edit.</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="agent-description">Description</Label>
@@ -148,6 +181,7 @@ export default function AgentsPage() {
   const [editingAgent, setEditingAgent] = useState<ApiAgent | null>(null);
 
   const [formName, setFormName] = useState('');
+  const [formNameLocked, setFormNameLocked] = useState(true);
   const [formDisplayName, setFormDisplayName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formAgentType, setFormAgentType] = useState('general');
@@ -158,6 +192,7 @@ export default function AgentsPage() {
 
   const resetForm = () => {
     setFormName('');
+    setFormNameLocked(true);
     setFormDisplayName('');
     setFormDescription('');
     setFormAgentType('general');
@@ -173,9 +208,20 @@ export default function AgentsPage() {
     setModalOpen(true);
   };
 
+  const handleDisplayNameChange = (v: string) => {
+    setFormDisplayName(v);
+    if (formNameLocked) setFormName(slugify(v));
+  };
+
+  const handleToggleNameLock = (locked: boolean) => {
+    setFormNameLocked(locked);
+    if (locked) setFormName(slugify(formDisplayName));
+  };
+
   const openEditDrawer = (agent: ApiAgent) => {
     setEditingAgent(agent);
     setFormName(agent.name);
+    setFormNameLocked(agent.name === slugify(agent.displayName));
     setFormDisplayName(agent.displayName);
     setFormDescription(agent.description);
     setFormAgentType(agent.agentType);
@@ -346,13 +392,15 @@ export default function AgentsPage() {
             resourceOptions={resourceOptions}
             mcpServerOptions={mcpServerOptions}
             onNameChange={setFormName}
-            onDisplayNameChange={setFormDisplayName}
+            onDisplayNameChange={handleDisplayNameChange}
             onDescriptionChange={setFormDescription}
             onAgentTypeChange={setFormAgentType}
             onMaxBudgetCentsChange={setFormMaxBudgetCents}
             onAllowedToolsChange={setFormAllowedTools}
             onAllowedResourcesChange={setFormAllowedResources}
             onAllowedMcpServersChange={setFormAllowedMcpServers}
+            nameLocked={formNameLocked}
+            onToggleNameLock={handleToggleNameLock}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => { setModalOpen(false); resetForm(); }}>Cancel</Button>
