@@ -1,6 +1,10 @@
 package utils
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestMaskAPIKey(t *testing.T) {
 	tests := []struct {
@@ -11,8 +15,8 @@ func TestMaskAPIKey(t *testing.T) {
 		{"long key", "sk-ant-abc123xyz456", "sk-ant-a••••z456"},
 		{"very long key", "sk-proj-xyz789abc012def345", "sk-proj-••••f345"},
 		{"short key", "sk-12345678", "sk-1••••5678"},
-		{"very short key", "abcdef", "abcd••••cdef"},
-		{"exactly 12 chars", "abcdefghijkl", "abcd••••ijkl"},
+		{"very short key", "abcdef", "••••"},
+		{"exactly 12 chars", "abcdefghijkl", "abcd••••"},
 	}
 
 	for _, tt := range tests {
@@ -23,4 +27,13 @@ func TestMaskAPIKey(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRedactSensitive(t *testing.T) {
+	errMessage := "Failed request with Bearer gw_sk_1234567890abcdef12345678 and key sk-proj-abcdef1234567890"
+	redacted := RedactSensitive(errMessage)
+
+	assert.NotContains(t, redacted, "gw_sk_1234567890abcdef12345678")
+	assert.NotContains(t, redacted, "sk-proj-abcdef1234567890")
+	assert.Contains(t, redacted, "Bearer [REDACTED_TOKEN]")
 }

@@ -1,13 +1,21 @@
 package utils
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
+
+var (
+	bearerTokenRegex = regexp.MustCompile(`(?i)Bearer\s+([a-zA-Z0-9_\-\.]{8,})`)
+	apiKeyRegex      = regexp.MustCompile(`(?i)(gw_sk_[a-zA-Z0-9]{16,}|sk-proj-[a-zA-Z0-9_\-]{16,}|sk-ant-[a-zA-Z0-9_\-]{16,}|AIzaSy[a-zA-Z0-9_\-]{16,})`)
+)
 
 func MaskAPIKey(key string) string {
 	if len(key) <= 8 {
-		return key[:4] + "••••" + key[len(key)-4:]
+		return "••••"
 	}
 	if len(key) <= 12 {
-		return key[:4] + "••••" + key[len(key)-4:]
+		return key[:4] + "••••"
 	}
 	return key[:8] + "••••" + key[len(key)-4:]
 }
@@ -23,4 +31,16 @@ func MaskEmailName(name string) string {
 		return user[:1] + "***@" + domain
 	}
 	return user[:2] + "***" + user[len(user)-1:] + "@" + domain
+}
+
+// RedactSensitive removes raw API keys and Bearer tokens from error strings/logs.
+func RedactSensitive(input string) string {
+	if input == "" {
+		return ""
+	}
+	res := bearerTokenRegex.ReplaceAllString(input, "Bearer [REDACTED_TOKEN]")
+	res = apiKeyRegex.ReplaceAllStringFunc(res, func(key string) string {
+		return MaskAPIKey(key)
+	})
+	return res
 }
