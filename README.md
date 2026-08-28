@@ -1,11 +1,11 @@
 # RoozyLabs Prism
 
-[![Go Version](https://img.shields.io/badge/Go-1.25-00ADD8?style=flat&logo=go)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat&logo=go)](https://golang.org)
 [![Next.js 15](https://img.shields.io/badge/Next.js-15.5.23-black?style=flat&logo=next.js)](https://nextjs.org)
 [![Astro](https://img.shields.io/badge/Astro-5.0-BC52EE?style=flat&logo=astro)](https://astro.build)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat&logo=docker)](https://www.docker.com/)
 [![CI/CD Pipeline](https://github.com/roozylabs/prism/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/roozylabs/prism/actions/workflows/ci-cd.yml)
-[![Version](https://img.shields.io/badge/Version-2.6.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-2.7.0-blue.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **RoozyLabs Prism** is a high-performance, infrastructure-grade **Universal AI Control Plane** and intelligent model gateway that unifies multiple AI providers (OpenAI, Anthropic, Google Gemini, OpenRouter, OpenCode Free) and credential pools into a single resilient execution layer.
@@ -66,7 +66,8 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 ## Key Features & Architecture Pillars
 
 - **Organizational AI Control Plane & Pipeline Orchestrator**: Decoupled execution pipeline (`ExecutionOrchestrator` in `internal/service/orchestrator.go`) and pre-execution gate (`AdmissionController` in `internal/proxy/admission.go`) sequencing RBAC, Agent Governance, Tenant Quotas, and Multi-Level Budget Policies BEFORE provider execution. See [Prism Runtime Architecture](docs/prism_runtime_architecture.md).
-- **Authoritative Tenant Security**: `GatewayAPIKey` is authoritative for Organization ownership. Client headers (`X-Prism-Org-ID`) can only narrow scope within authorized organizations; cross-org header spoofing returns HTTP 403 Forbidden (`tenant_security_error`).
+- **Authoritative Tenant Security & Production Hardening**: `GatewayAPIKey` is authoritative for Organization ownership. Web session users are validated against `organization_members`; cross-org header spoofing returns HTTP 403 Forbidden. Scoped database queries prevent IDOR, and PostgreSQL Row-Level Security (RLS migration `070`) enforces multi-tenant database isolation. See [Production Security Hardening Report](docs/production-hardening-security.md).
+- **OpenTelemetry & Operational Observability Pipeline**: Full OTel Go SDK integration (`internal/telemetry`) exporting trace spans to OTLP HTTP collectors (`:4318`) and Prometheus metrics (`/metrics`) with 8 metric instruments tracking request rates, TTFT latency, token usage, cost analytics, and credential health scores.
 - **Prism Auto Smart Router & Adaptive Routing Engine (`prism-auto`)**: Intelligent prompt router executing multi-factor dynamic scoring (`quality`, `cost`, `speed`, `health`), candidate factor breakdown API (`/v1/routing/simulate`), and automatic fallback cascades.
 - **Credential Intelligence & Dynamic Health Scoring**: Dynamic 0–100 health scoring combining success rate, cooldown penalties, and remaining quotas with a 5-state machine (`HEALTHY`, `DEGRADED`, `COOLDOWN`, `EXHAUSTED`, `DISABLED`) and OpenTelemetry metric reporting (`prism_credential_health_score`).
 - **Multi-Tenant Architecture & SaaS Platform**: Full multi-tenant isolation with a 4-level hierarchy (`Organization` ──► `Workspace` ──► `Project` ──► `Agents`), PostgreSQL Row-Level Security (RLS migrations `055`–`061`), HKDF-SHA256 derived tenant encryption vaults, and real-time consumption metering (`MeteringService`).
