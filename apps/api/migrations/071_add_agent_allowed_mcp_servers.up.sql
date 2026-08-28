@@ -1,0 +1,1 @@
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS allowed_mcp_servers TEXT[] NOT NULL DEFAULT '{}';
