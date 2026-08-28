@@ -1147,6 +1147,7 @@ export interface ApiAgent {
   allowedModels: string[];
   allowedTools: string[];
   allowedResources: string[];
+  allowedMcpServers: string[];
   maxBudgetCents: number;
   status: string;
   enabled: boolean;
@@ -1163,6 +1164,7 @@ export interface ApiCreateAgentRequest {
   allowedModels?: string[];
   allowedTools?: string[];
   allowedResources?: string[];
+  allowedMcpServers?: string[];
   maxBudgetCents?: number;
   enabled?: boolean;
 }

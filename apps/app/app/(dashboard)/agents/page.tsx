@@ -7,6 +7,9 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter }
 import { Button } from '@/components/atoms/Button';
 import { Badge, StatusDot } from '@/components/atoms/Badge';
 import { useAgentsQuery, useCreateAgent, useUpdateAgent, useDeleteAgent } from '@/hooks/queries/useAgentsQuery';
+import { useToolsQuery } from '@/hooks/queries/useToolsQuery';
+import { useResourcesQuery } from '@/hooks/queries/useResourcesQuery';
+import { useMCPServersQuery } from '@/hooks/queries/useMCPServersQuery';
 import { ApiAgent } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Bot, Plus, Settings, Trash2 } from 'lucide-react';
@@ -16,6 +19,7 @@ import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
+import { MultiSelect, MultiSelectOption } from '@/components/molecules/MultiSelect';
 
 const AGENT_TYPES = ['general', 'code', 'research', 'ops', 'custom'];
 
@@ -29,16 +33,28 @@ interface AgentFormProps {
   description: string;
   agentType: string;
   maxBudgetCents: number;
+  allowedTools: string[];
+  allowedResources: string[];
+  allowedMcpServers: string[];
+  toolOptions: MultiSelectOption[];
+  resourceOptions: MultiSelectOption[];
+  mcpServerOptions: MultiSelectOption[];
   onNameChange: (v: string) => void;
   onDisplayNameChange: (v: string) => void;
   onDescriptionChange: (v: string) => void;
   onAgentTypeChange: (v: string) => void;
   onMaxBudgetCentsChange: (v: number) => void;
+  onAllowedToolsChange: (v: string[]) => void;
+  onAllowedResourcesChange: (v: string[]) => void;
+  onAllowedMcpServersChange: (v: string[]) => void;
 }
 
 function AgentFormFields({
   name, displayName, description, agentType, maxBudgetCents,
+  allowedTools, allowedResources, allowedMcpServers,
+  toolOptions, resourceOptions, mcpServerOptions,
   onNameChange, onDisplayNameChange, onDescriptionChange, onAgentTypeChange, onMaxBudgetCentsChange,
+  onAllowedToolsChange, onAllowedResourcesChange, onAllowedMcpServersChange,
 }: AgentFormProps) {
   return (
     <div className="space-y-4 py-4">
@@ -69,6 +85,39 @@ function AgentFormFields({
         <Label htmlFor="agent-budget">Max Budget (cents/mo)</Label>
         <Input id="agent-budget" type="number" min={0} value={maxBudgetCents} onChange={(e) => onMaxBudgetCentsChange(Number(e.target.value))} placeholder="0" />
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="agent-tools">Allowed Tools</Label>
+        <MultiSelect
+          value={allowedTools}
+          onValueChange={onAllowedToolsChange}
+          options={toolOptions}
+          placeholder="Select tools..."
+          searchPlaceholder="Search tools..."
+          emptyMessage="No tools available."
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="agent-resources">Allowed Resources</Label>
+        <MultiSelect
+          value={allowedResources}
+          onValueChange={onAllowedResourcesChange}
+          options={resourceOptions}
+          placeholder="Select resources..."
+          searchPlaceholder="Search resources..."
+          emptyMessage="No resources available."
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="agent-mcp">Allowed MCP Servers</Label>
+        <MultiSelect
+          value={allowedMcpServers}
+          onValueChange={onAllowedMcpServersChange}
+          options={mcpServerOptions}
+          placeholder="Select MCP servers..."
+          searchPlaceholder="Search MCP servers..."
+          emptyMessage="No MCP servers available."
+        />
+      </div>
     </div>
   );
 }
@@ -78,6 +127,21 @@ export default function AgentsPage() {
   const createMutation = useCreateAgent();
   const updateMutation = useUpdateAgent();
   const deleteMutation = useDeleteAgent();
+  const toolsData = useToolsQuery();
+  const resourcesData = useResourcesQuery();
+  const mcpServersData = useMCPServersQuery();
+
+  const toolOptions: MultiSelectOption[] = ((toolsData.data && Array.isArray(toolsData.data) ? toolsData.data : []) as Array<{ name: string; displayName?: string }>)
+    .filter((t) => t.name)
+    .map((t) => ({ value: t.name, label: t.displayName || t.name }));
+
+  const resourceOptions: MultiSelectOption[] = ((resourcesData.data && Array.isArray(resourcesData.data) ? resourcesData.data : []) as Array<{ name: string; displayName?: string }>)
+    .filter((r) => r.name)
+    .map((r) => ({ value: r.name, label: r.displayName || r.name }));
+
+  const mcpServerOptions: MultiSelectOption[] = ((mcpServersData.data && Array.isArray(mcpServersData.data) ? mcpServersData.data : []) as Array<{ name: string; displayName?: string }>)
+    .filter((s) => s.name)
+    .map((s) => ({ value: s.name, label: s.displayName || s.name }));
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<ApiAgent | null>(null);
@@ -87,6 +151,9 @@ export default function AgentsPage() {
   const [formDescription, setFormDescription] = useState('');
   const [formAgentType, setFormAgentType] = useState('general');
   const [formMaxBudgetCents, setFormMaxBudgetCents] = useState(0);
+  const [formAllowedTools, setFormAllowedTools] = useState<string[]>([]);
+  const [formAllowedResources, setFormAllowedResources] = useState<string[]>([]);
+  const [formAllowedMcpServers, setFormAllowedMcpServers] = useState<string[]>([]);
 
   const resetForm = () => {
     setFormName('');
@@ -94,6 +161,9 @@ export default function AgentsPage() {
     setFormDescription('');
     setFormAgentType('general');
     setFormMaxBudgetCents(0);
+    setFormAllowedTools([]);
+    setFormAllowedResources([]);
+    setFormAllowedMcpServers([]);
     setEditingAgent(null);
   };
 
@@ -109,6 +179,9 @@ export default function AgentsPage() {
     setFormDescription(agent.description);
     setFormAgentType(agent.agentType);
     setFormMaxBudgetCents(agent.maxBudgetCents);
+    setFormAllowedTools(agent.allowedTools ?? []);
+    setFormAllowedResources(agent.allowedResources ?? []);
+    setFormAllowedMcpServers(agent.allowedMcpServers ?? []);
     setModalOpen(true);
   };
 
@@ -119,6 +192,9 @@ export default function AgentsPage() {
       description: formDescription || undefined,
       agentType: formAgentType,
       maxBudgetCents: formMaxBudgetCents,
+      allowedTools: formAllowedTools,
+      allowedResources: formAllowedResources,
+      allowedMcpServers: formAllowedMcpServers,
     };
 
     if (editingAgent) {
@@ -218,6 +294,14 @@ export default function AgentsPage() {
                   <span className="text-muted-foreground">Spend Cap</span>
                   <span className="font-mono text-emerald-500 font-bold">{formatBudgetCents(agent.maxBudgetCents)}</span>
                 </div>
+                <div className="flex items-center justify-between text-xs border-t border-border pt-2">
+                  <span className="text-muted-foreground">Bindings</span>
+                  <div className="flex gap-1 flex-wrap justify-end">
+                    <Badge variant="outline" className="text-[10px]">{agent.allowedTools?.length ?? 0} tools</Badge>
+                    <Badge variant="outline" className="text-[10px]">{agent.allowedResources?.length ?? 0} resources</Badge>
+                    <Badge variant="outline" className="text-[10px]">{agent.allowedMcpServers?.length ?? 0} MCP</Badge>
+                  </div>
+                </div>
               </CardContent>
               <CardFooter className="border-t border-border pt-3 gap-2">
                 <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs" onClick={() => openEditDrawer(agent)}>
@@ -254,11 +338,20 @@ export default function AgentsPage() {
             description={formDescription}
             agentType={formAgentType}
             maxBudgetCents={formMaxBudgetCents}
+            allowedTools={formAllowedTools}
+            allowedResources={formAllowedResources}
+            allowedMcpServers={formAllowedMcpServers}
+            toolOptions={toolOptions}
+            resourceOptions={resourceOptions}
+            mcpServerOptions={mcpServerOptions}
             onNameChange={setFormName}
             onDisplayNameChange={setFormDisplayName}
             onDescriptionChange={setFormDescription}
             onAgentTypeChange={setFormAgentType}
             onMaxBudgetCentsChange={setFormMaxBudgetCents}
+            onAllowedToolsChange={setFormAllowedTools}
+            onAllowedResourcesChange={setFormAllowedResources}
+            onAllowedMcpServersChange={setFormAllowedMcpServers}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => { setModalOpen(false); resetForm(); }}>Cancel</Button>
@@ -275,3 +368,4 @@ export default function AgentsPage() {
     </AppLayout>
   );
 }
+
