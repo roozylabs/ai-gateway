@@ -10,17 +10,17 @@ const sentinel = "skip_thought_signature_validator"
 func TestSanitizeMessagesForGoogle(t *testing.T) {
 	messages := []map[string]interface{}{
 		{
-			"role": "user",
+			"role":    "user",
 			"content": "Read file page.tsx",
 		},
 		{
 			"role": "assistant",
 			"tool_calls": []interface{}{
 				map[string]interface{}{
-					"id": "call_123",
+					"id":   "call_123",
 					"type": "function",
 					"function": map[string]interface{}{
-						"name": "default_api:read",
+						"name":      "default_api:read",
 						"arguments": "{\"path\":\"page.tsx\"}",
 					},
 				},
@@ -29,7 +29,7 @@ func TestSanitizeMessagesForGoogle(t *testing.T) {
 		{
 			"role": "assistant",
 			"function_call": map[string]interface{}{
-				"name": "default_api:read",
+				"name":      "default_api:read",
 				"arguments": "{\"path\":\"talent.tsx\"}",
 			},
 		},
@@ -80,7 +80,7 @@ func TestSanitizeMessagesForGoogle_AdvancedStructures(t *testing.T) {
 		{
 			"role": "assistant",
 			"functionCall": map[string]interface{}{
-				"name": "default_api:skill",
+				"name":      "default_api:skill",
 				"arguments": "{\"name\":\"brainstorming\"}",
 			},
 		},
@@ -225,12 +225,12 @@ func TestSanitizeMessagesForGoogle_OverwritesOldSkipSentinel(t *testing.T) {
 					"id":                "call_old_skip",
 					"type":              "function",
 					"thought_signature": "skip",
-					"thoughtSignature": "skip",
+					"thoughtSignature":  "skip",
 					"function": map[string]interface{}{
 						"name":              "default_api:bash",
 						"arguments":         "{}",
 						"thought_signature": "skip",
-						"thoughtSignature": "skip",
+						"thoughtSignature":  "skip",
 					},
 				},
 			},
@@ -284,4 +284,47 @@ func TestSanitizeMessagesForGoogle_TypedMapPartsPosition6(t *testing.T) {
 	}
 }
 
+func TestSanitizeMessagesForGoogle_Position165TodoWrite(t *testing.T) {
+	messages := make([]map[string]interface{}, 166)
+	for i := 0; i < 165; i++ {
+		messages[i] = map[string]interface{}{
+			"role":    "user",
+			"content": fmt.Sprintf("Turn %d", i),
+		}
+	}
+	messages[165] = map[string]interface{}{
+		"role": "assistant",
+		"parts": []map[string]interface{}{
+			{
+				"functionCall": map[string]interface{}{
+					"name": "default_api:todowrite",
+					"args": map[string]interface{}{
+						"todos": []interface{}{
+							map[string]interface{}{"content": "Task 1", "status": "pending"},
+						},
+					},
+				},
+			},
+		},
+	}
 
+	sanitized := SanitizeMessagesForGoogle(messages)
+	if len(sanitized) != 166 {
+		t.Fatalf("expected 166 messages, got %d", len(sanitized))
+	}
+
+	pos165Parts, ok := sanitized[165]["parts"].([]interface{})
+	if !ok || len(pos165Parts) == 0 {
+		t.Fatalf("expected parts in message 165")
+	}
+
+	partMap := pos165Parts[0].(map[string]interface{})
+	if partMap["thought_signature"] != sentinel || partMap["thoughtSignature"] != sentinel {
+		t.Errorf("partMap missing thought_signature at position 165: %v", partMap)
+	}
+
+	fnCallMap := partMap["functionCall"].(map[string]interface{})
+	if fnCallMap["thought_signature"] != sentinel || fnCallMap["thoughtSignature"] != sentinel {
+		t.Errorf("fnCallMap missing thought_signature at position 165: %v", fnCallMap)
+	}
+}

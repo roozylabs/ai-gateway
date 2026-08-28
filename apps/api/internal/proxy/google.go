@@ -97,157 +97,7 @@ func (a *GoogleAdapter) SupportsStreaming() bool {
 	return true
 }
 
-func toInterfaceSlice(v interface{}) ([]interface{}, bool) {
-	if v == nil {
-		return nil, false
-	}
-	if s, ok := v.([]interface{}); ok {
-		return s, true
-	}
-	if s, ok := v.([]map[string]interface{}); ok {
-		res := make([]interface{}, len(s))
-		for i, item := range s {
-			res[i] = item
-		}
-		return res, true
-	}
-	return nil, false
-}
-
-func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]interface{} {
-	if len(messages) == 0 {
-		return messages
-	}
-
-	result := make([]map[string]interface{}, 0, len(messages))
-	for _, msg := range messages {
-		msgCopy := make(map[string]interface{})
-		for k, v := range msg {
-			msgCopy[k] = v
-		}
-
-		// 1. Handle tool_calls array
-		if toolCallsRaw, ok := msgCopy["tool_calls"]; ok && toolCallsRaw != nil {
-			if toolCalls, ok := toInterfaceSlice(toolCallsRaw); ok {
-				newToolCalls := make([]interface{}, 0, len(toolCalls))
-				for _, tcRaw := range toolCalls {
-					newToolCalls = append(newToolCalls, sanitizeToolCallItem(tcRaw))
-				}
-				msgCopy["tool_calls"] = newToolCalls
-			}
-		}
-
-		// 2. Handle legacy single function_call (snake_case)
-		if fnCallRaw, ok := msgCopy["function_call"]; ok && fnCallRaw != nil {
-			if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
-				msgCopy["function_call"] = sanitizeToolCallMap(fnCallMap)
-			}
-		}
-
-		// 3. Handle camelCase functionCall
-		if fnCallRaw, ok := msgCopy["functionCall"]; ok && fnCallRaw != nil {
-			if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
-				msgCopy["functionCall"] = sanitizeToolCallMap(fnCallMap)
-			}
-		}
-
-		// 4. Handle direct function call at message level
-		if _, hasName := msgCopy["name"]; hasName {
-			if _, hasArgs := msgCopy["args"]; hasArgs {
-				msgCopy = sanitizeToolCallMap(msgCopy)
-			} else if _, hasArgs := msgCopy["arguments"]; hasArgs {
-				msgCopy = sanitizeToolCallMap(msgCopy)
-			} else if _, hasInput := msgCopy["input"]; hasInput {
-				msgCopy = sanitizeToolCallMap(msgCopy)
-			}
-		}
-
-		// 5. Handle parts array (Gemini format)
-		if partsRaw, ok := msgCopy["parts"]; ok && partsRaw != nil {
-			if parts, ok := toInterfaceSlice(partsRaw); ok {
-				newParts := make([]interface{}, 0, len(parts))
-				for _, partRaw := range parts {
-					if partMap, ok := partRaw.(map[string]interface{}); ok {
-						pCopy := make(map[string]interface{})
-						for k, v := range partMap {
-							pCopy[k] = v
-						}
-						if fnCallRaw, ok := pCopy["functionCall"]; ok && fnCallRaw != nil {
-							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
-								pCopy["functionCall"] = sanitizeToolCallMap(fnCallMap)
-								pCopy = sanitizeToolCallMap(pCopy)
-							}
-						}
-						if fnCallRaw, ok := pCopy["function_call"]; ok && fnCallRaw != nil {
-							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
-								pCopy["function_call"] = sanitizeToolCallMap(fnCallMap)
-								pCopy = sanitizeToolCallMap(pCopy)
-							}
-						}
-						if _, hasName := pCopy["name"]; hasName {
-							pCopy = sanitizeToolCallMap(pCopy)
-						}
-						newParts = append(newParts, pCopy)
-					} else {
-						newParts = append(newParts, partRaw)
-					}
-				}
-				msgCopy["parts"] = newParts
-			}
-		}
-
-		// 6. Handle content array (multimodal / content blocks)
-		if contentRaw, ok := msgCopy["content"]; ok && contentRaw != nil {
-			if contentBlocks, ok := toInterfaceSlice(contentRaw); ok {
-				newContent := make([]interface{}, 0, len(contentBlocks))
-				for _, blockRaw := range contentBlocks {
-					if blockMap, ok := blockRaw.(map[string]interface{}); ok {
-						bCopy := make(map[string]interface{})
-						for k, v := range blockMap {
-							bCopy[k] = v
-						}
-						if fnCallRaw, ok := bCopy["function_call"]; ok && fnCallRaw != nil {
-							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
-								bCopy["function_call"] = sanitizeToolCallMap(fnCallMap)
-							}
-						}
-						if fnCallRaw, ok := bCopy["functionCall"]; ok && fnCallRaw != nil {
-							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
-								bCopy["functionCall"] = sanitizeToolCallMap(fnCallMap)
-							}
-						}
-						if tcRaw, ok := bCopy["tool_calls"]; ok && tcRaw != nil {
-							if tcs, ok := toInterfaceSlice(tcRaw); ok {
-								var newTcs []interface{}
-								for _, tc := range tcs {
-									newTcs = append(newTcs, sanitizeToolCallItem(tc))
-								}
-								bCopy["tool_calls"] = newTcs
-							}
-						}
-						if _, hasName := bCopy["name"]; hasName {
-							bCopy = sanitizeToolCallMap(bCopy)
-						}
-						newContent = append(newContent, bCopy)
-					} else {
-						newContent = append(newContent, blockRaw)
-					}
-				}
-				msgCopy["content"] = newContent
-			}
-		}
-
-		result = append(result, msgCopy)
-	}
-	return result
-}
-
-func sanitizeToolCallItem(tcRaw interface{}) interface{} {
-	if tcMap, ok := tcRaw.(map[string]interface{}); ok {
-		return sanitizeToolCallMap(tcMap)
-	}
-	return tcRaw
-}
+const SentinelThoughtSignature = "skip_thought_signature_validator"
 
 func isInvalidSignature(v interface{}) bool {
 	if v == nil {
@@ -264,60 +114,97 @@ func isInvalidSignature(v interface{}) bool {
 	return false
 }
 
-func sanitizeToolCallMap(tcMap map[string]interface{}) map[string]interface{} {
-	tcCopy := make(map[string]interface{})
-	for k, v := range tcMap {
-		tcCopy[k] = v
+func ensureSignature(m map[string]interface{}) {
+	if sig, hasSig := m["thought_signature"]; !hasSig || isInvalidSignature(sig) {
+		m["thought_signature"] = SentinelThoughtSignature
+	}
+	if sig, hasSig := m["thoughtSignature"]; !hasSig || isInvalidSignature(sig) {
+		m["thoughtSignature"] = SentinelThoughtSignature
+	}
+}
+
+// SanitizeValueRecursively recursively inspects and sanitizes any map or slice in the message payload.
+func SanitizeValueRecursively(v interface{}) interface{} {
+	if v == nil {
+		return nil
 	}
 
-	const sentinel = "skip_thought_signature_validator"
+	switch val := v.(type) {
+	case map[string]interface{}:
+		return sanitizeMapRecursively(val)
+	case []interface{}:
+		newSlice := make([]interface{}, len(val))
+		for i, item := range val {
+			newSlice[i] = SanitizeValueRecursively(item)
+		}
+		return newSlice
+	case []map[string]interface{}:
+		newSlice := make([]interface{}, len(val))
+		for i, item := range val {
+			newSlice[i] = sanitizeMapRecursively(item)
+		}
+		return newSlice
+	default:
+		return v
+	}
+}
 
-	setSignature := func(m map[string]interface{}) {
-		if sig, hasSig := m["thought_signature"]; !hasSig || isInvalidSignature(sig) {
-			m["thought_signature"] = sentinel
-		}
-		if sig, hasSig := m["thoughtSignature"]; !hasSig || isInvalidSignature(sig) {
-			m["thoughtSignature"] = sentinel
-		}
+func sanitizeMapRecursively(m map[string]interface{}) map[string]interface{} {
+	if m == nil {
+		return nil
 	}
 
-	setSignature(tcCopy)
-
-	if fnRaw, ok := tcCopy["function"]; ok && fnRaw != nil {
-		if fnMap, ok := fnRaw.(map[string]interface{}); ok {
-			fnCopy := make(map[string]interface{})
-			for k, v := range fnMap {
-				fnCopy[k] = v
-			}
-			setSignature(fnCopy)
-			tcCopy["function"] = fnCopy
-		}
+	mCopy := make(map[string]interface{}, len(m))
+	for k, v := range m {
+		mCopy[k] = SanitizeValueRecursively(v)
 	}
 
-	if fnRaw, ok := tcCopy["function_call"]; ok && fnRaw != nil {
-		if fnMap, ok := fnRaw.(map[string]interface{}); ok {
-			tcCopy["function_call"] = sanitizeToolCallMap(fnMap)
-		}
+	// Check if this map represents a tool call, function call, part, or function definition
+	isToolOrFunction := false
+
+	if _, hasName := mCopy["name"]; hasName {
+		isToolOrFunction = true
+	}
+	if _, hasFnCall := mCopy["functionCall"]; hasFnCall {
+		isToolOrFunction = true
+	}
+	if _, hasFnCall := mCopy["function_call"]; hasFnCall {
+		isToolOrFunction = true
+	}
+	if _, hasFn := mCopy["function"]; hasFn {
+		isToolOrFunction = true
+	}
+	if _, hasArgs := mCopy["args"]; hasArgs {
+		isToolOrFunction = true
+	}
+	if _, hasArguments := mCopy["arguments"]; hasArguments {
+		isToolOrFunction = true
+	}
+	if typeVal, ok := mCopy["type"].(string); ok && (typeVal == "function" || typeVal == "tool_calls" || typeVal == "tool_use") {
+		isToolOrFunction = true
 	}
 
-	if fnRaw, ok := tcCopy["functionCall"]; ok && fnRaw != nil {
-		if fnMap, ok := fnRaw.(map[string]interface{}); ok {
-			tcCopy["functionCall"] = sanitizeToolCallMap(fnMap)
-		}
+	if isToolOrFunction {
+		ensureSignature(mCopy)
 	}
 
-	for _, metaKey := range []string{"extra", "provider_metadata", "providerMetadata"} {
-		if metaRaw, ok := tcCopy[metaKey]; ok && metaRaw != nil {
-			if metaMap, ok := metaRaw.(map[string]interface{}); ok {
-				metaCopy := make(map[string]interface{})
-				for k, v := range metaMap {
-					metaCopy[k] = v
-				}
-				setSignature(metaCopy)
-				tcCopy[metaKey] = metaCopy
-			}
-		}
+	return mCopy
+}
+
+// SanitizeMessagesForGoogle ensures all tool calls across all messages contain thought_signature fields.
+func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]interface{} {
+	if len(messages) == 0 {
+		return messages
 	}
 
-	return tcCopy
+	result := make([]map[string]interface{}, 0, len(messages))
+	for _, msg := range messages {
+		sanitized := SanitizeValueRecursively(msg)
+		if msgMap, ok := sanitized.(map[string]interface{}); ok {
+			result = append(result, msgMap)
+		} else {
+			result = append(result, msg)
+		}
+	}
+	return result
 }
