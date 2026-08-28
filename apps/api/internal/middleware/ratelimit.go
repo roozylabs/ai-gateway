@@ -13,7 +13,8 @@ import (
 func GatewayRateLimitMiddleware(rdb *goredis.Client, limit int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		gatewayKey := c.MustGet("gatewayKey").(*models.GatewayAPIKey)
-		key := fmt.Sprintf("gateway:%s:rate_limit", gatewayKey.KeyHash)
+		tc := GetTenantContext(c)
+		key := fmt.Sprintf("tenant:%s:gateway:%s:rate_limit", tc.OrgID, gatewayKey.KeyHash)
 
 		now := time.Now().UnixMilli()
 		window := now - 60000
