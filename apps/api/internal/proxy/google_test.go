@@ -250,4 +250,38 @@ func TestSanitizeMessagesForGoogle_OverwritesOldSkipSentinel(t *testing.T) {
 	}
 }
 
+func TestSanitizeMessagesForGoogle_TypedMapPartsPosition6(t *testing.T) {
+	messages := []map[string]interface{}{
+		{
+			"role": "model",
+			"parts": []map[string]interface{}{
+				{
+					"functionCall": map[string]interface{}{
+						"name": "default_api:glob",
+						"args": map[string]interface{}{
+							"pattern": ".agents/rules/*",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	sanitized := SanitizeMessagesForGoogle(messages)
+	partsRaw, ok := sanitized[0]["parts"].([]interface{})
+	if !ok || len(partsRaw) == 0 {
+		t.Fatalf("expected parts array in sanitized message")
+	}
+
+	partMap := partsRaw[0].(map[string]interface{})
+	if partMap["thought_signature"] != sentinel {
+		t.Errorf("partMap missing thought_signature: %v", partMap)
+	}
+
+	fnCallMap := partMap["functionCall"].(map[string]interface{})
+	if fnCallMap["thought_signature"] != sentinel {
+		t.Errorf("fnCallMap missing thought_signature: %v", fnCallMap)
+	}
+}
+
 

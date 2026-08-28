@@ -97,6 +97,23 @@ func (a *GoogleAdapter) SupportsStreaming() bool {
 	return true
 }
 
+func toInterfaceSlice(v interface{}) ([]interface{}, bool) {
+	if v == nil {
+		return nil, false
+	}
+	if s, ok := v.([]interface{}); ok {
+		return s, true
+	}
+	if s, ok := v.([]map[string]interface{}); ok {
+		res := make([]interface{}, len(s))
+		for i, item := range s {
+			res[i] = item
+		}
+		return res, true
+	}
+	return nil, false
+}
+
 func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]interface{} {
 	if len(messages) == 0 {
 		return messages
@@ -111,19 +128,11 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 
 		// 1. Handle tool_calls array
 		if toolCallsRaw, ok := msgCopy["tool_calls"]; ok && toolCallsRaw != nil {
-			var newToolCalls []interface{}
-			if toolCalls, ok := toolCallsRaw.([]interface{}); ok {
-				newToolCalls = make([]interface{}, 0, len(toolCalls))
+			if toolCalls, ok := toInterfaceSlice(toolCallsRaw); ok {
+				newToolCalls := make([]interface{}, 0, len(toolCalls))
 				for _, tcRaw := range toolCalls {
 					newToolCalls = append(newToolCalls, sanitizeToolCallItem(tcRaw))
 				}
-			} else if toolCalls, ok := toolCallsRaw.([]map[string]interface{}); ok {
-				newToolCalls = make([]interface{}, 0, len(toolCalls))
-				for _, tcMap := range toolCalls {
-					newToolCalls = append(newToolCalls, sanitizeToolCallMap(tcMap))
-				}
-			}
-			if newToolCalls != nil {
 				msgCopy["tool_calls"] = newToolCalls
 			}
 		}
@@ -155,7 +164,7 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 
 		// 5. Handle parts array (Gemini format)
 		if partsRaw, ok := msgCopy["parts"]; ok && partsRaw != nil {
-			if parts, ok := partsRaw.([]interface{}); ok {
+			if parts, ok := toInterfaceSlice(partsRaw); ok {
 				newParts := make([]interface{}, 0, len(parts))
 				for _, partRaw := range parts {
 					if partMap, ok := partRaw.(map[string]interface{}); ok {
@@ -166,11 +175,13 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 						if fnCallRaw, ok := pCopy["functionCall"]; ok && fnCallRaw != nil {
 							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
 								pCopy["functionCall"] = sanitizeToolCallMap(fnCallMap)
+								pCopy = sanitizeToolCallMap(pCopy)
 							}
 						}
 						if fnCallRaw, ok := pCopy["function_call"]; ok && fnCallRaw != nil {
 							if fnCallMap, ok := fnCallRaw.(map[string]interface{}); ok {
 								pCopy["function_call"] = sanitizeToolCallMap(fnCallMap)
+								pCopy = sanitizeToolCallMap(pCopy)
 							}
 						}
 						if _, hasName := pCopy["name"]; hasName {
@@ -187,7 +198,7 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 
 		// 6. Handle content array (multimodal / content blocks)
 		if contentRaw, ok := msgCopy["content"]; ok && contentRaw != nil {
-			if contentBlocks, ok := contentRaw.([]interface{}); ok {
+			if contentBlocks, ok := toInterfaceSlice(contentRaw); ok {
 				newContent := make([]interface{}, 0, len(contentBlocks))
 				for _, blockRaw := range contentBlocks {
 					if blockMap, ok := blockRaw.(map[string]interface{}); ok {
@@ -206,7 +217,7 @@ func SanitizeMessagesForGoogle(messages []map[string]interface{}) []map[string]i
 							}
 						}
 						if tcRaw, ok := bCopy["tool_calls"]; ok && tcRaw != nil {
-							if tcs, ok := tcRaw.([]interface{}); ok {
+							if tcs, ok := toInterfaceSlice(tcRaw); ok {
 								var newTcs []interface{}
 								for _, tc := range tcs {
 									newTcs = append(newTcs, sanitizeToolCallItem(tc))
