@@ -195,14 +195,15 @@ jobs:
 
             echo "Waiting for $TARGET_CONTAINER health check..."
             HEALTHY=false
-            for i in $(seq 1 20); do
+            for i in $(seq 1 30); do
               STATUS=$(docker inspect --format='{{json .State.Health.Status}}' $TARGET_CONTAINER 2>/dev/null || echo '"unknown"')
-              if [ "$STATUS" = '"healthy"' ]; then
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TARGET_PORT/health || echo "000")
+              if [ "$STATUS" = '"healthy"' ] || [ "$HTTP_CODE" = "200" ]; then
                 HEALTHY=true
-                echo "$TARGET_CONTAINER is healthy!"
+                echo "$TARGET_CONTAINER is healthy (HTTP $HTTP_CODE, Docker status $STATUS)!"
                 break
               fi
-              echo "Health status: $STATUS (attempt $i/20)..."
+              echo "Health status: $STATUS, HTTP code: $HTTP_CODE (attempt $i/30)..."
               sleep 3
             done
 

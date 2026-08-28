@@ -223,8 +223,9 @@ func main() {
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware())
 
-	// Health check & OTel Prometheus Metrics (public)
+	// Health check, Readiness check & OTel Prometheus Metrics (public)
 	r.GET("/health", healthHandler.Check)
+	r.GET("/ready", healthHandler.Ready)
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// API routes group
@@ -232,6 +233,7 @@ func main() {
 	{
 		// Public API routes
 		api.GET("/health", healthHandler.Check)
+		api.GET("/ready", healthHandler.Ready)
 		api.POST("/auth/login", authHandler.Login)
 		api.GET("/auth/turnstile-config", authHandler.GetTurnstileConfig)
 		api.GET("/auth/google/login", googleOAuthHandler.Login)

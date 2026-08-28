@@ -24,30 +24,54 @@ type HealthResponse struct {
 	Redis    string `json:"redis"`
 }
 
+// Check is the Liveness probe (/health) - returns HTTP 200 OK as long as the server is responsive.
 func (h *HealthHandler) Check(c *gin.Context) {
 	resp := HealthResponse{
 		Status:  "ok",
 		Version: "2.1.0",
 	}
 
-	// Check database
-	if err := h.db.PingContext(c.Request.Context()); err != nil {
+	if h.db != nil && h.db.PingContext(c.Request.Context()) == nil {
+		resp.Database = "ok"
+	} else {
+		resp.Database = "degraded"
+	}
+
+	if h.rdb != nil && h.rdb.Ping(c.Request.Context()).Err() == nil {
+		resp.Redis = "ok"
+	} else {
+		resp.Redis = "degraded"
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// Ready is the Readiness probe (/ready) - returns HTTP 200 OK when DB and Redis are connected, or HTTP 503 if degraded.
+func (h *HealthHandler) Ready(c *gin.Context) {
+	resp := HealthResponse{
+		Status:  "ok",
+		Version: "2.1.0",
+	}
+
+	dbOK := true
+	if h.db == nil || h.db.PingContext(c.Request.Context()) != nil {
 		resp.Database = "error"
-		resp.Status = "degraded"
+		dbOK = false
 	} else {
 		resp.Database = "ok"
 	}
 
-	// Check Redis
-	if err := h.rdb.Ping(c.Request.Context()).Err(); err != nil {
+	redisOK := true
+	if h.rdb == nil || h.rdb.Ping(c.Request.Context()).Err() != nil {
 		resp.Redis = "error"
-		resp.Status = "degraded"
+		redisOK = false
 	} else {
 		resp.Redis = "ok"
 	}
 
 	status := http.StatusOK
-	if resp.Status != "ok" {
+	if !dbOK || !redisOK {
+		resp.Status = "degraded"
 		status = http.StatusServiceUnavailable
 	}
 

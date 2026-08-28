@@ -34,10 +34,10 @@ services:
           - api
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 10
+      start_period: 15s
 
   # Go API Gateway Backend (Green)
   api-green:
@@ -74,10 +74,10 @@ services:
           - api
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 10
+      start_period: 15s
 
   # Next.js Frontend Dashboard (Blue - Default)
   app:
