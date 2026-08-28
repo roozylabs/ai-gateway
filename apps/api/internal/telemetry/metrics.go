@@ -13,14 +13,38 @@ const MeterName = "prism-gateway-meter"
 var (
 	meter metric.Meter
 
-	requestCounter          metric.Int64Counter
-	requestDurationHist     metric.Float64Histogram
-	ttftDurationHist        metric.Float64Histogram
-	tokenCounter            metric.Int64Counter
-	costCounter             metric.Float64Counter
-	activeRequestsCounter   metric.Int64UpDownCounter
-	provider429Counter      metric.Int64Counter
-	credentialHealthGauge   metric.Float64Gauge
+	// Gateway
+	requestCounter      metric.Int64Counter
+	requestErrorCounter metric.Int64Counter
+	requestDurationHist metric.Float64Histogram
+
+	// Admission
+	admissionAllowedCounter metric.Int64Counter
+	admissionDeniedCounter  metric.Int64Counter
+	budgetExceededCounter   metric.Int64Counter
+	quotaExceededCounter    metric.Int64Counter
+
+	// Routing
+	routingDecisionsCounter metric.Int64Counter
+	routingFallbacksCounter metric.Int64Counter
+
+	// Credentials
+	credentialHealthGauge        metric.Float64Gauge
+	credentialFailuresCounter    metric.Int64Counter
+	credentialCooldownsCounter   metric.Int64Counter
+	credentialExhaustionsCounter metric.Int64Counter
+
+	// Provider
+	providerRequestsCounter metric.Int64Counter
+	providerErrorsCounter   metric.Int64Counter
+	providerLatencyHist     metric.Float64Histogram
+	providerRetriesCounter  metric.Int64Counter
+
+	// AI Execution
+	tokenCounter          metric.Int64Counter
+	costCounter           metric.Float64Counter
+	ttftDurationHist      metric.Float64Histogram
+	activeRequestsCounter metric.Int64UpDownCounter
 )
 
 func init() {
@@ -34,6 +58,13 @@ func init() {
 		println("[OTel Meter Error] requestCounter:", err.Error())
 	}
 
+	requestErrorCounter, err = meter.Int64Counter("prism_request_errors_total",
+		metric.WithDescription("Total number of failed gateway requests"),
+	)
+	if err != nil {
+		println("[OTel Meter Error] requestErrorCounter:", err.Error())
+	}
+
 	requestDurationHist, err = meter.Float64Histogram("prism_request_duration_seconds",
 		metric.WithDescription("Request latency duration in seconds"),
 		metric.WithUnit("s"),
@@ -42,62 +73,54 @@ func init() {
 		println("[OTel Meter Error] requestDurationHist:", err.Error())
 	}
 
-	ttftDurationHist, err = meter.Float64Histogram("prism_ttft_seconds",
-		metric.WithDescription("Time To First Token duration in seconds"),
-		metric.WithUnit("s"),
-	)
-	if err != nil {
-		println("[OTel Meter Error] ttftDurationHist:", err.Error())
-	}
+	// Admission
+	admissionAllowedCounter, _ = meter.Int64Counter("prism_admission_allowed_total")
+	admissionDeniedCounter, _ = meter.Int64Counter("prism_admission_denied_total")
+	budgetExceededCounter, _ = meter.Int64Counter("prism_budget_exceeded_total")
+	quotaExceededCounter, _ = meter.Int64Counter("prism_quota_exceeded_total")
 
-	tokenCounter, err = meter.Int64Counter("prism_token_usage_total",
-		metric.WithDescription("Total tokens processed (prompt & completion)"),
-	)
-	if err != nil {
-		println("[OTel Meter Error] tokenCounter:", err.Error())
-	}
+	// Routing
+	routingDecisionsCounter, _ = meter.Int64Counter("prism_routing_decisions_total")
+	routingFallbacksCounter, _ = meter.Int64Counter("prism_routing_fallbacks_total")
 
-	costCounter, err = meter.Float64Counter("prism_cost_usd_total",
-		metric.WithDescription("Total estimated expenditure in USD"),
-		metric.WithUnit("USD"),
-	)
-	if err != nil {
-		println("[OTel Meter Error] costCounter:", err.Error())
-	}
+	// Credentials
+	credentialHealthGauge, _ = meter.Float64Gauge("prism_credential_health_score")
+	credentialFailuresCounter, _ = meter.Int64Counter("prism_credential_failures_total")
+	credentialCooldownsCounter, _ = meter.Int64Counter("prism_credential_cooldowns_total")
+	credentialExhaustionsCounter, _ = meter.Int64Counter("prism_credential_exhaustions_total")
 
-	activeRequestsCounter, err = meter.Int64UpDownCounter("prism_active_requests",
-		metric.WithDescription("Current active requests undergoing proxy routing"),
-	)
-	if err != nil {
-		println("[OTel Meter Error] activeRequestsCounter:", err.Error())
-	}
+	// Provider
+	providerRequestsCounter, _ = meter.Int64Counter("prism_provider_requests_total")
+	providerErrorsCounter, _ = meter.Int64Counter("prism_provider_errors_total")
+	providerLatencyHist, _ = meter.Float64Histogram("prism_provider_latency_seconds", metric.WithUnit("s"))
+	providerRetriesCounter, _ = meter.Int64Counter("prism_provider_retries_total")
 
-	provider429Counter, err = meter.Int64Counter("prism_provider_error_429_total",
-		metric.WithDescription("Total HTTP 429 Rate Limit encounters per provider"),
-	)
-	if err != nil {
-		println("[OTel Meter Error] provider429Counter:", err.Error())
-	}
-
-	credentialHealthGauge, err = meter.Float64Gauge("prism_credential_health_score",
-		metric.WithDescription("Credential health score (0-100)"),
-	)
-	if err != nil {
-		println("[OTel Meter Error] credentialHealthGauge:", err.Error())
-	}
+	// AI Execution
+	ttftDurationHist, _ = meter.Float64Histogram("prism_ttft_seconds", metric.WithUnit("s"))
+	tokenCounter, _ = meter.Int64Counter("prism_token_usage_total")
+	costCounter, _ = meter.Float64Counter("prism_cost_usd_total", metric.WithUnit("USD"))
+	activeRequestsCounter, _ = meter.Int64UpDownCounter("prism_active_requests")
 }
 
-// RecordRequestMetrics records completed request metrics.
-func RecordRequestMetrics(ctx context.Context, model, provider, status, agentID string, latencySec float64, inputTokens, outputTokens int, costUSD float64) {
-	attrs := metric.WithAttributes(
+// Low-Cardinality helper to sanitize metric attributes
+func sanitizeAttrs(model, provider, status, orgID string) metric.MeasurementOption {
+	return metric.WithAttributes(
 		attribute.String("model", model),
 		attribute.String("provider", provider),
 		attribute.String("status", status),
-		attribute.String("agent_id", agentID),
+		attribute.String("org_id", orgID),
 	)
+}
+
+// RecordRequestMetrics records completed request metrics.
+func RecordRequestMetrics(ctx context.Context, model, provider, status, orgID string, latencySec float64, inputTokens, outputTokens int, costUSD float64) {
+	attrs := sanitizeAttrs(model, provider, status, orgID)
 
 	if requestCounter != nil {
 		requestCounter.Add(ctx, 1, attrs)
+	}
+	if status != "200" && status != "200_ok" && requestErrorCounter != nil {
+		requestErrorCounter.Add(ctx, 1, attrs)
 	}
 	if requestDurationHist != nil {
 		requestDurationHist.Record(ctx, latencySec, attrs)
@@ -121,6 +144,63 @@ func RecordRequestMetrics(ctx context.Context, model, provider, status, agentID 
 	}
 }
 
+// RecordAdmissionEvaluation records admission allowed/denied metrics.
+func RecordAdmissionEvaluation(ctx context.Context, allowed bool, reason, orgID string) {
+	attrs := metric.WithAttributes(attribute.String("org_id", orgID), attribute.String("reason", reason))
+	if allowed {
+		if admissionAllowedCounter != nil {
+			admissionAllowedCounter.Add(ctx, 1, attrs)
+		}
+	} else {
+		if admissionDeniedCounter != nil {
+			admissionDeniedCounter.Add(ctx, 1, attrs)
+		}
+		if reason == "budget_exceeded" && budgetExceededCounter != nil {
+			budgetExceededCounter.Add(ctx, 1, attrs)
+		}
+		if reason == "quota_exceeded" && quotaExceededCounter != nil {
+			quotaExceededCounter.Add(ctx, 1, attrs)
+		}
+	}
+}
+
+// RecordRoutingDecision records routing and fallback decisions.
+func RecordRoutingDecision(ctx context.Context, policy, strategy string, isFallback bool) {
+	attrs := metric.WithAttributes(attribute.String("policy", policy), attribute.String("strategy", strategy))
+	if routingDecisionsCounter != nil {
+		routingDecisionsCounter.Add(ctx, 1, attrs)
+	}
+	if isFallback && routingFallbacksCounter != nil {
+		routingFallbacksCounter.Add(ctx, 1, attrs)
+	}
+}
+
+// RecordProviderAttempt records upstream provider HTTP request metrics.
+func RecordProviderAttempt(ctx context.Context, provider, model string, statusCode int, latencySec float64, isRetry bool) {
+	statusStr := "success"
+	if statusCode >= 400 {
+		statusStr = "error"
+	}
+	attrs := metric.WithAttributes(
+		attribute.String("provider", provider),
+		attribute.String("model", model),
+		attribute.String("status", statusStr),
+	)
+
+	if providerRequestsCounter != nil {
+		providerRequestsCounter.Add(ctx, 1, attrs)
+	}
+	if statusCode >= 400 && providerErrorsCounter != nil {
+		providerErrorsCounter.Add(ctx, 1, attrs)
+	}
+	if providerLatencyHist != nil {
+		providerLatencyHist.Record(ctx, latencySec, attrs)
+	}
+	if isRetry && providerRetriesCounter != nil {
+		providerRetriesCounter.Add(ctx, 1, attrs)
+	}
+}
+
 // RecordTTFT records Time To First Token for streaming requests.
 func RecordTTFT(ctx context.Context, model, provider string, ttftSec float64) {
 	if ttftDurationHist != nil && ttftSec > 0 {
@@ -138,16 +218,6 @@ func IncActiveRequests(ctx context.Context, delta int64) {
 	}
 }
 
-// RecordProvider429 records provider rate limit encounters.
-func RecordProvider429(ctx context.Context, provider, credentialID string) {
-	if provider429Counter != nil {
-		provider429Counter.Add(ctx, 1, metric.WithAttributes(
-			attribute.String("provider", provider),
-			attribute.String("credential_id", credentialID),
-		))
-	}
-}
-
 // RecordCredentialHealth records credential health score gauge.
 func RecordCredentialHealth(ctx context.Context, credentialID, provider string, score float64) {
 	if credentialHealthGauge != nil {
@@ -157,4 +227,3 @@ func RecordCredentialHealth(ctx context.Context, credentialID, provider string, 
 		))
 	}
 }
-

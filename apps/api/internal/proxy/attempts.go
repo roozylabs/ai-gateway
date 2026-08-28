@@ -2,11 +2,15 @@ package proxy
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
 // AttemptRecord captures one failed credential attempt inside the proxy retry loop.
 type AttemptRecord struct {
+	AttemptID    string    `json:"attempt_id,omitempty"`
+	ExecutionID  string    `json:"execution_id,omitempty"`
+	RequestID    string    `json:"request_id,omitempty"`
 	CredentialID string    `json:"credential_id"`
 	Model        string    `json:"model"`
 	ProviderID   string    `json:"provider_id"`
@@ -38,12 +42,15 @@ func MarshalAttempts(recs []AttemptRecord) []byte {
 	return data
 }
 
-func newAttemptRecord(route *Route, statusCode int, errMsg string, started time.Time) AttemptRecord {
+func newAttemptRecordWithCorrelation(route *Route, statusCode int, errMsg string, started time.Time, attemptNum int, executionID, requestID string) AttemptRecord {
 	modelSlug := ""
 	if route.Model != nil {
 		modelSlug = route.Model.Slug
 	}
 	return AttemptRecord{
+		AttemptID:    fmt.Sprintf("attempt-%d", attemptNum),
+		ExecutionID:  executionID,
+		RequestID:    requestID,
 		CredentialID: route.Credential.ID,
 		Model:        modelSlug,
 		ProviderID:   route.Credential.ProviderID,
@@ -52,4 +59,8 @@ func newAttemptRecord(route *Route, statusCode int, errMsg string, started time.
 		DurationMS:   time.Since(started).Milliseconds(),
 		At:           time.Now(),
 	}
+}
+
+func newAttemptRecord(route *Route, statusCode int, errMsg string, started time.Time) AttemptRecord {
+	return newAttemptRecordWithCorrelation(route, statusCode, errMsg, started, 1, "", "")
 }
