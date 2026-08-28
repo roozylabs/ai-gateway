@@ -189,14 +189,19 @@ export default function LogsPage() {
                 </div>
               </div>
 
-              {selectedLog.errorMessage && (
-                <div className="space-y-1">
-                  <span className="font-semibold text-destructive block">Error Message</span>
-                  <div className="p-3 rounded-md border border-destructive/30 bg-destructive/10 font-mono text-destructive text-[11px]">
-                    {selectedLog.errorMessage}
+              {(() => {
+                const raw = selectedLog.errorMessage;
+                const msg = raw && typeof raw === 'object' ? (raw as { String?: string }).String : raw;
+                if (!msg) return null;
+                return (
+                  <div className="space-y-1">
+                    <span className="font-semibold text-destructive block">Error Message</span>
+                    <div className="p-3 rounded-md border border-destructive/30 bg-destructive/10 font-mono text-destructive text-[11px]">
+                      {msg}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               <div className="space-y-2">
                 <span className="font-semibold text-foreground flex items-center gap-1.5">

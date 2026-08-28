@@ -133,6 +133,25 @@ type RequestLog struct {
 	CreatedAt       time.Time      `json:"createdAt" db:"created_at"`
 }
 
+// MarshalJSON serializes errorMessage as a plain nullable string instead of the
+// default sql.NullString struct shape ({String, Valid}). This keeps the wire
+// format consistent with the TypeScript contract `errorMessage?: string`.
+func (r RequestLog) MarshalJSON() ([]byte, error) {
+	type alias RequestLog
+	var errorMessage *string
+	if r.ErrorMessage.Valid {
+		msg := r.ErrorMessage.String
+		errorMessage = &msg
+	}
+	return json.Marshal(struct {
+		alias
+		ErrorMessage *string `json:"errorMessage,omitempty"`
+	}{
+		alias:        alias(r),
+		ErrorMessage: errorMessage,
+	})
+}
+
 type ModelPricing struct {
 	ID                     string    `json:"id" db:"id"`
 	ModelSlug              string    `json:"modelSlug" db:"model_slug"`
