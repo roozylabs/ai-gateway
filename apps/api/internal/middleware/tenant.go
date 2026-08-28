@@ -2,6 +2,7 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -16,11 +17,24 @@ const (
 	DefaultProjID    = "proj_default"
 )
 
-var ErrCrossTenantForbidden = errors.New("cross-organization tenant context forbidden: gateway key belongs to different organization")
+var (
+	ErrCrossTenantForbidden = errors.New("cross-organization tenant context forbidden: gateway key belongs to different organization")
+	ErrOrgMembershipRequired = errors.New("organization membership required: user is not a member of requested organization")
+)
+
+// OrgMemberChecker abstracts checking if a user belongs to an organization.
+type OrgMemberChecker interface {
+	IsMember(ctx context.Context, userID, orgID string) (bool, error)
+}
 
 // ResolveCanonicalTenantContext resolves authoritative TenantContext.
 // GatewayKey is authoritative for OrgID ownership. Client-provided headers can only narrow scope.
-func ResolveCanonicalTenantContext(c *gin.Context, gatewayKey *models.GatewayAPIKey) (models.TenantContext, error) {
+func ResolveCanonicalTenantContext(c *gin.Context, gatewayKey *models.GatewayAPIKey, orgChecker ...OrgMemberChecker) (models.TenantContext, error) {
+	var checker OrgMemberChecker
+	if len(orgChecker) > 0 {
+		checker = orgChecker[0]
+	}
+
 	headerOrgID := c.GetHeader("X-Prism-Org-ID")
 	headerWsID := c.GetHeader("X-Prism-Workspace-ID")
 	headerProjID := c.GetHeader("X-Prism-Project-ID")
@@ -33,6 +47,17 @@ func ResolveCanonicalTenantContext(c *gin.Context, gatewayKey *models.GatewayAPI
 			return models.TenantContext{}, ErrCrossTenantForbidden
 		}
 	} else if headerOrgID != "" {
+		// Session-authenticated user specifying X-Prism-Org-ID header
+		userID := ""
+		if c != nil {
+			userID = c.GetString("userId")
+		}
+		if userID != "" && checker != nil {
+			isMember, err := checker.IsMember(c.Request.Context(), userID, headerOrgID)
+			if err != nil || !isMember {
+				return models.TenantContext{}, ErrOrgMembershipRequired
+			}
+		}
 		canonicalOrgID = headerOrgID
 	} else {
 		canonicalOrgID = DefaultOrgID
@@ -71,7 +96,12 @@ func ResolveCanonicalTenantContext(c *gin.Context, gatewayKey *models.GatewayAPI
 
 // TenantMiddleware extracts tenant identification headers (or applies default boundaries)
 // and attaches TenantContext to the Gin context.
-func TenantMiddleware() gin.HandlerFunc {
+func TenantMiddleware(orgChecker ...OrgMemberChecker) gin.HandlerFunc {
+	var checker OrgMemberChecker
+	if len(orgChecker) > 0 {
+		checker = orgChecker[0]
+	}
+
 	return func(c *gin.Context) {
 		var gwKey *models.GatewayAPIKey
 		if val, exists := c.Get("gatewayKey"); exists {
@@ -80,7 +110,7 @@ func TenantMiddleware() gin.HandlerFunc {
 			}
 		}
 
-		tc, err := ResolveCanonicalTenantContext(c, gwKey)
+		tc, err := ResolveCanonicalTenantContext(c, gwKey, checker)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 				"error": gin.H{

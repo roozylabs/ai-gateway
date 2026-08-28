@@ -240,6 +240,7 @@ func main() {
 		// Protected API routes
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware(sessionRepo, gatewayKeyCache))
+		protected.Use(middleware.TenantMiddleware(accountRepo))
 		{
 			// Auth
 			protected.POST("/auth/logout", authHandler.Logout)
@@ -427,7 +428,7 @@ func main() {
 	// Gateway routes (authenticated with gw_sk_* keys) - accessible at /v1 and /api/v1
 	registerGatewayRoutes := func(rg *gin.RouterGroup) {
 		rg.Use(middleware.GatewayAuthMiddleware(gatewayKeyCache))
-		rg.Use(middleware.TenantMiddleware())
+		rg.Use(middleware.TenantMiddleware(accountRepo))
 		rg.Use(middleware.GatewayRateLimitMiddleware(rdb, cfg.RateLimitPerKey))
 		rg.Use(middleware.AgentPolicyMiddleware(agentRepo))
 		rg.Use(proxy.IdempotencyMiddleware(idemStore))

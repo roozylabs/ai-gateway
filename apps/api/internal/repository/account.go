@@ -37,3 +37,15 @@ func (r *AccountRepository) Create(ctx context.Context, account *models.Account)
 	)
 	return err
 }
+
+func (r *AccountRepository) IsMember(ctx context.Context, userID, orgID string) (bool, error) {
+	if userID == "" || orgID == "" {
+		return false, nil
+	}
+	var exists bool
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM organization_members WHERE user_id = $1 AND org_id = $2)`,
+		userID, orgID,
+	).Scan(&exists)
+	return exists, err
+}
