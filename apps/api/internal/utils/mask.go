@@ -15,7 +15,7 @@ func MaskAPIKey(key string) string {
 		return "••••"
 	}
 	if len(key) <= 12 {
-		return key[:4] + "••••"
+		return key[:4] + "••••" + key[len(key)-4:]
 	}
 	return key[:8] + "••••" + key[len(key)-4:]
 }
@@ -33,7 +33,6 @@ func MaskEmailName(name string) string {
 	return user[:2] + "***" + user[len(user)-1:] + "@" + domain
 }
 
-// RedactSensitive removes raw API keys and Bearer tokens from error strings/logs.
 func RedactSensitive(input string) string {
 	if input == "" {
 		return ""

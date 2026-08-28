@@ -16,7 +16,7 @@ func TestMaskAPIKey(t *testing.T) {
 		{"very long key", "sk-proj-xyz789abc012def345", "sk-proj-••••f345"},
 		{"short key", "sk-12345678", "sk-1••••5678"},
 		{"very short key", "abcdef", "••••"},
-		{"exactly 12 chars", "abcdefghijkl", "abcd••••"},
+		{"exactly 12 chars", "abcdefghijkl", "abcd••••ijkl"},
 	}
 
 	for _, tt := range tests {
