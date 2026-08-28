@@ -4,13 +4,12 @@
 [![Next.js 16](https://img.shields.io/badge/Next.js-16.3.3-black?style=flat&logo=next.js)](https://nextjs.org)
 [![Astro](https://img.shields.io/badge/Astro-5.0-BC52EE?style=flat&logo=astro)](https://astro.build)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat&logo=docker)](https://www.docker.com/)
-[![CI/CD Pipeline](https://github.com/roozylabs/prism/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/roozylabs/prism/actions/workflows/ci-cd.yml)
 [![Version](https://img.shields.io/badge/Version-2.8.0-blue.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**RoozyLabs Prism** is a high-performance, infrastructure-grade **Universal AI Control Plane** and intelligent model gateway that unifies multiple AI providers (OpenAI, Anthropic, Google Gemini, OpenRouter, OpenCode Free) and credential pools into a single resilient execution layer.
+**RoozyLabs Prism** is an infrastructure-grade **Universal AI Control Plane** and intelligent model gateway. It unifies multiple AI providers (OpenAI, Anthropic, Google Gemini, OpenRouter, OpenCode Free) and credential pools behind a single, resilient execution layer.
 
-With **Prism**, your client applications and AI coding tools (such as **OpenCode CLI**, **Claude Code**, **Antigravity IDE**, **LangChain**, or custom agents) connect to a single **Gateway API Key** and **Prism Gateway Endpoint**.
+Your client applications and AI coding tools (OpenCode CLI, Claude Code, Antigravity IDE, LangChain, or custom agents) connect to one **Gateway API Key** and one **Prism Gateway Endpoint** — Prism handles routing, retries, failover, budgets, and metering for you.
 
 ---
 
@@ -19,6 +18,16 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
 - **Public Landing Page**: [https://prism.roozylabs.com](https://prism.roozylabs.com)
 - **Admin Console Dashboard**: [https://app.prism.roozylabs.com](https://app.prism.roozylabs.com)
 - **Model Gateway API Proxy**: [https://api.prism.roozylabs.com](https://api.prism.roozylabs.com)
+
+---
+
+## What Prism Does
+
+- **One gateway key, many models**: Access all supported providers through a single OpenAI-compatible endpoint.
+- **Smart routing**: Prism automatically picks the best model for each request based on quality, cost, speed, and provider health — with automatic fallback if a provider fails.
+- **Resilience by default**: Circuit breaking, instant failover, and credential pooling keep your applications online during provider outages.
+- **Governance & control**: Manage agents, tools, resources, budgets, and permissions from a single admin console, with a tamper-proof audit trail.
+- **Cost visibility**: Track token usage and spend, set budget limits, and get burn-rate forecasts across your organization.
 
 ---
 
@@ -37,22 +46,12 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
                               ┌─────────────────┐
                               │   Next.js App   │
                               │ Console & Web   │
-                              │ (apps/app & web)│
                               └────────┬────────┘
                                        │ (/api proxy)
                                        ▼
                               ┌─────────────────┐
                               │ RoozyLabs Prism │
                               │ (Go API :8080)  │
-                              │                 │
-                              │ • Auth & Tenant │
-                              │ • Smart Router  │
-                              │ • Tool Gateway  │
-                              │ • Resource Gwy  │
-                              │ • MCP Gateway   │
-                              │ • Audit Vault   │
-                              │ • CircuitBreaker│
-                              │ • Metering Engine│
                               └────────┬────────┘
                                        │
                      ┌─────────────────┼─────────────────┐
@@ -61,55 +60,46 @@ With **Prism**, your client applications and AI coding tools (such as **OpenCode
                  Inference          (REST/SQL)       (JSON-RPC 2.0)
 ```
 
+For the detailed internal architecture, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ---
 
-## Key Features & Architecture Pillars
+## Key Features
 
-- **Organizational AI Control Plane & Pipeline Orchestrator**: Decoupled execution pipeline (`ExecutionOrchestrator` in `internal/service/orchestrator.go`) and pre-execution gate (`AdmissionController` in `internal/proxy/admission.go`) sequencing RBAC, Agent Governance, Tenant Quotas, and Multi-Level Budget Policies BEFORE provider execution. See [Prism Runtime Architecture](docs/prism_runtime_architecture.md).
-- **Authoritative Tenant Security & Production Hardening**: `GatewayAPIKey` is authoritative for Organization ownership. Web session users are validated against `organization_members`; cross-org header spoofing returns HTTP 403 Forbidden. Scoped database queries prevent IDOR, and PostgreSQL Row-Level Security (RLS migration `070`) enforces multi-tenant database isolation. See [Production Security Hardening Report](docs/production-hardening-security.md).
-- **OpenTelemetry & Operational Observability Pipeline**: Full OTel Go SDK integration (`internal/telemetry`) exporting trace spans to OTLP HTTP collectors (`:4318`) and Prometheus metrics (`/metrics`) with 8 metric instruments tracking request rates, TTFT latency, token usage, cost analytics, and credential health scores.
-- **Prism Auto Smart Router & Adaptive Routing Engine (`prism-auto`)**: Intelligent prompt router executing multi-factor dynamic scoring (`quality`, `cost`, `speed`, `health`), candidate factor breakdown API (`/v1/routing/simulate`), and automatic fallback cascades.
-- **Credential Intelligence & Dynamic Health Scoring**: Dynamic 0–100 health scoring combining success rate, cooldown penalties, and remaining quotas with a 5-state machine (`HEALTHY`, `DEGRADED`, `COOLDOWN`, `EXHAUSTED`, `DISABLED`) and OpenTelemetry metric reporting (`prism_credential_health_score`).
-- **Multi-Tenant Architecture & SaaS Platform**: Full multi-tenant isolation with a 4-level hierarchy (`Organization` ──► `Workspace` ──► `Project` ──► `Agents`), PostgreSQL Row-Level Security (RLS migrations `055`–`061`), HKDF-SHA256 derived tenant encryption vaults, and real-time consumption metering (`MeteringService`).
-- **Agent Gateway & Infrastructure**: Identifies and governs autonomous AI agents (`X-Prism-Agent-ID`) with granular permitted models, allowed tools, resource boundaries, and budget caps (`/agents`).
-- **Agent Templates Engine & 1-Click Instantiation**: Pre-packaged agent role templates (Software Engineer, DevOps Specialist, QA Engineer, Data Analyst) with default model permissions, tool boundaries, and 1-click instantiation gallery UI (`/agent-templates`).
-- **Paperclip Orchestrator Adapter (Phase 5)**: First-class integration adapter for the Paperclip autonomous agent orchestrator featuring agent auto-registration, task/workflow context extraction (`X-Paperclip-Task-ID`), and dedicated proxy endpoints (`/v1/adapters/paperclip`).
-- **Official Python SDK (`roozylabs-prism` v2.1.0)**: Published PyPI package providing synchronous (`Prism`) and asynchronous (`AsyncPrism`) HTTP clients for Python AI agents, CrewAI, LangChain, and ML applications with zero-dependency fallback.
-- **Enterprise Identity, Permissions & Governance (RBAC)**: Declarative Policy Engine with **`DENY` precedence** and wildcard matching (`allow`/`deny` rules) enforcing strict cross-domain authorization (`/governance`).
-- **End-to-End Cryptographic AI Audit Trail**: SHA-256 tamper-proof hash signature log capturing 6-dimensional execution trails (WHO, REQUEST, MODEL, TOOLS/RESOURCES, COST, OUTCOME) with real-time verification (`/audit-trail`).
-- **Tool Gateway**: Control plane for custom function calling and external REST API tools with priority failover routing, header injection, and sandbox execution (`/tools`).
-- **Resource Gateway**: Dynamic data fetching layer supporting REST API resources and direct PostgreSQL relational database querying with parameterized SQL templates (`/resources`).
-- **MCP (Model Context Protocol) Gateway & Catalog Registry**: Centralized protocol gateway and discovery marketplace for remote HTTP/SSE Model Context Protocol servers featuring automatic capability scanning, RLS tenant isolation (`/v1/mcp/registry`), and visual Next.js Catalog Explorer UI (`/mcp`).
-- **Prism Design System**: High-density, dark-first UI palette (`#08090A` canvas, `#0F1115` cards, `#8B5CF6` violet signature accent, and `JetBrains Mono` typography for all metrics).
-- **High Availability & Circuit Breaker**: Automatic 50x error detection, 60-second credential quarantine, and instant fallback cascades to ensure zero downtime.
-- **AI FinOps & Budget Manager**: Configurable spend limits, velocity alert thresholds (`healthy`, `warning`, `critical`, `exceeded`), burn-rate forecasting, and automatic model cost recommendations.
-- **Instant Zero-Delay Rotation & HTTP Pooling**: **Round Robin**, **LRU**, and **Fallback Cascade** allocation strategies with HTTP/2 connection pooling (`MaxIdleConnsPerHost: 50`).
-- **Developer Web Sandbox & Execution Console (`/sandbox`)**: Isolated prompt evaluation sandbox featuring React Hook Form (`useForm`), Zod validation, custom React Query mutation hooks (`useSandboxExecutionMutation`), real-time SSE streaming (< 500ms TTFT), required Gateway Key context (`gw_sk_...`), dynamic Smart Router policy selection (`usePoliciesQuery`), `Routed: {model}` badge display, responsive layout padding fixes (`w-full min-w-0`), copy result feedback, and rich code block formatting (`FormattedSandboxOutput`).
-- **Dry-Run Routing Simulator Playground (`/playground`)**: Pure dry-run simulator executing `/v1/routing/simulate` without consuming API keys or token budgets. Previews multi-factor candidate scoring, candidate factor rankings (`quality`, `cost`, `speed`, `health`), and policy evaluation matrices, with 1-click transition to live `/sandbox`.
-- **Active Model Router Activity Sidebar Widget**: Real-time status indicator (`ModelActivityWidget.tsx`) in the Admin Console Sidebar footer displaying online `prism-auto` model router status and active provider count.
-- **Strict Developer Guidelines & Compiler Code Hygiene**: Repository rules enforcing zero `any` policy (`@typescript-eslint/no-explicit-any`), concrete JSON primitive types (`JsonValue`, `JsonObject`) over loose `unknown`, prohibition of empty `catch` blocks (`no-empty`), compiler-enforced unused imports & locals policy (`"noUnusedLocals": true`, `"noUnusedParameters": true` in `tsconfig.json`), and mandatory typechecked production builds (`pnpm build`).
+- **Universal Model Gateway**: One OpenAI-compatible endpoint for OpenAI, Anthropic, Google Gemini, OpenRouter, and OpenCode Free.
+- **Smart Auto Router (`prism-auto`)**: Picks the best model per request using multi-factor scoring (quality, cost, speed, health) and falls back automatically when a provider is unavailable.
+- **High Availability & Circuit Breaking**: Automatic error detection, credential quarantine, and instant failover keep your uptime high.
+- **AI Agent Gateway**: Govern autonomous agents with per-agent model, tool, resource, and budget limits.
+- **Tool & Resource Gateway**: Connect custom function calls, REST APIs, and PostgreSQL resources with sandboxed execution.
+- **MCP Gateway**: Central discovery and routing for Model Context Protocol (MCP) servers.
+- **Enterprise Identity & Permissions (RBAC)**: Declarative policies with allow/deny rules and strict cross-domain authorization.
+- **Cryptographic Audit Trail**: Tamper-proof, verifiable log of every execution — who, what model, tools, cost, and outcome.
+- **AI FinOps & Budget Manager**: Spend limits, velocity alerts, burn-rate forecasts, and model cost recommendations.
+- **Multi-Tenant Isolation**: Organization → Workspace → Project → Agent hierarchy with row-level security and encrypted credential vaults.
+- **Observability**: OpenTelemetry tracing and Prometheus metrics for requests, latency, token usage, and cost analytics.
+- **Admin Console**: A high-density dashboard for managing providers, agents, budgets, routing, and telemetry.
 
 ---
 
 ## Monorepo & Technology Stack
 
-- **Monorepo Structure**:
-  - `apps/api`: High-performance Go 1.25 API Proxy Engine & Middleware
-  - `apps/app`: Next.js 16 Admin Console & Control Dashboard
-  - `apps/web`: Responsive Astro 5.0 Marketing Landing Page
-- **Database**: PostgreSQL 15 (Single Source of Truth, Migrations 001–061)
-- **Cache & State Store**: Redis 7 (Rate Limiting, Cooldown, Tenant Keyspaces)
-- **CI/CD**: GitHub Actions (Linting, Automated Testing, GHCR Container Registry, Automated VPS Deployment)
+- **`apps/api`**: Go 1.25 API proxy engine and control plane.
+- **`apps/app`**: Next.js 16 admin console and dashboard.
+- **`apps/web`**: Astro 5.0 marketing landing page.
+- **Database**: PostgreSQL 15
+- **Cache & State Store**: Redis 7 (rate limiting, cooldown, tenant keyspaces)
+- **CI/CD**: GitHub Actions (linting, tests, container registry, automated VPS deployment)
 
 ---
 
-## Quick Start Guide
+## Quick Start
 
 ### 1. Prerequisites
-- [Docker & Docker Compose](https://docs.docker.com/get-docker/) installed on your system.
-- [Go 1.25+](https://go.dev/dl/) & [pnpm 9+](https://pnpm.io/) (if running locally without Docker).
 
-### 2. Client Setup Example (OpenCode CLI)
+- [Docker & Docker Compose](https://docs.docker.com/get-docker/) installed on your system.
+- [Go 1.25+](https://go.dev/dl/) and [pnpm 9+](https://pnpm.io/) (if running locally without Docker).
+
+### 2. Connect a Client (OpenCode CLI example)
 
 Add Prism to your `~/.config/opencode/opencode.jsonc`:
 
@@ -125,7 +115,7 @@ Add Prism to your `~/.config/opencode/opencode.jsonc`:
 }
 ```
 
-### 3. Running via Docker Compose
+### 3. Run with Docker Compose
 
 ```bash
 git clone https://github.com/roozylabs/prism.git
@@ -134,48 +124,40 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-The application stack will be available at:
+The stack will be available at:
+
 - **Prism Landing Page**: `http://localhost:3001`
 - **Admin Console Dashboard**: `http://localhost:3000`
 - **Prism Gateway API**: `http://localhost:8080`
+
+### 4. Next Steps
+
+- Follow the full [Getting Started Guide](docs/getting-started.md) for cURL, the [TypeScript SDK](docs/sdk-typescript.md), and the [Prism CLI](docs/cli.md).
 
 ---
 
 ## API Endpoints Summary
 
-| Method | Endpoint | Description | Auth |
-| :--- | :--- | :--- | :--- |
-| **Health & Auth** | | | |
-| `GET` | `/health` | Healthcheck API, DB, & Redis status | Public |
-| `POST` | `/api/auth/login` | User Login | Public |
-| `GET` | `/api/auth/me` | Current session user | Session |
-| **Tenants, Auth & RBAC** | | | |
-| `GET` | `/api/auth/oauth/:provider` | Initiate OAuth2 Login (Google / GitHub) | Public |
-| `GET` | `/api/user/permissions` | Get user active permissions & role matrix | Session |
-| `POST` | `/api/onboarding` | 3-step onboarding wizard workspace setup | Session |
-| `GET` | `/api/organizations` | List organizations | Session |
-| `GET` | `/api/workspaces` | List workspaces | Session |
-| `GET` | `/api/projects` | List projects | Session |
-| `GET` | `/api/settings/members` | List organization RBAC members | Session |
-| **MCP Registry & Agent Templates** | | | |
-| `GET` | `/v1/mcp/registry` | List verified & public MCP servers | Gateway / Session |
-| `POST` | `/v1/mcp/registry` | Register custom MCP server in registry | Session |
-| `GET` | `/v1/agent-templates` | List pre-configured agent role templates | Gateway / Session |
-| `POST` | `/v1/agent-templates/:id/instantiate` | 1-Click Agent Instantiation | Session |
-| **Audit Trail & Exporter** | | | |
-| `GET` | `/v1/audit-trail/logs` | Query system action logs | Session |
-| `GET` | `/v1/audit-trail/export` | Download CSV/JSON compliance reports | Session |
-| **Quotas & Budgets** | | | |
-| `GET` | `/v1/quotas` | List organization and workspace tenant quotas | Session |
-| `PUT` | `/v1/quotas/:target_type/:target_id` | Update target quota spend and request limits | Session |
-| **Multi-Tier Billing** | | | |
-| `GET` | `/v1/billing/plans` | List public subscription plans & markup rates | Session |
-| `GET` | `/v1/billing/subscription` | Active organization subscription & spend | Session |
-| `POST` | `/v1/billing/subscription/upgrade` | Upgrade subscription tier | Session |
-| `GET` | `/v1/billing/invoices` | List organization invoice receipts | Session |
-| **Gateway (OpenAI-Compatible)** | | | |
-| `GET` | `/v1/models` | List active models (including `prism-auto`) | Gateway Key |
-| `POST` | `/v1/chat/completions` | Inference API (Smart Router `prism-auto`, Streaming, Retry) | Gateway Key |
+| Area | Endpoint Prefix | Description |
+| :--- | :--- | :--- |
+| **Health & Auth** | `/health`, `/api/auth/*` | Service health, login, session, OAuth |
+| **Control Plane** | `/api/*` | Organizations, workspaces, members, RBAC, onboarding |
+| **MCP & Agents** | `/v1/mcp/*`, `/v1/agent-templates/*` | MCP registry, agent templates |
+| **Audit & Compliance** | `/v1/audit-trail/*` | Action logs and compliance export |
+| **Quotas & Billing** | `/v1/quotas`, `/v1/billing/*` | Tenant quotas, subscription, invoices |
+| **Gateway (OpenAI-compatible)** | `/v1/models`, `/v1/chat/completions` | Model listing and inference |
+
+See the full [API Reference](docs/api-reference.md) for complete endpoint details, parameters, and authentication.
+
+---
+
+## Documentation
+
+- [Getting Started](docs/getting-started.md) — first request with cURL, SDK, and CLI.
+- [TypeScript SDK](docs/sdk-typescript.md) — `@roozylabs/prism` usage.
+- [Prism CLI](docs/cli.md) — `@roozylabs/prism-cli` commands.
+- [API Reference](docs/api-reference.md) — complete endpoint documentation.
+- [Architecture](docs/ARCHITECTURE.md) — internal system design.
 
 ---
 
