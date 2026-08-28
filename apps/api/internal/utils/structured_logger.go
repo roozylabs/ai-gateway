@@ -56,6 +56,6 @@ func LogStructured(entry StructuredLogEntry) {
 
 	data, err := json.Marshal(entry)
 	if err == nil {
-		fmt.Fprintln(os.Stdout, string(data))
+		_, _ = fmt.Fprintln(os.Stdout, string(data))
 	}
 }
