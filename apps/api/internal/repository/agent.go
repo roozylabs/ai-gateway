@@ -17,13 +17,13 @@ func NewAgentRepository(db *sql.DB) *AgentRepository {
 	return &AgentRepository{db: db}
 }
 
-const agentColumns = `id, user_id, name, display_name, description, agent_type, system_prompt_override, allowed_models, allowed_tools, allowed_resources, max_budget_cents, status, enabled, created_at, updated_at`
+const agentColumns = `id, user_id, name, display_name, description, agent_type, system_prompt_override, allowed_models, allowed_tools, allowed_resources, allowed_mcp_servers, max_budget_cents, status, enabled, created_at, updated_at`
 
 func scanAgent(row interface{ Scan(...interface{}) error }, a *models.Agent) error {
-	var allowedModels, allowedTools, allowedResources pq.StringArray
+	var allowedModels, allowedTools, allowedResources, allowedMCPServers pq.StringArray
 	err := row.Scan(
 		&a.ID, &a.UserID, &a.Name, &a.DisplayName, &a.Description, &a.AgentType,
-		&a.SystemPromptOverride, &allowedModels, &allowedTools, &allowedResources,
+		&a.SystemPromptOverride, &allowedModels, &allowedTools, &allowedResources, &allowedMCPServers,
 		&a.MaxBudgetCents, &a.Status, &a.Enabled, &a.CreatedAt, &a.UpdatedAt,
 	)
 	if err != nil {
@@ -32,6 +32,7 @@ func scanAgent(row interface{ Scan(...interface{}) error }, a *models.Agent) err
 	a.AllowedModels = []string(allowedModels)
 	a.AllowedTools = []string(allowedTools)
 	a.AllowedResources = []string(allowedResources)
+	a.AllowedMCPServers = []string(allowedMCPServers)
 	if a.AllowedModels == nil {
 		a.AllowedModels = []string{}
 	}
@@ -40,6 +41,9 @@ func scanAgent(row interface{ Scan(...interface{}) error }, a *models.Agent) err
 	}
 	if a.AllowedResources == nil {
 		a.AllowedResources = []string{}
+	}
+	if a.AllowedMCPServers == nil {
+		a.AllowedMCPServers = []string{}
 	}
 	return nil
 }
@@ -111,11 +115,11 @@ func (r *AgentRepository) Create(ctx context.Context, a *models.Agent) error {
 		a.Status = "active"
 	}
 	return r.db.QueryRowContext(ctx,
-		`INSERT INTO agents (user_id, name, display_name, description, agent_type, system_prompt_override, allowed_models, allowed_tools, allowed_resources, max_budget_cents, status, enabled, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		`INSERT INTO agents (user_id, name, display_name, description, agent_type, system_prompt_override, allowed_models, allowed_tools, allowed_resources, allowed_mcp_servers, max_budget_cents, status, enabled, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		 RETURNING id, created_at, updated_at`,
 		a.UserID, a.Name, a.DisplayName, a.Description, a.AgentType, a.SystemPromptOverride,
-		pq.Array(a.AllowedModels), pq.Array(a.AllowedTools), pq.Array(a.AllowedResources),
+		pq.Array(a.AllowedModels), pq.Array(a.AllowedTools), pq.Array(a.AllowedResources), pq.Array(a.AllowedMCPServers),
 		a.MaxBudgetCents, a.Status, a.Enabled, now, now,
 	).Scan(&a.ID, &a.CreatedAt, &a.UpdatedAt)
 }
@@ -123,10 +127,10 @@ func (r *AgentRepository) Create(ctx context.Context, a *models.Agent) error {
 func (r *AgentRepository) Update(ctx context.Context, a *models.Agent) error {
 	a.UpdatedAt = time.Now()
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE agents SET display_name=$1, description=$2, agent_type=$3, system_prompt_override=$4, allowed_models=$5, allowed_tools=$6, allowed_resources=$7, max_budget_cents=$8, status=$9, enabled=$10, updated_at=$11
-		 WHERE id = $12`,
+		`UPDATE agents SET display_name=$1, description=$2, agent_type=$3, system_prompt_override=$4, allowed_models=$5, allowed_tools=$6, allowed_resources=$7, allowed_mcp_servers=$8, max_budget_cents=$9, status=$10, enabled=$11, updated_at=$12
+		 WHERE id = $13`,
 		a.DisplayName, a.Description, a.AgentType, a.SystemPromptOverride,
-		pq.Array(a.AllowedModels), pq.Array(a.AllowedTools), pq.Array(a.AllowedResources),
+		pq.Array(a.AllowedModels), pq.Array(a.AllowedTools), pq.Array(a.AllowedResources), pq.Array(a.AllowedMCPServers),
 		a.MaxBudgetCents, a.Status, a.Enabled, a.UpdatedAt, a.ID,
 	)
 	return err

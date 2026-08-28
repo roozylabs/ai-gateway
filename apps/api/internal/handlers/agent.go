@@ -21,22 +21,24 @@ func NewAgentHandler(repo *repository.AgentRepository, governance *proxy.AgentGo
 }
 
 type CreateAgentRequest struct {
-	Name                 string   `json:"name" binding:"required"`
-	DisplayName          string   `json:"displayName"`
-	Description          string   `json:"description"`
-	AgentType            string   `json:"agentType"`
-	SystemPromptOverride string   `json:"systemPromptOverride"`
-	AllowedModels        []string `json:"allowedModels"`
-	AllowedModelsSnake   []string `json:"allowed_models"`
-	AllowedTools         []string `json:"allowedTools"`
-	AllowedToolsSnake    []string `json:"allowed_tools"`
-	AllowedResources     []string `json:"allowedResources"`
-	AllowedResourcesSnake []string `json:"allowed_resources"`
-	MaxBudgetCents       int      `json:"maxBudgetCents"`
-	MaxBudgetCentsSnake  int      `json:"max_budget_cents"`
-	BudgetCapUSD         float64  `json:"budget_cap_usd"`
-	Status               string   `json:"status"`
-	Enabled              *bool    `json:"enabled"`
+	Name                   string   `json:"name" binding:"required"`
+	DisplayName            string   `json:"displayName"`
+	Description            string   `json:"description"`
+	AgentType              string   `json:"agentType"`
+	SystemPromptOverride   string   `json:"systemPromptOverride"`
+	AllowedModels          []string `json:"allowedModels"`
+	AllowedModelsSnake     []string `json:"allowed_models"`
+	AllowedTools           []string `json:"allowedTools"`
+	AllowedToolsSnake      []string `json:"allowed_tools"`
+	AllowedResources       []string `json:"allowedResources"`
+	AllowedResourcesSnake  []string `json:"allowed_resources"`
+	AllowedMCPServers      []string `json:"allowedMcpServers"`
+	AllowedMCPServersSnake []string `json:"allowed_mcp_servers"`
+	MaxBudgetCents         int      `json:"maxBudgetCents"`
+	MaxBudgetCentsSnake    int      `json:"max_budget_cents"`
+	BudgetCapUSD           float64  `json:"budget_cap_usd"`
+	Status                 string   `json:"status"`
+	Enabled                *bool    `json:"enabled"`
 }
 
 func (h *AgentHandler) List(c *gin.Context) {
@@ -88,6 +90,10 @@ func (h *AgentHandler) Create(c *gin.Context) {
 	if len(allowedResources) == 0 && len(req.AllowedResourcesSnake) > 0 {
 		allowedResources = req.AllowedResourcesSnake
 	}
+	allowedMCPServers := req.AllowedMCPServers
+	if len(allowedMCPServers) == 0 && len(req.AllowedMCPServersSnake) > 0 {
+		allowedMCPServers = req.AllowedMCPServersSnake
+	}
 
 	maxBudgetCents := req.MaxBudgetCents
 	if maxBudgetCents == 0 && req.MaxBudgetCentsSnake > 0 {
@@ -114,6 +120,9 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		if len(allowedResources) > 0 {
 			systemPrompt += fmt.Sprintf(" Allowed resources: %s.", strings.Join(allowedResources, ", "))
 		}
+		if len(allowedMCPServers) > 0 {
+			systemPrompt += fmt.Sprintf(" Allowed MCP servers: %s.", strings.Join(allowedMCPServers, ", "))
+		}
 	}
 
 	agent := &models.Agent{
@@ -126,6 +135,7 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		AllowedModels:        allowedModels,
 		AllowedTools:         allowedTools,
 		AllowedResources:     allowedResources,
+		AllowedMCPServers:    allowedMCPServers,
 		MaxBudgetCents:       maxBudgetCents,
 		Status:               "active",
 		Enabled:              enabled,
@@ -182,6 +192,14 @@ func (h *AgentHandler) Update(c *gin.Context) {
 	}
 	if len(allowedResources) > 0 {
 		existing.AllowedResources = allowedResources
+	}
+
+	allowedMCPServers := req.AllowedMCPServers
+	if len(allowedMCPServers) == 0 && len(req.AllowedMCPServersSnake) > 0 {
+		allowedMCPServers = req.AllowedMCPServersSnake
+	}
+	if len(allowedMCPServers) > 0 {
+		existing.AllowedMCPServers = allowedMCPServers
 	}
 
 	maxBudgetCents := req.MaxBudgetCents

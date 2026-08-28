@@ -15,6 +15,7 @@ type Agent struct {
 	AllowedModels        []string  `json:"allowedModels"`
 	AllowedTools         []string  `json:"allowedTools"`
 	AllowedResources     []string  `json:"allowedResources"`
+	AllowedMCPServers    []string  `json:"allowedMcpServers"`
 	MaxBudgetCents       int       `json:"maxBudgetCents"`
 	Status               string    `json:"status"`
 	Enabled              bool      `json:"enabled"`
@@ -23,9 +24,9 @@ type Agent struct {
 }
 
 type AgentGovernanceCheckResult struct {
-	AgentName      string `json:"agentName"`
-	ModelAllowed   bool   `json:"modelAllowed"`
-	ToolAllowed    bool   `json:"toolAllowed"`
-	ResourceAllowed bool  `json:"resourceAllowed"`
-	Reason         string `json:"reason,omitempty"`
+	AgentName       string `json:"agentName"`
+	ModelAllowed    bool   `json:"modelAllowed"`
+	ToolAllowed     bool   `json:"toolAllowed"`
+	ResourceAllowed bool   `json:"resourceAllowed"`
+	Reason          string `json:"reason,omitempty"`
 }
