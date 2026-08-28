@@ -42,10 +42,25 @@ func (g *AgentGovernanceEngine) ValidateAgentModelAccess(ctx context.Context, us
 		}, nil
 	}
 
+	// 1. Evaluate explicit DENY rules first (DENY > ALLOW precedence)
+	for _, rule := range ag.AllowedModels {
+		if strings.HasPrefix(rule, "!") || strings.HasPrefix(rule, "-") || strings.HasPrefix(strings.ToLower(rule), "deny:") {
+			deniedTarget := strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(rule, "!"), "-"), "deny:")
+			if strings.EqualFold(deniedTarget, modelSlug) {
+				return &models.AgentGovernanceCheckResult{
+					AgentName:    agentName,
+					ModelAllowed: false,
+					Reason:       fmt.Sprintf("model %q explicitly denied for agent %q", modelSlug, agentName),
+				}, nil
+			}
+		}
+	}
+
 	if len(ag.AllowedModels) == 0 || strings.EqualFold(modelSlug, "prism-auto") || strings.EqualFold(modelSlug, "auto") {
 		return &models.AgentGovernanceCheckResult{AgentName: agentName, ModelAllowed: true}, nil
 	}
 
+	// 2. Evaluate ALLOW rules
 	for _, allowed := range ag.AllowedModels {
 		if strings.EqualFold(allowed, modelSlug) || allowed == "*" {
 			return &models.AgentGovernanceCheckResult{AgentName: agentName, ModelAllowed: true}, nil
@@ -79,10 +94,25 @@ func (g *AgentGovernanceEngine) ValidateAgentToolAccess(ctx context.Context, use
 		}, nil
 	}
 
+	// 1. Evaluate explicit DENY rules first (DENY > ALLOW precedence)
+	for _, rule := range ag.AllowedTools {
+		if strings.HasPrefix(rule, "!") || strings.HasPrefix(rule, "-") || strings.HasPrefix(strings.ToLower(rule), "deny:") {
+			deniedTarget := strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(rule, "!"), "-"), "deny:")
+			if strings.EqualFold(deniedTarget, toolName) {
+				return &models.AgentGovernanceCheckResult{
+					AgentName:   agentName,
+					ToolAllowed: false,
+					Reason:      fmt.Sprintf("tool %q explicitly denied for agent %q", toolName, agentName),
+				}, nil
+			}
+		}
+	}
+
 	if len(ag.AllowedTools) == 0 {
 		return &models.AgentGovernanceCheckResult{AgentName: agentName, ToolAllowed: true}, nil
 	}
 
+	// 2. Evaluate ALLOW rules
 	for _, allowed := range ag.AllowedTools {
 		if strings.EqualFold(allowed, toolName) || allowed == "*" {
 			return &models.AgentGovernanceCheckResult{AgentName: agentName, ToolAllowed: true}, nil
