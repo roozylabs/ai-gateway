@@ -1,18 +1,22 @@
 package proxy
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/client/transport"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/utils"
 )
+
+const mcpClientName = "prism-mcp"
 
 type MCPServerFinder interface {
 	FindByUserAndName(ctx context.Context, userID, name string) (*models.MCPServer, error)
@@ -34,34 +38,46 @@ func NewMCPGateway(servers MCPServerFinder, tools MCPToolBatchSaver) *MCPGateway
 	return &MCPGateway{servers: servers, tools: tools}
 }
 
-// JSON-RPC 2.0 Request / Response structures for MCP
-type jsonRPCRequest struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      int64       `json:"id"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
-}
+// newMCPClient builds a transport-aware MCP client, performs the initialize
+// handshake, and returns a ready-to-use client. The caller must Close() it.
+func newMCPClient(ctx context.Context, srv *models.MCPServer, encKey string) (*client.Client, error) {
+	headers := map[string]string{}
+	if srv.AuthTokenEncrypted != nil && *srv.AuthTokenEncrypted != "" && encKey != "" {
+		token, err := utils.DecryptAES256GCM(*srv.AuthTokenEncrypted, encKey)
+		if err != nil {
+			log.Printf("[mcp-gateway] decrypt auth token failed for %q: %v", srv.Name, err)
+		} else if token != "" {
+			headers["Authorization"] = "Bearer " + token
+		}
+	}
 
-type jsonRPCResponse struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      int64           `json:"id"`
-	Result  json.RawMessage `json:"result,omitempty"`
-	Error   *jsonRPCError   `json:"error,omitempty"`
-}
+	var t transport.Interface
+	var err error
+	switch strings.ToLower(strings.TrimSpace(srv.TransportType)) {
+	case "sse":
+		t, err = transport.NewSSE(srv.EndpointURL, transport.WithHeaders(headers))
+	case "websocket", "ws":
+		return nil, fmt.Errorf("mcp server %q: websocket transport is not supported", srv.Name)
+	default: // "http", "streamable", "" -> Streamable HTTP (Context7, etc.)
+		t, err = transport.NewStreamableHTTP(srv.EndpointURL, transport.WithHTTPHeaders(headers))
+	}
+	if err != nil {
+		return nil, fmt.Errorf("build mcp transport for %q: %w", srv.Name, err)
+	}
 
-type jsonRPCError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-type mcpDiscoveredTool struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	InputSchema json.RawMessage `json:"inputSchema"`
-}
-
-type mcpListToolsResult struct {
-	Tools []mcpDiscoveredTool `json:"tools"`
+	c := client.NewClient(t)
+	if err := c.Start(ctx); err != nil {
+		return nil, fmt.Errorf("start mcp transport for %q: %w", srv.Name, err)
+	}
+	if _, err := c.Initialize(ctx, mcp.InitializeRequest{
+		Params: mcp.InitializeParams{
+			ClientInfo: mcp.Implementation{Name: mcpClientName, Version: "1.0.0"},
+		},
+	}); err != nil {
+		_ = c.Close()
+		return nil, fmt.Errorf("mcp initialize for %q: %w", srv.Name, err)
+	}
+	return c, nil
 }
 
 func (g *MCPGateway) SyncServerTools(ctx context.Context, serverID, userID, encKey string) (*models.MCPServerWithTools, error) {
@@ -70,40 +86,24 @@ func (g *MCPGateway) SyncServerTools(ctx context.Context, serverID, userID, encK
 		return nil, fmt.Errorf("resolve mcp server: %w", err)
 	}
 
-	rpcReq := jsonRPCRequest{
-		JSONRPC: "2.0",
-		ID:      time.Now().UnixNano(),
-		Method:  "tools/list",
-	}
-	body, err := json.Marshal(rpcReq)
-	if err != nil {
-		return nil, fmt.Errorf("marshal rpc: %w", err)
-	}
-
-	respBytes, err := g.sendRPC(ctx, srv, body, encKey)
+	c, err := newMCPClient(ctx, srv, encKey)
 	if err != nil {
 		_ = g.servers.UpdateStatus(ctx, srv.ID, "offline")
-		return nil, fmt.Errorf("rpc connect error: %w", err)
+		return nil, err
 	}
+	defer func() { _ = c.Close() }()
 
-	var rpcResp jsonRPCResponse
-	if err := json.Unmarshal(respBytes, &rpcResp); err != nil {
-		return nil, fmt.Errorf("unmarshal rpc response: %w", err)
-	}
-	if rpcResp.Error != nil {
-		return nil, fmt.Errorf("mcp rpc error %d: %s", rpcResp.Error.Code, rpcResp.Error.Message)
-	}
-
-	var listRes mcpListToolsResult
-	if err := json.Unmarshal(rpcResp.Result, &listRes); err != nil {
-		return nil, fmt.Errorf("parse tools/list result: %w", err)
+	listRes, err := c.ListTools(ctx, mcp.ListToolsRequest{})
+	if err != nil {
+		_ = g.servers.UpdateStatus(ctx, srv.ID, "error")
+		return nil, fmt.Errorf("mcp list tools for %q: %w", srv.Name, err)
 	}
 
 	var newTools []models.MCPTool
 	for _, dt := range listRes.Tools {
-		schema := dt.InputSchema
-		if len(schema) == 0 {
-			schema = json.RawMessage(`{}`)
+		schema := json.RawMessage(`{}`)
+		if b, err := json.Marshal(dt.InputSchema); err == nil {
+			schema = b
 		}
 		newTools = append(newTools, models.MCPTool{
 			MCPServerID: srv.ID,
@@ -131,40 +131,24 @@ func (g *MCPGateway) ExecuteTool(ctx context.Context, userID, serverName, toolNa
 		return nil, fmt.Errorf("mcp server %q is disabled", serverName)
 	}
 
-	params := map[string]interface{}{
-		"name":      toolName,
-		"arguments": args,
-	}
-	rpcReq := jsonRPCRequest{
-		JSONRPC: "2.0",
-		ID:      time.Now().UnixNano(),
-		Method:  "tools/call",
-		Params:  params,
-	}
-	body, err := json.Marshal(rpcReq)
+	c, err := newMCPClient(ctx, srv, encKey)
 	if err != nil {
-		return nil, fmt.Errorf("marshal tool execution rpc: %w", err)
+		_ = g.servers.UpdateStatus(ctx, srv.ID, "error")
+		return nil, err
 	}
+	defer func() { _ = c.Close() }()
 
 	start := time.Now()
-	respBytes, err := g.sendRPC(ctx, srv, body, encKey)
+	callRes, err := c.CallTool(ctx, mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name:      toolName,
+			Arguments: args,
+		},
+	})
 	latencyMs := int(time.Since(start).Milliseconds())
 	if err != nil {
 		_ = g.servers.UpdateStatus(ctx, srv.ID, "error")
-		return nil, fmt.Errorf("mcp backend error: %w", err)
-	}
-
-	var rpcResp jsonRPCResponse
-	if err := json.Unmarshal(respBytes, &rpcResp); err != nil {
-		return nil, fmt.Errorf("unmarshal rpc execution result: %w", err)
-	}
-	if rpcResp.Error != nil {
-		return nil, fmt.Errorf("mcp execution rpc error %d: %s", rpcResp.Error.Code, rpcResp.Error.Message)
-	}
-
-	var parsedResult interface{}
-	if err := json.Unmarshal(rpcResp.Result, &parsedResult); err != nil {
-		parsedResult = string(rpcResp.Result)
+		return nil, fmt.Errorf("mcp tool call %q on %q: %w", toolName, srv.Name, err)
 	}
 
 	_ = g.servers.UpdateStatus(ctx, srv.ID, "connected")
@@ -172,43 +156,30 @@ func (g *MCPGateway) ExecuteTool(ctx context.Context, userID, serverName, toolNa
 		Server:     srv.Name,
 		Tool:       toolName,
 		StatusCode: http.StatusOK,
-		Result:     parsedResult,
+		Result:     extractToolResult(callRes),
 		LatencyMs:  latencyMs,
 	}, nil
 }
 
-func (g *MCPGateway) sendRPC(ctx context.Context, srv *models.MCPServer, body []byte, encKey string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, srv.EndpointURL, bytes.NewReader(body))
-	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
+// extractToolResult flattens MCP tool content blocks into a single value.
+func extractToolResult(res *mcp.CallToolResult) interface{} {
+	if res == nil {
+		return nil
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	if srv.AuthTokenEncrypted != nil && *srv.AuthTokenEncrypted != "" && encKey != "" {
-		token, err := utils.DecryptAES256GCM(*srv.AuthTokenEncrypted, encKey)
-		if err != nil {
-			log.Printf("[mcp-gateway] decrypt auth token failed for %q: %v", srv.Name, err)
-		} else {
-			req.Header.Set("Authorization", "Bearer "+token)
+	var sb strings.Builder
+	for _, content := range res.Content {
+		switch tc := content.(type) {
+		case *mcp.TextContent:
+			sb.WriteString(tc.Text)
+		case mcp.TextContent:
+			sb.WriteString(tc.Text)
 		}
 	}
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("http execute: %w", err)
+	if sb.Len() > 0 {
+		return sb.String()
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
-	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
+	if res.StructuredContent != nil {
+		return res.StructuredContent
 	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("mcp server %q returned status %d: %s", srv.Name, resp.StatusCode, string(respBody))
-	}
-
-	return respBody, nil
+	return nil
 }
