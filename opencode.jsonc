@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    ".agents/rules/api-sdk-contract-sync.md",
+    ".agents/rules/atomic-commits-and-conventional-commits.md",
+    ".agents/rules/changelog-and-readme.md",
+    ".agents/rules/docs.md",
+    ".agents/rules/documentation-standards.md",
+    ".agents/rules/git-push-build-verification.md",
+    ".agents/rules/go-module-and-linting.md",
+    ".agents/rules/go-sqlrowserr.md",
+    ".agents/rules/migrations.md",
+    ".agents/rules/no-hardcoded-routes.md",
+    ".agents/rules/no-unknown-type-policy.md",
+    ".agents/rules/no-unused-imports-policy.md",
+    ".agents/rules/planning-and-model-policy.md",
+    ".agents/rules/pull-request-workflow.md",
+    ".agents/rules/react-form-and-mutation-guidelines.md",
+    ".agents/rules/react-typescript-strict-state.md",
+    ".agents/rules/strict-eslint-and-build-verification.md",
+    ".agents/rules/typescript-enums-and-no-any.md",
+    ".agents/rules/ui-icon-guidelines.md",
+    ".agents/rules/version-synchronization.md"
+  ]
+}
