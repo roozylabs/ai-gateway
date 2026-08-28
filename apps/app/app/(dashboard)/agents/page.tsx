@@ -20,6 +20,7 @@ import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { MultiSelect, MultiSelectOption } from '@/components/molecules/MultiSelect';
+import { NumberInput } from '@/components/molecules/NumberInput';
 
 const AGENT_TYPES = ['general', 'code', 'research', 'ops', 'custom'];
 
@@ -83,7 +84,7 @@ function AgentFormFields({
       </div>
       <div className="space-y-2">
         <Label htmlFor="agent-budget">Max Budget (cents/mo)</Label>
-        <Input id="agent-budget" type="number" min={0} value={maxBudgetCents} onChange={(e) => onMaxBudgetCentsChange(Number(e.target.value))} placeholder="0" />
+        <NumberInput id="agent-budget" value={maxBudgetCents} onValueChange={onMaxBudgetCentsChange} min={0} step={100} placeholder="0" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="agent-tools">Allowed Tools</Label>
