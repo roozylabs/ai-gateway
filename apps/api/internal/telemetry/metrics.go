@@ -227,3 +227,31 @@ func RecordCredentialHealth(ctx context.Context, credentialID, provider string, 
 		))
 	}
 }
+
+// CredentialEventType enumerates credential lifecycle events.
+const (
+	CredentialEventFailure    = "failure"
+	CredentialEventCooldown   = "cooldown"
+	CredentialEventExhaustion = "exhaustion"
+)
+
+// RecordCredentialEvent records credential failure, cooldown, or exhaustion events.
+func RecordCredentialEvent(ctx context.Context, eventType, credentialID, provider string) {
+	var counter metric.Int64Counter
+	switch eventType {
+	case CredentialEventFailure:
+		counter = credentialFailuresCounter
+	case CredentialEventCooldown:
+		counter = credentialCooldownsCounter
+	case CredentialEventExhaustion:
+		counter = credentialExhaustionsCounter
+	default:
+		return
+	}
+	if counter != nil {
+		counter.Add(ctx, 1, metric.WithAttributes(
+			attribute.String("credential_id", credentialID),
+			attribute.String("provider", provider),
+		))
+	}
+}

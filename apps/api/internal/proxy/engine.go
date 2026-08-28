@@ -443,6 +443,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
 			e.extractAndSaveQuota(ctx, route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(ctx, route.Credential.ID, retryAfter)
+			RecordCredentialEventTelemetry(ctx, telemetry.CredentialEventCooldown, route.Credential.ID, route.Credential.ProviderID)
 			go e.syncCredentialHealth(context.Background(), route.Credential, true, false)
 			if e.publisher != nil {
 				_ = e.publisher.Publish(ctx, "CREDENTIAL_COOLDOWN_STARTED", map[string]interface{}{
@@ -466,6 +467,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 				retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
 				e.extractAndSaveQuota(ctx, route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 				_ = e.cooldown.SetCooldown(ctx, route.Credential.ID, retryAfter)
+				RecordCredentialEventTelemetry(ctx, telemetry.CredentialEventExhaustion, route.Credential.ID, route.Credential.ProviderID)
 				go e.syncCredentialHealth(context.Background(), route.Credential, true, true)
 				lastErr = fmt.Errorf("upstream rate/quota limit (%d) on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
 				lastAttemptStatus = httpResp.StatusCode
@@ -474,6 +476,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			}
 
 			_ = e.creds.UpdateStatus(ctx, route.Credential.ID, "invalid")
+			RecordCredentialEventTelemetry(ctx, telemetry.CredentialEventFailure, route.Credential.ID, route.Credential.ProviderID)
 			go e.syncCredentialHealth(context.Background(), route.Credential, false, false)
 			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
 			lastAttemptStatus = httpResp.StatusCode
@@ -774,6 +777,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
 			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
 			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+			RecordCredentialEventTelemetry(c.Request.Context(), telemetry.CredentialEventCooldown, route.Credential.ID, route.Credential.ProviderID)
 			if e.publisher != nil {
 				_ = e.publisher.Publish(c.Request.Context(), "CREDENTIAL_COOLDOWN_STARTED", map[string]interface{}{
 					"credentialId": route.Credential.ID,
@@ -796,17 +800,19 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			bodyStr := string(bodyBytes)
 			bodyLower := strings.ToLower(bodyStr)
 			if strings.Contains(bodyLower, "quota") || strings.Contains(bodyLower, "limit") || strings.Contains(bodyLower, "exhausted") || strings.Contains(bodyLower, "too many") || strings.Contains(bodyLower, "resource_exhausted") {
-				retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
-				e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
-				_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
-				lastErr = fmt.Errorf("upstream rate/quota limit (%d) on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
-				lastAttemptStatus = httpResp.StatusCode
-				attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
-				continue
-			}
+			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
+			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
+			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+			RecordCredentialEventTelemetry(c.Request.Context(), telemetry.CredentialEventExhaustion, route.Credential.ID, route.Credential.ProviderID)
+			lastErr = fmt.Errorf("upstream rate/quota limit (%d) on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
+			lastAttemptStatus = httpResp.StatusCode
+			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
+			continue
+		}
 
-			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
-			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
+		_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
+		RecordCredentialEventTelemetry(c.Request.Context(), telemetry.CredentialEventFailure, route.Credential.ID, route.Credential.ProviderID)
+		lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
 			lastAttemptStatus = httpResp.StatusCode
 			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
 			continue

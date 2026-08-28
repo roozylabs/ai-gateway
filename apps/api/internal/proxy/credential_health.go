@@ -65,3 +65,9 @@ func DetermineCredentialStatus(enabled bool, isCoolingDown bool, isExhausted boo
 func RecordCredentialHealthTelemetry(ctx context.Context, credentialID, providerID string, score float64) {
 	telemetry.RecordCredentialHealth(ctx, credentialID, providerID, score)
 }
+
+// RecordCredentialEventTelemetry records a credential lifecycle event (failure,
+// cooldown, or exhaustion) as a counter metric.
+func RecordCredentialEventTelemetry(ctx context.Context, eventType, credentialID, providerID string) {
+	telemetry.RecordCredentialEvent(ctx, eventType, credentialID, providerID)
+}
