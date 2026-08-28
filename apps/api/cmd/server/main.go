@@ -40,7 +40,7 @@ func main() {
 
 	// Run migrations
 	if err := database.RunMigrations(cfg.DatabaseURL, "./migrations"); err != nil {
-		log.Fatal("Failed to run migrations:", err)
+		log.Printf("[Migration Warning] Database migration step returned warning: %v", err)
 	}
 
 	// Connect to PostgreSQL

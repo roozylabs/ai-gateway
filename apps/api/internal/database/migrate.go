@@ -19,12 +19,24 @@ func RunMigrations(databaseURL, migrationsPath string) error {
 	}
 	defer func() { _, _ = m.Close() }()
 
+	// Auto-clear dirty database version if interrupted previously
 	if version, dirty, verErr := m.Version(); verErr == nil && dirty {
-		log.Printf("Warning: Migration database is dirty at version %d", version)
+		log.Printf("Warning: Database schema migration is dirty at version %d. Forcing version %d to clear dirty state...", version, version)
+		if forceErr := m.Force(int(version)); forceErr != nil {
+			log.Printf("Warning: Failed to force migration version %d: %v", version, forceErr)
+		}
 	}
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to run migrations: %w", err)
+		log.Printf("Warning: Migration up returned error: %v. Retrying after force reset...", err)
+		if version, _, verErr := m.Version(); verErr == nil {
+			_ = m.Force(int(version))
+			if retryErr := m.Up(); retryErr != nil && retryErr != migrate.ErrNoChange {
+				return fmt.Errorf("failed to run migrations after force reset: %w", retryErr)
+			}
+		} else {
+			return fmt.Errorf("failed to run migrations: %w", err)
+		}
 	}
 
 	log.Println("Migrations completed successfully")

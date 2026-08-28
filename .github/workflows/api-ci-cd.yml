@@ -208,7 +208,9 @@ jobs:
             done
 
             if [ "$HEALTHY" = "false" ]; then
-              echo "Error: $TARGET_CONTAINER failed health check. Rolling back..."
+              echo "Error: $TARGET_CONTAINER failed health check. Printing container logs:"
+              docker logs $TARGET_CONTAINER --tail 100 || true
+              echo "Rolling back..."
               docker compose stop $TARGET_SVC || true
               exit 1
             fi
