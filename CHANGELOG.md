@@ -5,6 +5,34 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-08-28
+
+### Added
+- **Security & Tenant Isolation Hardening Pass (Task 01)**:
+  - **Authoritative Organization & Header Spoofing Protection**: Enforced authoritative Gateway API Key (`OrgID`) ownership in `TenantMiddleware` (`apps/api/internal/middleware/tenant.go`), rejecting client header spoofing (`X-Prism-Org-ID`) with HTTP 403 Forbidden (`ErrCrossTenantForbidden`).
+  - **Session User Organization Membership Verification**: Added `OrgMemberChecker` (`IsMember`) to `AccountRepository` and `TenantMiddleware` to validate web session users against `organization_members` before accepting `X-Prism-Org-ID` headers.
+  - **IDOR Protection & Repository Tenant Scoping**: Scoped all resource lookup, update, reveal, test, and delete queries across `CredentialRepository` (`FindByID`, `Delete`) and `GatewayKeyRepository` (`Delete`) by authenticated `userID`/`org_id`, fixing IDOR vulnerabilities across credential and key handlers.
+  - **PostgreSQL Row Level Security (RLS) Migrations**: Created migration `070_enable_pg_rls_policies.up.sql` enabling RLS policies across 9 multi-tenant tables (`credentials`, `gateway_api_keys`, `mcp_servers`, `tools`, `resources`, `agents`, `governance_policies`, `ai_audit_trails`, `request_logs`).
+  - **Redis Keyspace Tenant Isolation**: Scoped Redis rate limit keys using `tenant:{org_id}:` namespace prefixing in `GatewayRateLimitMiddleware` (`apps/api/internal/middleware/ratelimit.go`).
+  - **RBAC & Governance DENY > ALLOW Precedence**: Enforced strict `DENY > ALLOW` rule evaluation ordering in `AgentGovernanceEngine` (`apps/api/internal/proxy/agent_governance.go`), ensuring explicit `!model`, `-model`, or `deny:model` rules override `*` wildcard ALLOW rules.
+  - **Tool & Resource Gateway Execution Boundaries**: Enforced caller tenant ownership verification prior to tool and resource backend execution.
+  - **Secret Exposure Audit & Redaction Utility**: Created `utils.RedactSensitive` regex sanitizer in `apps/api/internal/utils/mask.go` to automatically mask raw API keys (`gw_sk_*`, `sk-proj-*`, `sk-ant-*`, `AIzaSy*`) and Bearer tokens in error strings and logs.
+  - **Security Regression Test Suite**: Created `apps/api/internal/security/tenant_security_test.go` covering header spoofing, unassigned org sessions, and secret redaction.
+  - **Security Hardening Report**: Published comprehensive audit report at `docs/production-hardening-security.md`.
+
+- **OpenTelemetry & Operational Observability Pipeline**:
+  - Integrated OpenTelemetry Go SDK (`internal/telemetry/otel.go`, `tracer.go`, `metrics.go`) with OTLP HTTP exporter, TracerProvider, MeterProvider, and Prometheus metrics exporter.
+  - Added Prometheus metrics endpoint (`GET /metrics`) exposing 8 core metric instruments (`prism_requests_total`, `prism_request_duration_seconds`, `prism_ttft_seconds`, `prism_token_usage_total`, `prism_cost_usd_total`, `prism_active_requests`, `prism_provider_error_429_total`, `prism_credential_health_score`).
+  - Added operational observability stack under `deploy/otel/` (`docker-compose.otel.yml`, OTel Collector config, Prometheus config, Loki, Tempo, Grafana).
+
+### Fixed
+- **Google Gemini Thought Signature & Multi-Turn Tool Call Fix**:
+  - Resolved Google Gemini HTTP 400 `INVALID_ARGUMENT` error ("Function call is missing a thought_signature in functionCall parts").
+  - Updated `SanitizeMessagesForGoogle` (`apps/api/internal/proxy/google.go`) to handle typed map slices (`[]map[string]interface{}`) and inject `thought_signature` across outer `part` and inner `functionCall` objects for Gemini tool calling.
+- **CLI & SDK Credentials & Routing Fixes**:
+  - Fixed `prism credential list` "creds is not iterable" CLI error by updating SDK `credentials.ts` to parse paginated `{ data: [...] }` backend responses.
+  - Fixed `prism routing simulate` CLI display by standardizing camelCase factor scores in SDK `routing.ts` and CLI `routing.ts`.
+
 ## [2.6.0] - 2026-08-27
 
 ### Added
