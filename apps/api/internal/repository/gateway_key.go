@@ -166,9 +166,26 @@ func (r *GatewayKeyRepository) Update(ctx context.Context, k *models.GatewayAPIK
 	return err
 }
 
-func (r *GatewayKeyRepository) Delete(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM gateway_api_keys WHERE id = $1`, id)
-	return err
+func (r *GatewayKeyRepository) Delete(ctx context.Context, id string, userID ...string) error {
+	uid := ""
+	if len(userID) > 0 {
+		uid = userID[0]
+	}
+	var res sql.Result
+	var err error
+	if uid != "" {
+		res, err = r.db.ExecContext(ctx, `DELETE FROM gateway_api_keys WHERE id = $1 AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`, id, uid)
+	} else {
+		res, err = r.db.ExecContext(ctx, `DELETE FROM gateway_api_keys WHERE id = $1`, id)
+	}
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (r *GatewayKeyRepository) IncrementUsage(ctx context.Context, id string) error {

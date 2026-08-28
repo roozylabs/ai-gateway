@@ -129,7 +129,8 @@ func (h *CredentialHandler) List(c *gin.Context) {
 // @Router       /api/providers/{id}/credentials/{credId} [get]
 func (h *CredentialHandler) Get(c *gin.Context) {
 	credID := c.Param("credId")
-	cred, err := h.credentials.FindByID(c.Request.Context(), credID)
+	userID := c.GetString("userId")
+	cred, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
 		return
@@ -275,7 +276,8 @@ type UpdateCredentialRequest struct {
 // @Router       /api/providers/{id}/credentials/{credId} [put]
 func (h *CredentialHandler) Update(c *gin.Context) {
 	credID := c.Param("credId")
-	existing, err := h.credentials.FindByID(c.Request.Context(), credID)
+	userID := c.GetString("userId")
+	existing, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
 		return
@@ -375,7 +377,8 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 // @Router       /api/providers/{id}/credentials/{credId} [delete]
 func (h *CredentialHandler) Delete(c *gin.Context) {
 	credID := c.Param("credId")
-	cred, err := h.credentials.FindByID(c.Request.Context(), credID)
+	userID := c.GetString("userId")
+	cred, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
 		return
@@ -412,7 +415,7 @@ func (h *CredentialHandler) Delete(c *gin.Context) {
 		}
 	}
 
-	if err := h.credentials.Delete(c.Request.Context(), credID); err != nil {
+	if err := h.credentials.Delete(c.Request.Context(), credID, userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete credential"})
 		return
 	}
@@ -464,7 +467,8 @@ func (h *CredentialHandler) ResetCooldown(c *gin.Context) {
 // @Router       /api/providers/{id}/credentials/{credId}/reveal [post]
 func (h *CredentialHandler) Reveal(c *gin.Context) {
 	credID := c.Param("credId")
-	cred, err := h.credentials.FindByID(c.Request.Context(), credID)
+	userID := c.GetString("userId")
+	cred, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
 		return
@@ -477,7 +481,8 @@ func (h *CredentialHandler) Reveal(c *gin.Context) {
 
 func (h *CredentialHandler) Test(c *gin.Context) {
 	credID := c.Param("credId")
-	cred, err := h.credentials.FindByID(c.Request.Context(), credID)
+	userID := c.GetString("userId")
+	cred, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
 		return

@@ -131,14 +131,31 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 	return credentials, total, nil
 }
 
-func (r *CredentialRepository) FindByID(ctx context.Context, id string) (*models.Credential, error) {
+func (r *CredentialRepository) FindByID(ctx context.Context, id string, userID ...string) (*models.Credential, error) {
 	c := &models.Credential{}
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
+	uid := ""
+	if len(userID) > 0 {
+		uid = userID[0]
+	}
+	var query string
+	var args []interface{}
+	if uid != "" {
+		query = `SELECT c.id, c.provider_id, c.name, c.encrypted_key, c.key_prefix, c.masked_key, COALESCE(c.auth_type, 'api_key'), c.encrypted_metadata, c.priority, c.enabled, c.status, COALESCE(c.health_score, 100.00),
+		        c.last_used_at, c.request_count, c.error_count, c.last_error, c.last_error_at,
+		        c.created_at, c.updated_at
+		 FROM credentials c LEFT JOIN providers p ON p.id = c.provider_id
+		 WHERE c.id = $1 AND (p.user_id = $2 OR p.user_id = 'user_admin' OR p.user_id = '' OR $2 = '')`
+		args = []interface{}{id, uid}
+	} else {
+		query = `SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),
 		        last_used_at, request_count, error_count, last_error, last_error_at,
 		        created_at, updated_at
-		 FROM credentials WHERE id = $1`, id,
-	).Scan(&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
+		 FROM credentials WHERE id = $1`
+		args = []interface{}{id}
+	}
+
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(
+		&c.ID, &c.ProviderID, &c.Name, &c.EncryptedKey, &c.KeyPrefix, &c.MaskedKey, &c.AuthType, &c.EncryptedMetadata,
 		&c.Priority, &c.Enabled, &c.Status, &c.HealthScore, &c.LastUsedAt, &c.RequestCount,
 		&c.ErrorCount, &c.LastError, &c.LastErrorAt, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
@@ -180,7 +197,15 @@ func (r *CredentialRepository) Update(ctx context.Context, c *models.Credential)
 	return err
 }
 
-func (r *CredentialRepository) Delete(ctx context.Context, id string) error {
+func (r *CredentialRepository) Delete(ctx context.Context, id string, userID ...string) error {
+	uid := ""
+	if len(userID) > 0 {
+		uid = userID[0]
+	}
+	if uid != "" {
+		_, err := r.db.ExecContext(ctx, `DELETE FROM credentials WHERE id = $1 AND provider_id IN (SELECT id FROM providers WHERE user_id = $2 OR user_id = 'user_admin' OR user_id = '')`, id, uid)
+		return err
+	}
 	_, err := r.db.ExecContext(ctx, `DELETE FROM credentials WHERE id = $1`, id)
 	return err
 }

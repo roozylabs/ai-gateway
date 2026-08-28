@@ -141,7 +141,8 @@ func (h *GatewayKeyHandler) List(c *gin.Context) {
 
 func (h *GatewayKeyHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
-	if err := h.keys.Delete(c.Request.Context(), id); err != nil {
+	userID := c.GetString("userId")
+	if err := h.keys.Delete(c.Request.Context(), id, userID); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "key not found"})
 		return
 	}
