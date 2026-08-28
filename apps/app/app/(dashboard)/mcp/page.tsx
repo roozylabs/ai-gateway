@@ -23,13 +23,13 @@ import {
   SelectItem,
 } from "@/components/molecules/Select";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetFooter,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/molecules/Sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/molecules/Dialog";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
 import { useMCPServersQuery } from "@/hooks/queries/useMCPServersQuery";
@@ -96,7 +96,7 @@ export default function MCPPage() {
   const syncMutation = useSyncMCPServerMutation();
   const testMCPToolMutation = useTestMCPToolMutation();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingServer, setEditingServer] = useState<ApiMCPServer | null>(null);
   const [form, setForm] = useState<MCPFormState>(emptyForm);
 
@@ -142,7 +142,7 @@ export default function MCPPage() {
   const openCreate = () => {
     setEditingServer(null);
     setForm(emptyForm);
-    setDrawerOpen(true);
+    setModalOpen(true);
   };
 
   const openEdit = (server: ApiMCPServer) => {
@@ -155,7 +155,7 @@ export default function MCPPage() {
       endpointUrl: server.endpointUrl,
       authToken: "",
     });
-    setDrawerOpen(true);
+    setModalOpen(true);
   };
 
   const handleSave = () => {
@@ -180,7 +180,7 @@ export default function MCPPage() {
         {
           onSuccess: () => {
             toast.success("MCP server updated");
-            setDrawerOpen(false);
+            setModalOpen(false);
           },
           onError: (err) => {
             toast.error(`Update failed: ${getErrorMessage(err)}`);
@@ -200,7 +200,7 @@ export default function MCPPage() {
         {
           onSuccess: () => {
             toast.success("MCP server registered");
-            setDrawerOpen(false);
+            setModalOpen(false);
           },
           onError: (err) => {
             toast.error(`Registration failed: ${getErrorMessage(err)}`);
@@ -388,16 +388,16 @@ export default function MCPPage() {
       )}
 
       {/* Create / Edit Drawer */}
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
               {editingServer ? "Edit MCP Server" : "Register MCP Server"}
-            </SheetTitle>
-            <SheetDescription>
+            </DialogTitle>
+            <DialogDescription>
               Configure Model Context Protocol endpoint for agent tool calls.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="mcp-name">Server Identifier Name</Label>
@@ -474,8 +474,8 @@ export default function MCPPage() {
               />
             </div>
           </div>
-          <SheetFooter>
-            <Button variant="outline" onClick={() => setDrawerOpen(false)}>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -491,25 +491,25 @@ export default function MCPPage() {
                   ? "Save Changes"
                   : "Register MCP Server"}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Test Execution Modal */}
-      <Sheet open={testModalOpen} onOpenChange={setTestModalOpen}>
-        <SheetContent className="sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
+      <Dialog open={testModalOpen} onOpenChange={setTestModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <Terminal className="h-4 w-4 text-[#8B5CF6]" />
               <span>
                 Test MCP Tool:{" "}
                 {testingServer?.displayName || testingServer?.name}
               </span>
-            </SheetTitle>
-            <SheetDescription>
+            </DialogTitle>
+            <DialogDescription>
               Execute tool call on remote MCP server endpoint.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Tool Name</Label>
@@ -568,8 +568,8 @@ export default function MCPPage() {
               </div>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

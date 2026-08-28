@@ -5,13 +5,13 @@ import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { Card, CardHeader, CardContent } from "@/components/molecules/Card";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from "@/components/molecules/Sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/molecules/Dialog";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
 import { Label } from "@/components/atoms/Label";
@@ -53,7 +53,7 @@ export default function ToolsPage() {
   const updateMutation = useUpdateToolMutation();
   const deleteMutation = useDeleteToolMutation();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [testingTool, setTestingTool] = useState<ApiTool | null>(null);
   const [testArgsJson, setTestArgsJson] = useState("{}");
@@ -111,7 +111,7 @@ export default function ToolsPage() {
 
   const openCreateDrawer = () => {
     resetForm();
-    setDrawerOpen(true);
+    setModalOpen(true);
   };
 
   const openEditDrawer = (tool: ApiTool) => {
@@ -122,7 +122,7 @@ export default function ToolsPage() {
       description: tool.description,
       enabled: tool.enabled,
     });
-    setDrawerOpen(true);
+    setModalOpen(true);
   };
 
   const handleSubmit = () => {
@@ -144,7 +144,7 @@ export default function ToolsPage() {
         {
           onSuccess: () => {
             toast.success("Tool updated successfully");
-            setDrawerOpen(false);
+            setModalOpen(false);
             resetForm();
           },
           onError: (error) => {
@@ -156,7 +156,7 @@ export default function ToolsPage() {
       createMutation.mutate(payload, {
         onSuccess: () => {
           toast.success("Tool created successfully");
-          setDrawerOpen(false);
+          setModalOpen(false);
           resetForm();
         },
         onError: (error) => {
@@ -317,16 +317,16 @@ export default function ToolsPage() {
       )}
 
       {/* Create / Edit Drawer */}
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
               {editingTool ? "Edit Registered Tool" : "Register New Tool"}
-            </SheetTitle>
-            <SheetDescription>
+            </DialogTitle>
+            <DialogDescription>
               Configure function call schema for agent tool execution.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="tool-name">Function Name (snake_case)</Label>
@@ -383,8 +383,8 @@ export default function ToolsPage() {
               />
             </div>
           </div>
-          <SheetFooter>
-            <Button variant="outline" onClick={() => setDrawerOpen(false)}>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -398,25 +398,25 @@ export default function ToolsPage() {
                   ? "Save Changes"
                   : "Register Tool"}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Test Execution Modal Sheet */}
-      <Sheet open={testModalOpen} onOpenChange={setTestModalOpen}>
-        <SheetContent className="sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
+      {/* Test Execution Modal */}
+      <Dialog open={testModalOpen} onOpenChange={setTestModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <Terminal className="h-4 w-4 text-primary" />
               <span>
                 Test Tool Execution:{" "}
                 {testingTool?.displayName || testingTool?.name}
               </span>
-            </SheetTitle>
-            <SheetDescription>
+            </DialogTitle>
+            <DialogDescription>
               Provide JSON argument payload and evaluate execution output.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="text-xs font-semibold">
@@ -467,8 +467,8 @@ export default function ToolsPage() {
               </div>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

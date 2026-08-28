@@ -5,7 +5,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
 import { DataTable, type Column } from '@/components/organisms/DataTable';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/molecules/Sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/molecules/Dialog';
 import { Button } from '@/components/atoms/Button';
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
@@ -31,7 +31,7 @@ export default function GatewayKeysPage() {
   const deleteMutation = useDeleteGatewayKey();
   const { data: providers } = useProvidersQuery();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [formName, setFormName] = useState('');
   const [formRateLimit, setFormRateLimit] = useState('100');
   const [formProviderId, setFormProviderId] = useState('');
@@ -63,7 +63,7 @@ export default function GatewayKeysPage() {
       {
         onSuccess: () => {
           toast.success('Gateway key created');
-          setDrawerOpen(false);
+          setModalOpen(false);
           resetForm();
         },
         onError: () => {
@@ -162,7 +162,7 @@ export default function GatewayKeysPage() {
             variant="prismViolet"
             size="sm"
             className="gap-1.5"
-            onClick={() => setDrawerOpen(true)}
+            onClick={() => setModalOpen(true)}
           >
             <Plus className="h-4 w-4" /> Create Key
           </Button>
@@ -177,7 +177,7 @@ export default function GatewayKeysPage() {
           description="Create your first API key to start routing requests through the gateway."
           icon={<KeyRound className="h-6 w-6" />}
           action={
-            <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => setDrawerOpen(true)}>
+            <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={() => setModalOpen(true)}>
               <Plus className="h-4 w-4" /> Create Key
             </Button>
           }
@@ -202,14 +202,14 @@ export default function GatewayKeysPage() {
         </Card>
       )}
 
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Create Gateway Key</SheetTitle>
-            <SheetDescription>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Gateway Key</DialogTitle>
+            <DialogDescription>
               Generate a new API key to authenticate requests through the gateway.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -250,11 +250,11 @@ export default function GatewayKeysPage() {
             </div>
           </div>
 
-          <SheetFooter>
+          <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
-                setDrawerOpen(false);
+                setModalOpen(false);
                 resetForm();
               }}
             >
@@ -267,9 +267,9 @@ export default function GatewayKeysPage() {
             >
               {createMutation.isPending ? 'Creating...' : 'Create Key'}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

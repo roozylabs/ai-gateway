@@ -9,7 +9,7 @@ import { Badge, StatusDot } from '@/components/atoms/Badge';
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Switch } from '@/components/atoms/Switch';
-import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
 import {
   useResourcesQuery,
   useCreateResource,
@@ -28,7 +28,7 @@ export default function ResourcesPage() {
   const updateMutation = useUpdateResource();
   const deleteMutation = useDeleteResource();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<ApiResource | null>(null);
 
   const [formName, setFormName] = useState('');
@@ -46,7 +46,7 @@ export default function ResourcesPage() {
 
   const openCreateDrawer = () => {
     resetForm();
-    setDrawerOpen(true);
+    setModalOpen(true);
   };
 
   const openEditDrawer = (resource: ApiResource) => {
@@ -55,7 +55,7 @@ export default function ResourcesPage() {
     setFormDisplayName(resource.displayName);
     setFormDescription(resource.description);
     setFormEnabled(resource.enabled);
-    setDrawerOpen(true);
+    setModalOpen(true);
   };
 
   const handleSubmit = () => {
@@ -74,7 +74,7 @@ export default function ResourcesPage() {
         {
           onSuccess: () => {
             toast.success(`Resource "${payload.name}" updated`);
-            setDrawerOpen(false);
+            setModalOpen(false);
             resetForm();
           },
           onError: (err: Error) => toast.error(`Failed to update resource: ${err.message}`),
@@ -86,7 +86,7 @@ export default function ResourcesPage() {
         {
           onSuccess: () => {
             toast.success(`Resource "${payload.name}" created`);
-            setDrawerOpen(false);
+            setModalOpen(false);
             resetForm();
           },
           onError: (err: Error) => toast.error(`Failed to create resource: ${err.message}`),
@@ -189,16 +189,16 @@ export default function ResourcesPage() {
         </div>
       )}
 
-      <Sheet open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) resetForm(); }}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{editingResource ? 'Edit Resource' : 'Add Resource Source'}</SheetTitle>
-            <SheetDescription>
+      <Dialog open={modalOpen} onOpenChange={(open) => { setModalOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingResource ? 'Edit Resource' : 'Add Resource Source'}</DialogTitle>
+            <DialogDescription>
               {editingResource
                 ? 'Update the resource configuration.'
                 : 'Connect a new document store, vector database, or static resource.'}
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="resource-name">Resource Name</Label>
@@ -235,8 +235,8 @@ export default function ResourcesPage() {
               <Switch id="resource-enabled" checked={formEnabled} onCheckedChange={setFormEnabled} />
             </div>
           </div>
-          <SheetFooter>
-            <Button variant="outline" onClick={() => { setDrawerOpen(false); resetForm(); }}>Cancel</Button>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setModalOpen(false); resetForm(); }}>Cancel</Button>
             <Button
               variant="prismViolet"
               onClick={handleSubmit}
@@ -246,9 +246,9 @@ export default function ResourcesPage() {
                 ? editingResource ? 'Saving...' : 'Creating...'
                 : editingResource ? 'Save Changes' : 'Create Resource'}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

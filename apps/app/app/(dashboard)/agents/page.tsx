@@ -11,7 +11,7 @@ import { ApiAgent } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Bot, Plus, Settings, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
@@ -79,7 +79,7 @@ export default function AgentsPage() {
   const updateMutation = useUpdateAgent();
   const deleteMutation = useDeleteAgent();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<ApiAgent | null>(null);
 
   const [formName, setFormName] = useState('');
@@ -99,7 +99,7 @@ export default function AgentsPage() {
 
   const openCreateDrawer = () => {
     resetForm();
-    setDrawerOpen(true);
+    setModalOpen(true);
   };
 
   const openEditDrawer = (agent: ApiAgent) => {
@@ -109,7 +109,7 @@ export default function AgentsPage() {
     setFormDescription(agent.description);
     setFormAgentType(agent.agentType);
     setFormMaxBudgetCents(agent.maxBudgetCents);
-    setDrawerOpen(true);
+    setModalOpen(true);
   };
 
   const handleSubmit = () => {
@@ -125,7 +125,7 @@ export default function AgentsPage() {
       updateMutation.mutate({ id: editingAgent.id, data: payload }, {
         onSuccess: () => {
           toast.success(`Agent "${formName}" updated`);
-          setDrawerOpen(false);
+          setModalOpen(false);
           resetForm();
         },
         onError: (err: Error) => toast.error(`Failed to update: ${err.message}`),
@@ -134,7 +134,7 @@ export default function AgentsPage() {
       createMutation.mutate(payload, {
         onSuccess: () => {
           toast.success(`Agent "${formName}" created`);
-          setDrawerOpen(false);
+          setModalOpen(false);
           resetForm();
         },
         onError: (err: Error) => toast.error(`Failed to create: ${err.message}`),
@@ -240,14 +240,14 @@ export default function AgentsPage() {
         </div>
       )}
 
-      <Sheet open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) resetForm(); }}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{editingAgent ? 'Configure Agent' : 'Instantiate New Agent'}</SheetTitle>
-            <SheetDescription>
+      <Dialog open={modalOpen} onOpenChange={(open) => { setModalOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingAgent ? 'Configure Agent' : 'Instantiate New Agent'}</DialogTitle>
+            <DialogDescription>
               {editingAgent ? `Update settings for "${editingAgent.name}".` : 'Provision a new AI agent identity in this workspace.'}
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
           <AgentFormFields
             name={formName}
             displayName={formDisplayName}
@@ -260,8 +260,8 @@ export default function AgentsPage() {
             onAgentTypeChange={setFormAgentType}
             onMaxBudgetCentsChange={setFormMaxBudgetCents}
           />
-          <SheetFooter>
-            <Button variant="outline" onClick={() => { setDrawerOpen(false); resetForm(); }}>Cancel</Button>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setModalOpen(false); resetForm(); }}>Cancel</Button>
             <Button
               variant="prismViolet"
               onClick={handleSubmit}
@@ -269,9 +269,9 @@ export default function AgentsPage() {
             >
               {isPending ? 'Saving...' : editingAgent ? 'Update Agent' : 'Create Agent'}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
