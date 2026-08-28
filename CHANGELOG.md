@@ -5,6 +5,15 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Real MCP Server Connectivity**: Upgraded the MCP gateway (`apps/api/internal/proxy/mcp_gateway.go`) from a stateless JSON-RPC POST (`sendRPC`) to a full MCP client built on `github.com/mark3labs/mcp-go` v0.58.0. `SyncServerTools` and `ExecuteTool` now perform the complete MCP handshake (`initialize` → `initialized` → `tools/list` / `tools/call`) with transport-awareness:
+  - **Streamable HTTP** transport (default) for servers such as Context7.
+  - **SSE** transport for servers such as Firecrawl.
+  - Optional `Authorization: Bearer <token>` header derived from the stored encrypted auth token.
+- **MCP Integration Tests**: Replaced the plain JSON-RPC mock tests with real in-process MCP servers (Streamable HTTP and SSE) verifying the full sync/execute flow.
+
 ## [2.8.0] - 2026-08-28
 
 ### Added
