@@ -95,6 +95,7 @@ CREATE POLICY governance_policies_tenant_policy ON governance_policies
     );
 
 -- 8. AI Audit Trails
+ALTER TABLE ai_audit_trails ADD COLUMN IF NOT EXISTS org_id VARCHAR(64);
 ALTER TABLE ai_audit_trails ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS ai_audit_trails_tenant_policy ON ai_audit_trails;
 CREATE POLICY ai_audit_trails_tenant_policy ON ai_audit_trails
@@ -108,6 +109,7 @@ CREATE POLICY ai_audit_trails_tenant_policy ON ai_audit_trails
     );
 
 -- 9. Request Logs
+ALTER TABLE request_logs ADD COLUMN IF NOT EXISTS org_id VARCHAR(64);
 ALTER TABLE request_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS request_logs_tenant_policy ON request_logs;
 CREATE POLICY request_logs_tenant_policy ON request_logs
@@ -116,6 +118,10 @@ CREATE POLICY request_logs_tenant_policy ON request_logs
         current_setting('app.current_user_id', true) IS NULL
         OR current_setting('app.current_user_id', true) = ''
         OR current_setting('app.current_user_id', true) = 'user_admin'
-        OR user_id = current_setting('app.current_user_id', true)
         OR org_id = current_setting('app.current_org_id', true)
+        OR gateway_api_key_id IN (
+            SELECT id FROM gateway_api_keys
+            WHERE user_id = current_setting('app.current_user_id', true)
+               OR org_id = current_setting('app.current_org_id', true)
+        )
     );
