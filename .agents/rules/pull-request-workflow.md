@@ -68,7 +68,7 @@ Upon completing any feature, bug fix, or task implementation, the agent MUST aut
 1. **Commit**: Verify `pnpm typecheck` / `go test` pass, then commit staged changes using Conventional Commit syntax.
 2. **Push**: Push the feature branch to remote (`git push origin <branch>`).
 3. **Pull Request**: Call `create_pull_request` on `github-mcp-server` passing standard title and body template.
-4. **Labels**: Immediately call `issue_write` (`method: "update"`, `issue_number: <pr_number>`, `labels: [...]`) on `github-mcp-server` to attach relevant labels (`feat`, `fix`, `refactor`, `documentation`, `chore`, `ci`, `rules`, `automated-pr`).
+4. **Labels**: Immediately call `issue_write` (`method: "update"`, `issue_number: <pr_number>`, `labels: [...]`) on `github-mcp-server` to attach relevant labels (`feat`, `fix`, `refactor`, `documentation`, `chore`, `ci`, `rules`).
 
 - **Merge Strategy**: Use `merge_pull_request` only after verification checks (`pnpm build`, `go test`) pass cleanly.
 - **Post-Merge Cleanup**: After merging, delete the head branch on remote and delete local feature branch / worktree according to `.agents/rules/feature-branch-creation.md`.
