@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { useLogsQuery } from '@/hooks/queries/useLogsQuery';
 import { ApiRequestLog } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Activity, Eye, RefreshCw, Server } from 'lucide-react';
+import { Activity, Check, Copy, Eye, RefreshCw, Server } from 'lucide-react';
 
 export default function LogsPage() {
   const { data, isLoading, isError, refetch } = useLogsQuery();
@@ -20,8 +20,17 @@ export default function LogsPage() {
 
   const logsList = (data?.data ?? []) as ApiRequestLog[];
 
+  const [copiedError, setCopiedError] = useState(false);
+
+  const handleCopyError = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedError(true);
+    setTimeout(() => setCopiedError(false), 2000);
+  };
+
   const openLogInspector = (log: ApiRequestLog) => {
     setSelectedLog(log);
+    setCopiedError(false);
     setDrawerOpen(true);
   };
 
@@ -195,8 +204,28 @@ export default function LogsPage() {
                 if (!msg) return null;
                 return (
                   <div className="space-y-1">
-                    <span className="font-semibold text-destructive block">Error Message</span>
-                    <div className="p-3 rounded-md border border-destructive/30 bg-destructive/10 font-mono text-destructive text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-destructive block">Error Message</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] text-destructive hover:bg-destructive/10 gap-1 font-mono"
+                        onClick={() => handleCopyError(String(msg))}
+                      >
+                        {copiedError ? (
+                          <>
+                            <Check className="h-3 w-3 text-emerald-500" />
+                            <span className="text-emerald-500 font-sans">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" />
+                            <span className="font-sans">Copy</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="p-3 rounded-md border border-destructive/30 bg-destructive/10 font-mono text-destructive text-[11px] whitespace-pre-wrap break-all">
                       {msg}
                     </div>
                   </div>
