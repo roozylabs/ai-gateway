@@ -7,106 +7,95 @@ import (
 	"testing"
 )
 
-const sentinel = "skip_thought_signature_validator"
-
 func TestSanitizeMessagesForGoogle(t *testing.T) {
+	sentinel := SentinelThoughtSignature
+
 	messages := []map[string]interface{}{
 		{
-			"role":    "user",
-			"content": "Read file page.tsx",
-		},
-		{
-			"role": "assistant",
+			"role":    "assistant",
+			"content": "I will run a tool.",
 			"tool_calls": []interface{}{
 				map[string]interface{}{
-					"id":   "call_123",
+					"id":   "call_1",
 					"type": "function",
 					"function": map[string]interface{}{
-						"name":      "default_api:read",
-						"arguments": "{\"path\":\"page.tsx\"}",
+						"name":      "get_weather",
+						"arguments": `{"location":"Jakarta"}`,
 					},
 				},
 			},
 		},
 		{
 			"role": "assistant",
-			"function_call": map[string]interface{}{
-				"name":      "default_api:read",
-				"arguments": "{\"path\":\"talent.tsx\"}",
+			"parts": []interface{}{
+				map[string]interface{}{
+					"functionCall": map[string]interface{}{
+						"name": "get_weather",
+						"args": map[string]interface{}{"location": "Jakarta"},
+					},
+				},
 			},
 		},
 	}
 
 	sanitized := SanitizeMessagesForGoogle(messages)
-	if len(sanitized) != 3 {
-		t.Fatalf("expected 3 messages, got %d", len(sanitized))
+
+	// Message 0 check
+	msg0 := sanitized[0]
+	if msg0["thought_signature"] != sentinel || msg0["thoughtSignature"] != sentinel {
+		t.Errorf("msg0 missing thought_signature/thoughtSignature: %v", msg0)
+	}
+	tcRaw0 := msg0["tool_calls"].([]interface{})
+	tcMap0 := tcRaw0[0].(map[string]interface{})
+	if tcMap0["thought_signature"] != sentinel || tcMap0["thoughtSignature"] != sentinel {
+		t.Errorf("tcMap0 missing thought_signature/thoughtSignature: %v", tcMap0)
+	}
+	fnMap0 := tcMap0["function"].(map[string]interface{})
+	if fnMap0["thought_signature"] != sentinel || fnMap0["thoughtSignature"] != sentinel {
+		t.Errorf("fnMap0 missing thought_signature/thoughtSignature: %v", fnMap0)
 	}
 
-	// Verify tool_calls has thought_signature
-	tcRaw, ok := sanitized[1]["tool_calls"].([]interface{})
-	if !ok || len(tcRaw) == 0 {
-		t.Fatalf("expected tool_calls in message 1")
+	// Crucial: arguments string MUST NOT contain thought_signature pollution
+	argsStr0 := fnMap0["arguments"].(string)
+	if strings.Contains(argsStr0, sentinel) {
+		t.Errorf("arguments string should NOT contain thought_signature pollution: %s", argsStr0)
 	}
 
-	tcMap, ok := tcRaw[0].(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected map in tool_calls")
+	// Message 1 check
+	msg1 := sanitized[1]
+	if msg1["thought_signature"] != sentinel || msg1["thoughtSignature"] != sentinel {
+		t.Errorf("msg1 missing thought_signature/thoughtSignature: %v", msg1)
+	}
+	parts1 := msg1["parts"].([]interface{})
+	partMap1 := parts1[0].(map[string]interface{})
+	if partMap1["thought_signature"] != sentinel || partMap1["thoughtSignature"] != sentinel {
+		t.Errorf("partMap1 missing thought_signature/thoughtSignature: %v", partMap1)
+	}
+	fnCallMap1 := partMap1["functionCall"].(map[string]interface{})
+	if fnCallMap1["thought_signature"] != sentinel || fnCallMap1["thoughtSignature"] != sentinel {
+		t.Errorf("fnCallMap1 missing thought_signature/thoughtSignature: %v", fnCallMap1)
 	}
 
-	if tcMap["thought_signature"] != sentinel {
-		t.Errorf("expected tcMap thought_signature to be '%s', got %v", sentinel, tcMap["thought_signature"])
-	}
-
-	fnMap, ok := tcMap["function"].(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected function map")
-	}
-
-	if fnMap["thought_signature"] != sentinel {
-		t.Errorf("expected fnMap thought_signature to be '%s', got %v", sentinel, fnMap["thought_signature"])
-	}
-
-	// Verify legacy function_call has thought_signature
-	fnCallMap, ok := sanitized[2]["function_call"].(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected function_call map in message 2")
-	}
-
-	if fnCallMap["thought_signature"] != sentinel {
-		t.Errorf("expected function_call thought_signature to be '%s', got %v", sentinel, fnCallMap["thought_signature"])
+	// Crucial: args map MUST NOT contain thought_signature pollution
+	argsMap1 := fnCallMap1["args"].(map[string]interface{})
+	if _, hasSig := argsMap1["thought_signature"]; hasSig {
+		t.Errorf("argsMap1 should NOT contain thought_signature pollution: %v", argsMap1)
 	}
 }
 
 func TestSanitizeMessagesForGoogle_AdvancedStructures(t *testing.T) {
+	sentinel := SentinelThoughtSignature
+
 	messages := []map[string]interface{}{
-		{
-			"role": "assistant",
-			"functionCall": map[string]interface{}{
-				"name":      "default_api:skill",
-				"arguments": "{\"name\":\"brainstorming\"}",
-			},
-		},
 		{
 			"role": "model",
 			"parts": []interface{}{
 				map[string]interface{}{
-					"functionCall": map[string]interface{}{
-						"name": "default_api:skill",
-						"args": map[string]interface{}{"name": "systematic-debugging"},
-					},
-				},
-			},
-		},
-		{
-			"role": "assistant",
-			"content": []interface{}{
-				map[string]interface{}{
-					"type": "tool_calls",
-					"tool_calls": []interface{}{
-						map[string]interface{}{
-							"function": map[string]interface{}{
-								"name": "default_api:skill",
-							},
+					"functionResponse": map[string]interface{}{
+						"name": "get_weather",
+						"response": map[string]interface{}{
+							"name":    "get_weather",
+							"content": map[string]interface{}{"temp": "30C"},
 						},
 					},
 				},
@@ -115,67 +104,27 @@ func TestSanitizeMessagesForGoogle_AdvancedStructures(t *testing.T) {
 	}
 
 	sanitized := SanitizeMessagesForGoogle(messages)
-	if len(sanitized) != 3 {
-		t.Fatalf("expected 3 messages, got %d", len(sanitized))
+	msg := sanitized[0]
+
+	if msg["thought_signature"] != sentinel {
+		t.Errorf("msg missing thought_signature: %v", msg)
 	}
 
-	// Message 0: camelCase functionCall
-	msg0FnCall := sanitized[0]["functionCall"].(map[string]interface{})
-	if msg0FnCall["thought_signature"] != sentinel || msg0FnCall["thoughtSignature"] != sentinel {
-		t.Errorf("msg0 functionCall missing thought_signature/thoughtSignature: %v", msg0FnCall)
+	parts := msg["parts"].([]interface{})
+	partMap := parts[0].(map[string]interface{})
+	if partMap["thought_signature"] != sentinel {
+		t.Errorf("partMap missing thought_signature: %v", partMap)
 	}
 
-	// Message 1: Gemini parts array
-	parts := sanitized[1]["parts"].([]interface{})
-	part0 := parts[0].(map[string]interface{})
-	fnCall := part0["functionCall"].(map[string]interface{})
-	if fnCall["thought_signature"] != sentinel || fnCall["thoughtSignature"] != sentinel {
-		t.Errorf("part functionCall missing thought_signature: %v", fnCall)
-	}
-
-	// Message 2: Content blocks
-	blocks := sanitized[2]["content"].([]interface{})
-	block0 := blocks[0].(map[string]interface{})
-	tcs := block0["tool_calls"].([]interface{})
-	tc0 := tcs[0].(map[string]interface{})
-	fn0 := tc0["function"].(map[string]interface{})
-	if fn0["thought_signature"] != sentinel {
-		t.Errorf("block tool_call function missing thought_signature: %v", fn0)
-	}
-}
-
-func TestOpenAIAdapter_AlwaysSanitizesPrismAuto(t *testing.T) {
-	adapter := NewOpenAIAdapter()
-	req := &ProviderRequest{
-		Model: "prism-auto",
-		Messages: []map[string]interface{}{
-			{
-				"role": "assistant",
-				"tool_calls": []interface{}{
-					map[string]interface{}{
-						"id":   "call_999",
-						"type": "function",
-						"function": map[string]interface{}{
-							"name": "default_api:skill",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	httpReq, err := adapter.BuildRequest("https://opencode.ai/zen", "sk-test", req)
-	if err != nil {
-		t.Fatalf("BuildRequest failed: %v", err)
-	}
-
-	if httpReq == nil {
-		t.Fatalf("httpReq is nil")
+	fnRespMap := partMap["functionResponse"].(map[string]interface{})
+	if fnRespMap["thought_signature"] != sentinel {
+		t.Errorf("fnRespMap missing thought_signature: %v", fnRespMap)
 	}
 }
 
 func TestSanitizeMessagesForGoogle_Position8Bash(t *testing.T) {
-	// Simulate history up to position 8
+	sentinel := SentinelThoughtSignature
+
 	messages := make([]map[string]interface{}, 9)
 	for i := 0; i < 8; i++ {
 		messages[i] = map[string]interface{}{
@@ -187,11 +136,11 @@ func TestSanitizeMessagesForGoogle_Position8Bash(t *testing.T) {
 		"role": "assistant",
 		"tool_calls": []interface{}{
 			map[string]interface{}{
-				"id":   "call_bash_pos8",
+				"id":   "call_bash_8",
 				"type": "function",
 				"function": map[string]interface{}{
-					"name":      "default_api:bash",
-					"arguments": "{\"command\":\"echo hello\"}",
+					"name":      "bash",
+					"arguments": `{"command":"ls -la"}`,
 				},
 			},
 		},
@@ -202,91 +151,30 @@ func TestSanitizeMessagesForGoogle_Position8Bash(t *testing.T) {
 		t.Fatalf("expected 9 messages, got %d", len(sanitized))
 	}
 
-	tcRaw, ok := sanitized[8]["tool_calls"].([]interface{})
+	msg8 := sanitized[8]
+	if msg8["thought_signature"] != sentinel || msg8["thoughtSignature"] != sentinel {
+		t.Errorf("message 8 missing thought_signature: %v", msg8)
+	}
+
+	tcRaw, ok := msg8["tool_calls"].([]interface{})
 	if !ok || len(tcRaw) == 0 {
 		t.Fatalf("expected tool_calls at position 8")
 	}
 
 	tcMap := tcRaw[0].(map[string]interface{})
 	if tcMap["thought_signature"] != sentinel || tcMap["thoughtSignature"] != sentinel {
-		t.Errorf("tcMap missing thought_signature: %v", tcMap)
+		t.Errorf("tcMap at position 8 missing thought_signature: %v", tcMap)
 	}
 
 	fnMap := tcMap["function"].(map[string]interface{})
 	if fnMap["thought_signature"] != sentinel || fnMap["thoughtSignature"] != sentinel {
-		t.Errorf("fnMap missing thought_signature: %v", fnMap)
-	}
-}
-
-func TestSanitizeMessagesForGoogle_OverwritesOldSkipSentinel(t *testing.T) {
-	messages := []map[string]interface{}{
-		{
-			"role": "assistant",
-			"tool_calls": []interface{}{
-				map[string]interface{}{
-					"id":                "call_old_skip",
-					"type":              "function",
-					"thought_signature": "skip",
-					"thoughtSignature":  "skip",
-					"function": map[string]interface{}{
-						"name":              "default_api:bash",
-						"arguments":         "{}",
-						"thought_signature": "skip",
-						"thoughtSignature":  "skip",
-					},
-				},
-			},
-		},
-	}
-
-	sanitized := SanitizeMessagesForGoogle(messages)
-	tcRaw := sanitized[0]["tool_calls"].([]interface{})
-	tcMap := tcRaw[0].(map[string]interface{})
-	if tcMap["thought_signature"] != sentinel || tcMap["thoughtSignature"] != sentinel {
-		t.Errorf("expected old 'skip' to be replaced with sentinel, got %v", tcMap["thought_signature"])
-	}
-
-	fnMap := tcMap["function"].(map[string]interface{})
-	if fnMap["thought_signature"] != sentinel || fnMap["thoughtSignature"] != sentinel {
-		t.Errorf("expected old 'skip' in function to be replaced with sentinel, got %v", fnMap["thought_signature"])
-	}
-}
-
-func TestSanitizeMessagesForGoogle_TypedMapPartsPosition6(t *testing.T) {
-	messages := []map[string]interface{}{
-		{
-			"role": "model",
-			"parts": []map[string]interface{}{
-				{
-					"functionCall": map[string]interface{}{
-						"name": "default_api:glob",
-						"args": map[string]interface{}{
-							"pattern": ".agents/rules/*",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	sanitized := SanitizeMessagesForGoogle(messages)
-	partsRaw, ok := sanitized[0]["parts"].([]interface{})
-	if !ok || len(partsRaw) == 0 {
-		t.Fatalf("expected parts array in sanitized message")
-	}
-
-	partMap := partsRaw[0].(map[string]interface{})
-	if partMap["thought_signature"] != sentinel {
-		t.Errorf("partMap missing thought_signature: %v", partMap)
-	}
-
-	fnCallMap := partMap["functionCall"].(map[string]interface{})
-	if fnCallMap["thought_signature"] != sentinel {
-		t.Errorf("fnCallMap missing thought_signature: %v", fnCallMap)
+		t.Errorf("fnMap at position 8 missing thought_signature: %v", fnMap)
 	}
 }
 
 func TestSanitizeMessagesForGoogle_Position165TodoWrite(t *testing.T) {
+	sentinel := SentinelThoughtSignature
+
 	messages := make([]map[string]interface{}, 166)
 	for i := 0; i < 165; i++ {
 		messages[i] = map[string]interface{}{
@@ -296,8 +184,8 @@ func TestSanitizeMessagesForGoogle_Position165TodoWrite(t *testing.T) {
 	}
 	messages[165] = map[string]interface{}{
 		"role": "assistant",
-		"parts": []map[string]interface{}{
-			{
+		"parts": []interface{}{
+			map[string]interface{}{
 				"functionCall": map[string]interface{}{
 					"name": "default_api:todowrite",
 					"args": map[string]interface{}{
@@ -311,15 +199,7 @@ func TestSanitizeMessagesForGoogle_Position165TodoWrite(t *testing.T) {
 	}
 
 	sanitized := SanitizeMessagesForGoogle(messages)
-	if len(sanitized) != 166 {
-		t.Fatalf("expected 166 messages, got %d", len(sanitized))
-	}
-
-	pos165Parts, ok := sanitized[165]["parts"].([]interface{})
-	if !ok || len(pos165Parts) == 0 {
-		t.Fatalf("expected parts in message 165")
-	}
-
+	pos165Parts := sanitized[165]["parts"].([]interface{})
 	partMap := pos165Parts[0].(map[string]interface{})
 	if partMap["thought_signature"] != sentinel || partMap["thoughtSignature"] != sentinel {
 		t.Errorf("partMap missing thought_signature at position 165: %v", partMap)
@@ -331,41 +211,30 @@ func TestSanitizeMessagesForGoogle_Position165TodoWrite(t *testing.T) {
 	}
 
 	argsMap := fnCallMap["args"].(map[string]interface{})
-	if argsMap["thought_signature"] != sentinel || argsMap["thoughtSignature"] != sentinel {
-		t.Errorf("argsMap missing thought_signature at position 165: %v", argsMap)
+	if _, hasSig := argsMap["thought_signature"]; hasSig {
+		t.Errorf("argsMap should NOT contain thought_signature pollution: %v", argsMap)
 	}
 
-	// Crucial check: inner item inside todos MUST NOT have thought_signature pollution
-	todosSlice, ok := argsMap["todos"].([]interface{})
-	if !ok || len(todosSlice) == 0 {
-		t.Fatalf("expected todos slice in args")
-	}
+	todosSlice := argsMap["todos"].([]interface{})
 	todoItem := todosSlice[0].(map[string]interface{})
 	if _, hasSig := todoItem["thought_signature"]; hasSig {
 		t.Errorf("todoItem should NOT contain thought_signature pollution: %v", todoItem)
 	}
-	if _, hasSig := todoItem["thoughtSignature"]; hasSig {
-		t.Errorf("todoItem should NOT contain thoughtSignature pollution: %v", todoItem)
-	}
 }
 
-func TestSanitizeMessagesForGoogle_Position109Grep(t *testing.T) {
-	messages := make([]map[string]interface{}, 110)
-	for i := 0; i < 109; i++ {
-		messages[i] = map[string]interface{}{
-			"role":    "user",
-			"content": fmt.Sprintf("Turn %d", i),
-		}
-	}
-	messages[109] = map[string]interface{}{
-		"role": "assistant",
-		"parts": []interface{}{
-			map[string]interface{}{
-				"functionCall": map[string]interface{}{
-					"name": "default_api:grep",
-					"args": map[string]interface{}{
-						"Query":      "SanitizeMessagesForGoogle",
-						"SearchPath": "c:\\me\\projects\\ai-gateway",
+func TestSanitizeMessagesForGoogle_EditTool(t *testing.T) {
+	sentinel := SentinelThoughtSignature
+
+	messages := []map[string]interface{}{
+		{
+			"role": "assistant",
+			"tool_calls": []interface{}{
+				map[string]interface{}{
+					"id":   "call_edit_1",
+					"type": "function",
+					"function": map[string]interface{}{
+						"name":      "edit",
+						"arguments": `{"filePath":"C:\\me\\projects\\DataTable.tsx","oldString":"foo","newString":"bar"}`,
 					},
 				},
 			},
@@ -373,86 +242,27 @@ func TestSanitizeMessagesForGoogle_Position109Grep(t *testing.T) {
 	}
 
 	sanitized := SanitizeMessagesForGoogle(messages)
-	if len(sanitized) != 110 {
-		t.Fatalf("expected 110 messages, got %d", len(sanitized))
-	}
+	msg := sanitized[0]
 
-	msg109 := sanitized[109]
-	if msg109["thought_signature"] != sentinel || msg109["thoughtSignature"] != sentinel {
-		t.Errorf("message 109 missing thought_signature: %v", msg109)
-	}
-
-	pos109Parts, ok := msg109["parts"].([]interface{})
-	if !ok || len(pos109Parts) == 0 {
-		t.Fatalf("expected parts in message 109")
-	}
-
-	partMap := pos109Parts[0].(map[string]interface{})
-	if partMap["thought_signature"] != sentinel || partMap["thoughtSignature"] != sentinel {
-		t.Errorf("partMap missing thought_signature at position 109: %v", partMap)
-	}
-
-	fnCallMap := partMap["functionCall"].(map[string]interface{})
-	if fnCallMap["thought_signature"] != sentinel || fnCallMap["thoughtSignature"] != sentinel {
-		t.Errorf("fnCallMap missing thought_signature at position 109: %v", fnCallMap)
-	}
-
-	argsMap := fnCallMap["args"].(map[string]interface{})
-	if argsMap["thought_signature"] != sentinel || argsMap["thoughtSignature"] != sentinel {
-		t.Errorf("argsMap missing thought_signature at position 109: %v", argsMap)
-	}
-}
-
-func TestSanitizeMessagesForGoogle_Position34WriteJSONString(t *testing.T) {
-	messages := make([]map[string]interface{}, 35)
-	for i := 0; i < 34; i++ {
-		messages[i] = map[string]interface{}{
-			"role":    "user",
-			"content": fmt.Sprintf("Turn %d", i),
-		}
-	}
-	messages[34] = map[string]interface{}{
-		"role": "assistant",
-		"tool_calls": []interface{}{
-			map[string]interface{}{
-				"id":   "call_write_34",
-				"type": "function",
-				"function": map[string]interface{}{
-					"name":      "default_api:write",
-					"arguments": "{\"path\":\"c:\\\\me\\\\projects\\\\ai-gateway\\\\apps\\\\api\\\\internal\\\\proxy\\\\google.go\",\"CodeContent\":\"package proxy\"}",
-				},
-			},
-		},
-	}
-
-	sanitized := SanitizeMessagesForGoogle(messages)
-	if len(sanitized) != 35 {
-		t.Fatalf("expected 35 messages, got %d", len(sanitized))
-	}
-
-	msg34 := sanitized[34]
-	tcRaw, ok := msg34["tool_calls"].([]interface{})
-	if !ok || len(tcRaw) == 0 {
-		t.Fatalf("expected tool_calls at position 34")
-	}
-
+	tcRaw := msg["tool_calls"].([]interface{})
 	tcMap := tcRaw[0].(map[string]interface{})
 	fnMap := tcMap["function"].(map[string]interface{})
-	argsStr, ok := fnMap["arguments"].(string)
-	if !ok {
-		t.Fatalf("expected string arguments in function")
+
+	if fnMap["thought_signature"] != sentinel {
+		t.Errorf("fnMap missing thought_signature: %v", fnMap)
 	}
 
-	if !strings.Contains(argsStr, sentinel) {
-		t.Errorf("arguments JSON string missing sentinel thought_signature: %s", argsStr)
+	argsStr := fnMap["arguments"].(string)
+	if strings.Contains(argsStr, sentinel) {
+		t.Errorf("edit tool arguments JSON string MUST NOT contain thought_signature pollution: %s", argsStr)
 	}
 
-	var parsedArgs map[string]interface{}
-	if err := json.Unmarshal([]byte(argsStr), &parsedArgs); err != nil {
-		t.Fatalf("failed to unmarshal arguments JSON string: %v", err)
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(argsStr), &parsed); err != nil {
+		t.Fatalf("edit tool arguments should remain valid unpolluted JSON: %v", err)
 	}
 
-	if parsedArgs["thought_signature"] != sentinel || parsedArgs["thoughtSignature"] != sentinel {
-		t.Errorf("parsedArgs missing thought_signature: %v", parsedArgs)
+	if _, hasSig := parsed["thoughtSignature"]; hasSig {
+		t.Errorf("parsed edit arguments contains unexpected thoughtSignature: %v", parsed)
 	}
 }

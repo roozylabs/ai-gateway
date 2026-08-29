@@ -123,26 +123,6 @@ func ensureSignature(m map[string]interface{}) {
 	}
 }
 
-func sanitizeArgumentsString(argsStr string) string {
-	argsStr = strings.TrimSpace(argsStr)
-	if argsStr == "" || argsStr == "{}" {
-		return `{"thought_signature":"skip_thought_signature_validator","thoughtSignature":"skip_thought_signature_validator"}`
-	}
-
-	var m map[string]interface{}
-	if err := json.Unmarshal([]byte(argsStr), &m); err != nil {
-		return argsStr
-	}
-
-	ensureSignature(m)
-
-	b, err := json.Marshal(m)
-	if err != nil {
-		return argsStr
-	}
-	return string(b)
-}
-
 // SanitizeValueRecursively recursively inspects and sanitizes any map or slice in the message payload.
 func SanitizeValueRecursively(v interface{}) interface{} {
 	if v == nil {
@@ -176,20 +156,9 @@ func sanitizeMapRecursively(m map[string]interface{}) map[string]interface{} {
 
 	mCopy := make(map[string]interface{}, len(m))
 	for k, v := range m {
-		// Stop signature pollution on inner data structures of tool arguments (e.g. todos[i], params[i])
+		// Preserve tool argument payloads (args/arguments/input) verbatim without injecting thought_signature into tool parameters
 		if k == "args" || k == "arguments" || k == "input" {
-			if childMap, ok := v.(map[string]interface{}); ok {
-				childCopy := make(map[string]interface{}, len(childMap))
-				for ck, cv := range childMap {
-					childCopy[ck] = cv
-				}
-				ensureSignature(childCopy)
-				mCopy[k] = childCopy
-			} else if childStr, ok := v.(string); ok {
-				mCopy[k] = sanitizeArgumentsString(childStr)
-			} else {
-				mCopy[k] = v
-			}
+			mCopy[k] = v
 		} else {
 			mCopy[k] = SanitizeValueRecursively(v)
 		}
