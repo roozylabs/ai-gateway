@@ -352,7 +352,6 @@ export function MCPServerFormDialog({
                             <SelectItem value="sse">
                               SSE (Server-Sent Events)
                             </SelectItem>
-                            <SelectItem value="websocket">WebSocket</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
