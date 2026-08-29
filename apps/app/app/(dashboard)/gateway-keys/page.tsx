@@ -148,6 +148,7 @@ export default function GatewayKeysPage() {
               columns={columns}
               rowKey="id"
               loading={isLoading}
+              pageSize={10}
               searchPlaceholder="Search gateway keys..."
               onRefresh={refetch}
             />
