@@ -7,47 +7,24 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter }
 import { Button } from '@/components/atoms/Button';
 import { Badge, StatusDot } from '@/components/atoms/Badge';
 import { useProvidersQuery, useDeleteProvider } from '@/hooks/queries/useProvidersQuery';
-import { ApiProvider, apiCreateProvider } from '@/lib/api';
+import { ApiProvider } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Server, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
-import { Input } from '@/components/atoms/Input';
-import { Label } from '@/components/atoms/Label';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { getErrorMessage } from '@/types/ui';
+import { ProviderFormDialog } from './_components/ProviderFormDialog';
 
 export default function ProvidersPage() {
   const { data, isLoading, isError, refetch } = useProvidersQuery();
-  const queryClient = useQueryClient();
   const deleteMutation = useDeleteProvider();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [formName, setFormName] = useState('');
-  const [formType, setFormType] = useState('openai');
-  const [formBaseUrl, setFormBaseUrl] = useState('');
-
-  const createMutation = useMutation({
-    mutationFn: (providerData: { name: string; type: string; baseUrl: string }) =>
-      apiCreateProvider({ name: providerData.name, type: providerData.type, baseUrl: providerData.baseUrl }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['providers'] });
-      toast.success('Provider created successfully');
-      setDrawerOpen(false);
-      setFormName('');
-      setFormType('openai');
-      setFormBaseUrl('');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to create provider: ${error.message}`);
-    },
-  });
 
   const handleDelete = (provider: ApiProvider) => {
     deleteMutation.mutate(provider.id, {
       onSuccess: () => toast.success(`${provider.name} removed`),
-      onError: (err: Error) => toast.error(`Failed to remove: ${err.message}`),
+      onError: (err) => toast.error(`Failed to remove: ${getErrorMessage(err)}`),
     });
   };
 
@@ -130,46 +107,7 @@ export default function ProvidersPage() {
         </div>
       )}
 
-      <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Connect New Provider</DialogTitle>
-            <DialogDescription>Add a new AI provider adapter to your workspace.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="provider-name">Provider Name</Label>
-              <Input id="provider-name" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g., OpenAI Production" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="provider-type">Provider Type</Label>
-              <Select value={formType} onValueChange={setFormType}>
-                <SelectTrigger id="provider-type"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="anthropic">Anthropic</SelectItem>
-                  <SelectItem value="google">Google Gemini</SelectItem>
-                  <SelectItem value="opencode">OpenCode</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="provider-url">Base URL</Label>
-              <Input id="provider-url" value={formBaseUrl} onChange={(e) => setFormBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-            <Button
-              variant="prismViolet"
-              onClick={() => createMutation.mutate({ name: formName, type: formType, baseUrl: formBaseUrl })}
-              disabled={!formName.trim() || createMutation.isPending}
-            >
-              {createMutation.isPending ? 'Creating...' : 'Create Provider'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProviderFormDialog open={drawerOpen} onOpenChange={setDrawerOpen} />
     </AppLayout>
   );
 }
