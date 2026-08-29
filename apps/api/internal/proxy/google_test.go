@@ -1,7 +1,9 @@
 package proxy
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -380,5 +382,59 @@ func TestSanitizeMessagesForGoogle_Position109Grep(t *testing.T) {
 	argsMap := fnCallMap["args"].(map[string]interface{})
 	if argsMap["thought_signature"] != sentinel || argsMap["thoughtSignature"] != sentinel {
 		t.Errorf("argsMap missing thought_signature at position 109: %v", argsMap)
+	}
+}
+
+func TestSanitizeMessagesForGoogle_Position34WriteJSONString(t *testing.T) {
+	messages := make([]map[string]interface{}, 35)
+	for i := 0; i < 34; i++ {
+		messages[i] = map[string]interface{}{
+			"role":    "user",
+			"content": fmt.Sprintf("Turn %d", i),
+		}
+	}
+	messages[34] = map[string]interface{}{
+		"role": "assistant",
+		"tool_calls": []interface{}{
+			map[string]interface{}{
+				"id":   "call_write_34",
+				"type": "function",
+				"function": map[string]interface{}{
+					"name":      "default_api:write",
+					"arguments": "{\"path\":\"c:\\\\me\\\\projects\\\\ai-gateway\\\\apps\\\\api\\\\internal\\\\proxy\\\\google.go\",\"CodeContent\":\"package proxy\"}",
+				},
+			},
+		},
+	}
+
+	sanitized := SanitizeMessagesForGoogle(messages)
+	if len(sanitized) != 35 {
+		t.Fatalf("expected 35 messages, got %d", len(sanitized))
+	}
+
+	msg34 := sanitized[34]
+	tcRaw, ok := msg34["tool_calls"].([]interface{})
+	if !ok || len(tcRaw) == 0 {
+		t.Fatalf("expected tool_calls at position 34")
+	}
+
+	tcMap := tcRaw[0].(map[string]interface{})
+	fnMap := tcMap["function"].(map[string]interface{})
+	argsStr, ok := fnMap["arguments"].(string)
+	if !ok {
+		t.Fatalf("expected string arguments in function")
+	}
+
+	if !strings.Contains(argsStr, sentinel) {
+		t.Errorf("arguments JSON string missing sentinel thought_signature: %s", argsStr)
+	}
+
+	var parsedArgs map[string]interface{}
+	if err := json.Unmarshal([]byte(argsStr), &parsedArgs); err != nil {
+		t.Fatalf("failed to unmarshal arguments JSON string: %v", err)
+	}
+
+	if parsedArgs["thought_signature"] != sentinel || parsedArgs["thoughtSignature"] != sentinel {
+		t.Errorf("parsedArgs missing thought_signature: %v", parsedArgs)
 	}
 }

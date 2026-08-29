@@ -123,6 +123,26 @@ func ensureSignature(m map[string]interface{}) {
 	}
 }
 
+func sanitizeArgumentsString(argsStr string) string {
+	argsStr = strings.TrimSpace(argsStr)
+	if argsStr == "" || argsStr == "{}" {
+		return `{"thought_signature":"skip_thought_signature_validator","thoughtSignature":"skip_thought_signature_validator"}`
+	}
+
+	var m map[string]interface{}
+	if err := json.Unmarshal([]byte(argsStr), &m); err != nil {
+		return argsStr
+	}
+
+	ensureSignature(m)
+
+	b, err := json.Marshal(m)
+	if err != nil {
+		return argsStr
+	}
+	return string(b)
+}
+
 // SanitizeValueRecursively recursively inspects and sanitizes any map or slice in the message payload.
 func SanitizeValueRecursively(v interface{}) interface{} {
 	if v == nil {
@@ -206,11 +226,13 @@ func sanitizeMapRecursively(m map[string]interface{}) map[string]interface{} {
 	if isToolOrFunction {
 		ensureSignature(mCopy)
 
-		// Propagate signature directly to child maps (args, arguments, input, function, functionCall, function_call, etc.)
+		// Propagate signature directly to child maps & JSON string arguments
 		for _, childKey := range []string{"args", "arguments", "input", "function", "functionCall", "function_call", "extra", "provider_metadata", "providerMetadata"} {
 			if childRaw, ok := mCopy[childKey]; ok && childRaw != nil {
 				if childMap, ok := childRaw.(map[string]interface{}); ok {
 					ensureSignature(childMap)
+				} else if childStr, ok := childRaw.(string); ok {
+					mCopy[childKey] = sanitizeArgumentsString(childStr)
 				}
 			}
 		}
