@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Optional `Authorization: Bearer <token>` header derived from the stored encrypted auth token.
 - **MCP Integration Tests**: Replaced the plain JSON-RPC mock tests with real in-process MCP servers (Streamable HTTP and SSE) verifying the full sync/execute flow.
 - **Agent Tool / Resource / MCP Binding**: Agent create & edit forms can now bind `allowedTools`, `allowedResources`, and (new) `allowedMcpServers` via a reusable `MultiSelect`. Backend stores `allowed_mcp_servers` (new migration `071`), injects the bound servers into the generated system prompt, and the agent catalog cards show binding counts. Tools & resources were already stored by the backend but are now exposed in the UI.
+- **Robust MCP Server Config (Remote + Local)**: MCP server registration now supports a full firecrawl/Context7-style configuration shape (`type`, `url`, `enabled`, `headers`) plus local/stdio execution (`command`, `args`, `env`):
+  - **DB (`migration 072`)**: `mcp_servers` gains `config_type` (`remote`/`local`), `headers_encrypted` (AES-256-GCM encrypted header map), `command`, `args TEXT[]`, and `env JSONB`.
+  - **API**: `CreateMCPServerRequest` accepts `type`, `headers`, `command`, `args`, `env`; the `authToken` shortcut is unified into a single encrypted `headers` map with backwards-compatible fallback to the legacy encrypted token.
+  - **Proxy**: `newMCPClient` merges per-server headers and dispatches to `transport.NewStdio` for local servers or SSE/Streamable HTTP for remote servers.
+  - **SDK (`@roozylabs/prism` v2.2.0)**: `MCPModule` gains `getServer`, `createServer`, `updateServer`, `deleteServer` plus the new remote/local fields on `MCPServer`.
+  - **UI**: MCP form supports a Remote/Local type selector, conditional headers/command/args/env editors, an enable toggle, and a quick enable/disable switch on each server card.
 
 ## [2.8.0] - 2026-08-28
 
