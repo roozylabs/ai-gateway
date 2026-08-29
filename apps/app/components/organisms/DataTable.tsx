@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface Column<T> {
@@ -26,6 +26,25 @@ export interface DataTableProps<T> {
   emptyText?: string;
   className?: string;
   onRefresh?: () => void;
+}
+
+// Builds a windowed list of page numbers with ellipsis markers for large datasets.
+function getPaginationItems(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const items = new Set<number>([1, total, current, current - 1, current + 1]);
+  const sorted = [...items].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+
+  const result: (number | 'ellipsis')[] = [];
+  let prev = 0;
+  for (const n of sorted) {
+    if (prev && n - prev > 1) result.push('ellipsis');
+    result.push(n);
+    prev = n;
+  }
+  return result;
 }
 
 export function DataTable<T extends object>({
@@ -253,15 +272,39 @@ export function DataTable<T extends object>({
                 className="h-7 w-7 p-0"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
+                aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
+              {getPaginationItems(currentPage, totalPages).map((item, idx) =>
+                item === 'ellipsis' ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="flex h-7 w-7 items-center justify-center text-muted-foreground"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </span>
+                ) : (
+                  <Button
+                    key={item}
+                    variant={item === currentPage ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 w-7 p-0 font-mono"
+                    onClick={() => setCurrentPage(item)}
+                    aria-label={`Page ${item}`}
+                    aria-current={item === currentPage ? 'page' : undefined}
+                  >
+                    {item}
+                  </Button>
+                )
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 w-7 p-0"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
+                aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>

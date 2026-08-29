@@ -137,6 +137,7 @@ export default function GovernancePage() {
           columns={columns}
           rowKey="id"
           loading={isLoading}
+          pageSize={10}
           searchPlaceholder="Search policies..."
           emptyText="No policies match your search"
         />
