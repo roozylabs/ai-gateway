@@ -4,12 +4,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0B0F17',
-        card: '#121824',
-        border: '#1E293B',
+        background: '#08090A',
+        card: '#0F1115',
+        border: '#1B1F27',
         primary: '#8B5CF6',
-        accent: '#EC4899',
         cyan: '#06B6D4',
+        console: '#0A0C10',
+        'console-card': '#0D0F14',
       },
     },
   },
