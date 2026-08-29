@@ -16,6 +16,7 @@ import { Switch } from "@/components/atoms/Switch";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
 import { useMCPServersQuery } from "@/hooks/queries/useMCPServersQuery";
+import { useAgentsQuery } from "@/hooks/queries/useAgentsQuery";
 import { ApiMCPServer } from "@/lib/api";
 import {
   useUpdateMCPServerMutation,
@@ -55,6 +56,7 @@ function statusToDot(status: string) {
 
 export default function MCPPage() {
   const { data, isLoading, isError, refetch } = useMCPServersQuery();
+  const { data: agentsData } = useAgentsQuery();
   const updateMutation = useUpdateMCPServerMutation();
   const deleteMutation = useDeleteMCPServerMutation();
   const syncMutation = useSyncMCPServerMutation();
@@ -66,6 +68,10 @@ export default function MCPPage() {
   const [testingServer, setTestingServer] = useState<ApiMCPServer | null>(null);
 
   const servers: ApiMCPServer[] = data && Array.isArray(data) ? data : [];
+  const agents = agentsData && Array.isArray(agentsData) ? agentsData : [];
+
+  const usedByAgent = (serverId: string) =>
+    agents.filter((a) => (a.allowedMcpServers ?? []).includes(serverId));
 
   const openCreate = () => {
     setEditingServer(null);
@@ -228,6 +234,23 @@ export default function MCPPage() {
                     />
                   </span>
                 </div>
+                {(() => {
+                  const users = usedByAgent(s.id);
+                  return users.length > 0 ? (
+                    <div className="flex items-center gap-1.5 text-[11px] text-amber-600">
+                      <span className="font-medium">
+                        Used by {users.length} agent{users.length > 1 ? "s" : ""}
+                      </span>
+                      <span className="text-muted-foreground truncate">
+                        ({users.map((a) => a.displayName || a.name).join(", ")})
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-muted-foreground">
+                      Not used by any agent
+                    </div>
+                  );
+                })()}
               </CardContent>
               <CardFooter className="pt-3 border-t border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -288,6 +311,12 @@ export default function MCPPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        disabled={usedByAgent(s.id).length > 0}
+                        title={
+                          usedByAgent(s.id).length > 0
+                            ? "Used by an agent; unassign it first to delete"
+                            : "Delete"
+                        }
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
