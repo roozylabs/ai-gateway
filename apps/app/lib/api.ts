@@ -880,6 +880,22 @@ export interface ApiMCPServerWithTools {
   tools: ApiMCPTool[];
 }
 
+export interface ApiMCPServerEdit {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  type: string;
+  transportType: string;
+  endpointUrl: string;
+  headers: Record<string, string>;
+  hasAuthToken: boolean;
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+  enabled: boolean;
+}
+
 export interface ApiCreateMCPServerRequest {
   name: string;
   displayName?: string;
@@ -908,8 +924,8 @@ export async function apiGetMCPServers(): Promise<ApiMCPServer[]> {
   return response.data;
 }
 
-export async function apiGetMCPServer(id: string): Promise<ApiMCPServerWithTools> {
-  const response = await api.get<ApiMCPServerWithTools>(`/mcp/servers/${id}`);
+export async function apiGetMCPServer(id: string): Promise<ApiMCPServerEdit> {
+  const response = await api.get<ApiMCPServerEdit>(`/mcp/servers/${id}`);
   return response.data;
 }
 

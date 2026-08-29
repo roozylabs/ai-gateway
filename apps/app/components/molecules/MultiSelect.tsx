@@ -71,10 +71,6 @@ function MultiSelect({
   }, [open]);
 
   const selectedCount = value.length;
-  const summary =
-    selectedCount === 0
-      ? placeholder
-      : `${selectedCount} selected`;
 
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
