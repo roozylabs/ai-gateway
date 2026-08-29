@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
-import { Check, ChevronDown, Search } from 'lucide-react';
+import { Check, ChevronDown, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface SearchableSelectOption {
@@ -21,6 +21,7 @@ interface SearchableSelectProps {
   className?: string;
   emptyMessage?: string;
   maxHeight?: string;
+  clearable?: boolean;
 }
 
 function SearchableSelect({
@@ -33,6 +34,7 @@ function SearchableSelect({
   className,
   emptyMessage = 'No results found.',
   maxHeight = '280px',
+  clearable = true,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -59,6 +61,11 @@ function SearchableSelect({
     setSearch('');
   };
 
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onValueChange('');
+  };
+
   React.useEffect(() => {
     if (open) {
       // Focus search input when popover opens
@@ -76,14 +83,27 @@ function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            'flex h-9 w-full items-center justify-between rounded-none border border-input bg-transparent px-3 py-2 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
+            'flex h-9 w-full items-center justify-between gap-2 rounded-none border border-input bg-transparent px-3 py-2 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
             className
           )}
         >
-          <span className={cn('truncate', !selectedLabel && 'text-muted-foreground')}>
+          <span className={cn('truncate flex-1 text-left', !selectedLabel && 'text-muted-foreground')}>
             {selectedLabel || placeholder}
           </span>
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <div className="flex items-center gap-1 shrink-0">
+            {clearable && value && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="cursor-pointer text-muted-foreground hover:text-foreground p-0.5"
+                onClick={handleClear}
+                title="Clear selection"
+              >
+                <X className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />
+              </span>
+            )}
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          </div>
         </button>
       </PopoverPrimitive.Trigger>
 

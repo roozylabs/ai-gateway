@@ -71,10 +71,6 @@ function MultiSelect({
   }, [open]);
 
   const selectedCount = value.length;
-  const summary =
-    selectedCount === 0
-      ? placeholder
-      : `${selectedCount} selected`;
 
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -84,14 +80,62 @@ function MultiSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            'flex h-9 w-full items-center justify-between gap-2 rounded-none border border-input bg-transparent px-3 py-2 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+            'flex min-h-9 w-full items-center justify-between gap-2 rounded-none border border-input bg-transparent px-3 py-1.5 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
             className
           )}
         >
-          <span className={cn('truncate', selectedCount === 0 && 'text-muted-foreground')}>
-            {summary}
-          </span>
-          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+            {selectedCount === 0 ? (
+              <span className="text-muted-foreground truncate">{placeholder}</span>
+            ) : (
+              value.map((v) => {
+                const opt = options.find((o) => o.value === v);
+                return (
+                  <span
+                    key={v}
+                    className="inline-flex items-center gap-1 rounded-none border border-border bg-muted/80 px-2 py-0.5 text-xs text-foreground font-medium"
+                  >
+                    <span className="truncate max-w-[150px]">{opt?.label ?? v}</span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer text-muted-foreground hover:text-foreground rounded-none focus:outline-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeValue(v);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          removeValue(v);
+                        }
+                      }}
+                      aria-label={`Remove ${opt?.label ?? v}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </span>
+                  </span>
+                );
+              })
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {selectedCount > 0 && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="cursor-pointer text-muted-foreground hover:text-foreground p-0.5"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearAll();
+                }}
+                title="Clear all"
+              >
+                <X className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />
+              </span>
+            )}
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          </div>
         </button>
       </PopoverPrimitive.Trigger>
 
