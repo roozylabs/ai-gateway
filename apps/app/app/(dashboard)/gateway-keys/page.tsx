@@ -5,73 +5,25 @@ import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
 import { DataTable, type Column } from '@/components/organisms/DataTable';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/molecules/Dialog';
 import { Button } from '@/components/atoms/Button';
-import { Input } from '@/components/atoms/Input';
-import { Label } from '@/components/atoms/Label';
 import { Badge } from '@/components/atoms/Badge';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/molecules/Select';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { useGatewayKeysQuery, useCreateGatewayKey, useDeleteGatewayKey } from '@/hooks/queries/useGatewayKeysQuery';
+import { useGatewayKeysQuery, useDeleteGatewayKey } from '@/hooks/queries/useGatewayKeysQuery';
 import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
 import type { ApiGatewayKey } from '@/lib/api';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { KeyRound, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { GatewayKeyFormDialog } from './_components/GatewayKeyFormDialog';
 
 export default function GatewayKeysPage() {
   const { data, isLoading, isError, refetch } = useGatewayKeysQuery();
-  const createMutation = useCreateGatewayKey();
   const deleteMutation = useDeleteGatewayKey();
   const { data: providers } = useProvidersQuery();
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [formName, setFormName] = useState('');
-  const [formRateLimit, setFormRateLimit] = useState('100');
-  const [formProviderId, setFormProviderId] = useState('');
 
   const list = data?.data ?? [];
-
-  const resetForm = () => {
-    setFormName('');
-    setFormRateLimit('100');
-    setFormProviderId('');
-  };
-
-  const handleCreate = () => {
-    if (!formName.trim()) {
-      toast.error('Key name is required');
-      return;
-    }
-    if (!formProviderId) {
-      toast.error('Please select a provider');
-      return;
-    }
-
-    createMutation.mutate(
-      {
-        name: formName.trim(),
-        providerId: formProviderId,
-        rateLimit: Number(formRateLimit) || undefined,
-      },
-      {
-        onSuccess: () => {
-          toast.success('Gateway key created');
-          setModalOpen(false);
-          resetForm();
-        },
-        onError: () => {
-          toast.error('Failed to create gateway key');
-        },
-      }
-    );
-  };
 
   const handleDelete = (key: ApiGatewayKey) => {
     deleteMutation.mutate(key.id, {
@@ -203,74 +155,11 @@ export default function GatewayKeysPage() {
         </Card>
       )}
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create Gateway Key</DialogTitle>
-            <DialogDescription>
-              Generate a new API key to authenticate requests through the gateway.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="key-name">Key Name</Label>
-              <Input
-                id="key-name"
-                placeholder="e.g. production-key"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Provider</Label>
-              <Select value={formProviderId} onValueChange={setFormProviderId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a provider" />
-                </SelectTrigger>
-                <SelectContent>
-                  {providers?.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="rate-limit">Rate Limit (req/min)</Label>
-              <Input
-                id="rate-limit"
-                type="number"
-                placeholder="100"
-                value={formRateLimit}
-                onChange={(e) => setFormRateLimit(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setModalOpen(false);
-                resetForm();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="prismViolet"
-              onClick={handleCreate}
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending ? 'Creating...' : 'Create Key'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <GatewayKeyFormDialog
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        providers={providers}
+      />
     </AppLayout>
   );
 }
