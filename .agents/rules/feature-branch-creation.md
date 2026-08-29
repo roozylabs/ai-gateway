@@ -2,10 +2,13 @@
 
 This rule governs the creation, naming, and workflow of isolated feature branches for any new capability, bug fix, or refactoring in `roozylabs/prism`.
 
-## 1. Feature Branch Isolation Rule
+## 1. Mandatory Separate Feature Branch Creation Rule
 
-Whenever starting a new feature, enhancement, bug fix, or refactoring task:
-- **Mandatory Isolation**: Work MUST NOT be performed directly on the primary (`main` / `master`) branch.
+> [!CRITICAL]
+> **STRICT FEATURE BRANCH ISOLATION**: Before modifying ANY source code, creating files, or implementing ANY new feature/fix, the agent MUST create a dedicated, separate Git branch (or isolated Git worktree). 
+> **Committing or modifying code directly on `main` / `master` is STRICTLY FORBIDDEN.**
+
+- **Mandatory Isolation**: Every task MUST have its own dedicated branch created off latest `main` (`git checkout -b <type>/<description>`).
 - **Single Concern per Branch**: Each branch must address a single logical feature or issue. Do not bundle unrelated changes.
 
 ## 2. Branch Naming Conventions

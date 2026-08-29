@@ -4,6 +4,9 @@ This rule governs feature branching, commit orchestration, and automated Pull Re
 
 ## 1. Feature Branching & Multi-Commit Orchestration
 
+> [!CRITICAL]
+> **MANDATORY SEPARATE FEATURE BRANCH**: A dedicated branch MUST be created for every new feature, bug fix, or refactoring BEFORE any code changes are made. Direct commits to `main` are strictly prohibited.
+
 - **Feature Branch Requirement**: For any new capability, bug fix, or refactoring, work MUST be performed on an isolated feature branch named according to `.agents/rules/feature-branch-creation.md` (`feat/...`, `fix/...`, `refactor/...`).
 - **Semantic Commit Messages**: Every commit MUST follow conventional commit specifications (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`, `test:`, `perf:`).
 
