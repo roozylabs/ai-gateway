@@ -11,7 +11,7 @@ import { ApiProvider, apiCreateProvider } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Server, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
@@ -130,12 +130,12 @@ export default function ProvidersPage() {
         </div>
       )}
 
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Connect New Provider</SheetTitle>
-            <SheetDescription>Add a new AI provider adapter to your workspace.</SheetDescription>
-          </SheetHeader>
+      <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Connect New Provider</DialogTitle>
+            <DialogDescription>Add a new AI provider adapter to your workspace.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="provider-name">Provider Name</Label>
@@ -158,7 +158,7 @@ export default function ProvidersPage() {
               <Input id="provider-url" value={formBaseUrl} onChange={(e) => setFormBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" />
             </div>
           </div>
-          <SheetFooter>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
             <Button
               variant="prismViolet"
@@ -167,9 +167,9 @@ export default function ProvidersPage() {
             >
               {createMutation.isPending ? 'Creating...' : 'Create Provider'}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

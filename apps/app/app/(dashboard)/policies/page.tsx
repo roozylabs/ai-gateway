@@ -15,7 +15,7 @@ import { ApiRoutingPolicy } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Plus, Save, SlidersHorizontal, Star, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
 
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
@@ -289,12 +289,12 @@ export default function PoliciesPage() {
         </Tabs>
       )}
 
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Create Custom Policy</SheetTitle>
-            <SheetDescription>Define a new routing policy with custom weight parameters</SheetDescription>
-          </SheetHeader>
+      <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Custom Policy</DialogTitle>
+            <DialogDescription>Define a new routing policy with custom weight parameters</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Policy Name</Label>
@@ -341,7 +341,7 @@ export default function PoliciesPage() {
               />
             </div>
           </div>
-          <SheetFooter>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
             <Button
               variant="prismViolet"
@@ -350,9 +350,9 @@ export default function PoliciesPage() {
             >
               {createMutation.isPending ? 'Creating...' : 'Create Policy'}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
