@@ -41,6 +41,56 @@ type CreateMCPServerRequest struct {
 	Enabled       *bool             `json:"enabled"`
 }
 
+// MCPServerEdit is the editable representation returned to the dashboard so the
+// edit form can be repopulated from a fresh API fetch. It exposes the decrypted
+// headers (and whether an auth token is stored) but never returns secret values.
+type MCPServerEdit struct {
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	DisplayName   string            `json:"displayName"`
+	Description   string            `json:"description"`
+	Type          string            `json:"type"`
+	TransportType string            `json:"transportType"`
+	EndpointURL   string            `json:"endpointUrl"`
+	Headers       map[string]string `json:"headers"`
+	HasAuthToken  bool              `json:"hasAuthToken"`
+	Command       string            `json:"command"`
+	Args          []string          `json:"args"`
+	Env           map[string]string `json:"env"`
+	Enabled       bool              `json:"enabled"`
+}
+
+func (h *MCPHandler) toEdit(srv *models.MCPServer) (*MCPServerEdit, error) {
+	var headers map[string]string
+	if srv.HeadersEncrypted != nil && *srv.HeadersEncrypted != "" {
+		raw, err := utils.DecryptAES256GCM(*srv.HeadersEncrypted, h.encKey)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt headers: %w", err)
+		}
+		if err := json.Unmarshal([]byte(raw), &headers); err != nil {
+			return nil, fmt.Errorf("unmarshal headers: %w", err)
+		}
+	}
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	return &MCPServerEdit{
+		ID:            srv.ID,
+		Name:          srv.Name,
+		DisplayName:   srv.DisplayName,
+		Description:   srv.Description,
+		Type:          srv.Type,
+		TransportType: srv.TransportType,
+		EndpointURL:   srv.EndpointURL,
+		Headers:       headers,
+		HasAuthToken:  srv.AuthTokenEncrypted != nil,
+		Command:       srv.Command,
+		Args:          srv.Args,
+		Env:           srv.Env,
+		Enabled:       srv.Enabled,
+	}, nil
+}
+
 // buildConfigHeaders merges the request's explicit authToken into the generic
 // headers map (Authroization shortcut) and returns the serialized+encrypted
 // payload for the headers_encrypted column.
@@ -87,12 +137,12 @@ func (h *MCPHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "mcp server not found"})
 		return
 	}
-	st, err := h.servers.GetServerWithTools(c.Request.Context(), srv)
+	edit, err := h.toEdit(srv)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load server tools: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load mcp server: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, st)
+	c.JSON(http.StatusOK, edit)
 }
 
 func (h *MCPHandler) Create(c *gin.Context) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import {
@@ -33,7 +33,7 @@ import {
 } from "@/components/molecules/Dialog";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
-import { useMCPServersQuery } from "@/hooks/queries/useMCPServersQuery";
+import { useMCPServersQuery, useMCPServerQuery } from "@/hooks/queries/useMCPServersQuery";
 import { ApiMCPServer, ApiMCPToolExecutionResult } from "@/lib/api";
 import {
   Globe,
@@ -148,6 +148,8 @@ export default function MCPPage() {
 
   const servers: ApiMCPServer[] = data && Array.isArray(data) ? data : [];
 
+  const editQuery = useMCPServerQuery(editingId);
+
   const openTestModal = (server: ApiMCPServer) => {
     setTestingServer(server);
     setTestToolName("ping");
@@ -180,31 +182,42 @@ export default function MCPPage() {
 
   const openCreate = () => {
     setEditingServer(null);
+    setEditingId("");
     setForm(emptyForm);
     setModalOpen(true);
   };
 
   const openEdit = (server: ApiMCPServer) => {
     setEditingServer(server);
-    const envRows: KeyValueRow[] = Object.entries(server.env || {}).map(
+    setForm(emptyForm);
+    setModalOpen(true);
+    setEditingId(server.id);
+  };
+
+  useEffect(() => {
+    if (!editingId || !editQuery.data) return;
+    const s = editQuery.data;
+    const headerRows: KeyValueRow[] = Object.entries(s.headers || {}).map(
+      ([key, value]) => ({ key, value }),
+    );
+    const envRows: KeyValueRow[] = Object.entries(s.env || {}).map(
       ([key, value]) => ({ key, value }),
     );
     setForm({
-      name: server.name,
-      displayName: server.displayName,
-      description: server.description,
-      type: server.type === "local" ? "local" : "remote",
-      transportType: server.transportType,
-      endpointUrl: server.endpointUrl,
+      name: s.name,
+      displayName: s.displayName,
+      description: s.description,
+      type: s.type === "local" ? "local" : "remote",
+      transportType: s.transportType,
+      endpointUrl: s.endpointUrl,
       authToken: "",
-      command: server.command || "",
-      argsCsv: (server.args || []).join("\n"),
-      headerRows: [],
+      command: s.command || "",
+      argsCsv: (s.args || []).join("\n"),
+      headerRows,
       envRows,
-      enabled: server.enabled,
+      enabled: s.enabled,
     });
-    setModalOpen(true);
-  };
+  }, [editQuery.data, editingId]);
 
   const handleSave = () => {
     if (!form.name.trim()) {
@@ -284,6 +297,7 @@ export default function MCPPage() {
   };
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isEditLoading = Boolean(editingId) && editQuery.isLoading;
 
   if (isLoading) {
     return (
@@ -545,6 +559,7 @@ export default function MCPPage() {
                 onChange={(e) =>
                   setForm((p) => ({ ...p, description: e.target.value }))
                 }
+                
                 placeholder="Capabilities provided by this MCP server..."
               />
             </div>
@@ -611,6 +626,12 @@ export default function MCPPage() {
                     }
                     placeholder="Stored as Authorization: Bearer <token>"
                   />
+                  {editingServer && editQuery.data?.hasAuthToken && (
+                    <p className="text-[11px] text-muted-foreground">
+                      An existing token is set and will be kept; leave blank to
+                      retain it.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2 rounded-md border border-border p-3">
                   <div className="flex items-center justify-between">
@@ -791,13 +812,15 @@ export default function MCPPage() {
             <Button
               variant="prismViolet"
               onClick={handleSave}
-              disabled={isSaving || !form.name.trim()}
+              disabled={isSaving || isEditLoading || !form.name.trim()}
             >
               {isSaving
                 ? "Saving..."
-                : editingServer
-                  ? "Save Changes"
-                  : "Register MCP Server"}
+                : isEditLoading
+                  ? "Loading..."
+                  : editingServer
+                    ? "Save Changes"
+                    : "Register MCP Server"}
             </Button>
           </DialogFooter>
         </DialogContent>

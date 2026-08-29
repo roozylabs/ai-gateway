@@ -248,6 +248,22 @@ export interface MCPServerWithTools {
   tools: MCPTool[];
 }
 
+export interface MCPServerEdit {
+  id: string;
+  name: string;
+  displayName?: string;
+  description?: string;
+  type: "remote" | "local" | string;
+  transportType?: string;
+  endpointUrl?: string;
+  headers: Record<string, string>;
+  hasAuthToken?: boolean;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  enabled: boolean;
+}
+
 export interface CreateMCPServerRequest {
   name: string;
   displayName?: string;
