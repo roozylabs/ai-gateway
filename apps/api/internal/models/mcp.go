@@ -6,19 +6,25 @@ import (
 )
 
 type MCPServer struct {
-	ID                 string    `json:"id"`
-	UserID             string    `json:"userId"`
-	Name               string    `json:"name"`
-	DisplayName        string    `json:"displayName"`
-	Description        string    `json:"description"`
-	TransportType      string    `json:"transportType"`
-	EndpointURL        string    `json:"endpointUrl"`
-	AuthTokenEncrypted *string   `json:"-"`
-	HasAuthToken       bool      `json:"hasAuthToken"`
-	Status             string    `json:"status"`
-	Enabled            bool      `json:"enabled"`
-	CreatedAt          time.Time `json:"createdAt"`
-	UpdatedAt          time.Time `json:"updatedAt"`
+	ID                 string            `json:"id"`
+	UserID             string            `json:"userId"`
+	Name               string            `json:"name"`
+	DisplayName        string            `json:"displayName"`
+	Description        string            `json:"description"`
+	Type               string            `json:"type"`
+	TransportType      string            `json:"transportType"`
+	EndpointURL        string            `json:"endpointUrl"`
+	AuthTokenEncrypted *string           `json:"-"`
+	HasAuthToken       bool              `json:"hasAuthToken"`
+	HeadersEncrypted   *string           `json:"-"`
+	HasHeaders         bool              `json:"hasHeaders"`
+	Command            string            `json:"command"`
+	Args               []string          `json:"args"`
+	Env                map[string]string `json:"env"`
+	Status             string            `json:"status"`
+	Enabled            bool              `json:"enabled"`
+	CreatedAt          time.Time         `json:"createdAt"`
+	UpdatedAt          time.Time         `json:"updatedAt"`
 }
 
 type MCPTool struct {
