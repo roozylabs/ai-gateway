@@ -24,12 +24,16 @@ const mcpServerColumns = `id, user_id, name, display_name, description, transpor
 func scanMCPServer(row interface{ Scan(...interface{}) error }, s *models.MCPServer) error {
 	var authToken *string
 	var headersEnc *string
+	var endpointURL sql.NullString
+	var command sql.NullString
 	var args pq.StringArray
 	var env sql.NullString
-	err := row.Scan(&s.ID, &s.UserID, &s.Name, &s.DisplayName, &s.Description, &s.TransportType, &s.EndpointURL, &authToken, &s.Status, &s.Enabled, &s.Type, &headersEnc, &s.Command, &args, &env, &s.CreatedAt, &s.UpdatedAt)
+	err := row.Scan(&s.ID, &s.UserID, &s.Name, &s.DisplayName, &s.Description, &s.TransportType, &endpointURL, &authToken, &s.Status, &s.Enabled, &s.Type, &headersEnc, &command, &args, &env, &s.CreatedAt, &s.UpdatedAt)
 	if err != nil {
 		return err
 	}
+	s.EndpointURL = endpointURL.String
+	s.Command = command.String
 	s.AuthTokenEncrypted = authToken
 	s.HasAuthToken = authToken != nil && *authToken != ""
 	s.HeadersEncrypted = headersEnc
