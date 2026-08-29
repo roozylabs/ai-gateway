@@ -210,7 +210,7 @@ export default function LogsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-[10px] text-foreground hover:bg-foreground gap-1 font-mono"
+                        className="h-6 px-2 text-[10px] text-foreground hover:text-black hover:bg-foreground gap-1 font-mono"
                         onClick={() => handleCopyError(String(msg))}
                       >
                         {copiedError ? (

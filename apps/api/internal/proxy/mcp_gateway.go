@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
@@ -83,7 +82,7 @@ func newRemoteMCPClient(ctx context.Context, srv *models.MCPServer, encKey strin
 	case "sse":
 		t, err = transport.NewSSE(srv.EndpointURL, transport.WithHeaders(headers))
 	case "websocket", "ws":
-		return nil, fmt.Errorf("mcp server %q: websocket transport is not supported", srv.Name)
+		return nil, fmt.Errorf("mcp server %q: websocket transport is not supported (remote endpoints support HTTP or SSE)", srv.Name)
 	default: // "http", "streamable", "" -> Streamable HTTP (Context7, etc.)
 		t, err = transport.NewStreamableHTTP(srv.EndpointURL, transport.WithHTTPHeaders(headers))
 	}
@@ -110,6 +109,10 @@ func newLocalMCPClient(ctx context.Context, srv *models.MCPServer, encKey string
 func initializeClient(ctx context.Context, srv *models.MCPServer, t transport.Interface) (*client.Client, error) {
 	c := client.NewClient(t)
 	if err := c.Start(ctx); err != nil {
+		errStr := err.Error()
+		if strings.EqualFold(strings.TrimSpace(srv.TransportType), "sse") && (strings.Contains(errStr, "405") || strings.Contains(errStr, "404")) {
+			return nil, fmt.Errorf("start mcp transport for %q: %w (endpoint may require HTTP POST JSON-RPC transport; try setting Transport Protocol to HTTP)", srv.Name, err)
+		}
 		return nil, fmt.Errorf("start mcp transport for %q: %w", srv.Name, err)
 	}
 	if _, err := c.Initialize(ctx, mcp.InitializeRequest{
@@ -158,7 +161,7 @@ func (g *MCPGateway) SyncServerTools(ctx context.Context, serverID, userID, encK
 	}
 
 	if err := g.tools.BatchUpsert(ctx, srv.ID, newTools); err != nil {
-		return nil, fmt.Errorf("batch upsert tools: %w", err)
+		return nil, fmt.Errorf("save tools for %q: %w", srv.Name, err)
 	}
 
 	_ = g.servers.UpdateStatus(ctx, srv.ID, "connected")
@@ -166,63 +169,65 @@ func (g *MCPGateway) SyncServerTools(ctx context.Context, serverID, userID, encK
 }
 
 func (g *MCPGateway) ExecuteTool(ctx context.Context, userID, serverName, toolName string, args map[string]interface{}, encKey string) (*models.MCPToolExecutionResult, error) {
+	startTime := time.Now()
 	srv, err := g.servers.FindByUserAndName(ctx, userID, serverName)
 	if err != nil {
-		return nil, fmt.Errorf("resolve mcp server %q: %w", serverName, err)
+		return nil, fmt.Errorf("find mcp server %q: %w", serverName, err)
 	}
-	if !srv.Enabled {
-		return nil, fmt.Errorf("mcp server %q is disabled", serverName)
+	if srv == nil || !srv.Enabled {
+		return nil, fmt.Errorf("mcp server %q is disabled or not found", serverName)
 	}
 
 	c, err := newMCPClient(ctx, srv, encKey)
 	if err != nil {
-		_ = g.servers.UpdateStatus(ctx, srv.ID, "error")
+		_ = g.servers.UpdateStatus(ctx, srv.ID, "offline")
 		return nil, err
 	}
 	defer func() { _ = c.Close() }()
 
-	start := time.Now()
-	callRes, err := c.CallTool(ctx, mcp.CallToolRequest{
+	res, err := c.CallTool(ctx, mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
 			Name:      toolName,
 			Arguments: args,
 		},
 	})
-	latencyMs := int(time.Since(start).Milliseconds())
+	latency := int(time.Since(startTime).Milliseconds())
 	if err != nil {
 		_ = g.servers.UpdateStatus(ctx, srv.ID, "error")
-		return nil, fmt.Errorf("mcp tool call %q on %q: %w", toolName, srv.Name, err)
+		return nil, fmt.Errorf("execute mcp tool %s/%s: %w", serverName, toolName, err)
 	}
 
 	_ = g.servers.UpdateStatus(ctx, srv.ID, "connected")
-	return &models.MCPToolExecutionResult{
-		Server:     srv.Name,
-		Tool:       toolName,
-		StatusCode: http.StatusOK,
-		Result:     extractToolResult(callRes),
-		LatencyMs:  latencyMs,
-	}, nil
-}
 
-// extractToolResult flattens MCP tool content blocks into a single value.
-func extractToolResult(res *mcp.CallToolResult) interface{} {
-	if res == nil {
-		return nil
+	if res.IsError {
+		errMsg := "mcp tool returned error"
+		if len(res.Content) > 0 {
+			if txt, ok := res.Content[0].(mcp.TextContent); ok {
+				errMsg = txt.Text
+			}
+		}
+		return nil, fmt.Errorf("tool %s/%s error: %s", serverName, toolName, errMsg)
 	}
-	var sb strings.Builder
-	for _, content := range res.Content {
-		switch tc := content.(type) {
-		case *mcp.TextContent:
-			sb.WriteString(tc.Text)
-		case mcp.TextContent:
-			sb.WriteString(tc.Text)
+
+	var resultObj interface{} = map[string]interface{}{"status": "success"}
+	if len(res.Content) > 0 {
+		if txt, ok := res.Content[0].(mcp.TextContent); ok {
+			var raw interface{}
+			if err := json.Unmarshal([]byte(txt.Text), &raw); err == nil {
+				resultObj = raw
+			} else {
+				resultObj = txt.Text
+			}
+		} else {
+			resultObj = res.Content
 		}
 	}
-	if sb.Len() > 0 {
-		return sb.String()
-	}
-	if res.StructuredContent != nil {
-		return res.StructuredContent
-	}
-	return nil
+
+	return &models.MCPToolExecutionResult{
+		Server:     serverName,
+		Tool:       toolName,
+		StatusCode: 200,
+		Result:     resultObj,
+		LatencyMs:  latency,
+	}, nil
 }

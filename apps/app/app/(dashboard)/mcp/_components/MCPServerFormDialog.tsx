@@ -53,7 +53,7 @@ const mcpServerSchema = z
     displayName: z.string().default(""),
     description: z.string().default(""),
     type: z.enum(["remote", "local"]),
-    transportType: z.string().default("sse"),
+    transportType: z.string().default("http"),
     endpointUrl: z.string().default(""),
     authToken: z.string().default(""),
     command: z.string().default(""),
@@ -110,7 +110,7 @@ const defaultValues: MCPServerFormValues = {
   displayName: "",
   description: "",
   type: "remote",
-  transportType: "sse",
+  transportType: "http",
   endpointUrl: "",
   authToken: "",
   command: "",
@@ -346,14 +346,19 @@ export function MCPServerFormDialog({
                             <SelectValue placeholder="Select Transport" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="http">
+                              HTTP POST JSON-RPC (Recommended)
+                            </SelectItem>
                             <SelectItem value="sse">
                               SSE (Server-Sent Events)
                             </SelectItem>
-                            <SelectItem value="http">HTTP POST JSON-RPC</SelectItem>
                             <SelectItem value="websocket">WebSocket</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
+                      <p className="text-[11px] text-muted-foreground">
+                        HTTP POST JSON-RPC is recommended for Context7, Firecrawl, and standard web MCP endpoints.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
