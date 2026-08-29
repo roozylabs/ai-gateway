@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -145,106 +146,8 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 	userRole := c.GetHeader("X-Prism-Role")
 
-	// Behind-the-scenes Agent System Persona & Tool/Resource Rules Injection
-	var agent *models.Agent
-	if agentObj, ok := c.Get("agentObject"); ok {
-		if ag, isAgent := agentObj.(*models.Agent); isAgent && ag != nil {
-			agent = ag
-		}
-	}
-	if agent == nil && agentID != "" && h.agentRepo != nil {
-		if _, uuidErr := uuid.Parse(agentID); uuidErr == nil {
-			agent, _ = h.agentRepo.FindByID(c.Request.Context(), agentID, "")
-		}
-		if agent == nil {
-			agent, _ = h.agentRepo.FindByUserAndName(c.Request.Context(), "", agentID)
-		}
-	}
-
-	if agent != nil {
-		c.Set("agentObject", agent)
-		hasSystem := false
-		for _, m := range req.Messages {
-			if role, rOk := m["role"].(string); rOk && role == "system" {
-				hasSystem = true
-				break
-			}
-		}
-		if !hasSystem {
-			systemContent := agent.SystemPromptOverride
-			if systemContent == "" {
-				systemContent = fmt.Sprintf("You are %s. %s. Operate strictly within your agent context boundary rules and execute tools safely.", agent.DisplayName, agent.Description)
-			}
-			if len(agent.AllowedTools) > 0 {
-				systemContent += fmt.Sprintf(" Allowed tools: %s.", strings.Join(agent.AllowedTools, ", "))
-			}
-			if len(agent.AllowedResources) > 0 {
-				systemContent += fmt.Sprintf(" Allowed resources: %s.", strings.Join(agent.AllowedResources, ", "))
-			}
-			if len(agent.AllowedMCPServers) > 0 {
-				systemContent += fmt.Sprintf(" Allowed MCP servers: %s.", strings.Join(agent.AllowedMCPServers, ", "))
-			}
-			req.Messages = append([]map[string]interface{}{
-				{"role": "system", "content": systemContent},
-			}, req.Messages...)
-		}
-
-		// Dynamically resolve & inject tool schemas for AllowedMCPServers
-		if len(agent.AllowedMCPServers) > 0 && h.mcpServerRepo != nil && h.mcpToolRepo != nil {
-			userID := ""
-			if gatewayKey != nil {
-				userID = gatewayKey.UserID
-			}
-			mcpServers, err := h.mcpServerRepo.ListByUserID(c.Request.Context(), userID)
-			if err == nil {
-				allowedMap := make(map[string]bool)
-				for _, name := range agent.AllowedMCPServers {
-					allowedMap[strings.ToLower(strings.TrimSpace(name))] = true
-				}
-
-				for _, srv := range mcpServers {
-					if !srv.Enabled {
-						continue
-					}
-					isAllowed := allowedMap[strings.ToLower(srv.Name)] || allowedMap[strings.ToLower(srv.DisplayName)] || allowedMap[srv.ID]
-					if !isAllowed {
-						continue
-					}
-
-					tools, err := h.mcpToolRepo.ListByServerID(c.Request.Context(), srv.ID)
-					if err != nil {
-						continue
-					}
-
-					for _, t := range tools {
-						if !t.Enabled {
-							continue
-						}
-						var params map[string]interface{}
-						if len(t.InputSchema) > 0 {
-							_ = json.Unmarshal(t.InputSchema, &params)
-						}
-						if params == nil {
-							params = map[string]interface{}{
-								"type":       "object",
-								"properties": map[string]interface{}{},
-							}
-						}
-
-						toolName := fmt.Sprintf("%s__%s", srv.Name, t.Name)
-						req.Tools = append(req.Tools, map[string]interface{}{
-							"type": "function",
-							"function": map[string]interface{}{
-								"name":        toolName,
-								"description": t.Description,
-								"parameters":  params,
-							},
-						})
-					}
-				}
-			}
-		}
-	}
+	// Behind-the-scenes Agent System Persona & Tool/Resource/MCP Rules Injection
+	h.applyAgentBoundary(c.Request.Context(), &req, agentID, gatewayKey, c)
 
 	// Delegate Pipeline Execution to ExecutionOrchestrator
 	if h.orchestrator != nil {
@@ -495,42 +398,10 @@ func (h *GatewayHandler) AsyncChatCompletions(c *gin.Context) {
 	userAgent := c.GetHeader("User-Agent")
 	clientApp := parseClientApp(userAgent)
 
-	// Inject Agent System Persona into messages (same as ChatCompletions)
-	if agentID != "" && h.agentRepo != nil {
-		var agent *models.Agent
-		if _, uuidErr := uuid.Parse(agentID); uuidErr == nil {
-			agent, _ = h.agentRepo.FindByID(c.Request.Context(), agentID, "")
-		}
-		if agent == nil {
-			agent, _ = h.agentRepo.FindByUserAndName(c.Request.Context(), "", agentID)
-		}
-		if agent != nil {
-			if agentName == "" {
-				agentName = agent.DisplayName
-			}
-			hasSystem := false
-			for _, m := range req.Messages {
-				if role, rOk := m["role"].(string); rOk && role == "system" {
-					hasSystem = true
-					break
-				}
-			}
-			if !hasSystem {
-				systemContent := agent.SystemPromptOverride
-				if systemContent == "" {
-					systemContent = fmt.Sprintf("You are %s. %s. Operate strictly within your agent context boundary rules and execute tools safely.", agent.DisplayName, agent.Description)
-				}
-				if len(agent.AllowedTools) > 0 {
-					systemContent += fmt.Sprintf(" Allowed tools: %s.", strings.Join(agent.AllowedTools, ", "))
-				}
-				if len(agent.AllowedResources) > 0 {
-					systemContent += fmt.Sprintf(" Allowed resources: %s.", strings.Join(agent.AllowedResources, ", "))
-				}
-				req.Messages = append([]map[string]interface{}{
-					{"role": "system", "content": systemContent},
-				}, req.Messages...)
-			}
-		}
+	// Behind-the-scenes Agent System Persona & Tool/Resource/MCP Rules Injection
+	agentObj := h.applyAgentBoundary(c.Request.Context(), &req, agentID, keyObj, c)
+	if agentObj != nil && agentName == "" {
+		agentName = agentObj.DisplayName
 	}
 
 	job := &queue.AsyncJob{
@@ -765,4 +636,127 @@ func parseClientApp(ua string) string {
 		return "Web Sandbox"
 	}
 	return "Custom App"
+}
+
+func (h *GatewayHandler) applyAgentBoundary(ctx context.Context, req *proxy.ProxyRequest, agentID string, gatewayKey *models.GatewayAPIKey, c *gin.Context) *models.Agent {
+	if agentID == "" && c != nil {
+		if agentObj, ok := c.Get("agentObject"); ok {
+			if ag, isAgent := agentObj.(*models.Agent); isAgent && ag != nil {
+				agentID = ag.ID
+			}
+		}
+	}
+	if agentID == "" || h.agentRepo == nil {
+		return nil
+	}
+
+	var agent *models.Agent
+	if c != nil {
+		if agentObj, ok := c.Get("agentObject"); ok {
+			if ag, isAgent := agentObj.(*models.Agent); isAgent && ag != nil {
+				agent = ag
+			}
+		}
+	}
+	if agent == nil {
+		if _, uuidErr := uuid.Parse(agentID); uuidErr == nil {
+			agent, _ = h.agentRepo.FindByID(ctx, agentID, "")
+		}
+		if agent == nil {
+			agent, _ = h.agentRepo.FindByUserAndName(ctx, "", agentID)
+		}
+	}
+
+	if agent == nil {
+		return nil
+	}
+
+	if c != nil {
+		c.Set("agentObject", agent)
+	}
+
+	hasSystem := false
+	for _, m := range req.Messages {
+		if role, rOk := m["role"].(string); rOk && role == "system" {
+			hasSystem = true
+			break
+		}
+	}
+
+	if !hasSystem {
+		systemContent := agent.SystemPromptOverride
+		if systemContent == "" {
+			systemContent = fmt.Sprintf("You are %s. %s. Operate strictly within your agent context boundary rules and execute tools safely.", agent.DisplayName, agent.Description)
+		}
+		if len(agent.AllowedTools) > 0 {
+			systemContent += fmt.Sprintf(" Allowed tools: %s.", strings.Join(agent.AllowedTools, ", "))
+		}
+		if len(agent.AllowedResources) > 0 {
+			systemContent += fmt.Sprintf(" Allowed resources: %s.", strings.Join(agent.AllowedResources, ", "))
+		}
+		if len(agent.AllowedMCPServers) > 0 {
+			systemContent += fmt.Sprintf(" Allowed MCP servers: %s.", strings.Join(agent.AllowedMCPServers, ", "))
+		}
+		req.Messages = append([]map[string]interface{}{
+			{"role": "system", "content": systemContent},
+		}, req.Messages...)
+	}
+
+	// Dynamically resolve & inject tool schemas for AllowedMCPServers
+	if len(agent.AllowedMCPServers) > 0 && h.mcpServerRepo != nil && h.mcpToolRepo != nil {
+		userID := ""
+		if gatewayKey != nil {
+			userID = gatewayKey.UserID
+		}
+		mcpServers, err := h.mcpServerRepo.ListByUserID(ctx, userID)
+		if err == nil {
+			allowedMap := make(map[string]bool)
+			for _, name := range agent.AllowedMCPServers {
+				allowedMap[strings.ToLower(strings.TrimSpace(name))] = true
+			}
+
+			for _, srv := range mcpServers {
+				if !srv.Enabled {
+					continue
+				}
+				isAllowed := allowedMap[strings.ToLower(srv.Name)] || allowedMap[strings.ToLower(srv.DisplayName)] || allowedMap[srv.ID]
+				if !isAllowed {
+					continue
+				}
+
+				tools, err := h.mcpToolRepo.ListByServerID(ctx, srv.ID)
+				if err != nil {
+					continue
+				}
+
+				for _, t := range tools {
+					if !t.Enabled {
+						continue
+					}
+					var params map[string]interface{}
+					if len(t.InputSchema) > 0 {
+						_ = json.Unmarshal(t.InputSchema, &params)
+					}
+					if params == nil {
+						params = map[string]interface{}{
+							"type":       "object",
+							"properties": map[string]interface{}{},
+						}
+					}
+
+					toolName := fmt.Sprintf("%s__%s", srv.Name, t.Name)
+					req.Tools = append(req.Tools, map[string]interface{}{
+						"type": "function",
+						"function": map[string]interface{}{
+							"name":        toolName,
+							"description": t.Description,
+							"parameters":  params,
+						},
+					})
+				}
+			}
+		}
+	}
+
+	return agent
 }
