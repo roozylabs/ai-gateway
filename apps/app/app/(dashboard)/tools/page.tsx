@@ -4,169 +4,42 @@ import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { Card, CardHeader, CardContent } from "@/components/molecules/Card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/molecules/Dialog";
 import { Button } from "@/components/atoms/Button";
-import { Input } from "@/components/atoms/Input";
-import { Label } from "@/components/atoms/Label";
 import { Badge } from "@/components/atoms/Badge";
-import { Switch } from "@/components/atoms/Switch";
 import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
 import { useToolsQuery } from "@/hooks/queries/useToolsQuery";
-import type { ApiTool } from "@/lib/api";
-import { Wrench, Plus, Pencil, Trash2, Play, Terminal } from "lucide-react";
+import { ApiTool } from "@/lib/api";
+import { Wrench, Plus, Pencil, Trash2, Play } from "lucide-react";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
-import { ApiToolExecutionResult } from "@/lib/api";
+import { useDeleteToolMutation } from "@/hooks/mutations/useToolMutations";
+import { ToolFormDialog } from "./_components/ToolFormDialog";
+import { ToolTestModal } from "./_components/ToolTestModal";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
-import {
-  useTestToolMutation,
-  useCreateToolMutation,
-  useUpdateToolMutation,
-  useDeleteToolMutation,
-} from "@/hooks/mutations/useToolMutations";
-
-interface ToolFormData {
-  name: string;
-  displayName: string;
-  description: string;
-  enabled: boolean;
-}
-
-const initialToolFormData: ToolFormData = {
-  name: "",
-  displayName: "",
-  description: "",
-  enabled: true,
-};
 
 export default function ToolsPage() {
   const { data: tools, isLoading, isError, refetch } = useToolsQuery();
-  const testToolMutation = useTestToolMutation();
-  const createMutation = useCreateToolMutation();
-  const updateMutation = useUpdateToolMutation();
   const deleteMutation = useDeleteToolMutation();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [testingTool, setTestingTool] = useState<ApiTool | null>(null);
-  const [testArgsJson, setTestArgsJson] = useState("{}");
-  const [testResult, setTestResult] = useState<ApiToolExecutionResult | null>(
-    null,
-  );
   const [editingTool, setEditingTool] = useState<ApiTool | null>(null);
-  const [formData, setFormData] = useState<ToolFormData>(initialToolFormData);
 
   const openTestModal = (tool: ApiTool) => {
     setTestingTool(tool);
-    setTestArgsJson(
-      JSON.stringify(
-        tool.inputSchema?.properties
-          ? Object.fromEntries(
-              Object.keys(tool.inputSchema.properties).map((k) => [
-                k,
-                "sample_value",
-              ]),
-            )
-          : {},
-        null,
-        2,
-      ),
-    );
-    setTestResult(null);
     setTestModalOpen(true);
   };
 
-  const handleRunToolTest = async () => {
-    if (!testingTool) return;
-    setTestResult(null);
-
-    try {
-      const parsedArgs = JSON.parse(testArgsJson);
-      const res = await testToolMutation.mutateAsync({
-        toolId: testingTool.id,
-        args: parsedArgs,
-      });
-      setTestResult(res);
-      if (res.statusCode === 200) {
-        toast.success(`Tool executed successfully (${res.latencyMs}ms)`);
-      } else {
-        toast.error(`Tool execution returned status ${res.statusCode}`);
-      }
-    } catch (err: unknown) {
-      toast.error(`Invalid JSON or request error: ${getErrorMessage(err)}`);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData(initialToolFormData);
-    setEditingTool(null);
-  };
-
   const openCreateDrawer = () => {
-    resetForm();
+    setEditingTool(null);
     setModalOpen(true);
   };
 
   const openEditDrawer = (tool: ApiTool) => {
     setEditingTool(tool);
-    setFormData({
-      name: tool.name,
-      displayName: tool.displayName,
-      description: tool.description,
-      enabled: tool.enabled,
-    });
     setModalOpen(true);
   };
-
-  const handleSubmit = () => {
-    if (!formData.name.trim()) {
-      toast.error("Tool name is required");
-      return;
-    }
-
-    const payload = {
-      name: formData.name.trim(),
-      displayName: formData.displayName.trim() || formData.name.trim(),
-      description: formData.description.trim(),
-      enabled: formData.enabled,
-    };
-
-    if (editingTool) {
-      updateMutation.mutate(
-        { id: editingTool.id, toolData: payload },
-        {
-          onSuccess: () => {
-            toast.success("Tool updated successfully");
-            setModalOpen(false);
-            resetForm();
-          },
-          onError: (error) => {
-            toast.error(`Failed to update tool: ${getErrorMessage(error)}`);
-          },
-        },
-      );
-    } else {
-      createMutation.mutate(payload, {
-        onSuccess: () => {
-          toast.success("Tool created successfully");
-          setModalOpen(false);
-          resetForm();
-        },
-        onError: (error) => {
-          toast.error(`Failed to create tool: ${getErrorMessage(error)}`);
-        },
-      });
-    }
-  };
-
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   if (isLoading) {
     return (
@@ -316,159 +189,17 @@ export default function ToolsPage() {
         </div>
       )}
 
-      {/* Create / Edit Drawer */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingTool ? "Edit Registered Tool" : "Register New Tool"}
-            </DialogTitle>
-            <DialogDescription>
-              Configure function call schema for agent tool execution.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="tool-name">Function Name (snake_case)</Label>
-              <Input
-                id="tool-name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
-                placeholder="e.g., search_web"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tool-display">Display Name</Label>
-              <Input
-                id="tool-display"
-                value={formData.displayName}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    displayName: e.target.value,
-                  }))
-                }
-                placeholder="e.g., Web Search Engine"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tool-desc">Description</Label>
-              <Input
-                id="tool-desc"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                placeholder="Describe tool purpose for AI model..."
-              />
-            </div>
-            <div className="flex items-center justify-between p-3 rounded border border-border bg-card">
-              <Label
-                htmlFor="tool-enabled"
-                className="text-xs font-semibold cursor-pointer"
-              >
-                Tool Enabled
-              </Label>
-              <Switch
-                id="tool-enabled"
-                checked={formData.enabled}
-                onCheckedChange={(val) =>
-                  setFormData((prev) => ({ ...prev, enabled: val }))
-                }
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="prismViolet"
-              onClick={handleSubmit}
-              disabled={isSubmitting || !formData.name.trim()}
-            >
-              {isSubmitting
-                ? "Saving..."
-                : editingTool
-                  ? "Save Changes"
-                  : "Register Tool"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ToolFormDialog
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        editingTool={editingTool}
+      />
 
-      {/* Test Execution Modal */}
-      <Dialog open={testModalOpen} onOpenChange={setTestModalOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Terminal className="h-4 w-4 text-primary" />
-              <span>
-                Test Tool Execution:{" "}
-                {testingTool?.displayName || testingTool?.name}
-              </span>
-            </DialogTitle>
-            <DialogDescription>
-              Provide JSON argument payload and evaluate execution output.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">
-                Input Arguments (JSON)
-              </Label>
-              <textarea
-                className="w-full h-32 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                value={testArgsJson}
-                onChange={(e) => setTestArgsJson(e.target.value)}
-                placeholder="{}"
-              />
-            </div>
-
-            <Button
-              variant="prismViolet"
-              className="w-full gap-2"
-              onClick={handleRunToolTest}
-              disabled={testToolMutation.isPending}
-            >
-              <Play className="h-4 w-4" />
-              <span>
-                {testToolMutation.isPending
-                  ? "Executing Tool..."
-                  : "Execute Tool Test"}
-              </span>
-            </Button>
-
-            {testResult && (
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold">
-                    Execution Output
-                  </Label>
-                  <Badge
-                    variant={
-                      testResult.statusCode === 200 ? "success" : "destructive"
-                    }
-                    className="font-mono text-[10px]"
-                  >
-                    Status {testResult.statusCode} ({testResult.latencyMs}ms)
-                  </Badge>
-                </div>
-                <div className="p-3 rounded-md border border-border bg-muted/40 font-mono text-xs overflow-y-auto max-h-48 whitespace-pre-wrap">
-                  {typeof testResult.result === "object"
-                    ? JSON.stringify(testResult.result, null, 2)
-                    : String(testResult.result)}
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ToolTestModal
+        open={testModalOpen}
+        onOpenChange={setTestModalOpen}
+        tool={testingTool}
+      />
     </AppLayout>
   );
 }

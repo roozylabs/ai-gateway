@@ -6,42 +6,22 @@ import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
-import { Label } from '@/components/atoms/Label';
-import { Input } from '@/components/atoms/Input';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/molecules/Sheet';
-import { useOrganizationQuery, useUpdateSettings } from '@/hooks/queries/useOrganizationQuery';
+import { useOrganizationQuery } from '@/hooks/queries/useOrganizationQuery';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Settings, Pencil } from 'lucide-react';
 import { ApiSetting } from '@/lib/api';
-import { toast } from 'sonner';
+import { SettingFormSheet } from './_components/SettingFormSheet';
 
 export default function SettingsOrganizationPage() {
   const { data, isLoading, isError, refetch } = useOrganizationQuery();
-  const updateSettingsMutation = useUpdateSettings();
   const settings: ApiSetting[] = data?.value ?? [];
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingSetting, setEditingSetting] = useState<ApiSetting | null>(null);
-  const [settingValue, setSettingValue] = useState('');
 
   const openEditDrawer = (s: ApiSetting) => {
     setEditingSetting(s);
-    setSettingValue(s.value);
     setDrawerOpen(true);
-  };
-
-  const handleSaveSetting = () => {
-    if (!editingSetting) return;
-    updateSettingsMutation.mutate(
-      { [editingSetting.key]: settingValue },
-      {
-        onSuccess: () => {
-          toast.success(`Organization parameter "${editingSetting.key}" updated`);
-          setDrawerOpen(false);
-        },
-        onError: (err: Error) => toast.error(`Failed to update: ${err.message}`),
-      }
-    );
   };
 
   return (
@@ -96,38 +76,11 @@ export default function SettingsOrganizationPage() {
         </Card>
       )}
 
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Edit Organization Parameter</SheetTitle>
-            <SheetDescription>Update parameter &quot;{editingSetting?.key}&quot;</SheetDescription>
-          </SheetHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="org-param-key">Parameter Key</Label>
-              <Input id="org-param-key" value={editingSetting?.key || ''} disabled />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="org-param-val">Parameter Value</Label>
-              <Input
-                id="org-param-val"
-                value={settingValue}
-                onChange={(e) => setSettingValue(e.target.value)}
-              />
-            </div>
-          </div>
-          <SheetFooter>
-            <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-            <Button
-              variant="prismViolet"
-              onClick={handleSaveSetting}
-              disabled={updateSettingsMutation.isPending}
-            >
-              {updateSettingsMutation.isPending ? 'Saving...' : 'Save Parameter'}
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <SettingFormSheet
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        editingSetting={editingSetting}
+      />
     </AppLayout>
   );
 }

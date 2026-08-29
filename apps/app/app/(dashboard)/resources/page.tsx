@@ -6,14 +6,8 @@ import { PageHeader } from '@/components/molecules/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
 import { Button } from '@/components/atoms/Button';
 import { Badge, StatusDot } from '@/components/atoms/Badge';
-import { Input } from '@/components/atoms/Input';
-import { Label } from '@/components/atoms/Label';
-import { Switch } from '@/components/atoms/Switch';
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
 import {
   useResourcesQuery,
-  useCreateResource,
-  useUpdateResource,
   useDeleteResource,
 } from '@/hooks/queries/useResourcesQuery';
 import { ApiResource } from '@/lib/api';
@@ -21,89 +15,34 @@ import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Database, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/types/ui';
+import { ResourceFormDialog } from './_components/ResourceFormDialog';
 
 export default function ResourcesPage() {
   const { data: resources, isLoading, isError, refetch } = useResourcesQuery();
-  const createMutation = useCreateResource();
-  const updateMutation = useUpdateResource();
   const deleteMutation = useDeleteResource();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<ApiResource | null>(null);
 
-  const [formName, setFormName] = useState('');
-  const [formDisplayName, setFormDisplayName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formEnabled, setFormEnabled] = useState(true);
-
-  const resetForm = () => {
-    setFormName('');
-    setFormDisplayName('');
-    setFormDescription('');
-    setFormEnabled(true);
-    setEditingResource(null);
-  };
-
   const openCreateDrawer = () => {
-    resetForm();
+    setEditingResource(null);
     setModalOpen(true);
   };
 
   const openEditDrawer = (resource: ApiResource) => {
     setEditingResource(resource);
-    setFormName(resource.name);
-    setFormDisplayName(resource.displayName);
-    setFormDescription(resource.description);
-    setFormEnabled(resource.enabled);
     setModalOpen(true);
-  };
-
-  const handleSubmit = () => {
-    if (!formName.trim()) return;
-
-    const payload = {
-      name: formName.trim(),
-      displayName: formDisplayName.trim() || formName.trim(),
-      description: formDescription.trim(),
-      enabled: formEnabled,
-    };
-
-    if (editingResource) {
-      updateMutation.mutate(
-        { id: editingResource.id, data: payload },
-        {
-          onSuccess: () => {
-            toast.success(`Resource "${payload.name}" updated`);
-            setModalOpen(false);
-            resetForm();
-          },
-          onError: (err: Error) => toast.error(`Failed to update resource: ${err.message}`),
-        }
-      );
-    } else {
-      createMutation.mutate(
-        { ...payload, backends: [] },
-        {
-          onSuccess: () => {
-            toast.success(`Resource "${payload.name}" created`);
-            setModalOpen(false);
-            resetForm();
-          },
-          onError: (err: Error) => toast.error(`Failed to create resource: ${err.message}`),
-        }
-      );
-    }
   };
 
   const handleDelete = (resource: ApiResource) => {
     deleteMutation.mutate(resource.id, {
       onSuccess: () => toast.success(`Resource "${resource.name}" deleted`),
-      onError: (err: Error) => toast.error(`Failed to delete resource: ${err.message}`),
+      onError: (err) => toast.error(`Failed to delete resource: ${getErrorMessage(err)}`),
     });
   };
 
   const resourceList: ApiResource[] = (resources && Array.isArray(resources)) ? resources : [];
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
     <AppLayout>
@@ -189,66 +128,11 @@ export default function ResourcesPage() {
         </div>
       )}
 
-      <Dialog open={modalOpen} onOpenChange={(open) => { setModalOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingResource ? 'Edit Resource' : 'Add Resource Source'}</DialogTitle>
-            <DialogDescription>
-              {editingResource
-                ? 'Update the resource configuration.'
-                : 'Connect a new document store, vector database, or static resource.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="resource-name">Resource Name</Label>
-              <Input
-                id="resource-name"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g., product-knowledge-base"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="resource-display-name">Display Name</Label>
-              <Input
-                id="resource-display-name"
-                value={formDisplayName}
-                onChange={(e) => setFormDisplayName(e.target.value)}
-                placeholder="e.g., Product Knowledge Base"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="resource-description">Description</Label>
-              <Input
-                id="resource-description"
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="Describe what this resource provides..."
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="resource-enabled">Enabled</Label>
-                <p className="text-xs text-muted-foreground">Allow agents to access this resource</p>
-              </div>
-              <Switch id="resource-enabled" checked={formEnabled} onCheckedChange={setFormEnabled} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setModalOpen(false); resetForm(); }}>Cancel</Button>
-            <Button
-              variant="prismViolet"
-              onClick={handleSubmit}
-              disabled={!formName.trim() || isSubmitting}
-            >
-              {isSubmitting
-                ? editingResource ? 'Saving...' : 'Creating...'
-                : editingResource ? 'Save Changes' : 'Create Resource'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ResourceFormDialog
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        editingResource={editingResource}
+      />
     </AppLayout>
   );
 }

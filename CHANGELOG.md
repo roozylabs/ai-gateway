@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **React Hook Form + Zod Form Refactor**: Migrated all Dashboard create/edit/test/invite forms (`mcp`, `tools`, `agents`, `governance`, `credentials`, `providers`, `resources`, `models`, `policies`, `gateway-keys`, `budgets`, `settings/*`) from scattered primitive `useState` fields to structured React Hook Form (`useForm`) with `zodResolver` validation. Each page now co-locates its form/modal components under a page-scoped `_components/` folder (e.g. `MCPServerFormDialog`, `ToolTestModal`, `AgentFormDialog`, `PolicyTuner`, `BudgetFormSheet`, `QuotaFormSheet`, `SettingFormSheet`, `InviteMemberSheet`). Form submission is wired through React Query `useMutation` hooks with typed Zod schemas, inline field validation messages, and declarative success/error workflows.
+
 ### Fixed
 - **MCP Edit Modal Header Repopulation**: The MCP server edit form now fetches a fresh copy from `GET /mcp/servers/:id` instead of relying on list-card props, so previously stored headers (decrypted server-side, returned only to the edit view) load correctly. The response for that endpoint now serves only the fields the editor needs (a slim `MCPServerEdit` DTO including `headers` and `hasAuthToken`), and the auth-token field shows a hint that an existing stored token is retained when left blank. SDK `MCPModule.getServer` return type and OpenAPI spec updated to match.
+- **MCP Edit Modal Compile Fix**: The MCP page previously referenced a dropped `editingId`/`setEditingId` declaration (a regression introduced during a prior merge), which broke `pnpm typecheck`. The refactor restores this state internally within `MCPServerFormDialog`, resolving the compile/lint failure.
 
 ### Added
 - **Real MCP Server Connectivity**: Upgraded the MCP gateway (`apps/api/internal/proxy/mcp_gateway.go`) from a stateless JSON-RPC POST (`sendRPC`) to a full MCP client built on `github.com/mark3labs/mcp-go` v0.58.0. `SyncServerTools` and `ExecuteTool` now perform the complete MCP handshake (`initialize` → `initialized` → `tools/list` / `tools/call`) with transport-awareness:

@@ -1,165 +1,30 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { AppLayout } from '@/components/AppLayout';
-import { PageHeader } from '@/components/molecules/PageHeader';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/molecules/Card';
-import { Button } from '@/components/atoms/Button';
-import { Badge, StatusDot } from '@/components/atoms/Badge';
-import { useAgentsQuery, useCreateAgent, useUpdateAgent, useDeleteAgent } from '@/hooks/queries/useAgentsQuery';
-import { useToolsQuery } from '@/hooks/queries/useToolsQuery';
-import { useResourcesQuery } from '@/hooks/queries/useResourcesQuery';
-import { useMCPServersQuery } from '@/hooks/queries/useMCPServersQuery';
-import { ApiAgent } from '@/lib/api';
-import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Bot, Plus, Settings, Trash2, Pencil, Link as LinkIcon } from 'lucide-react';
-import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
-import { Input } from '@/components/atoms/Input';
-import { Label } from '@/components/atoms/Label';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
-import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
-import { MultiSelect, MultiSelectOption } from '@/components/molecules/MultiSelect';
-import { NumberInput } from '@/components/molecules/NumberInput';
-
-const AGENT_TYPES = ['general', 'code', 'research', 'ops', 'custom'];
+import { useState } from "react";
+import { AppLayout } from "@/components/AppLayout";
+import { PageHeader } from "@/components/molecules/PageHeader";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/molecules/Card";
+import { Button } from "@/components/atoms/Button";
+import { Badge, StatusDot } from "@/components/atoms/Badge";
+import { useAgentsQuery, useDeleteAgent } from "@/hooks/queries/useAgentsQuery";
+import { useToolsQuery } from "@/hooks/queries/useToolsQuery";
+import { useResourcesQuery } from "@/hooks/queries/useResourcesQuery";
+import { useMCPServersQuery } from "@/hooks/queries/useMCPServersQuery";
+import { ApiAgent } from "@/lib/api";
+import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
+import { Bot, Plus, Settings, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/types/ui";
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { MultiSelectOption } from "@/components/molecules/MultiSelect";
+import { AgentFormDialog } from "./_components/AgentFormDialog";
 
 function formatBudgetCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}/mo`;
 }
 
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-interface AgentFormProps {
-  name: string;
-  displayName: string;
-  description: string;
-  agentType: string;
-  maxBudgetCents: number;
-  allowedTools: string[];
-  allowedResources: string[];
-  allowedMcpServers: string[];
-  toolOptions: MultiSelectOption[];
-  resourceOptions: MultiSelectOption[];
-  mcpServerOptions: MultiSelectOption[];
-  onNameChange: (v: string) => void;
-  onDisplayNameChange: (v: string) => void;
-  onDescriptionChange: (v: string) => void;
-  onAgentTypeChange: (v: string) => void;
-  onMaxBudgetCentsChange: (v: number) => void;
-  onAllowedToolsChange: (v: string[]) => void;
-  onAllowedResourcesChange: (v: string[]) => void;
-  onAllowedMcpServersChange: (v: string[]) => void;
-  nameLocked: boolean;
-  onToggleNameLock: (locked: boolean) => void;
-}
-
-function AgentFormFields({
-  name, displayName, description, agentType, maxBudgetCents,
-  allowedTools, allowedResources, allowedMcpServers,
-  toolOptions, resourceOptions, mcpServerOptions,
-  onNameChange, onDisplayNameChange, onDescriptionChange, onAgentTypeChange, onMaxBudgetCentsChange,
-  onAllowedToolsChange, onAllowedResourcesChange, onAllowedMcpServersChange,
-  nameLocked, onToggleNameLock,
-}: AgentFormProps) {
-  return (
-    <div className="space-y-4 py-4">
-      <div className="space-y-2">
-        <Label htmlFor="agent-display-name">Display Name</Label>
-        <Input id="agent-display-name" value={displayName} onChange={(e) => onDisplayNameChange(e.target.value)} placeholder="e.g., Code Reviewer" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="agent-name">Agent Name *</Label>
-        <div className="relative">
-          <Input
-            id="agent-name"
-            value={name}
-            readOnly={nameLocked}
-            onChange={(e) => onNameChange(e.target.value)}
-            placeholder="auto-from-display-name"
-            className={nameLocked ? 'pr-10 bg-muted/50 text-muted-foreground' : 'pr-10'}
-          />
-          <button
-            type="button"
-            aria-label={nameLocked ? 'Edit agent name' : 'Auto-generate from display name'}
-            onClick={() => onToggleNameLock(!nameLocked)}
-            className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            {nameLocked ? <Pencil className="h-3.5 w-3.5" /> : <LinkIcon className="h-3.5 w-3.5" />}
-          </button>
-        </div>
-        {nameLocked && (
-          <p className="text-[10px] text-muted-foreground">Auto-generated from Display Name. Click the pencil to edit.</p>
-        )}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="agent-description">Description</Label>
-        <Input id="agent-description" value={description} onChange={(e) => onDescriptionChange(e.target.value)} placeholder="What this agent does..." />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="agent-type">Agent Type</Label>
-        <Select value={agentType} onValueChange={onAgentTypeChange}>
-          <SelectTrigger id="agent-type"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {AGENT_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="agent-budget">Max Budget (cents/mo)</Label>
-        <NumberInput id="agent-budget" value={maxBudgetCents} onValueChange={onMaxBudgetCentsChange} min={0} step={100} placeholder="0" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="agent-tools">Allowed Tools</Label>
-        <MultiSelect
-          value={allowedTools}
-          onValueChange={onAllowedToolsChange}
-          options={toolOptions}
-          placeholder="Select tools..."
-          searchPlaceholder="Search tools..."
-          emptyMessage="No tools available."
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="agent-resources">Allowed Resources</Label>
-        <MultiSelect
-          value={allowedResources}
-          onValueChange={onAllowedResourcesChange}
-          options={resourceOptions}
-          placeholder="Select resources..."
-          searchPlaceholder="Search resources..."
-          emptyMessage="No resources available."
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="agent-mcp">Allowed MCP Servers</Label>
-        <MultiSelect
-          value={allowedMcpServers}
-          onValueChange={onAllowedMcpServersChange}
-          options={mcpServerOptions}
-          placeholder="Select MCP servers..."
-          searchPlaceholder="Search MCP servers..."
-          emptyMessage="No MCP servers available."
-        />
-      </div>
-    </div>
-  );
-}
-
 export default function AgentsPage() {
   const { data, isLoading, isError, refetch } = useAgentsQuery();
-  const createMutation = useCreateAgent();
-  const updateMutation = useUpdateAgent();
   const deleteMutation = useDeleteAgent();
   const toolsData = useToolsQuery();
   const resourcesData = useResourcesQuery();
@@ -180,100 +45,25 @@ export default function AgentsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<ApiAgent | null>(null);
 
-  const [formName, setFormName] = useState('');
-  const [formNameLocked, setFormNameLocked] = useState(true);
-  const [formDisplayName, setFormDisplayName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formAgentType, setFormAgentType] = useState('general');
-  const [formMaxBudgetCents, setFormMaxBudgetCents] = useState(0);
-  const [formAllowedTools, setFormAllowedTools] = useState<string[]>([]);
-  const [formAllowedResources, setFormAllowedResources] = useState<string[]>([]);
-  const [formAllowedMcpServers, setFormAllowedMcpServers] = useState<string[]>([]);
-
-  const resetForm = () => {
-    setFormName('');
-    setFormNameLocked(true);
-    setFormDisplayName('');
-    setFormDescription('');
-    setFormAgentType('general');
-    setFormMaxBudgetCents(0);
-    setFormAllowedTools([]);
-    setFormAllowedResources([]);
-    setFormAllowedMcpServers([]);
-    setEditingAgent(null);
-  };
-
   const openCreateDrawer = () => {
-    resetForm();
+    setEditingAgent(null);
     setModalOpen(true);
-  };
-
-  const handleDisplayNameChange = (v: string) => {
-    setFormDisplayName(v);
-    if (formNameLocked) setFormName(slugify(v));
-  };
-
-  const handleToggleNameLock = (locked: boolean) => {
-    setFormNameLocked(locked);
-    if (locked) setFormName(slugify(formDisplayName));
   };
 
   const openEditDrawer = (agent: ApiAgent) => {
     setEditingAgent(agent);
-    setFormName(agent.name);
-    setFormNameLocked(agent.name === slugify(agent.displayName));
-    setFormDisplayName(agent.displayName);
-    setFormDescription(agent.description);
-    setFormAgentType(agent.agentType);
-    setFormMaxBudgetCents(agent.maxBudgetCents);
-    setFormAllowedTools(agent.allowedTools ?? []);
-    setFormAllowedResources(agent.allowedResources ?? []);
-    setFormAllowedMcpServers(agent.allowedMcpServers ?? []);
     setModalOpen(true);
-  };
-
-  const handleSubmit = () => {
-    const payload = {
-      name: formName,
-      displayName: formDisplayName || undefined,
-      description: formDescription || undefined,
-      agentType: formAgentType,
-      maxBudgetCents: formMaxBudgetCents,
-      allowedTools: formAllowedTools,
-      allowedResources: formAllowedResources,
-      allowedMcpServers: formAllowedMcpServers,
-    };
-
-    if (editingAgent) {
-      updateMutation.mutate({ id: editingAgent.id, data: payload }, {
-        onSuccess: () => {
-          toast.success(`Agent "${formName}" updated`);
-          setModalOpen(false);
-          resetForm();
-        },
-        onError: (err: Error) => toast.error(`Failed to update: ${err.message}`),
-      });
-    } else {
-      createMutation.mutate(payload, {
-        onSuccess: () => {
-          toast.success(`Agent "${formName}" created`);
-          setModalOpen(false);
-          resetForm();
-        },
-        onError: (err: Error) => toast.error(`Failed to create: ${err.message}`),
-      });
-    }
   };
 
   const handleDelete = (agent: ApiAgent) => {
     deleteMutation.mutate(agent.id, {
       onSuccess: () => toast.success(`Agent "${agent.name}" deleted`),
-      onError: (err: Error) => toast.error(`Failed to delete: ${err.message}`),
+      onError: (err) => toast.error(`Failed to delete: ${getErrorMessage(err)}`),
     });
   };
 
   const agents: ApiAgent[] = (data && Array.isArray(data)) ? data : [];
-  const isPending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const isPending = deleteMutation.isPending;
 
   return (
     <AppLayout>
@@ -313,15 +103,17 @@ export default function AgentsPage() {
                     <Bot className="h-5 w-5 text-[#8B5CF6]" />
                     <span>{agent.displayName || agent.name}</span>
                   </CardTitle>
-                  <StatusDot status={agent.enabled ? 'healthy' : 'cooldown'} />
+                  <StatusDot status={agent.enabled ? "healthy" : "cooldown"} />
                 </div>
-                <CardDescription className="font-mono text-xs">{agent.description || `type: ${agent.agentType}`}</CardDescription>
+                <CardDescription className="font-mono text-xs">
+                  {agent.description || `type: ${agent.agentType}`}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between text-xs border-b border-border pb-2">
                   <span className="text-muted-foreground">Status</span>
-                  <Badge variant={agent.enabled ? 'success' : 'default'}>
-                    {agent.enabled ? 'Enabled' : 'Disabled'}
+                  <Badge variant={agent.enabled ? "success" : "default"}>
+                    {agent.enabled ? "Enabled" : "Disabled"}
                   </Badge>
                 </div>
                 {agent.allowedModels.length > 0 && (
@@ -329,29 +121,46 @@ export default function AgentsPage() {
                     <span className="text-muted-foreground">Models</span>
                     <div className="flex gap-1 flex-wrap justify-end max-w-[180px]">
                       {agent.allowedModels.slice(0, 3).map((m) => (
-                        <Badge key={m} variant="outline" className="text-[10px]">{m}</Badge>
+                        <Badge key={m} variant="outline" className="text-[10px]">
+                          {m}
+                        </Badge>
                       ))}
                       {agent.allowedModels.length > 3 && (
-                        <Badge variant="outline" className="text-[10px]">+{agent.allowedModels.length - 3}</Badge>
+                        <Badge variant="outline" className="text-[10px]">
+                          +{agent.allowedModels.length - 3}
+                        </Badge>
                       )}
                     </div>
                   </div>
                 )}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Spend Cap</span>
-                  <span className="font-mono text-emerald-500 font-bold">{formatBudgetCents(agent.maxBudgetCents)}</span>
+                  <span className="font-mono text-emerald-500 font-bold">
+                    {formatBudgetCents(agent.maxBudgetCents)}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-xs border-t border-border pt-2">
                   <span className="text-muted-foreground">Bindings</span>
                   <div className="flex gap-1 flex-wrap justify-end">
-                    <Badge variant="outline" className="text-[10px]">{agent.allowedTools?.length ?? 0} tools</Badge>
-                    <Badge variant="outline" className="text-[10px]">{agent.allowedResources?.length ?? 0} resources</Badge>
-                    <Badge variant="outline" className="text-[10px]">{agent.allowedMcpServers?.length ?? 0} MCP</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {agent.allowedTools?.length ?? 0} tools
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {agent.allowedResources?.length ?? 0} resources
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {agent.allowedMcpServers?.length ?? 0} MCP
+                    </Badge>
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="border-t border-border pt-3 gap-2">
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs" onClick={() => openEditDrawer(agent)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs"
+                  onClick={() => openEditDrawer(agent)}
+                >
                   <Settings className="h-3.5 w-3.5" /> Configure
                 </Button>
                 <ConfirmDialog
@@ -360,7 +169,12 @@ export default function AgentsPage() {
                   confirmText="Delete"
                   onConfirm={() => handleDelete(agent)}
                   trigger={
-                    <Button variant="destructive" size="sm" className="flex-1 gap-1.5 text-xs" disabled={isPending}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      disabled={isPending}
+                    >
                       <Trash2 className="h-3.5 w-3.5" /> Delete
                     </Button>
                   }
@@ -371,50 +185,14 @@ export default function AgentsPage() {
         </div>
       )}
 
-      <Dialog open={modalOpen} onOpenChange={(open) => { setModalOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingAgent ? 'Configure Agent' : 'Instantiate New Agent'}</DialogTitle>
-            <DialogDescription>
-              {editingAgent ? `Update settings for "${editingAgent.name}".` : 'Provision a new AI agent identity in this workspace.'}
-            </DialogDescription>
-          </DialogHeader>
-          <AgentFormFields
-            name={formName}
-            displayName={formDisplayName}
-            description={formDescription}
-            agentType={formAgentType}
-            maxBudgetCents={formMaxBudgetCents}
-            allowedTools={formAllowedTools}
-            allowedResources={formAllowedResources}
-            allowedMcpServers={formAllowedMcpServers}
-            toolOptions={toolOptions}
-            resourceOptions={resourceOptions}
-            mcpServerOptions={mcpServerOptions}
-            onNameChange={setFormName}
-            onDisplayNameChange={handleDisplayNameChange}
-            onDescriptionChange={setFormDescription}
-            onAgentTypeChange={setFormAgentType}
-            onMaxBudgetCentsChange={setFormMaxBudgetCents}
-            onAllowedToolsChange={setFormAllowedTools}
-            onAllowedResourcesChange={setFormAllowedResources}
-            onAllowedMcpServersChange={setFormAllowedMcpServers}
-            nameLocked={formNameLocked}
-            onToggleNameLock={handleToggleNameLock}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setModalOpen(false); resetForm(); }}>Cancel</Button>
-            <Button
-              variant="prismViolet"
-              onClick={handleSubmit}
-              disabled={!formName.trim() || isPending}
-            >
-              {isPending ? 'Saving...' : editingAgent ? 'Update Agent' : 'Create Agent'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AgentFormDialog
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        editingAgent={editingAgent}
+        toolOptions={toolOptions}
+        resourceOptions={resourceOptions}
+        mcpServerOptions={mcpServerOptions}
+      />
     </AppLayout>
   );
 }
-
