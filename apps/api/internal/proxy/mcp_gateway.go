@@ -41,8 +41,28 @@ func NewMCPGateway(servers MCPServerFinder, tools MCPToolBatchSaver) *MCPGateway
 // newMCPClient builds a transport-aware MCP client, performs the initialize
 // handshake, and returns a ready-to-use client. The caller must Close() it.
 func newMCPClient(ctx context.Context, srv *models.MCPServer, encKey string) (*client.Client, error) {
+	if strings.EqualFold(strings.TrimSpace(srv.Type), "local") {
+		return newLocalMCPClient(ctx, srv, encKey)
+	}
+	return newRemoteMCPClient(ctx, srv, encKey)
+}
+
+// resolveMCPHeaders decrypts the server's headers_encrypted payload and falls
+// back to the legacy auth_token_encrypted bearer token for older rows.
+func resolveMCPHeaders(srv *models.MCPServer, encKey string) map[string]string {
 	headers := map[string]string{}
-	if srv.AuthTokenEncrypted != nil && *srv.AuthTokenEncrypted != "" && encKey != "" {
+	if srv.HeadersEncrypted != nil && *srv.HeadersEncrypted != "" && encKey != "" {
+		raw, err := utils.DecryptAES256GCM(*srv.HeadersEncrypted, encKey)
+		if err != nil {
+			log.Printf("[mcp-gateway] decrypt headers failed for %q: %v", srv.Name, err)
+		} else if raw != "" {
+			if err := json.Unmarshal([]byte(raw), &headers); err != nil {
+				log.Printf("[mcp-gateway] unmarshal headers failed for %q: %v", srv.Name, err)
+			}
+		}
+	}
+	// Legacy single-token fallback.
+	if len(headers) == 0 && srv.AuthTokenEncrypted != nil && *srv.AuthTokenEncrypted != "" && encKey != "" {
 		token, err := utils.DecryptAES256GCM(*srv.AuthTokenEncrypted, encKey)
 		if err != nil {
 			log.Printf("[mcp-gateway] decrypt auth token failed for %q: %v", srv.Name, err)
@@ -50,6 +70,12 @@ func newMCPClient(ctx context.Context, srv *models.MCPServer, encKey string) (*c
 			headers["Authorization"] = "Bearer " + token
 		}
 	}
+	return headers
+}
+
+// newRemoteMCPClient builds an SSE or StreamableHTTP client for remote servers.
+func newRemoteMCPClient(ctx context.Context, srv *models.MCPServer, encKey string) (*client.Client, error) {
+	headers := resolveMCPHeaders(srv, encKey)
 
 	var t transport.Interface
 	var err error
@@ -64,7 +90,24 @@ func newMCPClient(ctx context.Context, srv *models.MCPServer, encKey string) (*c
 	if err != nil {
 		return nil, fmt.Errorf("build mcp transport for %q: %w", srv.Name, err)
 	}
+	return initializeClient(ctx, srv, t)
+}
 
+// newLocalMCPClient builds a stdio client that spawns the local command.
+func newLocalMCPClient(ctx context.Context, srv *models.MCPServer, encKey string) (*client.Client, error) {
+	if strings.TrimSpace(srv.Command) == "" {
+		return nil, fmt.Errorf("mcp server %q: command is required for local transport", srv.Name)
+	}
+	envSlice := []string{}
+	for k, v := range srv.Env {
+		envSlice = append(envSlice, k+"="+v)
+	}
+	t := transport.NewStdio(srv.Command, envSlice, srv.Args...)
+	return initializeClient(ctx, srv, t)
+}
+
+// initializeClient starts the transport and performs the initialize handshake.
+func initializeClient(ctx context.Context, srv *models.MCPServer, t transport.Interface) (*client.Client, error) {
 	c := client.NewClient(t)
 	if err := c.Start(ctx); err != nil {
 		return nil, fmt.Errorf("start mcp transport for %q: %w", srv.Name, err)

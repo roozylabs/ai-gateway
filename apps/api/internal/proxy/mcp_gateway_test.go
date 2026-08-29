@@ -7,6 +7,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -123,4 +124,50 @@ func TestMCPGatewayExecuteToolSuccess_SSE(t *testing.T) {
 	assert.Equal(t, "ctx-sse", res.Server)
 	assert.Equal(t, 200, res.StatusCode)
 	assert.Equal(t, `{"status":"created","issue_id":101}`, res.Result)
+}
+
+func TestResolveMCPHeadersEncrypted(t *testing.T) {
+	key := "0123456789abcdef0123456789abcdef"
+	enc, err := utils.EncryptAES256GCM(`{"Authorization":"Bearer secret","X-Api-Key":"abc"}`, key)
+	require.NoError(t, err)
+
+	srv := &models.MCPServer{
+		Name:             "firecrawl",
+		HeadersEncrypted: &enc,
+	}
+	headers := resolveMCPHeaders(srv, key)
+	assert.Equal(t, "Bearer secret", headers["Authorization"])
+	assert.Equal(t, "abc", headers["X-Api-Key"])
+}
+
+func TestResolveMCPHeadersLegacyTokenFallback(t *testing.T) {
+	key := "0123456789abcdef0123456789abcdef"
+	enc, err := utils.EncryptAES256GCM("legacy-token", key)
+	require.NoError(t, err)
+
+	srv := &models.MCPServer{
+		Name:               "legacy",
+		AuthTokenEncrypted: &enc,
+	}
+	headers := resolveMCPHeaders(srv, key)
+	assert.Equal(t, "Bearer legacy-token", headers["Authorization"])
+}
+
+func TestNewLocalMCPClientMissingCommand(t *testing.T) {
+	srv := &models.MCPServer{
+		ID:    "s1",
+		UserID: "u1",
+		Name:  "local",
+		Type:  "local",
+	}
+	_, err := newMCPClient(context.Background(), srv, "")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "command is required")
+
+	// Without a type, defaults to remote; an empty URL proceeds past the local
+	// command gate and fails later (initialize/transport).
+	srv.Type = ""
+	_, err = newMCPClient(context.Background(), srv, "")
+	assert.Error(t, err)
+	assert.NotContains(t, err.Error(), "command is required")
 }

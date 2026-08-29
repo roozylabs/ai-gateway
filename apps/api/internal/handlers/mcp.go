@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,13 +27,43 @@ func NewMCPHandler(servers *repository.MCPServerRepository, tools *repository.MC
 }
 
 type CreateMCPServerRequest struct {
-	Name          string `json:"name" binding:"required"`
-	DisplayName   string `json:"displayName"`
-	Description   string `json:"description"`
-	TransportType string `json:"transportType"`
-	EndpointURL   string `json:"endpointUrl" binding:"required"`
-	AuthToken     string `json:"authToken"`
-	Enabled       *bool  `json:"enabled"`
+	Name          string            `json:"name" binding:"required"`
+	DisplayName   string            `json:"displayName"`
+	Description   string            `json:"description"`
+	Type          string            `json:"type"`
+	TransportType string            `json:"transportType"`
+	EndpointURL   string            `json:"endpointUrl"`
+	AuthToken     string            `json:"authToken"`
+	Headers       map[string]string `json:"headers"`
+	Command       string            `json:"command"`
+	Args          []string          `json:"args"`
+	Env           map[string]string `json:"env"`
+	Enabled       *bool             `json:"enabled"`
+}
+
+// buildConfigHeaders merges the request's explicit authToken into the generic
+// headers map (Authroization shortcut) and returns the serialized+encrypted
+// payload for the headers_encrypted column.
+func (h *MCPHandler) buildConfigHeaders(req CreateMCPServerRequest) (*string, error) {
+	headers := map[string]string{}
+	for k, v := range req.Headers {
+		headers[k] = v
+	}
+	if req.AuthToken != "" {
+		headers["Authorization"] = "Bearer " + req.AuthToken
+	}
+	if len(headers) == 0 || h.encKey == "" {
+		return nil, nil
+	}
+	raw, err := json.Marshal(headers)
+	if err != nil {
+		return nil, fmt.Errorf("marshal headers: %w", err)
+	}
+	enc, err := utils.EncryptAES256GCM(string(raw), h.encKey)
+	if err != nil {
+		return nil, fmt.Errorf("encrypt headers: %w", err)
+	}
+	return &enc, nil
 }
 
 func (h *MCPHandler) List(c *gin.Context) {
@@ -70,6 +103,20 @@ func (h *MCPHandler) Create(c *gin.Context) {
 		return
 	}
 
+	configType := strings.ToLower(strings.TrimSpace(req.Type))
+	if configType == "" {
+		configType = "remote"
+	}
+	if configType == "local" {
+		if strings.TrimSpace(req.Command) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "command is required for local MCP servers"})
+			return
+		}
+	} else if strings.TrimSpace(req.EndpointURL) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "endpointUrl is required for remote MCP servers"})
+		return
+	}
+
 	transport := req.TransportType
 	if transport == "" {
 		transport = "http"
@@ -79,24 +126,33 @@ func (h *MCPHandler) Create(c *gin.Context) {
 		enabled = *req.Enabled
 	}
 
-	srv := &models.MCPServer{
-		UserID:        userID,
-		Name:          req.Name,
-		DisplayName:   req.DisplayName,
-		Description:   req.Description,
-		TransportType: transport,
-		EndpointURL:   req.EndpointURL,
-		Status:        "connected",
-		Enabled:       enabled,
+	headersEnc, err := h.buildConfigHeaders(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt headers"})
+		return
 	}
 
-	if req.AuthToken != "" && h.encKey != "" {
-		enc, err := utils.EncryptAES256GCM(req.AuthToken, h.encKey)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt auth token"})
-			return
-		}
-		srv.AuthTokenEncrypted = &enc
+	srv := &models.MCPServer{
+		UserID:           userID,
+		Name:             req.Name,
+		DisplayName:      req.DisplayName,
+		Description:      req.Description,
+		Type:             configType,
+		TransportType:    transport,
+		EndpointURL:      req.EndpointURL,
+		HeadersEncrypted: headersEnc,
+		HasHeaders:       headersEnc != nil,
+		Command:          req.Command,
+		Args:             req.Args,
+		Env:              req.Env,
+		Status:           "connected",
+		Enabled:          enabled,
+	}
+	if srv.Args == nil {
+		srv.Args = []string{}
+	}
+	if srv.Env == nil {
+		srv.Env = map[string]string{}
 	}
 
 	if err := h.servers.Create(c.Request.Context(), srv); err != nil {
@@ -132,21 +188,38 @@ func (h *MCPHandler) Update(c *gin.Context) {
 
 	existing.DisplayName = req.DisplayName
 	existing.Description = req.Description
+	if req.Type != "" {
+		existing.Type = strings.ToLower(strings.TrimSpace(req.Type))
+	}
 	if req.TransportType != "" {
 		existing.TransportType = req.TransportType
 	}
-	existing.EndpointURL = req.EndpointURL
+	if req.EndpointURL != "" {
+		existing.EndpointURL = req.EndpointURL
+	}
+	if req.Command != "" {
+		existing.Command = req.Command
+	}
+	if req.Args != nil {
+		existing.Args = req.Args
+	}
+	if req.Env != nil {
+		existing.Env = req.Env
+	}
 	if req.Enabled != nil {
 		existing.Enabled = *req.Enabled
 	}
 
-	if req.AuthToken != "" && h.encKey != "" {
-		enc, err := utils.EncryptAES256GCM(req.AuthToken, h.encKey)
+	// Rebuild encrypted headers only when auth or headers were supplied; the
+	// absent flag allows clearing previously stored headers.
+	if req.AuthToken != "" || len(req.Headers) > 0 {
+		headersEnc, err := h.buildConfigHeaders(req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt auth token"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt headers"})
 			return
 		}
-		existing.AuthTokenEncrypted = &enc
+		existing.HeadersEncrypted = headersEnc
+		existing.HasHeaders = headersEnc != nil
 	}
 
 	if err := h.servers.Update(c.Request.Context(), existing); err != nil {

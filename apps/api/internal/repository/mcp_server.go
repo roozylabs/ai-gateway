@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/roozylabs/prism/internal/models"
 )
 
@@ -17,16 +19,37 @@ func NewMCPServerRepository(db *sql.DB) *MCPServerRepository {
 	return &MCPServerRepository{db: db}
 }
 
-const mcpServerColumns = `id, user_id, name, display_name, description, transport_type, endpoint_url, auth_token_encrypted, status, enabled, created_at, updated_at`
+const mcpServerColumns = `id, user_id, name, display_name, description, transport_type, endpoint_url, auth_token_encrypted, status, enabled, config_type, headers_encrypted, command, args, env, created_at, updated_at`
 
 func scanMCPServer(row interface{ Scan(...interface{}) error }, s *models.MCPServer) error {
 	var authToken *string
-	err := row.Scan(&s.ID, &s.UserID, &s.Name, &s.DisplayName, &s.Description, &s.TransportType, &s.EndpointURL, &authToken, &s.Status, &s.Enabled, &s.CreatedAt, &s.UpdatedAt)
+	var headersEnc *string
+	var args pq.StringArray
+	var env sql.NullString
+	err := row.Scan(&s.ID, &s.UserID, &s.Name, &s.DisplayName, &s.Description, &s.TransportType, &s.EndpointURL, &authToken, &s.Status, &s.Enabled, &s.Type, &headersEnc, &s.Command, &args, &env, &s.CreatedAt, &s.UpdatedAt)
 	if err != nil {
 		return err
 	}
 	s.AuthTokenEncrypted = authToken
 	s.HasAuthToken = authToken != nil && *authToken != ""
+	s.HeadersEncrypted = headersEnc
+	s.HasHeaders = headersEnc != nil && *headersEnc != ""
+
+	s.Args = []string(args)
+	if s.Args == nil {
+		s.Args = []string{}
+	}
+
+	if env.Valid && env.String != "" {
+		m := map[string]string{}
+		if merr := json.Unmarshal([]byte(env.String), &m); merr == nil {
+			s.Env = m
+		} else {
+			s.Env = map[string]string{}
+		}
+	} else {
+		s.Env = map[string]string{}
+	}
 	return nil
 }
 
@@ -92,22 +115,37 @@ func (r *MCPServerRepository) Create(ctx context.Context, s *models.MCPServer) e
 	if s.Status == "" {
 		s.Status = "connected"
 	}
+	if s.Type == "" {
+		s.Type = "remote"
+	}
 	return r.db.QueryRowContext(ctx,
-		`INSERT INTO mcp_servers (user_id, name, display_name, description, transport_type, endpoint_url, auth_token_encrypted, status, enabled, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		`INSERT INTO mcp_servers (user_id, name, display_name, description, transport_type, endpoint_url, auth_token_encrypted, status, enabled, config_type, headers_encrypted, command, args, env, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		 RETURNING id, created_at, updated_at`,
-		s.UserID, s.Name, s.DisplayName, s.Description, s.TransportType, s.EndpointURL, s.AuthTokenEncrypted, s.Status, s.Enabled, now, now,
+		s.UserID, s.Name, s.DisplayName, s.Description, s.TransportType, s.EndpointURL, s.AuthTokenEncrypted, s.Status, s.Enabled, s.Type, s.HeadersEncrypted, s.Command, pq.Array(s.Args), encodeEnvJSON(s.Env), now, now,
 	).Scan(&s.ID, &s.CreatedAt, &s.UpdatedAt)
 }
 
 func (r *MCPServerRepository) Update(ctx context.Context, s *models.MCPServer) error {
 	s.UpdatedAt = time.Now()
+	if s.Type == "" {
+		s.Type = "remote"
+	}
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE mcp_servers SET display_name=$1, description=$2, transport_type=$3, endpoint_url=$4, auth_token_encrypted=$5, status=$6, enabled=$7, updated_at=$8
-		 WHERE id = $9`,
-		s.DisplayName, s.Description, s.TransportType, s.EndpointURL, s.AuthTokenEncrypted, s.Status, s.Enabled, s.UpdatedAt, s.ID,
+		`UPDATE mcp_servers SET display_name=$1, description=$2, transport_type=$3, endpoint_url=$4, auth_token_encrypted=$5, status=$6, enabled=$7, config_type=$8, headers_encrypted=$9, command=$10, args=$11, env=$12, updated_at=$13
+		 WHERE id = $14`,
+		s.DisplayName, s.Description, s.TransportType, s.EndpointURL, s.AuthTokenEncrypted, s.Status, s.Enabled, s.Type, s.HeadersEncrypted, s.Command, pq.Array(s.Args), encodeEnvJSON(s.Env), s.UpdatedAt, s.ID,
 	)
 	return err
+}
+
+// encodeEnvJSON serializes a Go string map into a JSONB-compatible JSON object.
+func encodeEnvJSON(env map[string]string) string {
+	if env == nil {
+		env = map[string]string{}
+	}
+	b, _ := json.Marshal(env)
+	return string(b)
 }
 
 func (r *MCPServerRepository) UpdateStatus(ctx context.Context, id, status string) error {

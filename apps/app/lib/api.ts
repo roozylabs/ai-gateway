@@ -850,9 +850,14 @@ export interface ApiMCPServer {
   name: string;
   displayName: string;
   description: string;
+  type: string;
   transportType: string;
   endpointUrl: string;
   hasAuthToken: boolean;
+  hasHeaders: boolean;
+  command: string;
+  args: string[];
+  env: Record<string, string>;
   status: string;
   enabled: boolean;
   createdAt: string;
@@ -879,9 +884,14 @@ export interface ApiCreateMCPServerRequest {
   name: string;
   displayName?: string;
   description?: string;
+  type?: string;
   transportType?: string;
-  endpointUrl: string;
+  endpointUrl?: string;
   authToken?: string;
+  headers?: Record<string, string>;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
   enabled?: boolean;
 }
 
