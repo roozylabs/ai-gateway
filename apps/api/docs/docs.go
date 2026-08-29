@@ -1142,6 +1142,9 @@ const docTemplate = `{
                 "errorCount": {
                     "type": "integer"
                 },
+                "healthScore": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
                 },

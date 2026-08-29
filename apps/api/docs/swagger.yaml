@@ -12,6 +12,8 @@ definitions:
         type: boolean
       errorCount:
         type: integer
+      healthScore:
+        type: number
       id:
         type: string
       isCoolingDown:
