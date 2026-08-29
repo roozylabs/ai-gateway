@@ -12,9 +12,6 @@ import { ApiCredential } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Key, Plus, Trash2, Activity, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
-import { Input } from '@/components/atoms/Input';
-import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
@@ -22,54 +19,22 @@ import { ProviderFilterId, getErrorMessage } from '@/types/ui';
 import {
   useTestCredentialMutation,
   useResetCooldownMutation,
-  useCreateCredentialMutation,
   useDeleteCredentialMutation,
 } from '@/hooks/mutations/useCredentialMutations';
-
-interface CredentialFormData {
-  name: string;
-  apiKey: string;
-  providerId: string;
-}
-
-const initialFormData: CredentialFormData = {
-  name: '',
-  apiKey: '',
-  providerId: '',
-};
+import { CredentialFormDialog } from './_components/CredentialFormDialog';
 
 export default function CredentialsPage() {
   const [selectedProviderId, setSelectedProviderId] = useState<ProviderFilterId>('all');
   const { data, isLoading, isError, refetch } = useCredentialsQuery(selectedProviderId);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<CredentialFormData>(initialFormData);
 
   const { data: providersData } = useProvidersQuery();
   const providers = Array.isArray(providersData) ? providersData : [];
 
   const testMutation = useTestCredentialMutation();
   const resetCooldownMutation = useResetCooldownMutation();
-  const createMutation = useCreateCredentialMutation();
   const deleteMutation = useDeleteCredentialMutation();
-
-  const handleCreateCredential = () => {
-    if (!formData.name.trim() || !formData.providerId || !formData.apiKey.trim()) return;
-
-    createMutation.mutate(
-      { providerId: formData.providerId, name: formData.name, apiKey: formData.apiKey },
-      {
-        onSuccess: () => {
-          toast.success('Credential created successfully');
-          setDrawerOpen(false);
-          setFormData(initialFormData);
-        },
-        onError: (error) => {
-          toast.error(`Failed to create credential: ${getErrorMessage(error)}`);
-        },
-      }
-    );
-  };
 
   const handleTestKey = async (providerId: string, credId: string) => {
     setTestingId(credId);
@@ -270,58 +235,7 @@ export default function CredentialsPage() {
         </Card>
       </div>
 
-      <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Provider Credential</DialogTitle>
-            <DialogDescription>Configure a new API key or secret credential for upstream AI routing.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="provider-select">Provider</Label>
-              <Select value={formData.providerId} onValueChange={(val) => setFormData((prev) => ({ ...prev, providerId: val }))}>
-                <SelectTrigger id="provider-select">
-                  <SelectValue placeholder="Select Provider" />
-                </SelectTrigger>
-                <SelectContent>
-                  {providers.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name} ({p.type})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cred-name">Credential Label</Label>
-              <Input
-                id="cred-name"
-                value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g., Production Key"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cred-key">API Key</Label>
-              <Input
-                id="cred-key"
-                type="password"
-                value={formData.apiKey}
-                onChange={(e) => setFormData((prev) => ({ ...prev, apiKey: e.target.value }))}
-                placeholder="sk-..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-            <Button
-              variant="prismViolet"
-              onClick={handleCreateCredential}
-              disabled={!formData.name.trim() || !formData.providerId || !formData.apiKey.trim() || createMutation.isPending}
-            >
-              {createMutation.isPending ? 'Creating...' : 'Add Credential'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CredentialFormDialog open={drawerOpen} onOpenChange={setDrawerOpen} />
     </AppLayout>
   );
 }
