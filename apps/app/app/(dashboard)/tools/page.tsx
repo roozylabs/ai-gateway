@@ -7,6 +7,7 @@ import { Card, CardHeader, CardContent } from "@/components/molecules/Card";
 import { Button } from "@/components/atoms/Button";
 import { Badge } from "@/components/atoms/Badge";
 import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
+import { CardSkeletonGrid } from "@/components/molecules/CardSkeleton";
 import { useToolsQuery } from "@/hooks/queries/useToolsQuery";
 import { ApiTool } from "@/lib/api";
 import { Wrench, Plus, Pencil, Trash2, Play } from "lucide-react";
@@ -48,11 +49,7 @@ export default function ToolsPage() {
           title="Tool Gateway & Function Registry"
           description="Register and manage dynamic function call schemas for AI agent execution."
         />
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Loading tools...
-          </CardContent>
-        </Card>
+        <CardSkeletonGrid count={3} />
       </AppLayout>
     );
   }

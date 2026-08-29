@@ -15,6 +15,7 @@ import { Badge, StatusDot } from "@/components/atoms/Badge";
 import { Switch } from "@/components/atoms/Switch";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
+import { CardSkeletonGrid } from "@/components/molecules/CardSkeleton";
 import { useMCPServersQuery } from "@/hooks/queries/useMCPServersQuery";
 import { ApiMCPServer } from "@/lib/api";
 import {
@@ -89,11 +90,7 @@ export default function MCPPage() {
           title="MCP Gateway"
           description="Model Context Protocol servers providing external tools, prompts, and resources to agents."
         />
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Loading MCP servers...
-          </CardContent>
-        </Card>
+        <CardSkeletonGrid count={3} />
       </AppLayout>
     );
   }
