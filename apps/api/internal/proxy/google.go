@@ -159,8 +159,12 @@ func sanitizeMapRecursively(m map[string]interface{}) map[string]interface{} {
 		mCopy[k] = SanitizeValueRecursively(v)
 	}
 
-	// Check if this map represents a tool call, function call, part, or function definition
+	// Always ensure signature on any map that represents a message, part, tool call, function call, or function argument
 	isToolOrFunction := false
+
+	if role, ok := mCopy["role"].(string); ok && (role == "assistant" || role == "model" || role == "tool" || role == "function") {
+		isToolOrFunction = true
+	}
 
 	if _, hasName := mCopy["name"]; hasName {
 		isToolOrFunction = true
@@ -174,18 +178,42 @@ func sanitizeMapRecursively(m map[string]interface{}) map[string]interface{} {
 	if _, hasFn := mCopy["function"]; hasFn {
 		isToolOrFunction = true
 	}
+	if _, hasFnResp := mCopy["functionResponse"]; hasFnResp {
+		isToolOrFunction = true
+	}
+	if _, hasFnResp := mCopy["function_response"]; hasFnResp {
+		isToolOrFunction = true
+	}
+	if _, hasParts := mCopy["parts"]; hasParts {
+		isToolOrFunction = true
+	}
+	if _, hasToolCalls := mCopy["tool_calls"]; hasToolCalls {
+		isToolOrFunction = true
+	}
+	if _, hasToolCalls := mCopy["toolCalls"]; hasToolCalls {
+		isToolOrFunction = true
+	}
 	if _, hasArgs := mCopy["args"]; hasArgs {
 		isToolOrFunction = true
 	}
 	if _, hasArguments := mCopy["arguments"]; hasArguments {
 		isToolOrFunction = true
 	}
-	if typeVal, ok := mCopy["type"].(string); ok && (typeVal == "function" || typeVal == "tool_calls" || typeVal == "tool_use") {
+	if typeVal, ok := mCopy["type"].(string); ok && (typeVal == "function" || typeVal == "tool_calls" || typeVal == "tool_use" || typeVal == "function_call" || typeVal == "functionCall") {
 		isToolOrFunction = true
 	}
 
 	if isToolOrFunction {
 		ensureSignature(mCopy)
+
+		// Propagate signature directly to child maps (args, arguments, input, function, functionCall, function_call, etc.)
+		for _, childKey := range []string{"args", "arguments", "input", "function", "functionCall", "function_call", "extra", "provider_metadata", "providerMetadata"} {
+			if childRaw, ok := mCopy[childKey]; ok && childRaw != nil {
+				if childMap, ok := childRaw.(map[string]interface{}); ok {
+					ensureSignature(childMap)
+				}
+			}
+		}
 	}
 
 	return mCopy

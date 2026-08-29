@@ -328,3 +328,57 @@ func TestSanitizeMessagesForGoogle_Position165TodoWrite(t *testing.T) {
 		t.Errorf("fnCallMap missing thought_signature at position 165: %v", fnCallMap)
 	}
 }
+
+func TestSanitizeMessagesForGoogle_Position109Grep(t *testing.T) {
+	messages := make([]map[string]interface{}, 110)
+	for i := 0; i < 109; i++ {
+		messages[i] = map[string]interface{}{
+			"role":    "user",
+			"content": fmt.Sprintf("Turn %d", i),
+		}
+	}
+	messages[109] = map[string]interface{}{
+		"role": "assistant",
+		"parts": []interface{}{
+			map[string]interface{}{
+				"functionCall": map[string]interface{}{
+					"name": "default_api:grep",
+					"args": map[string]interface{}{
+						"Query":      "SanitizeMessagesForGoogle",
+						"SearchPath": "c:\\me\\projects\\ai-gateway",
+					},
+				},
+			},
+		},
+	}
+
+	sanitized := SanitizeMessagesForGoogle(messages)
+	if len(sanitized) != 110 {
+		t.Fatalf("expected 110 messages, got %d", len(sanitized))
+	}
+
+	msg109 := sanitized[109]
+	if msg109["thought_signature"] != sentinel || msg109["thoughtSignature"] != sentinel {
+		t.Errorf("message 109 missing thought_signature: %v", msg109)
+	}
+
+	pos109Parts, ok := msg109["parts"].([]interface{})
+	if !ok || len(pos109Parts) == 0 {
+		t.Fatalf("expected parts in message 109")
+	}
+
+	partMap := pos109Parts[0].(map[string]interface{})
+	if partMap["thought_signature"] != sentinel || partMap["thoughtSignature"] != sentinel {
+		t.Errorf("partMap missing thought_signature at position 109: %v", partMap)
+	}
+
+	fnCallMap := partMap["functionCall"].(map[string]interface{})
+	if fnCallMap["thought_signature"] != sentinel || fnCallMap["thoughtSignature"] != sentinel {
+		t.Errorf("fnCallMap missing thought_signature at position 109: %v", fnCallMap)
+	}
+
+	argsMap := fnCallMap["args"].(map[string]interface{})
+	if argsMap["thought_signature"] != sentinel || argsMap["thoughtSignature"] != sentinel {
+		t.Errorf("argsMap missing thought_signature at position 109: %v", argsMap)
+	}
+}
