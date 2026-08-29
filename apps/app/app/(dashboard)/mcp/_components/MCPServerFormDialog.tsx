@@ -152,6 +152,22 @@ export function MCPServerFormDialog({
   useEffect(() => {
     if (!editingId || !editQuery.data) return;
     const s = editQuery.data;
+
+    let extractedAuthToken = "";
+    const filteredHeaderRows: KeyValueRow[] = [];
+
+    Object.entries(s.headers || {}).forEach(([k, v]) => {
+      if (k.toLowerCase() === "authorization") {
+        let val = v.trim();
+        while (/^bearer\s+/i.test(val)) {
+          val = val.replace(/^bearer\s+/i, "").trim();
+        }
+        extractedAuthToken = val;
+      } else {
+        filteredHeaderRows.push({ key: k, value: v });
+      }
+    });
+
     reset({
       name: s.name,
       displayName: s.displayName,
@@ -159,13 +175,10 @@ export function MCPServerFormDialog({
       type: s.type === "local" ? "local" : "remote",
       transportType: s.transportType,
       endpointUrl: s.endpointUrl,
-      authToken: "",
+      authToken: extractedAuthToken,
       command: s.command || "",
       argsCsv: (s.args || []).join("\n"),
-      headerRows: Object.entries(s.headers || {}).map(([k, v]) => ({
-        key: k,
-        value: v,
-      })),
+      headerRows: filteredHeaderRows,
       envRows: Object.entries(s.env || {}).map(([k, v]) => ({ key: k, value: v })),
       enabled: s.enabled,
     });
@@ -178,6 +191,24 @@ export function MCPServerFormDialog({
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   const onSubmit = (values: MCPServerFormValues) => {
+    let cleanAuthToken = values.authToken.trim();
+    while (/^bearer\s+/i.test(cleanAuthToken)) {
+      cleanAuthToken = cleanAuthToken.replace(/^bearer\s+/i, "").trim();
+    }
+
+    const cleanedHeaderRows = values.headerRows.map((row) => {
+      let val = row.value.trim();
+      if (row.key.trim().toLowerCase() === "authorization") {
+        while (/^bearer\s+/i.test(val)) {
+          val = val.replace(/^bearer\s+/i, "").trim();
+        }
+        if (val) {
+          val = `Bearer ${val}`;
+        }
+      }
+      return { key: row.key.trim(), value: val };
+    });
+
     const payload: ApiCreateMCPServerRequest = {
       name: values.name.trim(),
       displayName: values.displayName.trim() || values.name.trim(),
@@ -185,8 +216,8 @@ export function MCPServerFormDialog({
       type: values.type,
       transportType: values.transportType,
       endpointUrl: values.endpointUrl.trim(),
-      authToken: values.authToken.trim() || undefined,
-      headers: kvToMap(values.headerRows),
+      authToken: cleanAuthToken || undefined,
+      headers: kvToMap(cleanedHeaderRows),
       command: values.command.trim(),
       args: csvToArgs(values.argsCsv),
       env: kvToMap(values.envRows),
@@ -377,7 +408,7 @@ export function MCPServerFormDialog({
                         <Input
                           {...field}
                           type="password"
-                          placeholder="Stored as Authorization: Bearer <token>"
+                          placeholder="e.g., fc-b123... (Bearer prefix added automatically)"
                           disabled={isSaving || isEditLoading}
                         />
                       </FormControl>
