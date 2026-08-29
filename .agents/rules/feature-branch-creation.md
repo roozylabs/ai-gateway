@@ -32,11 +32,19 @@ Before modifying any source code:
 4. **Isolated Worktree (Recommended for Agents)**:
    - For agentic tasks, prefer creating an isolated worktree via `using-git-worktrees` skill to prevent workspace conflicts.
 
-## 4. Commit Discipline on Feature Branches
+## 4. Mandatory End-of-Task Delivery Pipeline
 
-- Follow conventional commits (`feat:`, `fix:`, `refactor:`, etc.) for all commits inside the branch.
-- Verify build and tests pass before committing each atomic unit of work (`pnpm typecheck` / `go test`).
-- Push feature branch to remote before creating Pull Request.
+Upon completing any feature, fix, enhancement, or refactoring task, the agent MUST execute the following 4-step delivery pipeline:
+
+1. **Atomic Conventional Commit**:
+   - Verify build and tests pass (`pnpm typecheck` / `go test`).
+   - Stage changes and create commit(s) using conventional commit format (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`).
+2. **Push Branch to Remote**:
+   - Push the feature branch to remote GitHub repository (`git push origin <type>/<description>`).
+3. **Automated Pull Request Creation**:
+   - Call `github-mcp-server` tool `create_pull_request` with title following Conventional Commits format and body following `.github/PULL_REQUEST_TEMPLATE.md`.
+4. **Automated Label Assignment**:
+   - Call `github-mcp-server` tool `issue_write` (`method: "update"`, `issue_number: <pr_number>`, `labels: [...]`) to attach relevant GitHub labels.
 
 ## 5. Post-Merge Branch Cleanup & Lifecycle End
 

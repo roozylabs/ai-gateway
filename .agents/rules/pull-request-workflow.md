@@ -61,11 +61,17 @@ Provide a clear executive summary of the features, architectural decisions, and 
 - [x] `CHANGELOG.md` updated
 ```
 
-## 3. Automated PR Life-cycle Management via MCP
+## 3. Mandatory End-of-Task Completion Pipeline (Commit -> Push -> PR -> Labels)
 
-- **Branch Creation**: Use `create_branch` via `github-mcp-server` to initialize feature branches on GitHub remote if not using local git.
-- **PR Creation**: Use `create_pull_request` via `github-mcp-server` passing `title`, `body` (matching template above), `head` (feature branch), and `base` (`main`/`master`).
-- **Status Checks & Inspection**: Use `list_pull_requests` or `pull_request_read` to inspect open PR status, review comments, and check runs.
+Upon completing any feature, bug fix, or task implementation, the agent MUST automatically execute the following sequence:
+
+1. **Commit**: Verify `pnpm typecheck` / `go test` pass, then commit staged changes using Conventional Commit syntax.
+2. **Push**: Push the feature branch to remote (`git push origin <branch>`).
+3. **Pull Request**: Call `create_pull_request` on `github-mcp-server` passing standard title and body template.
+4. **Labels**: Immediately call `issue_write` (`method: "update"`, `issue_number: <pr_number>`, `labels: [...]`) on `github-mcp-server` to attach relevant labels (`feat`, `fix`, `refactor`, `documentation`, `chore`, `ci`, `rules`).
+
 - **Merge Strategy**: Use `merge_pull_request` only after verification checks (`pnpm build`, `go test`) pass cleanly.
 - **Post-Merge Cleanup**: After merging, delete the head branch on remote and delete local feature branch / worktree according to `.agents/rules/feature-branch-creation.md`.
+
+
 
