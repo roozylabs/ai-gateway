@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
+import { useState } from "react";import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import {
   Card,
@@ -137,6 +136,7 @@ export default function MCPPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingServer, setEditingServer] = useState<ApiMCPServer | null>(null);
+  const [editingId, setEditingId] = useState("");
   const [form, setForm] = useState<MCPFormState>(emptyForm);
 
   const [testModalOpen, setTestModalOpen] = useState(false);
