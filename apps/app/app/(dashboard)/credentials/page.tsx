@@ -12,7 +12,7 @@ import { ApiCredential } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Key, Plus, Trash2, Activity, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
@@ -270,12 +270,12 @@ export default function CredentialsPage() {
         </Card>
       </div>
 
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Add Provider Credential</SheetTitle>
-            <SheetDescription>Configure a new API key or secret credential for upstream AI routing.</SheetDescription>
-          </SheetHeader>
+      <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Provider Credential</DialogTitle>
+            <DialogDescription>Configure a new API key or secret credential for upstream AI routing.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="provider-select">Provider</Label>
@@ -310,7 +310,7 @@ export default function CredentialsPage() {
               />
             </div>
           </div>
-          <SheetFooter>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
             <Button
               variant="prismViolet"
@@ -319,9 +319,9 @@ export default function CredentialsPage() {
             >
               {createMutation.isPending ? 'Creating...' : 'Add Credential'}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

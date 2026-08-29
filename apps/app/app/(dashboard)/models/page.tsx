@@ -14,7 +14,7 @@ import { ApiModel } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Layers, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/molecules/Sheet';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/molecules/Dialog';
 import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
@@ -223,12 +223,12 @@ export default function ModelsPage() {
         </CardContent>
       </Card>
 
-      <Sheet open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) resetForm(); }}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Add New Model</SheetTitle>
-            <SheetDescription>Register a new LLM model under an existing provider.</SheetDescription>
-          </SheetHeader>
+      <Dialog open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Model</DialogTitle>
+            <DialogDescription>Register a new LLM model under an existing provider.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="model-provider">Provider</Label>
@@ -274,7 +274,7 @@ export default function ModelsPage() {
               </div>
             </div>
           </div>
-          <SheetFooter>
+          <DialogFooter>
             <Button variant="outline" onClick={() => { setDrawerOpen(false); resetForm(); }}>Cancel</Button>
             <Button
               variant="prismViolet"
@@ -283,9 +283,9 @@ export default function ModelsPage() {
             >
               {createMutation.isPending ? 'Creating...' : 'Create Model'}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
