@@ -43,15 +43,29 @@ const FormField = <
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext);
   const itemContext = React.useContext(FormItemContext);
-  const { getFieldState, formState } = useFormContext();
+  const methods = useFormContext();
 
-  const fieldState = getFieldState(fieldContext.name, formState);
+  const id = itemContext?.id;
 
-  if (!fieldContext) {
-    throw new Error('useFormField should be used within <FormField>');
+  // Degrade gracefully when used outside a <FormField>/<Form> provider
+  // (e.g. a standalone <FormLabel> for a non-RHF control) instead of
+  // throwing "Cannot destructure 'getFieldState' of null".
+  if (!fieldContext || !methods) {
+    return {
+      id,
+      name: fieldContext?.name,
+      formItemId: `${id ?? "field"}-form-item`,
+      formDescriptionId: `${id ?? "field"}-form-item-description`,
+      formMessageId: `${id ?? "field"}-form-item-message`,
+      error: undefined,
+      invalid: false,
+      isDirty: false,
+      isTouched: false,
+    };
   }
 
-  const { id } = itemContext;
+  const { getFieldState, formState } = methods;
+  const fieldState = getFieldState(fieldContext.name, formState);
 
   return {
     id,
