@@ -2,11 +2,11 @@
 Provide a clear executive summary of the features, architectural decisions, and bug fixes introduced in this PR.
 
 ## Type of Change
-- [ ] 🚀 `feat`: New feature / capability
-- [ ] 🐛 `fix`: Bug fix or error resolution
-- [ ] 🛠️ `refactor`: Code restructuring without API / functional change
-- [ ] 📚 `docs`: Documentation, PRD, or CHANGELOG updates
-- [ ] ⚙️ `chore`: Dependency, tool, or build configuration update
+- [ ] `feat`: New feature / capability
+- [ ] `fix`: Bug fix or error resolution
+- [ ] `refactor`: Code restructuring without functional change
+- [ ] `docs`: Documentation, PRD, or CHANGELOG updates
+- [ ] `chore`: Dependency, tool, or build configuration update
 
 ## Key Accomplishments & Audit Checklist
 - [ ] Detailed accomplishment / feature 1

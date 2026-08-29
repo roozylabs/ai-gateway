@@ -24,16 +24,18 @@ PR titles MUST follow the Conventional Commits format to ensure clear release no
 ### B. Mandatory PR Description Template
 Every Pull Request created MUST contain a comprehensive, structured Markdown description formatted as follows:
 
+- **Minimal Icon Policy**: Keep PR titles and descriptions clean and professional. Avoid decorative emojis or excessive icons.
+
 ```markdown
 ## Summary of Changes
 Provide a clear executive summary of the features, architectural decisions, and bug fixes introduced in this PR.
 
 ## Type of Change
-- [ ] 🚀 `feat`: New feature / capability
-- [ ] 🐛 `fix`: Bug fix or error resolution
-- [ ] 🛠️ `refactor`: Code restructuring without API / functional change
-- [ ] 📚 `docs`: Documentation, PRD, or CHANGELOG updates
-- [ ] ⚙️ `chore`: Dependency, tool, or build configuration update
+- [ ] `feat`: New feature / capability
+- [ ] `fix`: Bug fix or error resolution
+- [ ] `refactor`: Code restructuring without API / functional change
+- [ ] `docs`: Documentation, PRD, or CHANGELOG updates
+- [ ] `chore`: Dependency, tool, or build configuration update
 
 ## Key Accomplishments & Audit Checklist
 - [x] Detailed accomplishment / feature 1
