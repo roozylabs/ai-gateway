@@ -12,6 +12,7 @@ import {
 } from '@/hooks/queries/useResourcesQuery';
 import { ApiResource } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
+import { CardSkeletonGrid } from '@/components/molecules/CardSkeleton';
 import { Database, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
 import { toast } from 'sonner';
@@ -62,7 +63,9 @@ export default function ResourcesPage() {
           description="Could not communicate with Prism Resource Gateway backend."
           onRetry={refetch}
         />
-      ) : !isLoading && resourceList.length === 0 ? (
+      ) : isLoading ? (
+        <CardSkeletonGrid count={3} />
+      ) : resourceList.length === 0 ? (
         <EmptyState
           title="No Resources Configured"
           description="Connect a document store, vector database, or static resource for context injection."

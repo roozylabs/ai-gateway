@@ -12,6 +12,7 @@ import { useResourcesQuery } from "@/hooks/queries/useResourcesQuery";
 import { useMCPServersQuery } from "@/hooks/queries/useMCPServersQuery";
 import { ApiAgent } from "@/lib/api";
 import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
+import { CardSkeletonGrid } from "@/components/molecules/CardSkeleton";
 import { Bot, Plus, Settings, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
@@ -83,7 +84,9 @@ export default function AgentsPage() {
           description="Could not communicate with the Prism Agent Gateway backend."
           onRetry={refetch}
         />
-      ) : !isLoading && agents.length === 0 ? (
+      ) : isLoading ? (
+        <CardSkeletonGrid count={3} />
+      ) : agents.length === 0 ? (
         <EmptyState
           title="No Agents Configured"
           description="There are no AI agents provisioned in this workspace yet."
