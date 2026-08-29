@@ -206,11 +206,11 @@ export default function LogsPage() {
                 return (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-destructive block">Error Message</span>
+                      <span className="font-semibold text-foreground block">Error Message</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-[10px] text-destructive hover:bg-destructive/10 gap-1 font-mono"
+                        className="h-6 px-2 text-[10px] text-foreground hover:bg-foreground gap-1 font-mono"
                         onClick={() => handleCopyError(String(msg))}
                       >
                         {copiedError ? (
