@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Proxy**: `newMCPClient` merges per-server headers and dispatches to `transport.NewStdio` for local servers or SSE/Streamable HTTP for remote servers.
   - **SDK (`@roozylabs/prism` v2.2.0)**: `MCPModule` gains `getServer`, `createServer`, `updateServer`, `deleteServer` plus the new remote/local fields on `MCPServer`.
   - **UI**: MCP form supports a Remote/Local type selector, conditional headers/command/args/env editors, an enable toggle, and a quick enable/disable switch on each server card.
+- **MCP used-by Agents Visibility**: The MCP Gateway page now shows whether each MCP server is referenced by one or more agents (name list + count). When a server is bound to an agent, its delete action is disabled with a hint to unassign it first, preventing accidental removal of an MCP server still in use.
 
 ## [2.8.0] - 2026-08-28
 
