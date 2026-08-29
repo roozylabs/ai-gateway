@@ -176,21 +176,64 @@ func sanitizeMapRecursively(m map[string]interface{}) map[string]interface{} {
 
 	mCopy := make(map[string]interface{}, len(m))
 	for k, v := range m {
-		mCopy[k] = SanitizeValueRecursively(v)
+		// Stop signature pollution on inner data structures of tool arguments (e.g. todos[i], params[i])
+		if k == "args" || k == "arguments" || k == "input" {
+			if childMap, ok := v.(map[string]interface{}); ok {
+				childCopy := make(map[string]interface{}, len(childMap))
+				for ck, cv := range childMap {
+					childCopy[ck] = cv
+				}
+				ensureSignature(childCopy)
+				mCopy[k] = childCopy
+			} else if childStr, ok := v.(string); ok {
+				mCopy[k] = sanitizeArgumentsString(childStr)
+			} else {
+				mCopy[k] = v
+			}
+		} else {
+			mCopy[k] = SanitizeValueRecursively(v)
+		}
 	}
 
-	// Always ensure signature on EVERY map in the message payload tree
-	ensureSignature(mCopy)
+	// Ensure signature ONLY on message, part, tool_call, or function_call containers
+	isMessageOrToolCall := false
 
-	// Propagate signature directly to child maps & JSON string arguments
-	for _, childKey := range []string{"args", "arguments", "input", "function", "functionCall", "function_call", "extra", "provider_metadata", "providerMetadata"} {
-		if childRaw, ok := mCopy[childKey]; ok && childRaw != nil {
-			if childMap, ok := childRaw.(map[string]interface{}); ok {
-				ensureSignature(childMap)
-			} else if childStr, ok := childRaw.(string); ok {
-				mCopy[childKey] = sanitizeArgumentsString(childStr)
-			}
-		}
+	if role, ok := mCopy["role"].(string); ok && (role == "assistant" || role == "model" || role == "tool" || role == "function") {
+		isMessageOrToolCall = true
+	}
+	if _, hasName := mCopy["name"]; hasName {
+		isMessageOrToolCall = true
+	}
+	if _, hasFnCall := mCopy["functionCall"]; hasFnCall {
+		isMessageOrToolCall = true
+	}
+	if _, hasFnCall := mCopy["function_call"]; hasFnCall {
+		isMessageOrToolCall = true
+	}
+	if _, hasFn := mCopy["function"]; hasFn {
+		isMessageOrToolCall = true
+	}
+	if _, hasFnResp := mCopy["functionResponse"]; hasFnResp {
+		isMessageOrToolCall = true
+	}
+	if _, hasFnResp := mCopy["function_response"]; hasFnResp {
+		isMessageOrToolCall = true
+	}
+	if _, hasParts := mCopy["parts"]; hasParts {
+		isMessageOrToolCall = true
+	}
+	if _, hasToolCalls := mCopy["tool_calls"]; hasToolCalls {
+		isMessageOrToolCall = true
+	}
+	if _, hasToolCalls := mCopy["toolCalls"]; hasToolCalls {
+		isMessageOrToolCall = true
+	}
+	if typeVal, ok := mCopy["type"].(string); ok && (typeVal == "function" || typeVal == "tool_calls" || typeVal == "tool_use" || typeVal == "function_call" || typeVal == "functionCall") {
+		isMessageOrToolCall = true
+	}
+
+	if isMessageOrToolCall {
+		ensureSignature(mCopy)
 	}
 
 	return mCopy

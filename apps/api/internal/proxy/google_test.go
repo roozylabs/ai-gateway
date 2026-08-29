@@ -329,6 +329,24 @@ func TestSanitizeMessagesForGoogle_Position165TodoWrite(t *testing.T) {
 	if fnCallMap["thought_signature"] != sentinel || fnCallMap["thoughtSignature"] != sentinel {
 		t.Errorf("fnCallMap missing thought_signature at position 165: %v", fnCallMap)
 	}
+
+	argsMap := fnCallMap["args"].(map[string]interface{})
+	if argsMap["thought_signature"] != sentinel || argsMap["thoughtSignature"] != sentinel {
+		t.Errorf("argsMap missing thought_signature at position 165: %v", argsMap)
+	}
+
+	// Crucial check: inner item inside todos MUST NOT have thought_signature pollution
+	todosSlice, ok := argsMap["todos"].([]interface{})
+	if !ok || len(todosSlice) == 0 {
+		t.Fatalf("expected todos slice in args")
+	}
+	todoItem := todosSlice[0].(map[string]interface{})
+	if _, hasSig := todoItem["thought_signature"]; hasSig {
+		t.Errorf("todoItem should NOT contain thought_signature pollution: %v", todoItem)
+	}
+	if _, hasSig := todoItem["thoughtSignature"]; hasSig {
+		t.Errorf("todoItem should NOT contain thoughtSignature pollution: %v", todoItem)
+	}
 }
 
 func TestSanitizeMessagesForGoogle_Position109Grep(t *testing.T) {
