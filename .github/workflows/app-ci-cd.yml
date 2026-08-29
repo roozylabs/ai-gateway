@@ -2,15 +2,7 @@ name: App (Dashboard) CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master, develop ]
-    paths:
-      - 'apps/app/**'
-      - 'docker-compose*.yml'
-      - '.dockerignore'
-      - '.env.example'
-      - '.github/workflows/app-ci-cd.yml'
-  pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main ]
     paths:
       - 'apps/app/**'
       - 'docker-compose*.yml'

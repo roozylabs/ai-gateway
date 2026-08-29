@@ -2,15 +2,7 @@ name: Web (Landing Page) CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master, develop ]
-    paths:
-      - 'apps/web/**'
-      - 'docker-compose*.yml'
-      - '.dockerignore'
-      - '.env.example'
-      - '.github/workflows/web-ci-cd.yml'
-  pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main ]
     paths:
       - 'apps/web/**'
       - 'docker-compose*.yml'
