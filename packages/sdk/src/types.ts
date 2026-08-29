@@ -215,10 +215,52 @@ export interface ResourceQueryResponse {
 
 export interface MCPServer {
   id: string;
+  userId: string;
   name: string;
+  displayName?: string;
+  description?: string;
+  type: "remote" | "local" | string;
+  transportType?: string;
   url: string;
   status: string;
+  enabled: boolean;
+  hasAuthToken?: boolean;
+  hasHeaders?: boolean;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
   tools_count?: number;
+}
+
+export interface MCPTool {
+  id: string;
+  mcpServerId: string;
+  name: string;
+  description?: string;
+  inputSchema?: Record<string, unknown>;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MCPServerWithTools {
+  server: MCPServer;
+  tools: MCPTool[];
+}
+
+export interface CreateMCPServerRequest {
+  name: string;
+  displayName?: string;
+  description?: string;
+  type?: "remote" | "local";
+  transportType?: string;
+  endpointUrl?: string;
+  authToken?: string;
+  headers?: Record<string, string>;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  enabled?: boolean;
 }
 
 export interface CandidateScoreDetail {

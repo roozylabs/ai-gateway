@@ -1,5 +1,5 @@
 import { HttpClient } from "./client.js";
-import { MCPServer } from "./types.js";
+import { MCPServer, MCPTool, MCPServerWithTools, CreateMCPServerRequest } from "./types.js";
 
 export class MCPModule {
   constructor(private client: HttpClient) {}
@@ -8,10 +8,33 @@ export class MCPModule {
     return this.client.request<MCPServer[]>("/api/mcp/servers");
   }
 
-  public async sync(serverId: string): Promise<void> {
-    await this.client.request(`/api/mcp/servers/${serverId}/sync`, {
+  public async getServer(serverId: string): Promise<MCPServerWithTools> {
+    return this.client.request<MCPServerWithTools>(`/api/mcp/servers/${serverId}`);
+  }
+
+  public async createServer(data: CreateMCPServerRequest): Promise<MCPServerWithTools> {
+    return this.client.request<MCPServerWithTools>("/api/mcp/servers", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  public async updateServer(serverId: string, data: Partial<CreateMCPServerRequest>): Promise<MCPServerWithTools> {
+    return this.client.request<MCPServerWithTools>(`/api/mcp/servers/${serverId}`, {
+      method: "PUT",
+      body: data,
+    });
+  }
+
+  public async deleteServer(serverId: string): Promise<void> {
+    await this.client.request(`/api/mcp/servers/${serverId}`, {
+      method: "DELETE",
+    });
+  }
+
+  public async sync(serverId: string): Promise<MCPServerWithTools> {
+    return this.client.request<MCPServerWithTools>(`/api/mcp/servers/${serverId}/sync`, {
       method: "POST",
     });
   }
 }
-
