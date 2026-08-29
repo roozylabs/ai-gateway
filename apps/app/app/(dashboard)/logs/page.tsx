@@ -140,6 +140,7 @@ export default function LogsPage() {
               loading={isLoading}
               pageSize={10}
               searchPlaceholder="Search logs by path, model, or client app..."
+              onRefresh={refetch}
             />
           )}
         </CardContent>

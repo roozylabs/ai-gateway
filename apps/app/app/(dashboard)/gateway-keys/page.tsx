@@ -197,6 +197,7 @@ export default function GatewayKeysPage() {
               rowKey="id"
               loading={isLoading}
               searchPlaceholder="Search gateway keys..."
+              onRefresh={refetch}
             />
           </CardContent>
         </Card>

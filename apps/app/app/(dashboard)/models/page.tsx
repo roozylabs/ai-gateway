@@ -217,6 +217,7 @@ export default function ModelsPage() {
               loading={isLoading}
               pageSize={10}
               searchPlaceholder="Search model catalog..."
+              onRefresh={refetch}
             />
           )}
         </CardContent>
