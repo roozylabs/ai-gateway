@@ -35,6 +35,13 @@ type GatewayHandler struct {
 	agentRepo       *repository.AgentRepository
 	orchestrator    *service.ExecutionOrchestrator
 	jobQueue        *queue.JobQueue
+	mcpServerRepo   *repository.MCPServerRepository
+	mcpToolRepo     *repository.MCPToolRepository
+}
+
+func (h *GatewayHandler) SetMCPRepositories(servers *repository.MCPServerRepository, tools *repository.MCPToolRepository) {
+	h.mcpServerRepo = servers
+	h.mcpToolRepo = tools
 }
 
 func NewGatewayHandler(
@@ -174,9 +181,68 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			if len(agent.AllowedResources) > 0 {
 				systemContent += fmt.Sprintf(" Allowed resources: %s.", strings.Join(agent.AllowedResources, ", "))
 			}
+			if len(agent.AllowedMCPServers) > 0 {
+				systemContent += fmt.Sprintf(" Allowed MCP servers: %s.", strings.Join(agent.AllowedMCPServers, ", "))
+			}
 			req.Messages = append([]map[string]interface{}{
 				{"role": "system", "content": systemContent},
 			}, req.Messages...)
+		}
+
+		// Dynamically resolve & inject tool schemas for AllowedMCPServers
+		if len(agent.AllowedMCPServers) > 0 && h.mcpServerRepo != nil && h.mcpToolRepo != nil {
+			userID := ""
+			if gatewayKey != nil {
+				userID = gatewayKey.UserID
+			}
+			mcpServers, err := h.mcpServerRepo.ListByUserID(c.Request.Context(), userID)
+			if err == nil {
+				allowedMap := make(map[string]bool)
+				for _, name := range agent.AllowedMCPServers {
+					allowedMap[strings.ToLower(strings.TrimSpace(name))] = true
+				}
+
+				for _, srv := range mcpServers {
+					if !srv.Enabled {
+						continue
+					}
+					isAllowed := allowedMap[strings.ToLower(srv.Name)] || allowedMap[strings.ToLower(srv.DisplayName)] || allowedMap[srv.ID]
+					if !isAllowed {
+						continue
+					}
+
+					tools, err := h.mcpToolRepo.ListByServerID(c.Request.Context(), srv.ID)
+					if err != nil {
+						continue
+					}
+
+					for _, t := range tools {
+						if !t.Enabled {
+							continue
+						}
+						var params map[string]interface{}
+						if len(t.InputSchema) > 0 {
+							_ = json.Unmarshal(t.InputSchema, &params)
+						}
+						if params == nil {
+							params = map[string]interface{}{
+								"type":       "object",
+								"properties": map[string]interface{}{},
+							}
+						}
+
+						toolName := fmt.Sprintf("%s__%s", srv.Name, t.Name)
+						req.Tools = append(req.Tools, map[string]interface{}{
+							"type": "function",
+							"function": map[string]interface{}{
+								"name":        toolName,
+								"description": t.Description,
+								"parameters":  params,
+							},
+						})
+					}
+				}
+			}
 		}
 	}
 
