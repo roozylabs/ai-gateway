@@ -169,17 +169,19 @@ function FormattedSandboxOutput({ content }: { content: string }) {
                   <Code2Icon className="h-3.5 w-3.5" />
                   <span className="uppercase tracking-wider">{language}</span>
                 </div>
-                <button
+                <Button
                   type="button"
-                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground gap-1"
                   onClick={() => {
                     navigator.clipboard.writeText(codeBody);
                     toast.success(`Copied ${language} code block`);
                   }}
                 >
                   <CopyIcon className="h-3 w-3 text-primary" />
-                  <span>Copy Code</span>
-                </button>
+                  <span>Copy</span>
+                </Button>
               </div>
               <pre className="p-3 overflow-x-auto text-prism-cyan whitespace-pre font-mono text-[11px] leading-relaxed custom-scrollbar">
                 {codeBody}

@@ -27,6 +27,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/atoms/Button';
 import { ModelActivityWidget } from '@/components/molecules/ModelActivityWidget';
 import { Avatar, AvatarFallback } from '@/components/atoms/Avatar';
 import { useSidebarStore } from '@/stores/useSidebarStore';
@@ -114,13 +115,15 @@ export function DashboardSidebar() {
           )}
         </Link>
 
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={toggleCollapsed}
-          className="flex h-6 w-6 items-center justify-center rounded-none text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+          className="h-6 w-6 rounded-none text-muted-foreground hover:text-foreground cursor-pointer"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
+        </Button>
       </div>
 
       {/* Navigation Groups */}
