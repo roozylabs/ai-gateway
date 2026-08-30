@@ -17,14 +17,16 @@ func NewAccountRepository(db *sql.DB) *AccountRepository {
 
 func (r *AccountRepository) FindByUserID(ctx context.Context, userID string) (*models.Account, error) {
 	account := &models.Account{}
+	var password sql.NullString
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt"
 		 FROM account WHERE "userId" = $1 AND "providerId" = 'credential'`, userID,
 	).Scan(&account.ID, &account.AccountID, &account.ProviderID,
-		&account.UserID, &account.Password, &account.CreatedAt, &account.UpdatedAt)
+		&account.UserID, &password, &account.CreatedAt, &account.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+	account.Password = password.String
 	return account, nil
 }
 

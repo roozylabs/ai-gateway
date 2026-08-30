@@ -49,6 +49,7 @@ type LoginResponse struct {
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password, ip, ua string) (*LoginResponse, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
 	user, err := s.users.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -59,10 +60,13 @@ func (s *AuthService) Login(ctx context.Context, email, password, ip, ua string)
 
 	account, err := s.accounts.FindByUserID(ctx, user.ID)
 	if err != nil {
-		return nil, ErrInvalidCredentials
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
 	}
 
-	if !utils.CheckPassword(password, account.Password) {
+	if account.Password == "" || !utils.CheckPassword(password, account.Password) {
 		return nil, ErrInvalidCredentials
 	}
 

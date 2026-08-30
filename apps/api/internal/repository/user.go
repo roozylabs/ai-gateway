@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/roozylabs/prism/internal/models"
@@ -18,30 +19,33 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	user := &models.User{}
-	var image sql.NullString
+	var name, image sql.NullString
+	cleanedEmail := strings.TrimSpace(strings.ToLower(email))
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, name, email, "emailVerified", image, "createdAt", "updatedAt"
-		 FROM "user" WHERE email = $1`, email,
-	).Scan(&user.ID, &user.Name, &user.Email, &user.EmailVerified,
+		 FROM "user" WHERE LOWER(email) = LOWER($1)`, cleanedEmail,
+	).Scan(&user.ID, &name, &user.Email, &user.EmailVerified,
 		&image, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+	user.Name = name.String
 	user.Image = image.String
 	return user, nil
 }
 
 func (r *UserRepository) FindByID(ctx context.Context, id string) (*models.User, error) {
 	user := &models.User{}
-	var image sql.NullString
+	var name, image sql.NullString
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, name, email, "emailVerified", image, "createdAt", "updatedAt"
 		 FROM "user" WHERE id = $1`, id,
-	).Scan(&user.ID, &user.Name, &user.Email, &user.EmailVerified,
+	).Scan(&user.ID, &name, &user.Email, &user.EmailVerified,
 		&image, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+	user.Name = name.String
 	user.Image = image.String
 	return user, nil
 }
