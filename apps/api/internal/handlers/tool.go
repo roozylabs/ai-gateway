@@ -123,7 +123,9 @@ func (h *ToolHandler) Update(c *gin.Context) {
 
 	existing.DisplayName = req.DisplayName
 	existing.Description = req.Description
-	existing.InputSchema = req.InputSchema
+	if req.InputSchema != nil {
+		existing.InputSchema = req.InputSchema
+	}
 	if len(existing.InputSchema) == 0 {
 		existing.InputSchema = json.RawMessage(`{}`)
 	}
