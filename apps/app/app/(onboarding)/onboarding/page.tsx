@@ -38,11 +38,18 @@ export default function OnboardingPage() {
   const form = useForm<OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      organizationName: 'RoozyLabs Enterprise',
-      workspaceName: 'Production Environment',
-      gatewayKeyName: 'Primary Control Key',
+      organizationName: '',
+      workspaceName: '',
+      gatewayKeyName: '',
     },
   });
+
+  const handleNextStep = async () => {
+    const isValid = await form.trigger(['organizationName', 'workspaceName']);
+    if (isValid) {
+      setStep(2);
+    }
+  };
 
   const onSubmit = async (values: OnboardingValues) => {
     try {
@@ -107,7 +114,7 @@ export default function OnboardingPage() {
                       )}
                     />
 
-                    <Button type="button" variant="prismViolet" className="w-full gap-2 mt-4" onClick={() => setStep(2)}>
+                    <Button type="button" variant="prismViolet" className="w-full gap-2 mt-4" onClick={handleNextStep}>
                       Continue to Key Setup <ArrowRight className="h-4 w-4" />
                     </Button>
                   </>

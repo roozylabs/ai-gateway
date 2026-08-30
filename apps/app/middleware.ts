@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+function getBackendApiUrl(): string {
+  if (process.env.API_URL) return process.env.API_URL;
+  if (process.env.INTERNAL_API_URL) return process.env.INTERNAL_API_URL;
+  if (process.env.NODE_ENV === 'development') return 'http://localhost:8080';
+  return 'http://api:8080';
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('auth_token')?.value;
 
   const isLoginPage = pathname === '/login';
+  const isOnboardingPage = pathname === '/onboarding';
   const isStaticAsset =
     pathname.startsWith('/_next') ||
     pathname.includes('favicon.ico');
@@ -32,10 +40,40 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect to dashboard if user has auth_token cookie and accesses /login
-  if (token && isLoginPage) {
-    const dashboardUrl = new URL('/', request.url);
-    return NextResponse.redirect(dashboardUrl);
+  // Server-side onboarding check: prevents any visual delay / dashboard flash
+  if (token) {
+    try {
+      const backendUrl = getBackendApiUrl();
+      const res = await fetch(`${backendUrl}/api/user/permissions`, {
+        headers: {
+          Cookie: `auth_token=${token}`,
+          Authorization: `Bearer ${token}`,
+        },
+        cache: 'no-store',
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const isOnboarded = Boolean(data?.isOnboarded);
+
+        // If user is not yet onboarded, redirect immediately on the server to /onboarding
+        if (!isOnboarded && !isOnboardingPage) {
+          const onboardingUrl = new URL('/onboarding', request.url);
+          return NextResponse.redirect(onboardingUrl);
+        }
+
+        // If user is already onboarded, redirect away from /onboarding and /login to /
+        if (isOnboarded && (isOnboardingPage || isLoginPage)) {
+          const dashboardUrl = new URL('/', request.url);
+          return NextResponse.redirect(dashboardUrl);
+        }
+      }
+    } catch (_err) {
+      if (token && isLoginPage) {
+        const dashboardUrl = new URL('/', request.url);
+        return NextResponse.redirect(dashboardUrl);
+      }
+    }
   }
 
   return NextResponse.next();
