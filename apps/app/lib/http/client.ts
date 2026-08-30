@@ -1,5 +1,6 @@
 import Cookies from 'js-cookie';
 import { parseApiError } from './errors';
+import { useTenantStore } from '@/stores/useTenantStore';
 
 export interface HttpClientOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -20,10 +21,19 @@ export class HttpClient {
   private getTenantHeaders(): Record<string, string> {
     if (typeof window === 'undefined') return {};
     const headers: Record<string, string> = {};
-    const orgId = localStorage.getItem('org_id') || 'org_default';
-    const workspaceId = localStorage.getItem('workspace_id') || 'ws_default';
-    headers['X-Prism-Org-ID'] = orgId;
-    headers['X-Prism-Workspace-ID'] = workspaceId;
+    try {
+      const state = useTenantStore.getState();
+      const orgId = state.selectedOrgId || localStorage.getItem('org_id');
+      const workspaceId = state.selectedWorkspaceId || localStorage.getItem('workspace_id');
+      if (orgId) {
+        headers['X-Prism-Org-ID'] = orgId;
+      }
+      if (workspaceId) {
+        headers['X-Prism-Workspace-ID'] = workspaceId;
+      }
+    } catch {
+      // Inaccessible storage
+    }
     return headers;
   }
 
@@ -83,7 +93,7 @@ export class HttpClient {
         });
       }
 
-      if (response.status === 240 || response.status === 204) {
+      if (response.status === 204) {
         return {} as T;
       }
 

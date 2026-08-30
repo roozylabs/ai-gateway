@@ -4,14 +4,24 @@ import { prependSmartRouterModel } from './smart-router';
 
 export async function apiGetModels(providerId?: string): Promise<ApiModel[]> {
   const url = providerId ? `/providers/${providerId}/models` : '/models';
-  const response = await api.get<ApiModel[]>(url);
-  const models = response.data || [];
+  const response = await api.get<ApiModel[] | { data: ApiModel[] }>(url);
+  const raw = response.data;
+  const models = Array.isArray(raw)
+    ? raw
+    : (raw && typeof raw === 'object' && 'data' in raw && Array.isArray(raw.data))
+    ? raw.data
+    : [];
   return prependSmartRouterModel(models);
 }
 
 export async function apiGetAllModels(): Promise<ApiModel[]> {
-  const response = await api.get<ApiModel[]>('/models');
-  const models = response.data || [];
+  const response = await api.get<ApiModel[] | { data: ApiModel[] }>('/models');
+  const raw = response.data;
+  const models = Array.isArray(raw)
+    ? raw
+    : (raw && typeof raw === 'object' && 'data' in raw && Array.isArray(raw.data))
+    ? raw.data
+    : [];
   return prependSmartRouterModel(models);
 }
 
