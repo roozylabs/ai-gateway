@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
 
@@ -38,26 +40,40 @@ func (h *UserPermissionsHandler) GetPermissions(c *gin.Context) {
 
 	orgID := c.GetString("organizationId")
 	if orgID == "" {
-		orgID = user.OrgID
+		orgID = c.GetString("organization_id")
 	}
 	if orgID == "" {
-		orgID = "org_default"
+		orgID = user.OrgID
 	}
 
 	primaryRole := user.PrimaryRole
-	if primaryRole == "" {
-		primaryRole = "developer"
+
+	var perms []string
+	var roleSlug string
+
+	if orgID != "" {
+		p, rSlug, err := h.rbacRepo.GetUserPermissions(c.Request.Context(), userID, orgID)
+		if err == nil {
+			perms = p
+			roleSlug = rSlug
+		} else if errors.Is(err, repository.ErrNotMember) {
+			// Fail-closed: User is not a member of the requested organization
+			perms = []string{}
+			roleSlug = ""
+		} else {
+			// Fail-closed: Database or internal error
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": gin.H{"message": "Failed to resolve permissions: " + err.Error(), "type": "rbac_error"},
+			})
+			return
+		}
+	} else {
+		perms = []string{}
+		roleSlug = ""
 	}
 
-	perms, roleSlug, err := h.rbacRepo.GetUserPermissions(c.Request.Context(), userID, orgID)
-	if err != nil || len(perms) == 0 {
-		if user.IsOnboarded {
-			perms = []string{"org:read", "logs:read", "api_keys:read", "models:read"}
-			roleSlug = "developer"
-		} else {
-			perms = []string{}
-			roleSlug = "viewer"
-		}
+	if perms == nil {
+		perms = []string{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -81,6 +97,9 @@ func (h *UserPermissionsHandler) GetOrganizations(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list organizations"})
 		return
+	}
+	if orgs == nil {
+		orgs = []models.Organization{}
 	}
 	c.JSON(http.StatusOK, gin.H{"data": orgs})
 }

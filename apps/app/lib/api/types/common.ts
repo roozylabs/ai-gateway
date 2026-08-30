@@ -30,6 +30,17 @@ export interface ApiOrganization {
   updatedAt?: string;
 }
 
+export interface ApiOrganizationMember {
+  id: string;
+  organizationId: string;
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ApiWorkspace {
   id: string;
   orgId: string;

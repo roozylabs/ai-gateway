@@ -37,11 +37,26 @@ type Project struct {
 // OrganizationMember links a User to an Organization with a specific RBAC Role.
 type OrganizationMember struct {
 	ID        string    `db:"id" json:"id"`
-	OrgID     string    `db:"org_id" json:"org_id"`
-	UserID    string    `db:"user_id" json:"user_id"`
-	Role      string    `db:"role" json:"role"` // 'owner', 'admin', 'developer', 'billing_manager', 'auditor'
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+	OrgID     string    `db:"org_id" json:"organizationId"`
+	UserID    string    `db:"user_id" json:"userId"`
+	UserEmail string    `db:"user_email" json:"userEmail,omitempty"`
+	UserName  string    `db:"user_name" json:"userName,omitempty"`
+	Role      string    `db:"role" json:"role"` // 'owner', 'admin', 'developer', 'billing_manager', 'auditor', 'viewer'
+	RoleID    *string   `db:"role_id" json:"roleId,omitempty"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
+}
+
+// WorkspaceMember links a User to a Workspace with a specific workspace role.
+type WorkspaceMember struct {
+	ID          string    `db:"id" json:"id"`
+	WorkspaceID string    `db:"workspace_id" json:"workspaceId"`
+	UserID      string    `db:"user_id" json:"userId"`
+	UserEmail   string    `db:"user_email" json:"userEmail,omitempty"`
+	UserName    string    `db:"user_name" json:"userName,omitempty"`
+	Role        string    `db:"role" json:"role"` // 'admin', 'developer', 'operator', 'viewer'
+	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 // TenantContext encapsulates active tenant boundaries attached to HTTP requests.

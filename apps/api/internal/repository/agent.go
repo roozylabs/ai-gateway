@@ -52,7 +52,7 @@ func (r *AgentRepository) ListByUserID(ctx context.Context, userID string) ([]mo
 	query := `SELECT ` + agentColumns + ` FROM agents`
 	var args []interface{}
 	if userID != "" {
-		query += ` WHERE user_id = $1 OR user_id = 'user_admin' OR user_id = ''`
+		query += ` WHERE user_id = $1`
 		args = append(args, userID)
 	}
 	query += ` ORDER BY created_at DESC`
@@ -80,7 +80,7 @@ func (r *AgentRepository) FindByID(ctx context.Context, id, userID string) (*mod
 	var args []interface{}
 	args = append(args, id)
 	if userID != "" {
-		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	err := scanAgent(r.db.QueryRowContext(ctx, query, args...), &a)
@@ -90,14 +90,12 @@ func (r *AgentRepository) FindByID(ctx context.Context, id, userID string) (*mod
 	return &a, nil
 }
 
-// FindByMCPServerName returns agents whose allowed_mcp_servers includes the
-// given MCP server name (reverse lookup used by the MCP server detail page).
 func (r *AgentRepository) FindByMCPServerName(ctx context.Context, userID, serverName string) ([]models.Agent, error) {
 	query := `SELECT ` + agentColumns + ` FROM agents WHERE $1 = ANY(allowed_mcp_servers)`
 	var args []interface{}
 	args = append(args, serverName)
 	if userID != "" {
-		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	query += ` ORDER BY created_at DESC`
@@ -125,7 +123,7 @@ func (r *AgentRepository) FindByUserAndName(ctx context.Context, userID, name st
 	var args []interface{}
 	args = append(args, name)
 	if userID != "" {
-		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	err := scanAgent(r.db.QueryRowContext(ctx, query, args...), &a)
@@ -156,10 +154,10 @@ func (r *AgentRepository) Create(ctx context.Context, a *models.Agent) error {
 func (r *AgentRepository) Update(ctx context.Context, a *models.Agent) error {
 	a.UpdatedAt = time.Now()
 	var err error
-	if a.UserID != "" && a.UserID != "user_admin" {
+	if a.UserID != "" {
 		_, err = r.db.ExecContext(ctx,
 			`UPDATE agents SET display_name=$1, description=$2, agent_type=$3, system_prompt_override=$4, allowed_models=$5, allowed_tools=$6, allowed_resources=$7, allowed_mcp_servers=$8, max_budget_cents=$9, status=$10, enabled=$11, updated_at=$12
-			 WHERE id = $13 AND (user_id = $14 OR user_id = 'user_admin' OR user_id = '')`,
+			 WHERE id = $13 AND user_id = $14`,
 			a.DisplayName, a.Description, a.AgentType, a.SystemPromptOverride,
 			pq.Array(a.AllowedModels), pq.Array(a.AllowedTools), pq.Array(a.AllowedResources), pq.Array(a.AllowedMCPServers),
 			a.MaxBudgetCents, a.Status, a.Enabled, a.UpdatedAt, a.ID, a.UserID,
@@ -181,7 +179,7 @@ func (r *AgentRepository) Delete(ctx context.Context, id, userID string) error {
 	var args []interface{}
 	args = append(args, id)
 	if userID != "" {
-		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	_, err := r.db.ExecContext(ctx, query, args...)
