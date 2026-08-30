@@ -177,7 +177,7 @@ func TestSDKAndCLIGovernanceConsistency(t *testing.T) {
 	rg.Use(middleware.TenantMiddleware())
 	rg.POST("/chat/completions", gatewayHandler.ChatCompletions)
 
-	userAgents := []string{"Prism-Node-SDK/2.1.0", "OpenCode/0.1.0", "Python-requests/2.28"}
+	userAgents := []string{"Prism-Node-SDK/2.2.0", "OpenCode/0.1.0", "Python-requests/2.28"}
 
 	for _, ua := range userAgents {
 		reqBody := []byte(`{"model":"claude-3-5-sonnet","messages":[{"role":"user","content":"Test"}]}`)
