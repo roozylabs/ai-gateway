@@ -97,8 +97,15 @@ export default function CredentialsPage() {
         if (record.status === 'degraded' || record.status === 'cooldown') dotStatus = 'degraded';
         if (record.status === 'exhausted' || record.status === 'disabled' || record.status === 'invalid') dotStatus = 'disabled';
         return (
-          <div className="flex items-center gap-2">
-            <StatusDot status={dotStatus} className="font-mono" />
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <StatusDot status={dotStatus} className="font-mono" />
+            </div>
+            {record.quota?.statusText && (
+              <span className="text-[10px] font-mono text-amber-500/90 leading-tight">
+                {record.quota.statusText}
+              </span>
+            )}
           </div>
         );
       },
