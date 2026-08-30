@@ -27,7 +27,7 @@ func (r *ToolRepository) ListByUserID(ctx context.Context, userID string) ([]mod
 	query := `SELECT ` + toolColumns + ` FROM tools`
 	var args []interface{}
 	if userID != "" {
-		query += ` WHERE user_id = $1 OR user_id = 'user_admin' OR user_id = ''`
+		query += ` WHERE user_id = $1`
 		args = append(args, userID)
 	}
 	query += ` ORDER BY created_at DESC`

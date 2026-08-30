@@ -61,7 +61,7 @@ func (r *MCPServerRepository) ListByUserID(ctx context.Context, userID string) (
 	query := `SELECT ` + mcpServerColumns + ` FROM mcp_servers`
 	var args []interface{}
 	if userID != "" {
-		query += ` WHERE user_id = $1 OR user_id = 'user_admin' OR user_id = ''`
+		query += ` WHERE user_id = $1`
 		args = append(args, userID)
 	}
 	query += ` ORDER BY created_at DESC`
@@ -88,7 +88,7 @@ func (r *MCPServerRepository) FindByID(ctx context.Context, id, userID string) (
 	var args []interface{}
 	args = append(args, id)
 	if userID != "" {
-		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	err := scanMCPServer(r.db.QueryRowContext(ctx, query, args...), &s)
@@ -104,7 +104,7 @@ func (r *MCPServerRepository) FindByUserAndName(ctx context.Context, userID, nam
 	var args []interface{}
 	args = append(args, name)
 	if userID != "" {
-		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	err := scanMCPServer(r.db.QueryRowContext(ctx, query, args...), &s)
@@ -136,10 +136,10 @@ func (r *MCPServerRepository) Update(ctx context.Context, s *models.MCPServer) e
 		s.Type = "remote"
 	}
 	var err error
-	if s.UserID != "" && s.UserID != "user_admin" {
+	if s.UserID != "" {
 		_, err = r.db.ExecContext(ctx,
 			`UPDATE mcp_servers SET display_name=$1, description=$2, transport_type=$3, endpoint_url=$4, auth_token_encrypted=$5, status=$6, enabled=$7, config_type=$8, headers_encrypted=$9, command=$10, args=$11, env=$12, updated_at=$13
-			 WHERE id = $14 AND (user_id = $15 OR user_id = 'user_admin' OR user_id = '')`,
+			 WHERE id = $14 AND user_id = $15`,
 			s.DisplayName, s.Description, s.TransportType, s.EndpointURL, s.AuthTokenEncrypted, s.Status, s.Enabled, s.Type, s.HeadersEncrypted, s.Command, pq.Array(s.Args), encodeEnvJSON(s.Env), s.UpdatedAt, s.ID, s.UserID,
 		)
 	} else {
@@ -152,7 +152,6 @@ func (r *MCPServerRepository) Update(ctx context.Context, s *models.MCPServer) e
 	return err
 }
 
-// encodeEnvJSON serializes a Go string map into a JSONB-compatible JSON object.
 func encodeEnvJSON(env map[string]string) string {
 	if env == nil {
 		env = map[string]string{}
@@ -174,7 +173,7 @@ func (r *MCPServerRepository) Delete(ctx context.Context, id, userID string) err
 	var args []interface{}
 	args = append(args, id)
 	if userID != "" {
-		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	_, err := r.db.ExecContext(ctx, query, args...)

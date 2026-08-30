@@ -18,6 +18,9 @@ func NewQuotaHandler(repo *repository.QuotaRepository) *QuotaHandler {
 
 func (h *QuotaHandler) List(c *gin.Context) {
 	orgID := c.GetString("organizationId")
+	if orgID == "" {
+		orgID = c.GetString("organization_id")
+	}
 	quotas, err := h.repo.ListQuotas(c.Request.Context(), orgID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list quotas: " + err.Error()})
@@ -49,6 +52,9 @@ func (h *QuotaHandler) Get(c *gin.Context) {
 
 func (h *QuotaHandler) Update(c *gin.Context) {
 	orgID := c.GetString("organizationId")
+	if orgID == "" {
+		orgID = c.GetString("organization_id")
+	}
 	targetType := c.Param("target_type")
 	targetID := c.Param("target_id")
 
@@ -64,7 +70,7 @@ func (h *QuotaHandler) Update(c *gin.Context) {
 		return
 	}
 
-	if targetType == "organization" && orgID != "" && targetID != orgID && orgID != "org_default" {
+	if targetType == "organization" && orgID != "" && targetID != orgID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "cannot update quota for a different organization"})
 		return
 	}

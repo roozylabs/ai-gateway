@@ -30,7 +30,7 @@ func (r *GovernancePolicyRepository) ListByUserID(ctx context.Context, userID st
 	query := `SELECT ` + policyColumns + ` FROM governance_policies`
 	var args []interface{}
 	if userID != "" {
-		query += ` WHERE user_id = $1 OR user_id = 'user_admin' OR user_id = ''`
+		query += ` WHERE user_id = $1`
 		args = append(args, userID)
 	}
 	query += ` ORDER BY priority ASC, created_at DESC`
@@ -58,7 +58,7 @@ func (r *GovernancePolicyRepository) FindByID(ctx context.Context, id, userID st
 	var args []interface{}
 	args = append(args, id)
 	if userID != "" {
-		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	err := scanPolicy(r.db.QueryRowContext(ctx, query, args...), &p)
@@ -104,10 +104,10 @@ func (r *GovernancePolicyRepository) Create(ctx context.Context, p *models.Gover
 func (r *GovernancePolicyRepository) Update(ctx context.Context, p *models.GovernancePolicy) error {
 	p.UpdatedAt = time.Now()
 	var err error
-	if p.UserID != "" && p.UserID != "user_admin" {
+	if p.UserID != "" {
 		_, err = r.db.ExecContext(ctx,
 			`UPDATE governance_policies SET name=$1, description=$2, role=$3, effect=$4, agent_pattern=$5, model_pattern=$6, tool_pattern=$7, resource_pattern=$8, priority=$9, enabled=$10, updated_at=$11
-			 WHERE id = $12 AND (user_id = $13 OR user_id = 'user_admin' OR user_id = '')`,
+			 WHERE id = $12 AND user_id = $13`,
 			p.Name, p.Description, p.Role, p.Effect,
 			p.AgentPattern, p.ModelPattern, p.ToolPattern, p.ResourcePattern,
 			p.Priority, p.Enabled, p.UpdatedAt, p.ID, p.UserID,
@@ -129,7 +129,7 @@ func (r *GovernancePolicyRepository) Delete(ctx context.Context, id, userID stri
 	var args []interface{}
 	args = append(args, id)
 	if userID != "" {
-		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	_, err := r.db.ExecContext(ctx, query, args...)

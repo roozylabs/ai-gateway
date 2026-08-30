@@ -18,25 +18,27 @@ import {
   FormMessage,
 } from "@/components/molecules/Form";
 import { toast } from "sonner";
+import { apiInviteMember } from "@/lib/api/organizations";
 
 const inviteSchema = z.object({
   email: z.string().min(1, "Email address is required").email("Enter a valid email address"),
-  role: z.string().default("admin"),
+  role: z.string().default("developer"),
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
 
 const defaultValues: InviteFormValues = {
   email: "",
-  role: "admin",
+  role: "developer",
 };
 
 interface InviteMemberSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onInviteSuccess?: () => void;
 }
 
-export function InviteMemberSheet({ open, onOpenChange }: InviteMemberSheetProps) {
+export function InviteMemberSheet({ open, onOpenChange, onInviteSuccess }: InviteMemberSheetProps) {
   const [isSending, setIsSending] = useState(false);
 
   const form = useForm<InviteFormValues>({
@@ -50,13 +52,18 @@ export function InviteMemberSheet({ open, onOpenChange }: InviteMemberSheetProps
     if (open) reset(defaultValues);
   }, [open, reset]);
 
-  const onSubmit = (values: InviteFormValues) => {
+  const onSubmit = async (values: InviteFormValues) => {
     setIsSending(true);
-    setTimeout(() => {
-      toast.success(`Invitation sent to ${values.email} with role "${values.role}"`);
-      setIsSending(false);
+    try {
+      await apiInviteMember({ email: values.email, role: values.role });
+      toast.success(`Invitation created for ${values.email} with role "${values.role}"`);
       onOpenChange(false);
-    }, 500);
+      if (onInviteSuccess) onInviteSuccess();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || err?.message || "Failed to send invitation");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -65,7 +72,7 @@ export function InviteMemberSheet({ open, onOpenChange }: InviteMemberSheetProps
         <SheetHeader>
           <SheetTitle>Invite Organization Member</SheetTitle>
           <SheetDescription>
-            Send an invitation email with specified RBAC role.
+            Send an invitation with specified organization RBAC role.
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
@@ -108,6 +115,8 @@ export function InviteMemberSheet({ open, onOpenChange }: InviteMemberSheetProps
                       <SelectContent>
                         <SelectItem value="admin">Administrator</SelectItem>
                         <SelectItem value="developer">Developer</SelectItem>
+                        <SelectItem value="billing_manager">Billing Manager</SelectItem>
+                        <SelectItem value="auditor">Security Auditor</SelectItem>
                         <SelectItem value="viewer">Read-Only Viewer</SelectItem>
                       </SelectContent>
                     </Select>

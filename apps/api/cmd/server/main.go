@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/roozylabs/prism/internal/authz"
 	"github.com/roozylabs/prism/internal/config"
 	"github.com/roozylabs/prism/internal/database"
 	"github.com/roozylabs/prism/internal/handlers"
@@ -215,6 +216,8 @@ func main() {
 	agentTemplateHandler := handlers.NewAgentTemplateHandler(agentTemplateRepo, agentRepo)
 	governancePolicyHandler := handlers.NewGovernancePolicyHandler(governancePolicyRepo, rbacEngine)
 	auditTrailHandler := handlers.NewAuditTrailHandler(auditTrailRepo, auditRecorder)
+	authzEngine := authz.NewAuthorizationEngine(rbacRepo, rbacRepo)
+	orgMemberHandler := handlers.NewOrganizationMemberHandler(rbacRepo)
 	userPermissionsHandler := handlers.NewUserPermissionsHandler(rbacRepo, userRepo)
 	onboardingHandler := handlers.NewOnboardingHandler(db.DB, userRepo, gatewayKeyRepo)
 	oauthHandler := handlers.NewOAuthHandler(authService)
@@ -276,6 +279,12 @@ func main() {
 			protected.GET("/user/organizations", userPermissionsHandler.GetOrganizations)
 			protected.GET("/organizations", userPermissionsHandler.GetOrganizations)
 			protected.POST("/onboarding", onboardingHandler.Complete)
+
+			// Organization Member Management
+			protected.GET("/organizations/members", middleware.RequirePermission(authzEngine, "member:read"), orgMemberHandler.ListMembers)
+			protected.POST("/organizations/invites", middleware.RequirePermission(authzEngine, "member:invite"), orgMemberHandler.InviteMember)
+			protected.PUT("/organizations/members/:userId", middleware.RequirePermission(authzEngine, "member:update"), orgMemberHandler.UpdateMemberRole)
+			protected.DELETE("/organizations/members/:userId", middleware.RequirePermission(authzEngine, "member:remove"), orgMemberHandler.RemoveMember)
 
 			// Providers
 			protected.GET("/providers", providerHandler.List)
