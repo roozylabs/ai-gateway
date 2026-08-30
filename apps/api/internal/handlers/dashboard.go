@@ -20,7 +20,15 @@ func NewDashboardHandler(requestLogs *repository.RequestLogRepository, health *p
 
 func (h *DashboardHandler) GetStats(c *gin.Context) {
 	userID := c.GetString("userId")
-	stats, err := h.requestLogs.GetStats(c.Request.Context(), userID)
+	startDate := c.Query("startDate")
+	endDate := c.Query("endDate")
+	days := 0
+	if d := c.Query("days"); d != "" {
+		if n, err := strconv.Atoi(d); err == nil && n > 0 {
+			days = n
+		}
+	}
+	stats, err := h.requestLogs.GetStats(c.Request.Context(), userID, days, startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get stats"})
 		return
@@ -35,8 +43,8 @@ func (h *DashboardHandler) GetUsageChart(c *gin.Context) {
 	days := 30
 	if d := c.Query("days"); d != "" {
 		if n, err := strconv.Atoi(d); err == nil && n > 0 {
-			if n > 30 {
-				days = 30
+			if n > 365 {
+				days = 365
 			} else {
 				days = n
 			}

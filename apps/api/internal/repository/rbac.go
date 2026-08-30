@@ -165,3 +165,36 @@ func (r *RBACRepository) GetInviteByToken(ctx context.Context, token string) (*m
 	}
 	return &inv, nil
 }
+
+func (r *RBACRepository) ListUserOrganizations(ctx context.Context, userID string) ([]models.Organization, error) {
+	query := `
+		SELECT o.id, o.name, o.slug, o.plan_tier, o.max_workspaces, o.max_projects_per_workspace, o.created_at, o.updated_at
+		FROM organizations o
+		LEFT JOIN organization_members om ON om.org_id = o.id
+		WHERE om.user_id = $1 OR o.id = 'org_default'
+		GROUP BY o.id, o.name, o.slug, o.plan_tier, o.max_workspaces, o.max_projects_per_workspace, o.created_at, o.updated_at
+		ORDER BY o.name ASC
+	`
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var orgs []models.Organization
+	for rows.Next() {
+		var o models.Organization
+		if err := rows.Scan(&o.ID, &o.Name, &o.Slug, &o.PlanTier, &o.MaxWorkspaces, &o.MaxProjectsPerWorkspace, &o.CreatedAt, &o.UpdatedAt); err == nil {
+			orgs = append(orgs, o)
+		}
+	}
+	if len(orgs) == 0 {
+		orgs = append(orgs, models.Organization{
+			ID:       "org_default",
+			Name:     "Default Organization",
+			Slug:     "default-org",
+			PlanTier: "enterprise",
+		})
+	}
+	return orgs, rows.Err()
+}

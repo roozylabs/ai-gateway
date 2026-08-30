@@ -202,6 +202,8 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 type DashboardStats struct {
 	TotalRequests        int64   `json:"totalRequests"`
 	TotalTokens          int64   `json:"totalTokens"`
+	InputTokens          int64   `json:"inputTokens"`
+	OutputTokens         int64   `json:"outputTokens"`
 	TotalEstimatedCost   float64 `json:"totalEstimatedCost"`
 	AvgLatency           float64 `json:"avgLatency"`
 	ErrorRate            float64 `json:"errorRate"`
@@ -219,12 +221,17 @@ type UsagePoint struct {
 	EstimatedCost float64 `json:"estimatedCost"`
 }
 
-func (r *RequestLogRepository) GetStats(ctx context.Context, userID string) (*DashboardStats, error) {
+func (r *RequestLogRepository) GetStats(ctx context.Context, userID string, days int, startDate, endDate string) (*DashboardStats, error) {
 	s := &DashboardStats{}
 
-	err := r.db.QueryRowContext(ctx,
-		`SELECT COALESCE(COUNT(*), 0),
+	var query string
+	var args []interface{}
+
+	if startDate != "" && endDate != "" {
+		query = `SELECT COALESCE(COUNT(*), 0),
 		        COALESCE(SUM(total_tokens), 0),
+		        COALESCE(SUM(input_tokens), 0),
+		        COALESCE(SUM(output_tokens), 0),
 		        COALESCE(SUM(cost_usd), 0),
 		        COALESCE(AVG(latency_ms), 0),
 		        COALESCE(CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE status_code >= 400))::float / COUNT(*) * 100 ELSE 0 END, 0),
@@ -237,8 +244,55 @@ func (r *RequestLogRepository) GetStats(ctx context.Context, userID string) (*Da
 		        )
 		 FROM request_logs rl
 		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
-		 WHERE gak.user_id = $1`, userID,
-	).Scan(&s.TotalRequests, &s.TotalTokens, &s.TotalEstimatedCost, &s.AvgLatency, &s.ErrorRate, &s.FailoverRecoveryRate)
+		 WHERE gak.user_id = $1
+		   AND rl.created_at >= $2::DATE
+		   AND rl.created_at <= ($3::DATE + INTERVAL '1 day')`
+		args = []interface{}{userID, startDate, endDate}
+	} else if days > 0 {
+		query = `SELECT COALESCE(COUNT(*), 0),
+		        COALESCE(SUM(total_tokens), 0),
+		        COALESCE(SUM(input_tokens), 0),
+		        COALESCE(SUM(output_tokens), 0),
+		        COALESCE(SUM(cost_usd), 0),
+		        COALESCE(AVG(latency_ms), 0),
+		        COALESCE(CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE status_code >= 400))::float / COUNT(*) * 100 ELSE 0 END, 0),
+		        COALESCE(
+		          CASE WHEN COUNT(*) FILTER (WHERE retry_count > 0) > 0
+		            THEN (COUNT(*) FILTER (WHERE retry_count > 0 AND status_code < 400))::float /
+		                 COUNT(*) FILTER (WHERE retry_count > 0) * 100
+		            ELSE 100
+		          END, 100
+		        )
+		 FROM request_logs rl
+		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE gak.user_id = $1
+		   AND rl.created_at >= NOW() - ($2 || ' days')::INTERVAL`
+		args = []interface{}{userID, days}
+	} else {
+		query = `SELECT COALESCE(COUNT(*), 0),
+		        COALESCE(SUM(total_tokens), 0),
+		        COALESCE(SUM(input_tokens), 0),
+		        COALESCE(SUM(output_tokens), 0),
+		        COALESCE(SUM(cost_usd), 0),
+		        COALESCE(AVG(latency_ms), 0),
+		        COALESCE(CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE status_code >= 400))::float / COUNT(*) * 100 ELSE 0 END, 0),
+		        COALESCE(
+		          CASE WHEN COUNT(*) FILTER (WHERE retry_count > 0) > 0
+		            THEN (COUNT(*) FILTER (WHERE retry_count > 0 AND status_code < 400))::float /
+		                 COUNT(*) FILTER (WHERE retry_count > 0) * 100
+		            ELSE 100
+		          END, 100
+		        )
+		 FROM request_logs rl
+		 INNER JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
+		 WHERE gak.user_id = $1`
+		args = []interface{}{userID}
+	}
+
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(
+		&s.TotalRequests, &s.TotalTokens, &s.InputTokens, &s.OutputTokens,
+		&s.TotalEstimatedCost, &s.AvgLatency, &s.ErrorRate, &s.FailoverRecoveryRate,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +342,7 @@ func (r *RequestLogRepository) GetUsageChart(ctx context.Context, userID string,
 		 ORDER BY date ASC, model ASC`
 		args = []interface{}{userID, startDate, endDate}
 	} else {
-		if days <= 0 || days > 30 {
+		if days <= 0 || days > 365 {
 			days = 30
 		}
 		query = `SELECT TO_CHAR(rl.created_at, 'YYYY-MM-DD') as date,
