@@ -59,12 +59,21 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
       headers: headers,
       body: body && body.byteLength > 0 ? body : undefined,
       cache: 'no-store',
+      redirect: 'manual',
     });
 
     const responseHeaders = new Headers(backendResponse.headers);
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('content-length');
     responseHeaders.delete('transfer-encoding');
+
+    // Transparently forward 3xx redirects (e.g. OAuth to Google/GitHub and session callbacks)
+    if (backendResponse.status >= 300 && backendResponse.status < 400) {
+      return new NextResponse(null, {
+        status: backendResponse.status,
+        headers: responseHeaders,
+      });
+    }
 
     const contentType = responseHeaders.get('content-type') || '';
     const isEventStream =
