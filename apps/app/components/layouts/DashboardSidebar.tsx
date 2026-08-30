@@ -29,7 +29,6 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/atoms/Button';
 import { ModelActivityWidget } from '@/components/molecules/ModelActivityWidget';
-import { Avatar, AvatarFallback } from '@/components/atoms/Avatar';
 import { useSidebarStore } from '@/stores/useSidebarStore';
 import { AppRoutes } from '@/constants/routes';
 
@@ -167,23 +166,6 @@ export function DashboardSidebar() {
       <div className="px-3 py-2 border-t border-border/60">
         <ModelActivityWidget collapsed={collapsed} />
       </div>
-
-      {/* Sidebar Footer User Section */}
-      {!collapsed && (
-        <div className="border-t border-border p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="bg-[#8B5CF6]/20 text-[#7C3AED] text-xs font-bold">
-                RP
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col truncate">
-              <span className="text-xs font-medium text-foreground truncate">Platform Admin</span>
-              <span className="text-[10px] text-muted-foreground truncate">admin@roozylabs.dev</span>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
   );
 }

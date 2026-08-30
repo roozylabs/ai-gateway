@@ -59,6 +59,7 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
     const responseHeaders = new Headers(backendResponse.headers);
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('content-length');
+    responseHeaders.delete('transfer-encoding');
 
     const contentType = responseHeaders.get('content-type') || '';
     const isEventStream =
@@ -69,11 +70,18 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
     const isNoBodyStatus = backendResponse.status === 204 || backendResponse.status === 304;
 
     if (isEventStream) {
+      responseHeaders.set('Content-Type', 'text/event-stream');
       responseHeaders.set('Cache-Control', 'no-cache, no-transform');
       responseHeaders.set('Connection', 'keep-alive');
       responseHeaders.set('X-Accel-Buffering', 'no');
 
-      return new NextResponse(backendResponse.body, {
+      const streamBody = backendResponse.body || new ReadableStream({
+        start(controller) {
+          controller.close();
+        }
+      });
+
+      return new NextResponse(streamBody, {
         status: backendResponse.status,
         statusText: backendResponse.statusText,
         headers: responseHeaders,

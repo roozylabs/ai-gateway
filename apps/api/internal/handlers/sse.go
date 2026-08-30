@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	redis "github.com/redis/go-redis/v9"
 	goredis "github.com/roozylabs/prism/internal/redis"
 )
 
@@ -25,37 +26,55 @@ func NewSSEHandler(publisher *goredis.EventPublisher) *SSEHandler {
 // @Success      200 {string} string "SSE stream"
 // @Router       /api/sse [get]
 func (h *SSEHandler) Stream(c *gin.Context) {
-	pubsub := h.publisher.Subscribe(c.Request.Context())
-	defer func() { _ = pubsub.Close() }()
-
 	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
+	c.Header("Cache-Control", "no-cache, no-transform")
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
+	c.Header("Transfer-Encoding", "chunked")
 	c.Status(http.StatusOK)
 
-	ch := pubsub.Channel()
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-
-	// Send initial connected event
+	// Send initial connected event immediately
 	if _, err := fmt.Fprint(c.Writer, "event: connected\ndata: {\"status\":\"ok\"}\n\n"); err != nil {
 		return
 	}
 	c.Writer.Flush()
+
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	var pubsub *redis.PubSub
+	var ch <-chan *redis.Message
+	if h.publisher != nil {
+		pubsub = h.publisher.Subscribe(c.Request.Context())
+		if pubsub != nil {
+			defer func() { _ = pubsub.Close() }()
+			ch = pubsub.Channel()
+		}
+	}
 
 	for {
 		select {
 		case <-c.Request.Context().Done():
 			return
 		case <-ticker.C:
-			if _, err := fmt.Fprint(c.Writer, "event: ping\ndata: {\"status\":\"ok\"}\n\n"); err != nil {
+			if _, err := fmt.Fprint(c.Writer, ": ping\nevent: ping\ndata: {\"status\":\"ok\"}\n\n"); err != nil {
 				return
 			}
 			c.Writer.Flush()
 		case msg, ok := <-ch:
 			if !ok {
-				return
+				// Redis subscription channel was closed or disconnected; try to resubscribe after a short backoff without dropping client SSE connection
+				if pubsub != nil {
+					_ = pubsub.Close()
+				}
+				time.Sleep(1 * time.Second)
+				if h.publisher != nil {
+					pubsub = h.publisher.Subscribe(c.Request.Context())
+					if pubsub != nil {
+						ch = pubsub.Channel()
+					}
+				}
+				continue
 			}
 			if _, err := fmt.Fprintf(c.Writer, "event: message\ndata: %s\n\n", msg.Payload); err != nil {
 				return
