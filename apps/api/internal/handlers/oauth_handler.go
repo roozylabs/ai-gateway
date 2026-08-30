@@ -62,7 +62,7 @@ func (h *GoogleOAuthHandler) getOAuthEnv(c *gin.Context) (clientID, clientSecret
 func (h *GoogleOAuthHandler) Login(c *gin.Context) {
 	providerID := c.Query("provider_id")
 	if providerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "provider_id is required"})
+		c.Redirect(http.StatusTemporaryRedirect, "/api/auth/oauth/google")
 		return
 	}
 
