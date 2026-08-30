@@ -4,7 +4,7 @@
         "description": "Centralized AI API Gateway",
         "title": "RoozyLabs Prism AI Gateway API",
         "contact": {},
-        "version": "2.1.0"
+        "version": "2.2.0"
     },
     "host": "localhost:8080",
     "basePath": "/api/v1",

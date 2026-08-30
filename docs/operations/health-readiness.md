@@ -37,7 +37,7 @@ curl -i http://localhost:8080/health
 ```json
 {
   "status": "ok",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "database": "ok",
   "redis": "ok"
 }
@@ -48,7 +48,7 @@ If PostgreSQL or Redis is unreachable:
 ```json
 {
   "status": "degraded",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "database": "error",
   "redis": "ok"
 }

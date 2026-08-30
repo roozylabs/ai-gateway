@@ -1,6 +1,6 @@
 # RoozyLabs Prism REST API Reference
 
-This document provides a summary of the REST API endpoints exposed by RoozyLabs Prism (v2.1.0).
+This document provides a summary of the REST API endpoints exposed by RoozyLabs Prism (v2.2.0).
 
 > **OpenAPI 3.0 Specifications:**
 > - [openapi.yaml](file:///c:/me/projects/ai-gateway/docs/openapi.yaml)
@@ -78,7 +78,7 @@ Public health status check.
   "status": "ok",
   "database": "ok",
   "redis": "ok",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "timestamp": "2026-08-26T11:25:00Z"
 }
 ```
