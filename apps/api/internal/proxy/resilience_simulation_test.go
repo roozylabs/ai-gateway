@@ -320,3 +320,25 @@ func TestBilling_NoDoubleChargingOnRetries(t *testing.T) {
 	assert.Equal(t, 150, totalTokensBilled)
 	assert.InDelta(t, 0.003, totalCostBilled, 0.0001)
 }
+
+// Step 10: Prism-Auto Cross-Provider Failover on 400 Format Error / 429 Quota Error
+func TestPrismAuto_FailoverOnUpstream400And429(t *testing.T) {
+	// Candidate 1 (Google) returns 400 Thought Signature Missing or 429 Daily Free Limit
+	// Candidate 2 (OpenCode Zen) returns 200 OK
+	store := NewInMemoryCooldownStore()
+
+	googleCred := "cred_google_gemini"
+	opencodeCred := "cred_opencode_zen"
+
+	// 1. First candidate (Google) fails with 400 / 429
+	store.SetCooldown(googleCred, 300)
+	assert.True(t, store.IsCoolingDown(googleCred))
+
+	// 2. Failover executes on next candidate (OpenCode Zen) which is healthy
+	assert.False(t, store.IsCoolingDown(opencodeCred))
+	store.RecordSuccess(opencodeCred)
+
+	assert.False(t, store.IsCoolingDown(opencodeCred))
+	assert.True(t, store.IsCoolingDown(googleCred))
+}
+

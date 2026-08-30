@@ -266,3 +266,140 @@ func TestSanitizeMessagesForGoogle_EditTool(t *testing.T) {
 		t.Errorf("parsed edit arguments contains unexpected thoughtSignature: %v", parsed)
 	}
 }
+
+func TestSanitizeMessagesForGoogle_Position318DeepHistory(t *testing.T) {
+	sentinel := SentinelThoughtSignature
+
+	messages := make([]map[string]interface{}, 320)
+	for i := 0; i < 318; i++ {
+		messages[i] = map[string]interface{}{
+			"role":    "user",
+			"content": fmt.Sprintf("History turn %d", i),
+		}
+	}
+	messages[318] = map[string]interface{}{
+		"role": "assistant",
+		"tool_calls": []interface{}{
+			map[string]interface{}{
+				"id":   "call_grep_318",
+				"type": "function",
+				"function": map[string]interface{}{
+					"name":      "default_api:grep",
+					"arguments": `{"query":"thought_signature","path":"apps/api"}`,
+				},
+			},
+		},
+	}
+	messages[319] = map[string]interface{}{
+		"role":         "tool",
+		"tool_call_id": "call_grep_318",
+		"content":      "found 5 matches",
+	}
+
+	sanitized := SanitizeMessagesForGoogle(messages)
+	if len(sanitized) != 320 {
+		t.Fatalf("expected 320 messages, got %d", len(sanitized))
+	}
+
+	msg318 := sanitized[318]
+	if msg318["thought_signature"] != sentinel || msg318["thoughtSignature"] != sentinel {
+		t.Errorf("message 318 missing thought_signature: %v", msg318)
+	}
+
+	tcRaw := msg318["tool_calls"].([]interface{})
+	tcMap := tcRaw[0].(map[string]interface{})
+	if tcMap["thought_signature"] != sentinel || tcMap["thoughtSignature"] != sentinel {
+		t.Errorf("tcMap at position 318 missing thought_signature: %v", tcMap)
+	}
+
+	fnMap := tcMap["function"].(map[string]interface{})
+	if fnMap["thought_signature"] != sentinel || fnMap["thoughtSignature"] != sentinel {
+		t.Errorf("fnMap at position 318 missing thought_signature: %v", fnMap)
+	}
+
+	// Tool arguments string must remain untouched
+	argsStr := fnMap["arguments"].(string)
+	if strings.Contains(argsStr, sentinel) {
+		t.Errorf("arguments string should NOT contain thought_signature pollution: %s", argsStr)
+	}
+}
+
+func TestSanitizeMessagesForGoogle_PreserveExistingSignature(t *testing.T) {
+	realSig := "cryptographic_sig_abc123_gemini_thought"
+
+	messages := []map[string]interface{}{
+		{
+			"role":              "assistant",
+			"thought_signature": realSig,
+			"tool_calls": []interface{}{
+				map[string]interface{}{
+					"id":                "call_existing_1",
+					"type":              "function",
+					"thought_signature": realSig,
+					"function": map[string]interface{}{
+						"name":              "default_api:grep",
+						"arguments":         `{"query":"foo"}`,
+						"thought_signature": realSig,
+					},
+				},
+			},
+		},
+	}
+
+	sanitized := SanitizeMessagesForGoogle(messages)
+	msg := sanitized[0]
+
+	if msg["thought_signature"] != realSig {
+		t.Errorf("expected existing signature %q to be preserved on msg, got %q", realSig, msg["thought_signature"])
+	}
+
+	tcRaw := msg["tool_calls"].([]interface{})
+	tcMap := tcRaw[0].(map[string]interface{})
+	if tcMap["thought_signature"] != realSig {
+		t.Errorf("expected existing signature %q on tcMap, got %q", realSig, tcMap["thought_signature"])
+	}
+
+	fnMap := tcMap["function"].(map[string]interface{})
+	if fnMap["thought_signature"] != realSig {
+		t.Errorf("expected existing signature %q on fnMap, got %q", realSig, fnMap["thought_signature"])
+	}
+}
+
+func TestSanitizeMessagesForGoogle_AnthropicContentBlocks(t *testing.T) {
+	sentinel := SentinelThoughtSignature
+
+	messages := []map[string]interface{}{
+		{
+			"role": "assistant",
+			"content": []interface{}{
+				map[string]interface{}{
+					"type": "text",
+					"text": "Searching code...",
+				},
+				map[string]interface{}{
+					"type":  "tool_use",
+					"id":    "tool_use_1",
+					"name":  "default_api:grep",
+					"input": map[string]interface{}{"query": "foo"},
+				},
+			},
+		},
+	}
+
+	sanitized := SanitizeMessagesForGoogle(messages)
+	msg := sanitized[0]
+
+	content := msg["content"].([]interface{})
+	toolBlock := content[1].(map[string]interface{})
+
+	if toolBlock["thought_signature"] != sentinel || toolBlock["thoughtSignature"] != sentinel {
+		t.Errorf("toolBlock missing thought_signature: %v", toolBlock)
+	}
+
+	// Tool input map should not have thought_signature injected into arguments
+	inputMap := toolBlock["input"].(map[string]interface{})
+	if _, hasSig := inputMap["thought_signature"]; hasSig {
+		t.Errorf("input map should not have thought_signature: %v", inputMap)
+	}
+}
+
