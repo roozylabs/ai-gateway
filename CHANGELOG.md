@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP Edit Modal Compile Fix**: The MCP page previously referenced a dropped `editingId`/`setEditingId` declaration (a regression introduced during a prior merge), which broke `pnpm typecheck`. The refactor restores this state internally within `MCPServerFormDialog`, resolving the compile/lint failure.
 
 ### Added
+- **Custom Tool Registry Backends & Input Schema Editor**: The `/tools` register/edit dialog now includes a JSON `inputSchema` editor (defines the function-call arguments surfaced to the AI model) and a repeatable **Execution Backends** section (`name`, `endpointUrl`, `authToken`, `timeoutMs`, `priority`). Tools created or edited from the dashboard are now actually executable end-to-end via the Test modal, and the API `Update` handler no longer wipes `inputSchema` when a request omits it (defensive nil-guard).
 - **Real MCP Server Connectivity**: Upgraded the MCP gateway (`apps/api/internal/proxy/mcp_gateway.go`) from a stateless JSON-RPC POST (`sendRPC`) to a full MCP client built on `github.com/mark3labs/mcp-go` v0.58.0. `SyncServerTools` and `ExecuteTool` now perform the complete MCP handshake (`initialize` → `initialized` → `tools/list` / `tools/call`) with transport-awareness:
   - **Streamable HTTP** transport (default) for servers such as Context7.
   - **SSE** transport for servers such as Firecrawl.
