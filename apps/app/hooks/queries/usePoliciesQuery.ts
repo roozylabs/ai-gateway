@@ -1,42 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiGetPolicies, apiCreatePolicy, apiUpdatePolicy, apiDeletePolicy, apiSetDefaultPolicy } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { apiGetPolicies } from '@/lib/api';
+export {
+  useCreatePolicyMutation as useCreatePolicy,
+  useUpdatePolicyMutation as useUpdatePolicy,
+  useDeletePolicyMutation as useDeletePolicy,
+  useSetDefaultPolicyMutation as useSetDefaultPolicy,
+} from '@/hooks/mutations/usePolicyMutations';
 
 export function usePoliciesQuery() {
   return useQuery({
     queryKey: ['policies'],
     queryFn: apiGetPolicies,
-  });
-}
-
-export function useCreatePolicy() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Parameters<typeof apiCreatePolicy>[0]) => apiCreatePolicy(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['policies'] }),
-  });
-}
-
-export function useUpdatePolicy() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (args: { id: string; data: Parameters<typeof apiUpdatePolicy>[1] }) =>
-      apiUpdatePolicy(args.id, args.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['policies'] }),
-  });
-}
-
-export function useDeletePolicy() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => apiDeletePolicy(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['policies'] }),
-  });
-}
-
-export function useSetDefaultPolicy() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => apiSetDefaultPolicy(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['policies'] }),
   });
 }
