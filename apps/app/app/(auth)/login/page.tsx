@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
+import { useTheme } from 'next-themes';
+import { useQuery } from '@tanstack/react-query';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { AppRoutes } from '@/constants/routes';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
@@ -13,6 +16,7 @@ import { Button } from '@/components/atoms/Button';
 import { toast } from 'sonner';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { apiGetTurnstileConfig } from '@/lib/api';
 import { loginSchema, LoginFormValues } from '@/features/auth/schemas/login.schema';
 
 function GoogleIcon({ className = 'h-4 w-4' }: { className?: string }) {
@@ -52,9 +56,21 @@ function GitHubIcon({ className = 'h-4 w-4' }: { className?: string }) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
   const { login, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [oauthLoading, setOauthLoading] = useState<'google' | 'github' | null>(null);
+
+  const { data: turnstileConfig } = useQuery({
+    queryKey: ['turnstile-config'],
+    queryFn: apiGetTurnstileConfig,
+  });
+
+  const siteKey =
+    process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY ||
+    turnstileConfig?.siteKey ||
+    '1x00000000000000000000AA';
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -67,13 +83,18 @@ export default function LoginPage() {
     defaultValues: {
       email: '',
       password: '',
+      turnstileToken: '',
     },
   });
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
       setLoading(true);
-      await login({ email: values.email, password: values.password });
+      await login({
+        email: values.email,
+        password: values.password,
+        turnstileToken: turnstileToken || values.turnstileToken,
+      });
       toast.success('Authentication successful! Welcome to RoozyLabs Prism.');
       router.replace(AppRoutes.HOME);
       router.refresh();
@@ -101,6 +122,8 @@ export default function LoginPage() {
     }
   };
 
+  const showTurnstile = siteKey && siteKey !== 'disabled' && siteKey !== 'none';
+
   return (
     <AuthLayout>
       <Card className="border-border shadow-xl">
@@ -120,7 +143,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your an email" {...field} />
+                      <Input placeholder="admin@roozylabs.dev" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -134,12 +157,36 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Enter your password" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {showTurnstile && (
+                <div className="flex justify-start my-2 min-h-[65px]">
+                  <Turnstile
+                    siteKey={siteKey}
+                    onSuccess={(token) => {
+                      setTurnstileToken(token);
+                      form.setValue('turnstileToken', token);
+                    }}
+                    onError={() => {
+                      setTurnstileToken('');
+                      form.setValue('turnstileToken', '');
+                    }}
+                    onExpire={() => {
+                      setTurnstileToken('');
+                      form.setValue('turnstileToken', '');
+                    }}
+                    options={{
+                      theme: resolvedTheme === 'dark' ? 'dark' : 'light',
+                      size: 'normal',
+                    }}
+                  />
+                </div>
+              )}
 
               <Button type="submit" variant="prismViolet" className="w-full gap-2 mt-2 cursor-pointer" disabled={loading}>
                 {loading ? (
