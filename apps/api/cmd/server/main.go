@@ -255,8 +255,12 @@ func main() {
 		api.GET("/auth/turnstile-config", authHandler.GetTurnstileConfig)
 		api.GET("/auth/oauth/:provider", oauthHandler.InitiateOAuth)
 		api.GET("/auth/oauth/:provider/callback", oauthHandler.OAuthCallback)
-		api.GET("/auth/google/login", googleOAuthHandler.Login)
-		api.GET("/auth/google/callback", googleOAuthHandler.Callback)
+		api.GET("/auth/google/login", oauthHandler.GoogleLogin)
+		api.GET("/auth/google/callback", oauthHandler.GoogleCallback)
+		api.GET("/auth/github/login", oauthHandler.GitHubLogin)
+		api.GET("/auth/github/callback", oauthHandler.GitHubCallback)
+		api.GET("/providers/google/oauth/login", googleOAuthHandler.Login)
+		api.GET("/providers/google/oauth/callback", googleOAuthHandler.Callback)
 
 		// Protected API routes
 		protected := api.Group("")

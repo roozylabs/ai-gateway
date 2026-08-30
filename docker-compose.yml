@@ -21,7 +21,7 @@ services:
       NEXT_PUBLIC_CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
       CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://app.prism.roozylabs.com,https://prism.roozylabs.com,https://api.prism.roozylabs.com,http://localhost:3000}
-      RUN_MIGRATIONS: "false"
+      RUN_MIGRATIONS: "true"
     ports:
       - "${SERVER_PORT:-8080}:8080"
     depends_on:
@@ -62,7 +62,7 @@ services:
       NEXT_PUBLIC_CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
       CLOUDFLARE_SITE_KEY: ${NEXT_PUBLIC_CLOUDFLARE_SITE_KEY:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://app.prism.roozylabs.com,https://prism.roozylabs.com,https://api.prism.roozylabs.com,http://localhost:3000}
-      RUN_MIGRATIONS: "false"
+      RUN_MIGRATIONS: "true"
     ports:
       - "${API_GREEN_PORT:-8085}:8080"
     depends_on:
