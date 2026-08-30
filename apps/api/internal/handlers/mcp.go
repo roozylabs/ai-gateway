@@ -334,3 +334,23 @@ func (h *MCPHandler) TestTool(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+// ListTools returns the tools previously synced from an MCP server so the
+// dashboard test modal can render a tool selector and its input schema.
+func (h *MCPHandler) ListTools(c *gin.Context) {
+	userID := c.GetString("userId")
+	id := c.Param("id")
+
+	if _, err := h.servers.FindByID(c.Request.Context(), id, userID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "mcp server not found"})
+		return
+	}
+
+	tools, err := h.tools.ListByServerID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load mcp tools: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tools)
+}
