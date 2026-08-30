@@ -63,9 +63,9 @@ export function PolicyTuner({
       return;
     }
     reset({
-      quality: selectedPolicy.weights.quality ?? 40,
-      cost: selectedPolicy.weights.cost ?? 30,
-      speed: selectedPolicy.weights.speed ?? 20,
+      quality: selectedPolicy.weights?.quality ?? 40,
+      cost: selectedPolicy.weights?.cost ?? 30,
+      speed: selectedPolicy.weights?.speed ?? 20,
     });
   }, [selectedPolicy, reset]);
 

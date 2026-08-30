@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -24,18 +23,8 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/molecules/Form";
-import { apiCreateProvider } from "@/lib/api";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { getErrorMessage } from "@/types/ui";
-
-const providerSchema = z.object({
-  name: z.string().min(1, "Provider name is required"),
-  type: z.string().min(1, "Provider type is required"),
-  baseUrl: z.string().default(""),
-});
-
-type ProviderFormValues = z.infer<typeof providerSchema>;
+import { useCreateProvider } from "@/hooks/mutations/useProviderMutations";
+import { providerSchema, ProviderFormValues } from "@/features/providers/schemas/create-provider.schema";
 
 const defaultValues: ProviderFormValues = {
   name: "",
@@ -49,20 +38,7 @@ interface ProviderFormDialogProps {
 }
 
 export function ProviderFormDialog({ open, onOpenChange }: ProviderFormDialogProps) {
-  const queryClient = useQueryClient();
-
-  const createMutation = useMutation({
-    mutationFn: (data: ProviderFormValues) =>
-      apiCreateProvider({ name: data.name, type: data.type, baseUrl: data.baseUrl }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["providers"] });
-      toast.success("Provider created successfully");
-      onOpenChange(false);
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to create provider: ${getErrorMessage(error)}`);
-    },
-  });
+  const createMutation = useCreateProvider();
 
   const form = useForm<ProviderFormValues>({
     resolver: zodResolver(providerSchema),

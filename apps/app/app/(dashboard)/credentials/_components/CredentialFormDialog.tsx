@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -29,13 +28,7 @@ import { useCreateCredentialMutation } from "@/hooks/mutations/useCredentialMuta
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
 
-const credentialSchema = z.object({
-  providerId: z.string().min(1, "Provider is required"),
-  name: z.string().min(1, "Credential label is required"),
-  apiKey: z.string().min(1, "API key is required"),
-});
-
-type CredentialFormValues = z.infer<typeof credentialSchema>;
+import { credentialSchema, CredentialFormValues } from "@/features/credentials/schemas/credential.schema";
 
 const defaultValues: CredentialFormValues = {
   providerId: "",

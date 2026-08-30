@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-export const createPolicySchema = z.object({
-  name: z.string().min(2, 'Name is required'),
-  strategy: z.enum(['latency', 'cost', 'balanced', 'fallback']).default('balanced'),
-  description: z.string().optional(),
-  targetModels: z.array(z.string()).min(1, 'Select at least one target model'),
-  fallbackPolicyId: z.string().optional(),
-  enabled: z.boolean().default(true),
+export const policySchema = z.object({
+  name: z.string().min(1, 'Policy name is required'),
+  quality: z.number().default(40),
+  cost: z.number().default(30),
+  speed: z.number().default(20),
 });
 
-export type CreatePolicyFormValues = z.infer<typeof createPolicySchema>;
+export type PolicyFormValues = z.infer<typeof policySchema>;
+export const createPolicySchema = policySchema;
+export type CreatePolicyFormValues = PolicyFormValues;

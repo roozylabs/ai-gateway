@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -28,13 +27,7 @@ import { useCreateGatewayKey } from "@/hooks/queries/useGatewayKeysQuery";
 import type { ApiProvider } from "@/lib/api";
 import { toast } from "sonner";
 
-const keySchema = z.object({
-  name: z.string().min(1, "Key name is required"),
-  providerId: z.string().min(1, "Please select a provider"),
-  rateLimit: z.string().default("100"),
-});
-
-type GatewayKeyFormValues = z.infer<typeof keySchema>;
+import { gatewayKeySchema, GatewayKeyFormValues } from "@/features/gateway-keys/schemas/create-gateway-key.schema";
 
 const defaultValues: GatewayKeyFormValues = {
   name: "",
@@ -56,7 +49,7 @@ export function GatewayKeyFormDialog({
   const createMutation = useCreateGatewayKey();
 
   const form = useForm<GatewayKeyFormValues>({
-    resolver: zodResolver(keySchema),
+    resolver: zodResolver(gatewayKeySchema),
     defaultValues,
   });
 

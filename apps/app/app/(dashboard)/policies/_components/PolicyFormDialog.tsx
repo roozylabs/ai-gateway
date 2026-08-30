@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -28,14 +27,7 @@ import { useCreatePolicy } from "@/hooks/queries/usePoliciesQuery";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
 
-const policySchema = z.object({
-  name: z.string().min(1, "Policy name is required"),
-  quality: z.number().default(40),
-  cost: z.number().default(30),
-  speed: z.number().default(20),
-});
-
-type PolicyFormValues = z.infer<typeof policySchema>;
+import { policySchema, PolicyFormValues } from "@/features/routing/schemas/create-policy.schema";
 
 const defaultValues: PolicyFormValues = {
   name: "",

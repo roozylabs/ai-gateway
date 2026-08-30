@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/molecules/Card';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/molecules/Form';
@@ -15,13 +14,7 @@ import { toast } from 'sonner';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { apiCompleteOnboarding } from '@/lib/api';
 
-const onboardingSchema = z.object({
-  organizationName: z.string().min(2, 'Organization name must be at least 2 characters'),
-  workspaceName: z.string().min(2, 'Workspace name must be at least 2 characters'),
-  gatewayKeyName: z.string().min(2, 'Gateway key name must be at least 2 characters'),
-});
-
-type OnboardingValues = z.infer<typeof onboardingSchema>;
+import { onboardingSchema, OnboardingValues } from '@/features/onboarding/schemas/onboarding.schema';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -42,7 +35,7 @@ export default function OnboardingPage() {
     try {
       setLoading(true);
       const res = await apiCompleteOnboarding(values);
-      setCreatedKey(res.apiKey);
+      setCreatedKey(res.apiKey || null);
       setStep(3);
       toast.success('Onboarding complete! Your workspace is ready.');
     } catch (err: unknown) {

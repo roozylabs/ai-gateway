@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -20,14 +19,7 @@ import type { ApiTenantQuota } from "@/lib/api";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
 
-const quotaSchema = z.object({
-  monthlySpendLimitUsd: z.number().default(0),
-  dailySpendLimitUsd: z.number().default(0),
-  dailyRequestLimit: z.number().default(0),
-  maxConcurrentStreams: z.number().default(0),
-});
-
-type QuotaFormValues = z.infer<typeof quotaSchema>;
+import { quotaSchema, QuotaFormValues } from "@/features/budgets/schemas/quota.schema";
 
 const defaultValues: QuotaFormValues = {
   monthlySpendLimitUsd: 0,
@@ -59,9 +51,9 @@ export function QuotaFormSheet({ open, onOpenChange, editingQuota }: QuotaFormSh
       return;
     }
     reset({
-      monthlySpendLimitUsd: editingQuota.monthlySpendLimitUsd ?? 0,
+      monthlySpendLimitUsd: editingQuota.monthlySpendLimitUsd ?? editingQuota.maxMonthlySpendUsd ?? 0,
       dailySpendLimitUsd: editingQuota.dailySpendLimitUsd ?? 0,
-      dailyRequestLimit: editingQuota.dailyRequestLimit ?? 0,
+      dailyRequestLimit: editingQuota.dailyRequestLimit ?? editingQuota.maxDailyRequests ?? 0,
       maxConcurrentStreams: editingQuota.maxConcurrentStreams ?? 0,
     });
   }, [open, editingQuota, reset]);

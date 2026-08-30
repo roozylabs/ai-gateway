@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { AppRoutes } from '@/constants/routes';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/molecules/Card';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/molecules/Form';
@@ -13,20 +12,15 @@ import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
 import { toast } from 'sonner';
 import { ArrowRight } from 'lucide-react';
-import { apiLogin } from '@/lib/api';
-
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type LoginValues = z.infer<typeof loginSchema>;
+import { useAuth } from '@/context/AuthContext';
+import { loginSchema, LoginFormValues } from '@/features/auth/schemas/login.schema';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const form = useForm<LoginValues>({
+  const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: 'admin@roozylabs.dev',
@@ -34,10 +28,10 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = async (values: LoginValues) => {
+  const onSubmit = async (values: LoginFormValues) => {
     try {
       setLoading(true);
-      await apiLogin({ email: values.email, password: values.password });
+      await login({ email: values.email, password: values.password });
       toast.success('Authentication successful! Welcome to RoozyLabs Prism.');
       router.push(AppRoutes.HOME);
     } catch (err: unknown) {
