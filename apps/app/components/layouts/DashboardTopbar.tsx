@@ -117,7 +117,13 @@ export function DashboardTopbar() {
             <DropdownMenuSeparator />
 
             <DropdownMenuItem
-              onClick={() => logout()}
+              onSelect={async (e) => {
+                e.preventDefault();
+                await logout();
+              }}
+              onClick={async () => {
+                await logout();
+              }}
               className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
             >
               <LogOut className="h-3.5 w-3.5" />

@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Cookies from 'js-cookie';
-import { useRouter } from 'next/navigation';
 import { User, LoginRequest, apiLogin, apiLogout, apiGetMe } from '@/lib/api';
 
 interface AuthContextType {
@@ -25,7 +24,6 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [token, setToken] = useState<string | null>(() => Cookies.get('auth_token') || null);
 
@@ -57,22 +55,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: apiLogout,
-    onSettled: () => {
-      Cookies.remove('auth_token', { path: '/' });
-      setToken(null);
-      queryClient.clear();
-      router.replace('/login');
-    },
-  });
-
   const login = async (credentials: LoginRequest) => {
     await loginMutation.mutateAsync(credentials);
   };
 
   const logout = async () => {
-    await logoutMutation.mutateAsync();
+    try {
+      await apiLogout();
+    } catch {
+      // Ignore network errors or already expired tokens on logout
+    } finally {
+      Cookies.remove('auth_token', { path: '/' });
+      Cookies.remove('auth_token');
+      setToken(null);
+      queryClient.clear();
+      window.location.href = '/login';
+    }
   };
 
   const isAuthenticated = !!token && !!user && !isError;
