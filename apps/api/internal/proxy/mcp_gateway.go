@@ -28,13 +28,25 @@ type MCPToolBatchSaver interface {
 	BatchUpsert(ctx context.Context, serverID string, tools []models.MCPTool) error
 }
 
-type MCPGateway struct {
-	servers MCPServerFinder
-	tools   MCPToolBatchSaver
+// MCPInvocationSaver records a single MCP tool execution for usage analytics.
+type MCPInvocationSaver interface {
+	SaveInvocation(ctx context.Context, inv *models.MCPInvocation) error
 }
 
-func NewMCPGateway(servers MCPServerFinder, tools MCPToolBatchSaver) *MCPGateway {
-	return &MCPGateway{servers: servers, tools: tools}
+type MCPGateway struct {
+	servers     MCPServerFinder
+	tools       MCPToolBatchSaver
+	invocations MCPInvocationSaver
+}
+
+// NewMCPGateway constructs the gateway. The invocation saver is optional; when
+// nil, MCP tool executions still succeed but are not persisted for analytics.
+func NewMCPGateway(servers MCPServerFinder, tools MCPToolBatchSaver, saver ...MCPInvocationSaver) *MCPGateway {
+	var invs MCPInvocationSaver
+	if len(saver) > 0 {
+		invs = saver[0]
+	}
+	return &MCPGateway{servers: servers, tools: tools, invocations: invs}
 }
 
 // newMCPClient builds a transport-aware MCP client, performs the initialize
@@ -194,6 +206,7 @@ func (g *MCPGateway) ExecuteTool(ctx context.Context, userID, serverName, toolNa
 	latency := int(time.Since(startTime).Milliseconds())
 	if err != nil {
 		_ = g.servers.UpdateStatus(ctx, srv.ID, "error")
+		g.saveInvocation(ctx, srv, toolName, 0, true, err.Error(), latency)
 		return nil, fmt.Errorf("execute mcp tool %s/%s: %w", serverName, toolName, err)
 	}
 
@@ -206,6 +219,7 @@ func (g *MCPGateway) ExecuteTool(ctx context.Context, userID, serverName, toolNa
 				errMsg = txt.Text
 			}
 		}
+		g.saveInvocation(ctx, srv, toolName, 500, true, errMsg, latency)
 		return nil, fmt.Errorf("tool %s/%s error: %s", serverName, toolName, errMsg)
 	}
 
@@ -223,6 +237,8 @@ func (g *MCPGateway) ExecuteTool(ctx context.Context, userID, serverName, toolNa
 		}
 	}
 
+	g.saveInvocation(ctx, srv, toolName, 200, false, "", latency)
+
 	return &models.MCPToolExecutionResult{
 		Server:     serverName,
 		Tool:       toolName,
@@ -230,4 +246,28 @@ func (g *MCPGateway) ExecuteTool(ctx context.Context, userID, serverName, toolNa
 		Result:     resultObj,
 		LatencyMs:  latency,
 	}, nil
+}
+
+// saveInvocation best-effort persists an MCP tool execution for usage analytics.
+// It never returns an error so a failed write does not break the tool call.
+func (g *MCPGateway) saveInvocation(ctx context.Context, srv *models.MCPServer, toolName string, statusCode int, isError bool, errMsg string, latency int) {
+	if g.invocations == nil {
+		return
+	}
+	var msg *string
+	if errMsg != "" {
+		msg = &errMsg
+	}
+	inv := &models.MCPInvocation{
+		UserID:       srv.UserID,
+		MCPServerID:  srv.ID,
+		ToolName:     toolName,
+		StatusCode:   statusCode,
+		IsError:      isError,
+		ErrorMessage: msg,
+		LatencyMs:    latency,
+	}
+	if err := g.invocations.SaveInvocation(ctx, inv); err != nil {
+		log.Printf("[mcp-gateway] save invocation failed for %q/%q: %v", srv.Name, toolName, err)
+	}
 }

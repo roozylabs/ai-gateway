@@ -45,6 +45,20 @@ func (m *mcpToolBatchSaverMock) BatchUpsert(ctx context.Context, serverID string
 	return nil
 }
 
+// mcpInvocationSaverMock records saved invocations for usage-analytics tests.
+type mcpInvocationSaverMock struct {
+	invocations []models.MCPInvocation
+	err         error
+}
+
+func (m *mcpInvocationSaverMock) SaveInvocation(ctx context.Context, inv *models.MCPInvocation) error {
+	if m.err != nil {
+		return m.err
+	}
+	m.invocations = append(m.invocations, *inv)
+	return nil
+}
+
 // newTestMCPServer builds a real in-process MCP server exposing echo/create tools.
 func newTestMCPServer() *server.MCPServer {
 	ms := server.NewMCPServer("github-mcp", "1.0.0")
@@ -95,7 +109,8 @@ func TestMCPGatewayExecuteToolSuccess(t *testing.T) {
 		Enabled:       true,
 	}
 
-	gw := NewMCPGateway(&mcpServerFinderMock{srv: mcpSrv}, &mcpToolBatchSaverMock{})
+	invSaver := &mcpInvocationSaverMock{}
+	gw := NewMCPGateway(&mcpServerFinderMock{srv: mcpSrv}, &mcpToolBatchSaverMock{}, invSaver)
 	res, err := gw.ExecuteTool(context.Background(), "u1", "github-mcp", "create_issue", map[string]interface{}{"title": "Bug fix"}, "")
 	require.NoError(t, err)
 	assert.Equal(t, "github-mcp", res.Server)
@@ -103,6 +118,15 @@ func TestMCPGatewayExecuteToolSuccess(t *testing.T) {
 	assert.Equal(t, 200, res.StatusCode)
 	assert.Equal(t, map[string]interface{}{"status": "created", "issue_id": float64(101)}, res.Result)
 	assert.GreaterOrEqual(t, res.LatencyMs, 0)
+
+	require.Len(t, invSaver.invocations, 1)
+	inv := invSaver.invocations[0]
+	assert.Equal(t, "u1", inv.UserID)
+	assert.Equal(t, "s1", inv.MCPServerID)
+	assert.Equal(t, "create_issue", inv.ToolName)
+	assert.Equal(t, 200, inv.StatusCode)
+	assert.False(t, inv.IsError)
+	assert.GreaterOrEqual(t, inv.LatencyMs, 0)
 }
 
 func TestMCPGatewayExecuteToolSuccess_SSE(t *testing.T) {
@@ -118,12 +142,51 @@ func TestMCPGatewayExecuteToolSuccess_SSE(t *testing.T) {
 		Enabled:       true,
 	}
 
-	gw := NewMCPGateway(&mcpServerFinderMock{srv: mcpSrv}, &mcpToolBatchSaverMock{})
+	invSaver := &mcpInvocationSaverMock{}
+	gw := NewMCPGateway(&mcpServerFinderMock{srv: mcpSrv}, &mcpToolBatchSaverMock{}, invSaver)
 	res, err := gw.ExecuteTool(context.Background(), "u1", "ctx-sse", "create_issue", map[string]interface{}{"title": "Bug fix"}, "")
 	require.NoError(t, err)
 	assert.Equal(t, "ctx-sse", res.Server)
 	assert.Equal(t, 200, res.StatusCode)
 	assert.Equal(t, map[string]interface{}{"status": "created", "issue_id": float64(101)}, res.Result)
+
+	require.Len(t, invSaver.invocations, 1)
+	assert.False(t, invSaver.invocations[0].IsError)
+	assert.Equal(t, 200, invSaver.invocations[0].StatusCode)
+}
+
+func TestMCPGatewayExecuteToolErrorRecordsInvocation(t *testing.T) {
+	// A server exposing a tool that always returns an error payload.
+	errorServer := server.NewMCPServer("github-mcp", "1.0.0")
+	errorServer.AddTool(
+		mcp.NewTool("bad_tool", mcp.WithDescription("Failing Tool")),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			return mcp.NewToolResultError("boom: something broke"), nil
+		},
+	)
+	ts := server.NewTestStreamableHTTPServer(errorServer)
+	defer ts.Close()
+
+	mcpSrv := &models.MCPServer{
+		ID:            "s1",
+		UserID:        "u1",
+		Name:          "github-mcp",
+		EndpointURL:   ts.URL,
+		TransportType: "http",
+		Enabled:       true,
+	}
+
+	invSaver := &mcpInvocationSaverMock{}
+	gw := NewMCPGateway(&mcpServerFinderMock{srv: mcpSrv}, &mcpToolBatchSaverMock{}, invSaver)
+	_, err := gw.ExecuteTool(context.Background(), "u1", "github-mcp", "bad_tool", map[string]interface{}{"x": 1}, "")
+	require.Error(t, err)
+
+	require.Len(t, invSaver.invocations, 1)
+	inv := invSaver.invocations[0]
+	assert.True(t, inv.IsError)
+	assert.Equal(t, 500, inv.StatusCode)
+	assert.Equal(t, "bad_tool", inv.ToolName)
+	assert.NotEmpty(t, inv.ErrorMessage)
 }
 
 func TestResolveMCPHeadersEncrypted(t *testing.T) {
