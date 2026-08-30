@@ -63,7 +63,7 @@ export default function CredentialsPage() {
     }
   };
 
-  const credentialsList: ApiCredential[] = data?.data && Array.isArray(data.data) ? data.data : [];
+  const credentialsList: ApiCredential[] = Array.isArray(data) ? data : (data as unknown as { data?: ApiCredential[] })?.data ?? [];
 
   const columns: Column<ApiCredential>[] = [
     {
@@ -132,14 +132,21 @@ export default function CredentialsPage() {
             <span>Test Health</span>
           </Button>
           {(record.status === 'cooldown' || record.status === 'degraded') && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-[11px] text-amber-500 hover:text-amber-600"
-              onClick={() => handleResetCooldown(record.providerId, record.id)}
-            >
-              Reset Cooldown
-            </Button>
+            <ConfirmDialog
+              title="Reset Cooldown"
+              description={`Reset the cooldown period for "${record.name}" and return it to the active routing pool?`}
+              confirmText="Reset Cooldown"
+              onConfirm={() => handleResetCooldown(record.providerId, record.id)}
+              trigger={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-[11px] text-amber-500 hover:text-amber-600"
+                >
+                  Reset Cooldown
+                </Button>
+              }
+            />
           )}
           <ConfirmDialog
             title="Delete Credential"

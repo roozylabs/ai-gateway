@@ -27,7 +27,7 @@ export default function ModelsPage() {
   const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const allModels: ApiModel[] = data?.data ?? [];
+  const allModels: ApiModel[] = Array.isArray(data) ? data : (data as unknown as { data?: ApiModel[] })?.data ?? [];
 
   const modelsList = selectedProviderId === 'all'
     ? allModels
@@ -37,7 +37,7 @@ export default function ModelsPage() {
 
   const handleDelete = (model: ApiModel) => {
     deleteMutation.mutate(
-      { providerId: model.providerId, modelId: model.id },
+      { providerId: model.providerId, id: model.id },
       {
         onSuccess: () => toast.success(`${model.displayName || model.name} removed`),
         onError: (err) => toast.error(`Failed to remove: ${getErrorMessage(err)}`),
@@ -50,21 +50,21 @@ export default function ModelsPage() {
       title: 'Model Name',
       dataIndex: 'displayName',
       key: 'displayName',
-      render: (displayName, record) => (
-        <span className="font-semibold text-foreground">{displayName || record.name}</span>
+      render: (_, record) => (
+        <span className="font-semibold text-foreground">{record.displayName || record.name}</span>
       ),
     },
     {
       title: 'Slug',
       dataIndex: 'slug',
       key: 'slug',
-      render: (slug) => <span className="font-mono text-muted-foreground">{slug}</span>,
+      render: (_, record) => <span className="font-mono text-muted-foreground">{record.slug}</span>,
     },
     {
       title: 'Provider',
       dataIndex: 'providerName',
       key: 'providerName',
-      render: (providerName) => <Badge variant="outline">{providerName || '-'}</Badge>,
+      render: (_, record) => <Badge variant="outline">{record.providerName || '-'}</Badge>,
     },
     {
       title: 'Pricing (Input / Output)',

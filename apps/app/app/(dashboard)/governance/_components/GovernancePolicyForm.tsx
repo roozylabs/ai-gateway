@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -26,20 +25,7 @@ import type { ApiGovernancePolicy, ApiCreateGovernancePolicyRequest } from "@/li
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
 
-const policySchema = z.object({
-  name: z.string().min(1, "Policy name is required"),
-  description: z.string().default(""),
-  role: z.string().default(""),
-  effect: z.enum(["allow", "deny"]).default("allow"),
-  agentPattern: z.string().default("*"),
-  modelPattern: z.string().default("*"),
-  toolPattern: z.string().default("*"),
-  resourcePattern: z.string().default("*"),
-  priority: z.number().default(100),
-  enabled: z.boolean().default(true),
-});
-
-type PolicyFormValues = z.infer<typeof policySchema>;
+import { governancePolicySchema, GovernancePolicyFormValues as PolicyFormValues } from "@/features/governance/schemas/governance-policy.schema";
 
 interface GovernancePolicyFormProps {
   open: boolean;
@@ -71,7 +57,7 @@ export function GovernancePolicyForm({
   const updateMutation = useUpdateGovernancePolicy();
 
   const form = useForm<PolicyFormValues>({
-    resolver: zodResolver(policySchema),
+    resolver: zodResolver(governancePolicySchema),
     defaultValues,
   });
 

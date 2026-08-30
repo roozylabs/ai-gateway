@@ -1,5 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiGetBillingPlans, apiGetActiveSubscription, apiGetInvoices, apiUpgradeSubscription } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { apiGetBillingPlans, apiGetActiveSubscription, apiGetInvoices } from '@/lib/api';
+export { useUpgradeSubscriptionMutation as useUpgradeSubscription } from '@/hooks/mutations/useBillingMutations';
 
 export function useBillingPlansQuery() {
   return useQuery({
@@ -8,27 +9,19 @@ export function useBillingPlansQuery() {
   });
 }
 
-export function useBillingSubscriptionQuery() {
+export function useActiveSubscriptionQuery() {
   return useQuery({
     queryKey: ['billing-subscription'],
     queryFn: apiGetActiveSubscription,
   });
 }
 
-export function useBillingInvoicesQuery() {
+export function useInvoicesQuery() {
   return useQuery({
     queryKey: ['billing-invoices'],
     queryFn: apiGetInvoices,
   });
 }
 
-export function useUpgradeSubscription() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (planSlug: string) => apiUpgradeSubscription(planSlug),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['billing-subscription'] });
-      queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
-    },
-  });
-}
+export { useActiveSubscriptionQuery as useBillingSubscriptionQuery };
+export { useInvoicesQuery as useBillingInvoicesQuery };

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -37,18 +36,7 @@ function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-const agentSchema = z.object({
-  name: z.string().min(1, "Agent name is required"),
-  displayName: z.string().default(""),
-  description: z.string().default(""),
-  agentType: z.string().default("general"),
-  maxBudgetCents: z.number().default(0),
-  allowedTools: z.array(z.string()).default([]),
-  allowedResources: z.array(z.string()).default([]),
-  allowedMcpServers: z.array(z.string()).default([]),
-});
-
-type AgentFormValues = z.infer<typeof agentSchema>;
+import { agentSchema, AgentFormValues } from "@/features/agents/schemas/agent.schema";
 
 interface AgentFormDialogProps {
   open: boolean;
@@ -98,7 +86,7 @@ export function AgentFormDialog({
       reset(defaultValues);
       return;
     }
-    setNameLocked(editingAgent.name === slugify(editingAgent.displayName));
+    setNameLocked(editingAgent.name === slugify(editingAgent.displayName || editingAgent.name));
     reset({
       name: editingAgent.name,
       displayName: editingAgent.displayName,

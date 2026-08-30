@@ -1,13 +1,12 @@
 import { z } from 'zod';
 
-export const createGatewayKeySchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  keyPrefix: z.string().optional(),
-  allowedModels: z.array(z.string()).default([]),
-  maxBudgetCents: z.number().int().nonnegative().default(0),
-  rateLimitRpm: z.number().int().positive().default(60),
-  expiresAt: z.string().optional(),
-  enabled: z.boolean().default(true),
+export const gatewayKeySchema = z.object({
+  name: z.string().min(1, 'Key name is required'),
+  providerId: z.string().min(1, 'Please select a provider'),
+  rateLimit: z.string().default('100'),
 });
 
-export type CreateGatewayKeyFormValues = z.infer<typeof createGatewayKeySchema>;
+export type GatewayKeyFormValues = z.infer<typeof gatewayKeySchema>;
+
+export const createGatewayKeySchema = gatewayKeySchema;
+export type CreateGatewayKeyFormValues = GatewayKeyFormValues;

@@ -1,14 +1,21 @@
 import { z } from 'zod';
 
-export const createModelSchema = z.object({
-  name: z.string().min(2, 'Name is required'),
-  slug: z.string().min(2, 'Slug is required'),
+const optionalNumber = z.preprocess(
+  (v) => (v === '' || v == null ? undefined : Number(v)),
+  z.number().optional()
+);
+
+export const modelSchema = z.object({
   providerId: z.string().min(1, 'Provider is required'),
-  contextWindow: z.number().int().positive().default(128000),
-  maxTokens: z.number().int().positive().default(4096),
-  inputCostPer1k: z.number().nonnegative().default(0),
-  outputCostPer1k: z.number().nonnegative().default(0),
-  enabled: z.boolean().default(true),
+  name: z.string().min(1, 'Model name is required'),
+  slug: z.string().min(1, 'Slug is required'),
+  displayName: z.string().default(''),
+  inputPricePer1M: optionalNumber,
+  outputPricePer1M: optionalNumber,
+  qualityScore: optionalNumber,
+  speedScore: optionalNumber,
 });
 
-export type CreateModelFormValues = z.infer<typeof createModelSchema>;
+export type ModelFormValues = z.infer<typeof modelSchema>;
+export const createModelSchema = modelSchema;
+export type CreateModelFormValues = ModelFormValues;

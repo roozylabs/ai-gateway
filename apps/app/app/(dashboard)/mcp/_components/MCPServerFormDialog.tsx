@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -32,7 +31,7 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/molecules/Form";
-import { useMCPServerQuery } from "@/hooks/queries/useMCPServersQuery";
+import { useMCPServerEditQuery } from "@/hooks/queries/useMCPServersQuery";
 import {
   useCreateMCPServerMutation,
   useUpdateMCPServerMutation,
@@ -47,39 +46,7 @@ interface KeyValueRow {
   value: string;
 }
 
-const mcpServerSchema = z
-  .object({
-    name: z.string().min(1, "Server Identifier Name is required"),
-    displayName: z.string().default(""),
-    description: z.string().default(""),
-    type: z.enum(["remote", "local"]),
-    transportType: z.string().default("http"),
-    endpointUrl: z.string().default(""),
-    authToken: z.string().default(""),
-    command: z.string().default(""),
-    argsCsv: z.string().default(""),
-    headerRows: z.array(z.object({ key: z.string(), value: z.string() })).default([]),
-    envRows: z.array(z.object({ key: z.string(), value: z.string() })).default([]),
-    enabled: z.boolean().default(true),
-  })
-  .superRefine((data, ctx) => {
-    if (data.type === "remote" && !data.endpointUrl.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["endpointUrl"],
-        message: "Endpoint URL is required for remote MCP servers",
-      });
-    }
-    if (data.type === "local" && !data.command.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["command"],
-        message: "Command is required for local MCP servers",
-      });
-    }
-  });
-
-type MCPServerFormValues = z.infer<typeof mcpServerSchema>;
+import { mcpServerSchema, MCPServerFormValues } from "@/features/mcp/schemas/create-mcp-server.schema";
 
 interface MCPServerFormDialogProps {
   open: boolean;
@@ -98,9 +65,10 @@ function kvToMap(rows: KeyValueRow[]): Record<string, string> {
   return out;
 }
 
-function csvToArgs(csv: string): string[] {
-  return csv
-    .split(/[\n,]/)
+function csvToArgs(val: string): string[] {
+  if (!val.trim()) return [];
+  return val
+    .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
 }
@@ -129,7 +97,7 @@ export function MCPServerFormDialog({
   const updateMutation = useUpdateMCPServerMutation();
   const [editingId, setEditingId] = useState("");
 
-  const editQuery = useMCPServerQuery(editingId);
+  const editQuery = useMCPServerEditQuery(editingId);
   const isEditLoading = Boolean(editingId) && editQuery.isLoading;
 
   const form = useForm<MCPServerFormValues>({
@@ -155,31 +123,35 @@ export function MCPServerFormDialog({
 
     let extractedAuthToken = "";
     const filteredHeaderRows: KeyValueRow[] = [];
+    const headersMap: Record<string, string> = (s.headers || {}) as Record<string, string>;
 
-    Object.entries(s.headers || {}).forEach(([k, v]) => {
+    Object.entries(headersMap).forEach(([k, v]) => {
       if (k.toLowerCase() === "authorization") {
-        let val = v.trim();
+        let val = String(v ?? "").trim();
         while (/^bearer\s+/i.test(val)) {
           val = val.replace(/^bearer\s+/i, "").trim();
         }
         extractedAuthToken = val;
       } else {
-        filteredHeaderRows.push({ key: k, value: v });
+        filteredHeaderRows.push({ key: k, value: String(v ?? "") });
       }
     });
 
+    const envMap: Record<string, string> = (s.env || s.envVars || {}) as Record<string, string>;
+    const envRowsList: KeyValueRow[] = Object.entries(envMap).map(([k, v]) => ({ key: k, value: String(v ?? "") }));
+
     reset({
       name: s.name,
-      displayName: s.displayName,
-      description: s.description,
+      displayName: s.displayName || s.name,
+      description: s.description || "",
       type: s.type === "local" ? "local" : "remote",
       transportType: s.transportType,
-      endpointUrl: s.endpointUrl,
+      endpointUrl: s.endpointUrl || s.serverUrl || "",
       authToken: extractedAuthToken,
       command: s.command || "",
       argsCsv: (s.args || []).join("\n"),
       headerRows: filteredHeaderRows,
-      envRows: Object.entries(s.env || {}).map(([k, v]) => ({ key: k, value: v })),
+      envRows: envRowsList,
       enabled: s.enabled,
     });
   }, [editQuery.data, editingId, reset]);
@@ -214,7 +186,7 @@ export function MCPServerFormDialog({
       displayName: values.displayName.trim() || values.name.trim(),
       description: values.description.trim(),
       type: values.type,
-      transportType: values.transportType,
+      transportType: values.transportType as 'stdio' | 'sse' | 'http',
       endpointUrl: values.endpointUrl.trim(),
       authToken: cleanAuthToken || undefined,
       headers: kvToMap(cleanedHeaderRows),

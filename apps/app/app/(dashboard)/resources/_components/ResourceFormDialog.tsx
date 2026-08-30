@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -32,14 +31,7 @@ import type { ApiResource } from "@/lib/api";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
 
-const resourceSchema = z.object({
-  name: z.string().min(1, "Resource name is required"),
-  displayName: z.string().default(""),
-  description: z.string().default(""),
-  enabled: z.boolean().default(true),
-});
-
-type ResourceFormValues = z.infer<typeof resourceSchema>;
+import { resourceSchema, ResourceFormValues } from "@/features/resources/schemas/create-resource.schema";
 
 const defaultValues: ResourceFormValues = {
   name: "",

@@ -172,9 +172,9 @@ export default function MCPPage() {
                         )}
                         {s.type}
                       </Badge>
-                      <StatusDot status={statusToDot(s.status)} />
+                      <StatusDot status={statusToDot(s.status || s.healthStatus || 'unknown')} />
                       <span className="capitalize text-xs font-mono text-muted-foreground">
-                        {s.status}
+                        {s.status || s.healthStatus || 'unknown'}
                       </span>
                     </div>
                   </div>

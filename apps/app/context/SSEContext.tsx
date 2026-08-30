@@ -82,13 +82,22 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
 
             // Live update React Query caches on actual gateway activity messages
-            if (eventType === 'message') {
+            const eventName = (typeof data === 'object' && data !== null && (data.type || data.event)) || eventType;
+            if (eventName === 'CREDENTIAL_STATUS_CHANGED' || eventName === 'CREDENTIAL_QUARANTINED' || eventName === 'CREDENTIAL_QUOTA_UPDATED') {
+              queryClient.invalidateQueries({ queryKey: ['credentials'] });
+              queryClient.invalidateQueries({ queryKey: ['dashboard-health'] });
+            } else if (eventName === 'request_log_created') {
+              queryClient.invalidateQueries({ queryKey: ['request-logs'] });
+              queryClient.invalidateQueries({ queryKey: ['active-model-activity'] });
               queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-              queryClient.invalidateQueries({ queryKey: ['dashboard-usage'] });
+            } else if (eventName === 'active_streams_update') {
+              queryClient.invalidateQueries({ queryKey: ['active-streams'] });
+            } else if (eventType === 'message') {
+              queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+              queryClient.invalidateQueries({ queryKey: ['dashboard-usage-chart'] });
               queryClient.invalidateQueries({ queryKey: ['dashboard-health'] });
               queryClient.invalidateQueries({ queryKey: ['active-streams'] });
-              queryClient.invalidateQueries({ queryKey: ['logs'] });
-              queryClient.invalidateQueries({ queryKey: ['recent-logs'] });
+              queryClient.invalidateQueries({ queryKey: ['request-logs'] });
               queryClient.invalidateQueries({ queryKey: ['credentials'] });
             }
           } catch (err) {

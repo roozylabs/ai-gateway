@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Frontend Production Architecture & Reliability Overhaul**: Executed full 10-phase production refactor of `apps/app` and supporting API routes:
+  - **100% Strict Type Safety**: Eradicated all occurrences of `: any` and `as any` (`tsc --noEmit` 0 errors).
+  - **HttpOnly Cookie Authentication**: Issued secure `auth_token` cookies with `HttpOnly; SameSite=Lax; Path=/; Secure` on `/auth/login` and `/auth/logout`, eliminating client-side token exposure.
+  - **Dynamic Multi-Tenancy**: Added backend RBAC organization query (`GET /user/organizations`) and connected `TenantSelector` to live database organizations.
+  - **Modular API Architecture**: Decomposed monolithic 1,400-line `api.ts` into 20+ typed domain modules under `lib/api/`.
+  - **Data Correctness**: Integrated dynamic date-range filtering in PostgreSQL stats queries and replaced synthetic token multipliers with real telemetry counts.
+  - **Dedicated Mutation Hooks**: Segregated mutations under `hooks/mutations/` with cache invalidation rules.
+  - **Architectural Documentation**: Published `docs/frontend-architecture-audit.md`, `docs/frontend-design-system.md`, and `docs/frontend-architecture-improvement.md`.
 - **AntiSloP Install, Design Baseline & Audit**: Installed the full anti-slop skill family (core filter plus `code`, `ui`, `copywriting`, `layoutmobile`, and `human` companions) under `.agents/skills/`, authored `DESIGN.md` as the visual/UX direction for the Prism console (single Prism Violet accent, Inter + JetBrains Mono, low-energy flat surfaces), registered an every-session pointer rule in `.agents/rules/antislop.md`, and ran a full AFTER-mode audit of `apps/app` recorded in `anti-slop/audit-001-2026-08-30.md`.
 - **Anti-slop copy & accessibility polish**: Replaced em dashes with colons/commas across dashboard copy and table/summary null placeholders (anti-slop R-02), and raised the violet accent used as small text from `#8B5CF6` to `#7C3AED` to reach WCAG AA 4.5:1 contrast (R-25). Icon, brand, and graphical usages of the violet accent are unchanged.
 

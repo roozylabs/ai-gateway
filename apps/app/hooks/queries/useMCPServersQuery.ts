@@ -1,5 +1,17 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiGetMCPServers, apiGetMCPServer, apiCreateMCPServer, apiUpdateMCPServer, apiDeleteMCPServer, apiSyncMCPServer, apiGetMCPServerTools, apiGetMCPServerStats } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import {
+  apiGetMCPServers,
+  apiGetMCPServer,
+  apiGetMCPServerTools,
+  apiGetMCPServerStats,
+} from '@/lib/api';
+export {
+  useCreateMCPServerMutation as useCreateMCPServer,
+  useUpdateMCPServerMutation as useUpdateMCPServer,
+  useDeleteMCPServerMutation as useDeleteMCPServer,
+  useSyncMCPServerMutation as useSyncMCPServer,
+  useTestMCPToolMutation as useTestMCPTool,
+} from '@/hooks/mutations/useMCPMutations';
 
 export function useMCPServersQuery() {
   return useQuery({
@@ -8,15 +20,15 @@ export function useMCPServersQuery() {
   });
 }
 
-export function useMCPServerToolsQuery(serverId: string | null | undefined) {
+export function useMCPServerToolsQuery(serverId?: string | null) {
   return useQuery({
     queryKey: ['mcp-servers', serverId, 'tools'],
-    queryFn: () => apiGetMCPServerTools(serverId as string),
+    queryFn: () => (serverId ? apiGetMCPServerTools(serverId) : Promise.resolve([])),
     enabled: Boolean(serverId),
   });
 }
 
-export function useMCPServerQuery(id: string) {
+export function useMCPServerEditQuery(id: string) {
   return useQuery({
     queryKey: ['mcp-servers', id, 'edit'],
     queryFn: () => apiGetMCPServer(id),
@@ -24,43 +36,10 @@ export function useMCPServerQuery(id: string) {
   });
 }
 
-export function useMCPServerStatsQuery(id: string, days: number) {
+export function useMCPServerStatsQuery(id: string, days: number = 30) {
   return useQuery({
     queryKey: ['mcp-servers', id, 'stats', days],
     queryFn: () => apiGetMCPServerStats(id, days),
     enabled: Boolean(id),
-  });
-}
-
-export function useCreateMCPServer() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Parameters<typeof apiCreateMCPServer>[0]) => apiCreateMCPServer(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mcp-servers'] }),
-  });
-}
-
-export function useUpdateMCPServer() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (args: { id: string; data: Parameters<typeof apiUpdateMCPServer>[1] }) =>
-      apiUpdateMCPServer(args.id, args.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mcp-servers'] }),
-  });
-}
-
-export function useDeleteMCPServer() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => apiDeleteMCPServer(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mcp-servers'] }),
-  });
-}
-
-export function useSyncMCPServer() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => apiSyncMCPServer(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mcp-servers'] }),
   });
 }

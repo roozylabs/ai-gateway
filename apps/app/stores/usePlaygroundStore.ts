@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { ApiModelScoreDetail } from '@/lib/api';
 
 export interface DecisionInspectorState {
   selectedModel: string;
@@ -7,7 +8,7 @@ export interface DecisionInspectorState {
   score: string;
   latency: string;
   cost: string;
-  candidates?: any[];
+  candidates?: ApiModelScoreDetail[];
 }
 
 interface PlaygroundState {

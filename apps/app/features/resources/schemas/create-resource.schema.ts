@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
-export const createResourceSchema = z.object({
-  name: z.string().min(2, 'Name is required'),
-  resourceType: z.enum(['postgres', 'graphql', 'rest', 's3']).default('postgres'),
-  connectionUri: z.string().min(5, 'Connection URI or endpoint is required'),
-  description: z.string().optional(),
+export const resourceSchema = z.object({
+  name: z.string().min(1, 'Resource name is required'),
+  displayName: z.string().default(''),
+  description: z.string().default(''),
   enabled: z.boolean().default(true),
 });
 
-export type CreateResourceFormValues = z.infer<typeof createResourceSchema>;
+export type ResourceFormValues = z.infer<typeof resourceSchema>;
+export const createResourceSchema = resourceSchema;
+export type CreateResourceFormValues = ResourceFormValues;

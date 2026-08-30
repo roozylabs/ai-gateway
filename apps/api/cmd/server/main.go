@@ -269,6 +269,8 @@ func main() {
 
 			// User Permissions & Onboarding
 			protected.GET("/user/permissions", userPermissionsHandler.GetPermissions)
+			protected.GET("/user/organizations", userPermissionsHandler.GetOrganizations)
+			protected.GET("/organizations", userPermissionsHandler.GetOrganizations)
 			protected.POST("/onboarding", onboardingHandler.Complete)
 
 			// Providers

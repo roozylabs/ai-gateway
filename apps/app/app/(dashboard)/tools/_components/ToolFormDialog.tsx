@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -41,37 +40,7 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 
-const backendSchema = z.object({
-  name: z.string().min(1, "Backend name is required"),
-  endpointUrl: z
-    .string()
-    .min(1, "Endpoint URL is required")
-    .url("Must be a valid URL"),
-  authToken: z.string().optional().default(""),
-  timeoutMs: z.coerce.number().int().positive().optional(),
-  priority: z.coerce.number().int().positive().optional(),
-});
-
-const toolSchema = z.object({
-  name: z.string().min(1, "Function name is required"),
-  displayName: z.string().default(""),
-  description: z.string().default(""),
-  enabled: z.boolean().default(true),
-  inputSchema: z
-    .string()
-    .default("{}")
-    .refine((value) => {
-      try {
-        JSON.parse(value);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "Input schema must be valid JSON"),
-  backends: z.array(backendSchema).default([]),
-});
-
-type ToolFormValues = z.infer<typeof toolSchema>;
+import { toolSchema, ToolFormValues } from "@/features/tools/schemas/create-tool.schema";
 
 interface ToolFormDialogProps {
   open: boolean;
@@ -88,7 +57,7 @@ const defaultValues: ToolFormValues = {
   backends: [],
 };
 
-function formatSchemaJSON(schema: Record<string, any> | null | undefined): string {
+function formatSchemaJSON(schema: Record<string, unknown> | null | undefined): string {
   if (!schema || Object.keys(schema).length === 0) return "{}";
   return JSON.stringify(schema, null, 2);
 }
@@ -131,11 +100,11 @@ export function ToolFormDialog({
         if (cancelled) return;
         setDetail(twb);
         reset({
-          name: twb.tool.name,
-          displayName: twb.tool.displayName,
-          description: twb.tool.description,
-          enabled: twb.tool.enabled,
-          inputSchema: formatSchemaJSON(twb.tool.inputSchema),
+          name: twb.tool?.name ?? twb.name ?? editingTool.name,
+          displayName: twb.tool?.displayName ?? twb.displayName ?? editingTool.displayName,
+          description: twb.tool?.description ?? twb.description ?? editingTool.description,
+          enabled: twb.tool?.enabled ?? twb.enabled ?? editingTool.enabled,
+          inputSchema: formatSchemaJSON(twb.tool?.inputSchema ?? twb.inputSchema ?? editingTool.inputSchema),
           backends: (twb.backends || []).map((b) => ({
             name: b.name,
             endpointUrl: b.endpointUrl,
@@ -168,7 +137,7 @@ export function ToolFormDialog({
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   const onSubmit = (values: ToolFormValues) => {
-    let parsedSchema: Record<string, any>;
+    let parsedSchema: Record<string, unknown>;
     try {
       parsedSchema = JSON.parse(values.inputSchema);
     } catch {

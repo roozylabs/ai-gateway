@@ -52,3 +52,18 @@ func (h *UserPermissionsHandler) GetPermissions(c *gin.Context) {
 		"permissions":    perms,
 	})
 }
+
+func (h *UserPermissionsHandler) GetOrganizations(c *gin.Context) {
+	userID := c.GetString("userId")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	orgs, err := h.rbacRepo.ListUserOrganizations(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list organizations"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": orgs})
+}

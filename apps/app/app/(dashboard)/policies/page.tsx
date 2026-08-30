@@ -129,15 +129,22 @@ export default function PoliciesPage() {
                       </div>
                       <div className="flex items-center gap-1">
                         {!policy.isDefault && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 gap-1 text-xs"
-                            onClick={() => handleSetDefault(policy)}
-                            disabled={setDefaultMutation.isPending}
-                          >
-                            <Star className="h-3 w-3" /> Set Default
-                          </Button>
+                          <ConfirmDialog
+                            title="Set Default Policy"
+                            description={`Set "${policy.name}" as the default routing policy for all gateway requests without explicit policy override?`}
+                            confirmText="Set Default"
+                            onConfirm={() => handleSetDefault(policy)}
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 gap-1 text-xs"
+                                disabled={setDefaultMutation.isPending}
+                              >
+                                <Star className="h-3 w-3" /> Set Default
+                              </Button>
+                            }
+                          />
                         )}
                         <ConfirmDialog
                           title="Delete Routing Policy"
@@ -158,9 +165,9 @@ export default function PoliciesPage() {
                       </div>
                     </div>
                     <div className="flex gap-4 text-xs text-muted-foreground font-mono">
-                      {policy.weights.quality != null && <span>Quality: {policy.weights.quality}%</span>}
-                      {policy.weights.cost != null && <span>Cost: {policy.weights.cost}%</span>}
-                      {policy.weights.speed != null && <span>Speed: {policy.weights.speed}%</span>}
+                      {policy.weights?.quality != null && <span>Quality: {policy.weights.quality}%</span>}
+                      {policy.weights?.cost != null && <span>Cost: {policy.weights.cost}%</span>}
+                      {policy.weights?.speed != null && <span>Speed: {policy.weights.speed}%</span>}
                     </div>
                   </CardContent>
                 </Card>

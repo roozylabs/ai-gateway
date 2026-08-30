@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -28,23 +27,7 @@ import { useCreateModel } from "@/hooks/queries/useModelsQuery";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
 
-const optionalNumber = z.preprocess(
-  (v) => (v === "" || v == null ? undefined : Number(v)),
-  z.number().optional(),
-);
-
-const modelSchema = z.object({
-  providerId: z.string().min(1, "Provider is required"),
-  name: z.string().min(1, "Model name is required"),
-  slug: z.string().min(1, "Slug is required"),
-  displayName: z.string().default(""),
-  inputPricePer1M: optionalNumber,
-  outputPricePer1M: optionalNumber,
-  qualityScore: optionalNumber,
-  speedScore: optionalNumber,
-});
-
-type ModelFormValues = z.infer<typeof modelSchema>;
+import { modelSchema, ModelFormValues } from "@/features/models/schemas/create-model.schema";
 
 const defaultValues: ModelFormValues = {
   providerId: "",

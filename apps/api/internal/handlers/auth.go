@@ -132,6 +132,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Set HttpOnly, SameSite=Lax cookie for browser session security
+	c.SetSameSite(http.SameSiteLaxMode)
+	isSecure := c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
+	c.SetCookie("auth_token", resp.Token, 7*24*3600, "/", "", isSecure, true)
+
 	c.JSON(http.StatusOK, resp)
 }
 
@@ -146,6 +151,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Logout(c *gin.Context) {
 	token := c.GetString("token")
 	if token == "" {
+		if cookie, err := c.Cookie("auth_token"); err == nil && cookie != "" {
+			token = cookie
+		}
+	}
+	if token == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
@@ -154,6 +164,11 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
+
+	// Clear HttpOnly cookie
+	c.SetSameSite(http.SameSiteLaxMode)
+	isSecure := c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
+	c.SetCookie("auth_token", "", -1, "/", "", isSecure, true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
 }

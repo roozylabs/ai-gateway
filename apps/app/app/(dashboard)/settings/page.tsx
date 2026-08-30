@@ -14,7 +14,16 @@ import { SettingFormSheet } from './_components/SettingFormSheet';
 
 export default function SettingsPage() {
   const { data, isLoading, isError, refetch } = useOrganizationQuery();
-  const settings: ApiSetting[] = data?.value ?? [];
+  const settings: ApiSetting[] = data
+    ? Array.isArray(data)
+      ? data
+      : typeof data === 'object'
+        ? Object.entries(data as Record<string, string>).map(([key, value]) => ({
+            key,
+            value: String(value),
+          }))
+        : []
+    : [];
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingSetting, setEditingSetting] = useState<ApiSetting | null>(null);
