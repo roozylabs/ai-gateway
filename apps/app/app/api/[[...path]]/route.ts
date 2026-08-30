@@ -3,8 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 function getBackendApiUrl(): string {
-  const url = process.env.API_URL || 'http://api:8080';
-  return url.replace(/\/+$/, '');
+  if (process.env.API_URL) {
+    return process.env.API_URL.replace(/\/+$/, '');
+  }
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:8080';
+  }
+  return 'http://api:8080';
 }
 
 function sanitizeTargetUrl(url: string, req: NextRequest): string {
