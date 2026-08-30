@@ -14,7 +14,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
 import { toast } from 'sonner';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { apiGetTurnstileConfig } from '@/lib/api';
 import { loginSchema, LoginFormValues } from '@/features/auth/schemas/login.schema';
@@ -72,6 +72,9 @@ export default function LoginPage() {
     turnstileConfig?.siteKey ||
     '1x00000000000000000000AA';
 
+  const showTurnstile = siteKey && siteKey !== 'disabled' && siteKey !== 'none';
+  const isVerified = !showTurnstile || Boolean(turnstileToken);
+
   useEffect(() => {
     if (isAuthenticated) {
       router.replace(AppRoutes.HOME);
@@ -88,6 +91,11 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
+    if (!isVerified) {
+      toast.error('Please complete the security verification first.');
+      return;
+    }
+
     try {
       setLoading(true);
       await login({
@@ -107,6 +115,11 @@ export default function LoginPage() {
   };
 
   const handleOAuthLogin = async (provider: 'google' | 'github') => {
+    if (!isVerified) {
+      toast.error('Please complete the security verification first.');
+      return;
+    }
+
     try {
       setOauthLoading(provider);
       toast.info(`Connecting to ${provider === 'google' ? 'Google' : 'GitHub'} OAuth...`);
@@ -121,8 +134,6 @@ export default function LoginPage() {
       setOauthLoading(null);
     }
   };
-
-  const showTurnstile = siteKey && siteKey !== 'disabled' && siteKey !== 'none';
 
   return (
     <AuthLayout>
@@ -143,7 +154,11 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="admin@roozylabs.dev" {...field} />
+                      <Input
+                        placeholder="admin@roozylabs.dev"
+                        disabled={loading || !isVerified}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -157,7 +172,12 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        disabled={loading || !isVerified}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,7 +185,7 @@ export default function LoginPage() {
               />
 
               {showTurnstile && (
-                <div className="flex justify-start my-2 min-h-[65px]">
+                <div className="flex flex-col items-center justify-center my-3 min-h-[65px] gap-1.5">
                   <Turnstile
                     siteKey={siteKey}
                     onSuccess={(token) => {
@@ -185,10 +205,25 @@ export default function LoginPage() {
                       size: 'normal',
                     }}
                   />
+                  {isVerified ? (
+                    <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      <span>Security verification completed</span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      Verify Cloudflare to unlock login & OAuth
+                    </span>
+                  )}
                 </div>
               )}
 
-              <Button type="submit" variant="prismViolet" className="w-full gap-2 mt-2 cursor-pointer" disabled={loading}>
+              <Button
+                type="submit"
+                variant="prismViolet"
+                className="w-full gap-2 mt-2 cursor-pointer"
+                disabled={loading || !isVerified}
+              >
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -219,7 +254,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               className="w-full text-xs gap-2 cursor-pointer hover:bg-muted/60 transition-colors"
-              disabled={loading || oauthLoading !== null}
+              disabled={loading || oauthLoading !== null || !isVerified}
               onClick={() => handleOAuthLogin('google')}
             >
               {oauthLoading === 'google' ? (
@@ -235,7 +270,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               className="w-full text-xs gap-2 cursor-pointer hover:bg-muted/60 transition-colors"
-              disabled={loading || oauthLoading !== null}
+              disabled={loading || oauthLoading !== null || !isVerified}
               onClick={() => handleOAuthLogin('github')}
             >
               {oauthLoading === 'github' ? (
