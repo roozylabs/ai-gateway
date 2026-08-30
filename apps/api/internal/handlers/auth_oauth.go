@@ -48,6 +48,26 @@ func (h *OAuthHandler) getBaseURL(c *gin.Context) string {
 	return strings.TrimRight(baseURL, "/")
 }
 
+func (h *OAuthHandler) GoogleLogin(c *gin.Context) {
+	c.Params = []gin.Param{{Key: "provider", Value: "google"}}
+	h.InitiateOAuth(c)
+}
+
+func (h *OAuthHandler) GoogleCallback(c *gin.Context) {
+	c.Params = []gin.Param{{Key: "provider", Value: "google"}}
+	h.OAuthCallback(c)
+}
+
+func (h *OAuthHandler) GitHubLogin(c *gin.Context) {
+	c.Params = []gin.Param{{Key: "provider", Value: "github"}}
+	h.InitiateOAuth(c)
+}
+
+func (h *OAuthHandler) GitHubCallback(c *gin.Context) {
+	c.Params = []gin.Param{{Key: "provider", Value: "github"}}
+	h.OAuthCallback(c)
+}
+
 func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 	provider := strings.ToLower(c.Param("provider"))
 	if provider != "google" && provider != "github" {
@@ -64,7 +84,7 @@ func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 	case "google":
 		clientID := os.Getenv("GOOGLE_CLIENT_ID")
 		if clientID != "" {
-			redirectURI := baseURL + "/api/auth/oauth/google/callback"
+			redirectURI := baseURL + "/api/auth/google/callback"
 			scopes := "openid email profile"
 			authURL := fmt.Sprintf(
 				"https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&access_type=offline&prompt=consent&state=%s",
@@ -79,7 +99,7 @@ func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 	case "github":
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
 		if clientID != "" {
-			redirectURI := baseURL + "/api/auth/oauth/github/callback"
+			redirectURI := baseURL + "/api/auth/github/callback"
 			scopes := "read:user user:email"
 			authURL := fmt.Sprintf(
 				"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s",
@@ -140,7 +160,7 @@ func (h *OAuthHandler) OAuthCallback(c *gin.Context) {
 	case "google":
 		clientID := os.Getenv("GOOGLE_CLIENT_ID")
 		clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
-		redirectURI := baseURL + "/api/auth/oauth/google/callback"
+		redirectURI := baseURL + "/api/auth/google/callback"
 
 		form := url.Values{}
 		form.Set("code", code)
@@ -180,7 +200,7 @@ func (h *OAuthHandler) OAuthCallback(c *gin.Context) {
 	case "github":
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
 		clientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
-		redirectURI := baseURL + "/api/auth/oauth/github/callback"
+		redirectURI := baseURL + "/api/auth/github/callback"
 
 		form := url.Values{}
 		form.Set("code", code)
