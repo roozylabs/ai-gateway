@@ -119,18 +119,18 @@ export default function AgentsPage() {
                     {agent.enabled ? "Enabled" : "Disabled"}
                   </Badge>
                 </div>
-                {agent.allowedModels.length > 0 && (
+                {(agent.allowedModels || []).length > 0 && (
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Models</span>
                     <div className="flex gap-1 flex-wrap justify-end max-w-[180px]">
-                      {agent.allowedModels.slice(0, 3).map((m) => (
+                      {(agent.allowedModels || []).slice(0, 3).map((m: string) => (
                         <Badge key={m} variant="outline" className="text-[10px]">
                           {m}
                         </Badge>
                       ))}
-                      {agent.allowedModels.length > 3 && (
+                      {(agent.allowedModels || []).length > 3 && (
                         <Badge variant="outline" className="text-[10px]">
-                          +{agent.allowedModels.length - 3}
+                          +{(agent.allowedModels || []).length - 3}
                         </Badge>
                       )}
                     </div>
@@ -139,7 +139,7 @@ export default function AgentsPage() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Spend Cap</span>
                   <span className="font-mono text-emerald-500 font-bold">
-                    {formatBudgetCents(agent.maxBudgetCents)}
+                    {formatBudgetCents(agent.maxBudgetCents ?? 0)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs border-t border-border pt-2">

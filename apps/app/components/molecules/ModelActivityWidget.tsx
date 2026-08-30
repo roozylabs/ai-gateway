@@ -6,6 +6,30 @@ import { useQuery } from '@tanstack/react-query';
 import { apiGetLogs, ApiRequestLog } from '@/lib/api';
 import { useSSE } from '@/context/SSEContext';
 
+interface SSEEventData {
+  byCredential?: Record<string, number>;
+  byModel?: Record<string, number>;
+  selectedModel?: string;
+  model?: string;
+  latencyMs?: number;
+  gatewayApiKeyId?: string;
+  gatewayKeyId?: string;
+  gatewayKeyName?: string;
+  credentialId?: string;
+  credentialName?: string;
+  keyPrefix?: string;
+}
+
+interface SSEEventPayload {
+  type?: string;
+  data?: SSEEventData;
+  model?: string;
+  gatewayKeyName?: string;
+  credentialName?: string;
+  keyPrefix?: string;
+  latencyMs?: number;
+}
+
 export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
   const { lastEvent } = useSSE();
   const { data: logsData } = useQuery({
@@ -27,7 +51,7 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
       setActiveModel(latestLog.model || 'prism-auto');
       setActiveCred(
         latestLog.credentialName ||
-          (latestLog.gatewayApiKeyId ? `gw_sk_${latestLog.gatewayApiKeyId.slice(0, 6)}` : 'Gateway Key')
+          (latestLog.gatewayKeyId ? `gw_sk_${latestLog.gatewayKeyId.slice(0, 6)}` : 'Gateway Key')
       );
       setLatencyMs(latestLog.latencyMs ?? null);
       setLastActiveTime(logTime);
@@ -37,7 +61,7 @@ export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
   // Consume global SSE stream
   useEffect(() => {
     if (!lastEvent || !lastEvent.payload) return;
-    const payload = lastEvent.payload as any;
+    const payload = lastEvent.payload as SSEEventPayload;
 
     // 1. active_streams_update event (Real-time active credentials & models)
     if (payload.type === 'active_streams_update' && payload.data) {

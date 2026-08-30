@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
-import { PageHeader } from '@/components/molecules/PageHeader';
 import { MetricCard } from '@/components/molecules/MetricCard';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
 import { StatusDot, Badge, StatusType } from '@/components/atoms/Badge';
 import { DataTable, Column } from '@/components/organisms/DataTable';
 import { LazyTrafficChart } from '@/components/organisms/ChartContainer';
+import { ErrorState } from '@/components/molecules/StateAlerts';
 import {
   useDashboardStatsQuery,
   useUsageChartQuery,
@@ -21,6 +21,7 @@ import {
   DollarSign,
   CheckCircle2,
   Server,
+  Calendar,
 } from 'lucide-react';
 import {
   Select,
@@ -45,7 +46,7 @@ interface RecentActivity {
   status: 'success' | 'error';
 }
 
-const dateRangeOptions = [
+const DATE_RANGE_OPTIONS = [
   { value: '24h', label: 'Last 24 Hours' },
   { value: '7d', label: 'Last 7 Days' },
   { value: '30d', label: 'Last 30 Days (Default)' },
@@ -55,10 +56,19 @@ const dateRangeOptions = [
 
 export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<string>('30d');
-  const { data: stats, isLoading } = useDashboardStatsQuery();
-  const { data: usageData } = useUsageChartQuery();
+  const { data: stats, isLoading, isError: isStatsError, refetch: refetchStats } = useDashboardStatsQuery(dateRange);
+  const { data: usageData, refetch: refetchUsage } = useUsageChartQuery(dateRange);
   const { data: logsData } = useLogsQuery();
   const { data: healthData } = useDashboardHealthQuery();
+
+  const rangeLabelMap: Record<string, string> = {
+    '24h': '24h',
+    '7d': '7d',
+    '30d': '30d',
+    '90d': '90d',
+    'all': 'All Time',
+  };
+  const currentRangeLabel = rangeLabelMap[dateRange] || '30d';
 
   const trafficData = useMemo(() => {
     if (!usageData) return [];
@@ -94,27 +104,27 @@ export default function DashboardPage() {
       title: 'Time & Date',
       dataIndex: 'time',
       key: 'time',
-      render: (time) => <span className="font-mono text-muted-foreground whitespace-nowrap text-xs">{time}</span>,
+      render: (time) => <span className="font-mono text-muted-foreground whitespace-nowrap text-xs">{String(time ?? '')}</span>,
     },
     {
       title: 'Route Policy / App',
       dataIndex: 'route',
       key: 'route',
       render: (route) => (
-        <span className="font-mono text-[#8B5CF6] font-semibold text-xs truncate max-w-[140px] block">{route}</span>
+        <span className="font-mono text-[#8B5CF6] font-semibold text-xs truncate max-w-[140px] block">{String(route ?? '')}</span>
       ),
     },
     {
       title: 'Resolved Model',
       dataIndex: 'model',
       key: 'model',
-      render: (model) => <Badge variant="outline" className="font-mono text-[11px]">{model}</Badge>,
+      render: (model) => <Badge variant="outline" className="font-mono text-[11px]">{String(model ?? '')}</Badge>,
     },
     {
       title: 'Latency',
       dataIndex: 'latency',
       key: 'latency',
-      render: (lat) => <span className="font-mono text-xs whitespace-nowrap">{lat} ms</span>,
+      render: (lat) => <span className="font-mono text-xs whitespace-nowrap">{String(lat ?? 0)} ms</span>,
     },
     {
       title: 'Cost',
@@ -134,44 +144,65 @@ export default function DashboardPage() {
     },
   ];
 
+  const tokenSubtitle = stats ? (
+    stats.inputTokens != null && stats.outputTokens != null && (stats.inputTokens > 0 || stats.outputTokens > 0)
+      ? `${(stats.inputTokens / 1_000_000).toFixed(1)}M Input / ${(stats.outputTokens / 1_000_000).toFixed(1)}M Output`
+      : `${(stats.totalTokens / 1_000_000).toFixed(1)}M Total Tokens`
+  ) : undefined;
+
   return (
     <AppLayout>
-      {/* Responsive Header Container with Date Range Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <PageHeader
-          title="AI Infrastructure Overview"
-          description="Monitor traffic, model latency, cost breakdown, and real-time credential health across all providers."
-        />
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-          {/* <Calendar className="h-4 w-4 text-[#8B5CF6] shrink-0" /> */}
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[200px] text-xs font-mono bg-card border-border">
-              <SelectValue placeholder="Select period..." />
-            </SelectTrigger>
-            <SelectContent>
-              {dateRangeOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value} className="font-mono text-xs">
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Top Header Controls: Title & Global Time Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">API Gateway Overview</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Real-time metrics, provider health, and operational statistics</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select value={dateRange} onValueChange={setDateRange}>
+              <SelectTrigger className="w-[180px] h-8 text-xs bg-card border-border">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                {DATE_RANGE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {/* Summary KPI Cards Grid (Responsive: 1 col on mobile, 2 on tablet, 4 on desktop/laptop) */}
+      {isStatsError && !stats && (
+        <div className="mb-6">
+          <ErrorState
+            title="Failed to load dashboard metrics"
+            description="Could not fetch real-time gateway statistics. Please check your network connection or API service status."
+            onRetry={() => {
+              refetchStats();
+              refetchUsage();
+            }}
+          />
+        </div>
+      )}
+
+      {/* Summary KPI Cards Grid */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <MetricCard
-          title="Total Requests (24h)"
+          title={`Total Requests (${currentRangeLabel})`}
           value={stats?.totalRequests ? stats.totalRequests.toLocaleString() : '-'}
-          subtitle="vs previous 24-hour period"
+          subtitle={`selected ${currentRangeLabel} period`}
           icon={<Activity className="h-4 w-4 text-[#8B5CF6]" />}
           loading={isLoading}
         />
         <MetricCard
           title="Tokens Processed"
           value={stats?.totalTokens ? `${(stats.totalTokens / 1000000).toFixed(1)}M` : '-'}
-          subtitle={stats ? `${(stats.totalTokens / 1000000 * 0.667).toFixed(1)}M Input / ${(stats.totalTokens / 1000000 * 0.333).toFixed(1)}M Output` : undefined}
+          subtitle={tokenSubtitle}
           icon={<Zap className="h-4 w-4 text-cyan-500" />}
           loading={isLoading}
         />

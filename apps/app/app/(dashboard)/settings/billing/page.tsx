@@ -11,15 +11,17 @@ import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { CreditCard, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
+
 export default function BillingPage() {
   const { data: plansData, isLoading: plansLoading, isError: plansError, refetch: refetchPlans } = useBillingPlansQuery();
   const { data: subData, isLoading: subLoading, isError: subError, refetch: refetchSub } = useBillingSubscriptionQuery();
   const { data: invoicesData, isLoading: invoicesLoading, isError: invoicesError, refetch: refetchInvoices } = useBillingInvoicesQuery();
   const upgradeMutation = useUpgradeSubscription();
 
-  const plans: ApiBillingPlan[] = plansData?.data ?? [];
-  const invoices: ApiBillingInvoice[] = invoicesData?.data ?? [];
-  const currentPlanSlug = subData?.plan?.slug ?? null;
+  const plans: ApiBillingPlan[] = Array.isArray(plansData) ? plansData : (plansData as unknown as { data?: ApiBillingPlan[] })?.data ?? [];
+  const invoices: ApiBillingInvoice[] = Array.isArray(invoicesData) ? invoicesData : (invoicesData as unknown as { data?: ApiBillingInvoice[] })?.data ?? [];
+  const currentPlanSlug = subData?.planSlug ?? null;
 
   const handleUpgrade = (slug: string) => {
     upgradeMutation.mutate(slug, {
@@ -47,6 +49,7 @@ export default function BillingPage() {
             <div className="grid gap-6 md:grid-cols-3 mb-6">
               {plans.map((plan) => {
                 const isCurrent = currentPlanSlug === plan.slug;
+                const priceMonthlyUsd = (plan.priceMonthlyCents ?? 0) / 100;
                 return (
                   <Card
                     key={plan.id}
@@ -55,17 +58,17 @@ export default function BillingPage() {
                     {isCurrent && <Badge variant="violet" className="absolute -top-2.5 right-4">CURRENT</Badge>}
                     <CardHeader>
                       <CardTitle className="text-lg font-bold">{plan.name}</CardTitle>
-                      <CardDescription>{plan.features[0] ?? 'Plan feature'}</CardDescription>
+                      <CardDescription>{plan.features?.[0] ?? 'Plan feature'}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="font-mono text-3xl font-bold">
-                        {plan.priceMonthlyUsd === 0 ? 'Free' : `$${plan.priceMonthlyUsd}`}
-                        {plan.priceMonthlyUsd > 0 && (
+                        {priceMonthlyUsd === 0 ? 'Free' : `$${priceMonthlyUsd}`}
+                        {priceMonthlyUsd > 0 && (
                           <span className="text-xs text-muted-foreground font-normal"> / month</span>
                         )}
                       </div>
                       <ul className="space-y-2 text-xs text-muted-foreground">
-                        {plan.features.map((feat, i) => (
+                        {plan.features?.map((feat, i) => (
                           <li key={i} className="flex items-center gap-2">
                             <Check className={`h-3.5 w-3.5 ${isCurrent ? 'text-primary' : 'text-emerald-500'}`} />
                             {feat}
@@ -73,7 +76,7 @@ export default function BillingPage() {
                         ))}
                         <li className="flex items-center gap-2">
                           <Check className={`h-3.5 w-3.5 ${isCurrent ? 'text-primary' : 'text-emerald-500'}`} />
-                          {(plan.includedTokens / 1000).toLocaleString()}K tokens/mo
+                          {((plan.includedTokensMonthly ?? 0) / 1000).toLocaleString()}K tokens/mo
                         </li>
                       </ul>
                     </CardContent>
@@ -81,14 +84,21 @@ export default function BillingPage() {
                       {isCurrent ? (
                         <Button variant="outline" className="w-full text-xs" disabled>Current Plan</Button>
                       ) : (
-                        <Button
-                          variant="prismViolet"
-                          className="w-full text-xs"
-                          disabled={upgradeMutation.isPending}
-                          onClick={() => handleUpgrade(plan.slug)}
-                        >
-                          {upgradeMutation.isPending ? 'Upgrading...' : `Upgrade to ${plan.name}`}
-                        </Button>
+                        <ConfirmDialog
+                          title="Upgrade Plan"
+                          description={`Upgrade your organization's subscription tier to "${plan.name}" for $${priceMonthlyUsd}/month?`}
+                          confirmText="Confirm Upgrade"
+                          onConfirm={() => handleUpgrade(plan.slug)}
+                          trigger={
+                            <Button
+                              variant="prismViolet"
+                              className="w-full text-xs"
+                              disabled={upgradeMutation.isPending}
+                            >
+                              {upgradeMutation.isPending ? 'Upgrading...' : `Upgrade to ${plan.name}`}
+                            </Button>
+                          }
+                        />
                       )}
                     </CardFooter>
                   </Card>
@@ -128,7 +138,7 @@ export default function BillingPage() {
                       </span>
                       <span className="font-mono text-foreground">${inv.amountDueUsd.toFixed(2)}</span>
                       <span className="font-mono text-foreground">${inv.amountPaidUsd.toFixed(2)}</span>
-                      <Badge variant={inv.status === 'paid' ? 'success' : inv.status === 'overdue' ? 'destructive' : 'warning'}>
+                      <Badge variant={inv.status === 'paid' ? 'success' : inv.status === 'open' ? 'warning' : 'default'}>
                         {inv.status}
                       </Badge>
                     </div>

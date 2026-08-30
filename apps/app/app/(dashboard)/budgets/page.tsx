@@ -11,7 +11,7 @@ import { Button } from '@/components/atoms/Button';
 import { DataTable, Column } from '@/components/organisms/DataTable';
 import { useBudgetsQuery, useBudgetStatusQuery, useDeleteBudget } from '@/hooks/queries/useBudgetsQuery';
 import { useQuotasQuery } from '@/hooks/queries/useQuotasQuery';
-import { ApiBudget, ApiTenantQuota } from '@/lib/api';
+import { ApiBudget, ApiTenantQuota, ApiBudgetStatus } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
 import { Wallet, Plus, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
@@ -30,7 +30,7 @@ export default function BudgetsPage() {
   const [quotaSheetOpen, setQuotaSheetOpen] = useState(false);
   const [editingQuota, setEditingQuota] = useState<ApiTenantQuota | null>(null);
 
-  const quotasList: ApiTenantQuota[] = quotasData?.data ?? [];
+  const quotasList: ApiTenantQuota[] = Array.isArray(quotasData) ? quotasData : (quotasData as unknown as { data?: ApiTenantQuota[] })?.data ?? [];
 
   const openQuotaEdit = (q: ApiTenantQuota) => {
     setEditingQuota(q);
@@ -85,10 +85,14 @@ export default function BudgetsPage() {
     },
   ];
 
-  const monthlySpent = budgetStatus?.monthlySpent ?? 0;
-  const monthlyLimit = budgetStatus?.budget?.monthlyLimit ?? 0;
-  const usagePercent = budgetStatus?.usagePercent ?? 0;
-  const statusLabel = budgetStatus?.status ?? 'healthy';
+  const firstStatus: ApiBudgetStatus | undefined = Array.isArray(budgetStatus)
+    ? budgetStatus[0]
+    : (budgetStatus as unknown as ApiBudgetStatus | undefined);
+
+  const monthlySpent = firstStatus?.monthlySpent ?? firstStatus?.currentSpendUSD ?? 0;
+  const monthlyLimit = firstStatus?.budget ?? firstStatus?.amountUSD ?? 0;
+  const usagePercent = firstStatus?.usagePercent ?? firstStatus?.spendPercentage ?? 0;
+  const statusLabel = firstStatus?.status ?? 'normal';
 
   const handleDelete = (budget: ApiBudget) => {
     deleteMutation.mutate(budget.id, {
@@ -131,7 +135,7 @@ export default function BudgetsPage() {
       key: 'thresholds',
       render: (_, record) => (
         <span className="text-xs text-muted-foreground">
-          {record.warningThreshold}% / {record.criticalThreshold}%
+          {record.warningThreshold ?? record.alertThresholdPct ?? 80}% / {record.criticalThreshold ?? 100}%
         </span>
       ),
     },

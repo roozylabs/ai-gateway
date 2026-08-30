@@ -9,6 +9,7 @@ import { Badge, StatusDot } from '@/components/atoms/Badge';
 import { useProvidersQuery, useDeleteProvider } from '@/hooks/queries/useProvidersQuery';
 import { ApiProvider } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
+import { CardSkeletonGrid } from '@/components/molecules/CardSkeleton';
 import { Server, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog';
@@ -48,7 +49,9 @@ export default function ProvidersPage() {
           description="Could not communicate with Prism AI Adapter backend."
           onRetry={refetch}
         />
-      ) : !isLoading && providers.length === 0 ? (
+      ) : isLoading ? (
+        <CardSkeletonGrid count={6} />
+      ) : providers.length === 0 ? (
         <EmptyState
           title="No Connected Providers"
           description="There are no AI providers configured in this workspace."

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { AppLayout } from '@/components/AppLayout';
 import { PageHeader } from '@/components/molecules/PageHeader';
@@ -8,13 +9,14 @@ import { Button } from '@/components/atoms/Button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 import { Textarea } from '@/components/atoms/Textarea';
 import { Badge } from '@/components/atoms/Badge';
+import { ErrorState } from '@/components/molecules/StateAlerts';
 import { Cpu, Send, RefreshCw, Box, Layers, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaygroundStore } from '@/stores/usePlaygroundStore';
 import { useSimulateRoutingMutation } from '@/hooks/mutations/usePlaygroundMutations';
 import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 import { getErrorMessage } from '@/types/ui';
-import { ApiModelScoreDetail } from '@/lib/api';
+import { ApiModel, ApiModelScoreDetail } from '@/lib/api';
 
 export default function PlaygroundPage() {
   const {
@@ -28,30 +30,35 @@ export default function PlaygroundPage() {
     setIsStreaming,
   } = usePlaygroundStore();
 
+  const [simulationError, setSimulationError] = useState<string | null>(null);
   const { data: modelsData } = useModelsListQuery();
-  const models = modelsData?.data ?? [];
+  const models: ApiModel[] = Array.isArray(modelsData) ? modelsData : (modelsData as unknown as { data?: ApiModel[] })?.data ?? [];
   const simulateMutation = useSimulateRoutingMutation();
 
   const handleSimulate = async () => {
     try {
       setIsStreaming(true);
+      setSimulationError(null);
       setDecisionDetails(null);
 
       const decision = await simulateMutation.mutateAsync({ prompt });
       const candidateList = decision.candidates || [];
+      const topCand = candidateList[0];
       setDecisionDetails({
         selectedModel: decision.selectedModel,
         provider: decision.selectedProvider,
-        routingPolicy: decision.policyName,
-        score: `${Math.round((decision.candidates?.[0]?.score ?? 0) * 100)}%`,
-        latency: decision.candidates?.[0]?.speedScore != null ? `${decision.candidates[0].speedScore}ms` : '-',
-        cost: decision.candidates?.[0]?.inputPrice1M != null ? `$${decision.candidates[0].inputPrice1M}/1M` : '-',
+        routingPolicy: decision.strategy,
+        score: topCand ? `${Math.round((topCand.totalScore ?? 0) * 100)}%` : '100%',
+        latency: topCand ? `${topCand.estimatedLatencyMs}ms` : '-',
+        cost: topCand?.estimatedCostUSD != null ? `$${topCand.estimatedCostUSD.toFixed(4)}/1K` : '-',
         candidates: candidateList,
       });
 
       toast.success(`Dry-run simulation completed! Selected candidate: ${decision.selectedModel}`);
     } catch (error: unknown) {
-      toast.error(`Simulation failed: ${getErrorMessage(error)}`);
+      const errMsg = getErrorMessage(error);
+      setSimulationError(errMsg);
+      toast.error(`Simulation failed: ${errMsg}`);
     } finally {
       setIsStreaming(false);
     }
@@ -171,15 +178,23 @@ export default function PlaygroundPage() {
                           <span className="text-muted-foreground text-[10px]">({cand.providerName})</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-emerald-400 text-[10px]">${cand.inputPrice1M}/1M</span>
+                          <span className="text-emerald-400 text-[10px]">${cand.estimatedCostUSD != null ? cand.estimatedCostUSD.toFixed(4) : '0'}/1K</span>
                           <Badge variant="outline" className="font-mono text-[10px]">
-                            {Math.round((cand.score || 0) * 100)}%
+                            {Math.round((cand.totalScore || 0) * 100)}%
                           </Badge>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+            ) : simulationError ? (
+              <div className="flex-1 flex flex-col justify-center">
+                <ErrorState
+                  title="Simulation Failed"
+                  description={simulationError}
+                  onRetry={handleSimulate}
+                />
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center rounded-md border border-border bg-muted/40 p-6 text-center">

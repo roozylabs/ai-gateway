@@ -6,14 +6,17 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value;
 
   const isLoginPage = pathname === '/login';
-  const isPublicAsset =
+  const isStaticAsset =
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/v1') ||
-    pathname === '/health' ||
     pathname.includes('favicon.ico');
+  // Backend API and LLM inference reverse-proxies (/api/*, /v1/*) are authenticated
+  // and authorized directly at the Go engine boundary (internal/middleware/auth.go).
+  const isProxiedBackendRoute =
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/v1');
+  const isHealthCheck = pathname === '/health';
 
-  if (isPublicAsset) {
+  if (isStaticAsset || isProxiedBackendRoute || isHealthCheck) {
     return NextResponse.next();
   }
 

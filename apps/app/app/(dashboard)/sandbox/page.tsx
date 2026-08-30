@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import Cookies from "js-cookie";
 
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -44,7 +44,7 @@ import { useModelsListQuery } from "@/hooks/queries/useModelsListQuery";
 import { useAgentsQuery } from "@/hooks/queries/useAgentsQuery";
 import { useGatewayKeysQuery } from "@/hooks/queries/useGatewayKeysQuery";
 import { usePoliciesQuery } from "@/hooks/queries/usePoliciesQuery";
-import { ApiModel } from "@/lib/api";
+import type { ApiModel } from "@/lib/api";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
 import { useSandboxExecutionMutation } from "@/hooks/mutations/useSandboxMutation";
@@ -64,17 +64,7 @@ import {
   Loader2 as Loader2Icon,
 } from "lucide-react";
 
-const sandboxSchema = z.object({
-  model: z.string().min(1, "Target model is required"),
-  routingPolicy: z.string().min(1, "Routing policy is required"),
-  keyPrefix: z.string().min(1, "Gateway API Key Context is required"),
-  agentId: z.string().default("default"),
-  enableStream: z.boolean().default(true),
-  enableAsync: z.boolean().default(false),
-  userPrompt: z.string().min(1, "Prompt / Code Instruction is required"),
-});
-
-type SandboxFormValues = z.infer<typeof sandboxSchema>;
+import { sandboxSchema, SandboxFormValues } from "@/features/sandbox/schemas/sandbox.schema";
 
 function FormTooltipLabel({
   label,
@@ -282,7 +272,7 @@ export default function SandboxPage() {
   const { data: keysData } = useGatewayKeysQuery();
   const { data: policiesData } = usePoliciesQuery();
 
-  const modelsList = modelsData?.data ?? [];
+  const modelsList: ApiModel[] = Array.isArray(modelsData) ? modelsData : (modelsData as unknown as { data?: ApiModel[] })?.data ?? [];
   const agentsList = Array.isArray(agentsData) ? agentsData : [];
   const keysList = keysData?.data ?? [];
   const policiesList = Array.isArray(policiesData) ? policiesData : [];
@@ -343,17 +333,20 @@ export default function SandboxPage() {
   });
 
   const handleJobCompleted = React.useCallback(
-    (jobId: string, result: any, model?: string, startTime?: number) => {
+    (jobId: string, result: Record<string, unknown> | null | undefined, model?: string, startTime?: number) => {
       if (completedJobRef.current === jobId) return;
       completedJobRef.current = jobId;
 
-      const content =
-        result?.choices?.[0]?.message?.content || JSON.stringify(result, null, 2);
+      const choices = result?.choices as Array<{ message?: { content?: string } }> | undefined;
+      const usage = result?.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
 
-      if (result?.usage) {
+      const content =
+        choices?.[0]?.message?.content || (result ? JSON.stringify(result, null, 2) : "");
+
+      if (usage) {
         setTokenStats({
-          input: result.usage.prompt_tokens || 0,
-          output: result.usage.completion_tokens || 0,
+          input: usage.prompt_tokens || 0,
+          output: usage.completion_tokens || 0,
         });
       }
       if (model) {
@@ -379,9 +372,9 @@ export default function SandboxPage() {
     const unsubscribe = subscribeToSSE((event) => {
       if (!event || !event.payload) return;
 
-      const payload = event.payload as any;
-      const evtType = payload.type || event.type;
-      const data = payload.data || payload;
+      const payload = event.payload as Record<string, unknown>;
+      const evtType = (payload.type as string) || event.type;
+      const data = (payload.data as Record<string, unknown>) || payload;
 
       if (evtType === "async_job_updated" || payload.type === "async_job_updated") {
         const jobId = data.jobId || data.job_id || payload.jobId || payload.job_id;
@@ -389,7 +382,11 @@ export default function SandboxPage() {
 
         if (jobId === activeJobId) {
           if (status === "completed") {
-            handleJobCompleted(activeJobId, data.result || payload.result, data.model || payload.model);
+            handleJobCompleted(
+              activeJobId,
+              (data.result || payload.result) as Record<string, unknown> | null | undefined,
+              (data.model || payload.model) as string | undefined
+            );
           } else if (status === "failed") {
             setExecutionOutput(`Execution Failed:\n${data.error || payload.error}`);
             toast.error(`Async Job ${activeJobId} failed: ${data.error || payload.error}`);
@@ -437,11 +434,7 @@ export default function SandboxPage() {
 
     try {
       if (values.enableAsync) {
-        setIsAsyncExecuting(true);
-        const token =
-          typeof window !== "undefined"
-            ? localStorage.getItem("access_token")
-            : null;
+        const token = Cookies.get('auth_token');
         const asyncRes = await fetch("/api/sandbox/chat/completions/async", {
           method: "POST",
           headers: {

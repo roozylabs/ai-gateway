@@ -159,8 +159,8 @@ export default function MCPServerDetailPage() {
         <Badge variant="outline" className="font-mono text-[10px] uppercase">
           {server.transportType}
         </Badge>
-        <StatusDot status={statusToDot(server.status)} />
-        <span className="capitalize text-xs font-mono text-muted-foreground">{server.status}</span>
+        <StatusDot status={statusToDot(server.status || server.healthStatus || 'unknown')} />
+        <span className="capitalize text-xs font-mono text-muted-foreground">{server.status || server.healthStatus || 'unknown'}</span>
         <Badge variant={server.enabled ? "success" : "outline"} className="font-mono text-[10px] uppercase">
           {server.enabled ? "Enabled" : "Disabled"}
         </Badge>
@@ -260,7 +260,7 @@ export default function MCPServerDetailPage() {
                   <div className="h-4 animate-pulse rounded bg-muted" />
                   <div className="h-4 animate-pulse rounded bg-muted" />
                 </div>
-              ) : stats && stats.tools.length > 0 ? (
+              ) : stats?.tools && stats.tools.length > 0 ? (
                 <div className="space-y-4">
                   {stats.tools.slice(0, 8).map((t) => {
                     const pct = stats.totalRequests > 0 ? (t.requests / stats.totalRequests) * 100 : 0;
@@ -294,7 +294,7 @@ export default function MCPServerDetailPage() {
               <CardDescription>Agents currently allowed to use this MCP server.</CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
-              {stats && stats.agents.length > 0 ? (
+              {stats?.agents && stats.agents.length > 0 ? (
                 <div className="space-y-2">
                   {stats.agents.map((a) => (
                     <div
