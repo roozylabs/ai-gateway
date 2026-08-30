@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name("prism")
   .description("Official CLI for RoozyLabs Prism AI Control Plane & Gateway")
-  .version("2.1.0");
+  .version("2.2.0");
 
 registerLoginCommand(program);
 registerModelsCommand(program);

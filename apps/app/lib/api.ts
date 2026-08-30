@@ -958,6 +958,36 @@ export async function apiGetMCPServerTools(id: string): Promise<ApiMCPTool[]> {
   return response.data;
 }
 
+export interface ApiMCPToolStat {
+  tool: string;
+  requests: number;
+  errors: number;
+  avgLatencyMs: number;
+}
+
+export interface ApiMCPAgentBinding {
+  id: string;
+  name: string;
+  displayName: string;
+  status: string;
+  enabled: boolean;
+}
+
+export interface ApiMCPServerStats {
+  totalRequests: number;
+  successCount: number;
+  errorCount: number;
+  successRate: number;
+  avgLatencyMs: number;
+  tools: ApiMCPToolStat[];
+  agents: ApiMCPAgentBinding[];
+}
+
+export async function apiGetMCPServerStats(id: string, days?: number): Promise<ApiMCPServerStats> {
+  const response = await api.get<any>(`/mcp/servers/${id}/stats`, { params: days ? { days } : {} });
+  return response.data?.data || response.data;
+}
+
 // MCP Registry Catalog API
 export interface ApiMCPRegistryServer {
   id: string;

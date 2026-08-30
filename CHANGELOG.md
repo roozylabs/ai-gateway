@@ -5,6 +5,20 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-08-30
+
+### Added
+- **MCP Server Detail Page with Invocation Usage Tracking**: A dedicated dynamic route `/mcp/[id]` in the Next.js dashboard now visualizes per-server usage and topology:
+  - **Backend invocation persistence (migration `073`)**: New `mcp_server_invocations` table records every MCP tool call (user, server, tool, status code, error flag/message, latency) with tenant RLS and `created_at` indexes.
+  - **Gateway instrumentation**: `MCPGateway.ExecuteTool` now best-effort saves an invocation on every terminal path (success, transport error, upstream tool error) without breaking the tool-call response.
+  - **Stats endpoint**: `GET /api/mcp/servers/:id/stats?days=` returns aggregated metrics (total/success/error requests, success rate, avg latency) plus a per-tool breakdown, clamped to a 7/30/90 sliding window.
+  - **Connected agents (server-side reverse lookup)**: The stats endpoint resolves which agents reference the server via `agents.allowed_mcp_servers`, returning bindings for the detail page.
+  - **Detail page sections**: request/error/latency metric cards, window selector, tool usage breakdown with progress bars, connected agents, synced tools table, and reusable Test modal / edit dialog; the MCP list cards now link to the detail page.
+- **TypeScript SDK (`@roozylabs/prism` v2.2.0)**: `MCPModule.getServerStats(serverId, days?)` plus `MCPServerStats`, `MCPToolStat`, and `MCPAgentBinding` types.
+
+### Changed
+- Synchronized release version to `2.2.0` across all package manifests (`apps/app`, `apps/web`, `packages/sdk`, `packages/cli`), UI version badges (`AppLayout`, `AuthLayout`), API swagger annotation (`main.go` `@version`), health endpoint, and OpenTelemetry service version.
+
 ## [Unreleased]
 
 ### Changed

@@ -1,6 +1,6 @@
 # Prism Runtime Architecture & Control Plane Specification
 
-> **Version:** 2.1.0  
+> **Version:** 2.2.0  
 > **Status:** Production Architecture Standard  
 > **Target System:** RoozyLabs Prism AI Gateway (`apps/api`)
 

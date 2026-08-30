@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiGetMCPServers, apiGetMCPServer, apiCreateMCPServer, apiUpdateMCPServer, apiDeleteMCPServer, apiSyncMCPServer, apiGetMCPServerTools } from '@/lib/api';
+import { apiGetMCPServers, apiGetMCPServer, apiCreateMCPServer, apiUpdateMCPServer, apiDeleteMCPServer, apiSyncMCPServer, apiGetMCPServerTools, apiGetMCPServerStats } from '@/lib/api';
 
 export function useMCPServersQuery() {
   return useQuery({
@@ -20,6 +20,14 @@ export function useMCPServerQuery(id: string) {
   return useQuery({
     queryKey: ['mcp-servers', id, 'edit'],
     queryFn: () => apiGetMCPServer(id),
+    enabled: Boolean(id),
+  });
+}
+
+export function useMCPServerStatsQuery(id: string, days: number) {
+  return useQuery({
+    queryKey: ['mcp-servers', id, 'stats', days],
+    queryFn: () => apiGetMCPServerStats(id, days),
     enabled: Boolean(id),
   });
 }

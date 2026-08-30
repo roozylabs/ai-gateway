@@ -90,6 +90,35 @@ func (r *AgentRepository) FindByID(ctx context.Context, id, userID string) (*mod
 	return &a, nil
 }
 
+// FindByMCPServerName returns agents whose allowed_mcp_servers includes the
+// given MCP server name (reverse lookup used by the MCP server detail page).
+func (r *AgentRepository) FindByMCPServerName(ctx context.Context, userID, serverName string) ([]models.Agent, error) {
+	query := `SELECT ` + agentColumns + ` FROM agents WHERE $1 = ANY(allowed_mcp_servers)`
+	var args []interface{}
+	args = append(args, serverName)
+	if userID != "" {
+		query += ` AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`
+		args = append(args, userID)
+	}
+	query += ` ORDER BY created_at DESC`
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var agents []models.Agent
+	for rows.Next() {
+		var a models.Agent
+		if err := scanAgent(rows, &a); err != nil {
+			return nil, err
+		}
+		agents = append(agents, a)
+	}
+	return agents, rows.Err()
+}
+
 func (r *AgentRepository) FindByUserAndName(ctx context.Context, userID, name string) (*models.Agent, error) {
 	var a models.Agent
 	query := `SELECT ` + agentColumns + ` FROM agents WHERE name = $1`

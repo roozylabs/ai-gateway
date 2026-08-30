@@ -1,6 +1,6 @@
 # RoozyLabs Prism — Security & Tenant Isolation Hardening Report
 
-**Version:** v2.1.0  
+**Version:** v2.2.0  
 **Date:** 2026-08-28  
 **Repository:** [github.com/roozylabs/prism](https://github.com/roozylabs/prism)  
 **Target Applications:** `apps/api` (Go 1.24 Control Plane Engine) & `apps/app` (Next.js 15 Admin Console)  

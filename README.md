@@ -4,7 +4,7 @@
 [![Next.js 16](https://img.shields.io/badge/Next.js-16.3.3-black?style=flat&logo=next.js)](https://nextjs.org)
 [![Astro](https://img.shields.io/badge/Astro-5.0-BC52EE?style=flat&logo=astro)](https://astro.build)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat&logo=docker)](https://www.docker.com/)
-[![Version](https://img.shields.io/badge/Version-2.8.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-2.2.0-blue.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **RoozyLabs Prism** is an infrastructure-grade **Universal AI Control Plane** and intelligent model gateway. It unifies multiple AI providers (OpenAI, Anthropic, Google Gemini, OpenRouter, OpenCode Free) and credential pools behind a single, resilient execution layer.
@@ -71,7 +71,7 @@ For the detailed internal architecture, see [docs/ARCHITECTURE.md](docs/ARCHITEC
 - **High Availability & Circuit Breaking**: Automatic error detection, credential quarantine, and instant failover keep your uptime high.
 - **AI Agent Gateway**: Govern autonomous agents with per-agent model, tool, resource, and budget limits.
 - **Tool & Resource Gateway**: Connect custom function calls, REST APIs, and PostgreSQL resources with sandboxed execution.
-- **MCP Gateway**: Central discovery and routing for Model Context Protocol (MCP) servers.
+- **MCP Gateway**: Central discovery and routing for Model Context Protocol (MCP) servers, with per-server usage analytics (success rate, latency, per-tool breakdown) and the Next.js server detail page that also surfaces connected agent bindings.
 - **Enterprise Identity & Permissions (RBAC)**: Declarative policies with allow/deny rules and strict cross-domain authorization.
 - **Cryptographic Audit Trail**: Tamper-proof, verifiable log of every execution — who, what model, tools, cost, and outcome.
 - **AI FinOps & Budget Manager**: Spend limits, velocity alerts, burn-rate forecasts, and model cost recommendations.

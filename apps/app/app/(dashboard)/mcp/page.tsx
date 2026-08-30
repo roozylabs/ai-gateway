@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import {
@@ -18,6 +19,7 @@ import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
 import { CardSkeletonGrid } from "@/components/molecules/CardSkeleton";
 import { useMCPServersQuery } from "@/hooks/queries/useMCPServersQuery";
 import { ApiMCPServer } from "@/lib/api";
+import { mcpDetailRoute } from "@/constants/routes";
 import {
   useUpdateMCPServerMutation,
   useDeleteMCPServerMutation,
@@ -34,6 +36,7 @@ import {
   Loader2,
   Play,
   Cpu,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
@@ -150,9 +153,12 @@ export default function MCPPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
                       <Globe className="h-4 w-4 text-[#8B5CF6]" />
-                      <span className="font-semibold text-sm">
+                      <Link
+                        href={mcpDetailRoute(s.id)}
+                        className="font-semibold text-sm hover:text-[#8B5CF6] hover:underline"
+                      >
                         {s.displayName || s.name}
-                      </span>
+                      </Link>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Badge
@@ -233,6 +239,17 @@ export default function MCPPage() {
                 </CardContent>
                 <CardFooter className="pt-3 border-t border-border flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      asChild
+                    >
+                      <Link href={mcpDetailRoute(s.id)}>
+                        <Activity className="h-3 w-3 text-[#8B5CF6]" />
+                        <span>Details</span>
+                      </Link>
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

@@ -279,6 +279,31 @@ export interface CreateMCPServerRequest {
   enabled?: boolean;
 }
 
+export interface MCPToolStat {
+  tool: string;
+  requests: number;
+  errors: number;
+  avgLatencyMs: number;
+}
+
+export interface MCPAgentBinding {
+  id: string;
+  name: string;
+  displayName: string;
+  status: string;
+  enabled: boolean;
+}
+
+export interface MCPServerStats {
+  totalRequests: number;
+  successCount: number;
+  errorCount: number;
+  successRate: number;
+  avgLatencyMs: number;
+  tools: MCPToolStat[];
+  agents: MCPAgentBinding[];
+}
+
 export interface CandidateScoreDetail {
   modelId: string;
   slug: string;

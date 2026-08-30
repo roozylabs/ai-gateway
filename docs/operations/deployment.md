@@ -109,7 +109,7 @@ docker compose ps
 
 # 2. Check API health endpoint
 curl -sS https://api.prism.roozylabs.com/health
-# Expected Output: {"status":"ok","version":"2.1.0","database":"ok","redis":"ok"}
+# Expected Output: {"status":"ok","version":"2.2.0","database":"ok","redis":"ok"}
 
 # 3. Test Gateway API Key Authentication
 curl -sS https://api.prism.roozylabs.com/v1/models \

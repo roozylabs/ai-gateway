@@ -57,5 +57,5 @@ docker compose exec redis redis-cli -a redis FLUSHDB
 
 # 4. Check API Gateway Health Endpoint
 curl -sS http://localhost:8080/health
-# Expected: {"status":"ok","version":"2.1.0","database":"ok","redis":"ok"}
+# Expected: {"status":"ok","version":"2.2.0","database":"ok","redis":"ok"}
 ```

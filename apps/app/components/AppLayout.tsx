@@ -121,7 +121,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </div>
               {!collapsed && (
                 <span className="font-mono text-base font-bold tracking-tight text-foreground truncate">
-                  PRISM <span className="text-xs font-normal text-muted-foreground">v2.1.0</span>
+                  PRISM <span className="text-xs font-normal text-muted-foreground">v2.2.0</span>
                 </span>
               )}
             </Link>

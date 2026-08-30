@@ -32,3 +32,7 @@ export enum ApiEndpoints {
 export enum CookieKeys {
   AUTH_TOKEN = 'auth_token',
 }
+
+export function mcpDetailRoute(id: string): string {
+  return `${AppRoutes.MCP}/${id}`;
+}

@@ -257,7 +257,7 @@ info:
   contact: {}
   description: Centralized AI API Gateway
   title: RoozyLabs Prism AI Gateway API
-  version: 2.1.0
+  version: 2.2.0
 paths:
   /api/auth/login:
     post:
