@@ -20,6 +20,11 @@ import { getErrorMessage } from '@/types/ui';
 import { BudgetFormSheet } from './_components/BudgetFormSheet';
 import { QuotaFormSheet } from './_components/QuotaFormSheet';
 
+function toMoney(val: unknown): string {
+  const n = Number(val ?? 0);
+  return `$${(Number.isFinite(n) ? n : 0).toFixed(2)}`;
+}
+
 export default function BudgetsPage() {
   const { data: budgets, isLoading: budgetsLoading, isError: budgetsError, refetch: refetchBudgets } = useBudgetsQuery();
   const { data: budgetStatus, isLoading: statusLoading, isError: statusError, refetch: refetchStatus } = useBudgetStatusQuery();
@@ -54,19 +59,19 @@ export default function BudgetsPage() {
       title: 'Monthly Limit ($)',
       dataIndex: 'monthlySpendLimitUsd',
       key: 'monthlyLimit',
-      render: (val) => <span className="font-mono text-xs font-bold text-emerald-500">${(val as number ?? 0).toFixed(2)}</span>,
+      render: (val) => <span className="font-mono text-xs font-bold text-emerald-500">{toMoney(val)}</span>,
     },
     {
       title: 'Daily Limit ($)',
       dataIndex: 'dailySpendLimitUsd',
       key: 'dailyLimit',
-      render: (val) => <span className="font-mono text-xs">${(val as number ?? 0).toFixed(2)}</span>,
+      render: (val) => <span className="font-mono text-xs">{toMoney(val)}</span>,
     },
     {
       title: 'Daily Req Limit',
       dataIndex: 'dailyRequestLimit',
       key: 'dailyReq',
-      render: (val) => <span className="font-mono text-xs">{(val as number ?? 0).toLocaleString()} reqs</span>,
+      render: (val) => <span className="font-mono text-xs">{Number(val ?? 0).toLocaleString()} reqs</span>,
     },
     {
       title: 'Max Streams',
@@ -90,7 +95,7 @@ export default function BudgetsPage() {
     : (budgetStatus as unknown as ApiBudgetStatus | undefined);
 
   const monthlySpent = firstStatus?.monthlySpent ?? firstStatus?.currentSpendUSD ?? 0;
-  const monthlyLimit = firstStatus?.budget ?? firstStatus?.amountUSD ?? 0;
+  const monthlyLimit = firstStatus?.budget?.monthlyLimit ?? firstStatus?.amountUSD ?? 0;
   const usagePercent = firstStatus?.usagePercent ?? firstStatus?.spendPercentage ?? 0;
   const statusLabel = firstStatus?.status ?? 'normal';
 
@@ -112,13 +117,18 @@ export default function BudgetsPage() {
       title: 'Monthly Limit',
       dataIndex: 'monthlyLimit',
       key: 'monthlyLimit',
-      render: (val) => <span className="font-mono text-sm">${(val as number).toFixed(2)}</span>,
+      render: (val) => <span className="font-mono text-sm">{toMoney(val)}</span>,
     },
     {
       title: 'Daily Limit',
       dataIndex: 'dailyLimit',
       key: 'dailyLimit',
-      render: (val) => <span className="font-mono text-sm">{(val as number) > 0 ? `$${(val as number).toFixed(2)}` : '-'}</span>,
+      render: (val) => {
+        const n = Number(val ?? 0);
+        return (
+          <span className="font-mono text-sm">{Number.isFinite(n) && n > 0 ? `$${n.toFixed(2)}` : '-'}</span>
+        );
+      },
     },
     {
       title: 'Hard Limit',
@@ -216,10 +226,10 @@ export default function BudgetsPage() {
                   <CardContent className="space-y-4">
                     <div className="flex items-baseline justify-between">
                       <span className="font-mono text-2xl font-bold text-foreground">
-                        ${monthlySpent.toFixed(2)}
+                        {toMoney(monthlySpent)}
                       </span>
                       <span className="font-mono text-xs text-muted-foreground">
-                        Limit: ${monthlyLimit.toFixed(2)} / month
+                        Limit: {toMoney(monthlyLimit)} / month
                       </span>
                     </div>
                     <Progress value={statusLoading ? 0 : Math.min(100, Math.round(usagePercent))} />
