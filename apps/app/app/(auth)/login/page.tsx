@@ -14,7 +14,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
 import { toast } from 'sonner';
-import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { apiGetTurnstileConfig } from '@/lib/api';
 import { loginSchema, LoginFormValues } from '@/features/auth/schemas/login.schema';
@@ -155,7 +155,7 @@ export default function LoginPage() {
                     <FormLabel>Email Address</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="admin@roozylabs.dev"
+                        placeholder="Enter your an email"
                         disabled={loading || !isVerified}
                         {...field}
                       />
@@ -174,7 +174,7 @@ export default function LoginPage() {
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="Enter your password"
                         disabled={loading || !isVerified}
                         {...field}
                       />
@@ -185,7 +185,7 @@ export default function LoginPage() {
               />
 
               {showTurnstile && (
-                <div className="flex flex-col items-center justify-center my-3 min-h-[65px] gap-1.5">
+                <div className="flex flex-col items-start justify-center my-3 min-h-[65px] gap-1.5">
                   <Turnstile
                     siteKey={siteKey}
                     onSuccess={(token) => {
@@ -205,16 +205,6 @@ export default function LoginPage() {
                       size: 'normal',
                     }}
                   />
-                  {isVerified ? (
-                    <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      <span>Security verification completed</span>
-                    </div>
-                  ) : (
-                    <span className="text-[11px] text-muted-foreground font-mono">
-                      Verify Cloudflare to unlock login & OAuth
-                    </span>
-                  )}
                 </div>
               )}
 
