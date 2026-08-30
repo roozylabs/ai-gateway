@@ -8,6 +8,10 @@ type User struct {
 	Email         string    `json:"email" db:"email"`
 	EmailVerified bool      `json:"emailVerified" db:"emailVerified"`
 	Image         string    `json:"image,omitempty" db:"image"`
+	OrgID         string    `json:"orgId,omitempty" db:"org_id"`
+	IsOnboarded   bool      `json:"isOnboarded" db:"is_onboarded"`
+	PrimaryRole   string    `json:"primaryRole,omitempty" db:"primary_role"`
+	AuthProvider  string    `json:"authProvider,omitempty" db:"auth_provider"`
 	CreatedAt     time.Time `json:"createdAt" db:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt" db:"updatedAt"`
 }

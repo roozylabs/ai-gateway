@@ -21,11 +21,6 @@ func NewUserPermissionsHandler(rbacRepo *repository.RBACRepository, userRepo *re
 
 func (h *UserPermissionsHandler) GetPermissions(c *gin.Context) {
 	userID := c.GetString("userId")
-	orgID := c.GetString("organizationId")
-	if orgID == "" {
-		orgID = "org_default"
-	}
-
 	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": gin.H{"message": "Unauthorized", "type": "auth_error"},
@@ -34,23 +29,42 @@ func (h *UserPermissionsHandler) GetPermissions(c *gin.Context) {
 	}
 
 	user, err := h.userRepo.FindByID(c.Request.Context(), userID)
-	isOnboarded := false
-	primaryRole := "developer"
-	if err == nil && user != nil {
-		isOnboarded = true
+	if err != nil || user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": gin.H{"message": "User not found", "type": "auth_error"},
+		})
+		return
+	}
+
+	orgID := c.GetString("organizationId")
+	if orgID == "" {
+		orgID = user.OrgID
+	}
+	if orgID == "" {
+		orgID = "org_default"
+	}
+
+	primaryRole := user.PrimaryRole
+	if primaryRole == "" {
+		primaryRole = "developer"
 	}
 
 	perms, roleSlug, err := h.rbacRepo.GetUserPermissions(c.Request.Context(), userID, orgID)
-	if err != nil {
-		perms = []string{"org:read", "logs:read"}
-		roleSlug = "viewer"
+	if err != nil || len(perms) == 0 {
+		if user.IsOnboarded {
+			perms = []string{"org:read", "logs:read", "api_keys:read", "models:read"}
+			roleSlug = "developer"
+		} else {
+			perms = []string{}
+			roleSlug = "viewer"
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"userId":         userID,
 		"organizationId": orgID,
 		"roleSlug":       roleSlug,
-		"isOnboarded":    isOnboarded,
+		"isOnboarded":    user.IsOnboarded,
 		"primaryRole":    primaryRole,
 		"permissions":    perms,
 	})

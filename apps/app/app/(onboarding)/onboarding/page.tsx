@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/molecules/Card';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/molecules/Form';
@@ -12,15 +13,27 @@ import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import { toast } from 'sonner';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
-import { apiCompleteOnboarding } from '@/lib/api';
-
+import { apiCompleteOnboarding, apiGetUserPermissions, ApiUserPermissionsResponse } from '@/lib/api';
 import { onboardingSchema, OnboardingValues } from '@/features/onboarding/schemas/onboarding.schema';
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
+
+  const { data: permissions, isLoading: permissionsLoading } = useQuery<ApiUserPermissionsResponse>({
+    queryKey: ['user-permissions'],
+    queryFn: apiGetUserPermissions,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    if (!permissionsLoading && permissions?.isOnboarded === true) {
+      router.replace('/');
+    }
+  }, [permissions, permissionsLoading, router]);
 
   const form = useForm<OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
@@ -36,6 +49,8 @@ export default function OnboardingPage() {
       setLoading(true);
       const res = await apiCompleteOnboarding(values);
       setCreatedKey(res.apiKey || null);
+      await queryClient.invalidateQueries({ queryKey: ['user-permissions'] });
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       setStep(3);
       toast.success('Onboarding complete! Your workspace is ready.');
     } catch (err: unknown) {
@@ -137,7 +152,14 @@ export default function OnboardingPage() {
                 </p>
               </div>
 
-              <Button variant="prismViolet" className="w-full gap-2 mt-4" onClick={() => router.push('/')}>
+              <Button
+                variant="prismViolet"
+                className="w-full gap-2 mt-4"
+                onClick={() => {
+                  router.push('/');
+                  router.refresh();
+                }}
+              >
                 Go to Control Plane Console <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
