@@ -12,13 +12,15 @@ import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import { toast } from 'sonner';
-import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { CheckCircle2, ArrowRight, LogOut, Sparkles, User as UserIcon } from 'lucide-react';
 import { apiCompleteOnboarding, apiGetUserPermissions, ApiUserPermissionsResponse } from '@/lib/api';
 import { onboardingSchema, OnboardingValues } from '@/features/onboarding/schemas/onboarding.schema';
+import { useAuth } from '@/context/AuthContext';
 
 export default function OnboardingPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user, logout } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
@@ -44,6 +46,28 @@ export default function OnboardingPage() {
       gatewayKeyName: '',
     },
   });
+
+  // Calculate smart suggestions based on user profile
+  const suggestedOrgName = (() => {
+    if (user?.name && user.name.toLowerCase() !== 'developer' && !user.name.includes('Developer')) {
+      return `${user.name}'s Org`;
+    }
+    if (user?.email && user.email.includes('@')) {
+      const domain = user.email.split('@')[1];
+      if (domain && !['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com'].includes(domain)) {
+        const company = domain.split('.')[0];
+        return company.charAt(0).toUpperCase() + company.slice(1) + ' Enterprise';
+      }
+    }
+    return 'RoozyLabs Enterprise';
+  })();
+
+  const handleFillDefaults = () => {
+    form.setValue('organizationName', suggestedOrgName, { shouldValidate: true });
+    form.setValue('workspaceName', 'Production Environment', { shouldValidate: true });
+    form.setValue('gatewayKeyName', 'Primary Control Key', { shouldValidate: true });
+    toast.info('Suggested organization values applied.');
+  };
 
   const handleNextStep = async () => {
     const isValid = await form.trigger(['organizationName', 'workspaceName']);
@@ -71,6 +95,29 @@ export default function OnboardingPage() {
 
   return (
     <AuthLayout>
+      {/* Top User Context & Sign Out Bar */}
+      <div className="flex items-center justify-between bg-card/70 border border-border px-3.5 py-2 mb-3 shadow-sm backdrop-blur-sm">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-6 w-6 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center font-mono text-[10px] font-bold shrink-0">
+            {user?.name ? user.name.charAt(0).toUpperCase() : <UserIcon className="h-3 w-3" />}
+          </div>
+          <span className="text-xs text-muted-foreground truncate font-mono">
+            {user?.email || 'Logged in user'}
+          </span>
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => logout()}
+          className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 cursor-pointer shrink-0"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          <span>Sign Out</span>
+        </Button>
+      </div>
+
       <Card className="border-border shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <Badge variant="violet" className="mx-auto mb-2">Step {step} of 3</Badge>
@@ -92,11 +139,21 @@ export default function OnboardingPage() {
                       name="organizationName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>
-                            Organization Name <span className="text-destructive">*</span>
-                          </FormLabel>
+                          <div className="flex items-center justify-between">
+                            <FormLabel>
+                              Organization Name <span className="text-destructive">*</span>
+                            </FormLabel>
+                            <button
+                              type="button"
+                              onClick={handleFillDefaults}
+                              className="text-[11px] font-mono text-violet-400 hover:text-violet-300 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Sparkles className="h-3 w-3" />
+                              <span>Auto-fill</span>
+                            </button>
+                          </div>
                           <FormControl>
-                            <Input placeholder="e.g. RoozyLabs Inc." required {...field} />
+                            <Input placeholder={`e.g. ${suggestedOrgName}`} required {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -112,7 +169,7 @@ export default function OnboardingPage() {
                             Default Workspace Name <span className="text-destructive">*</span>
                           </FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. Production Workspace" required {...field} />
+                            <Input placeholder="e.g. Production Environment" required {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -136,7 +193,7 @@ export default function OnboardingPage() {
                             First Gateway Key Label <span className="text-destructive">*</span>
                           </FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. Primary Production Key" required {...field} />
+                            <Input placeholder="e.g. Primary Control Key" required {...field} />
                           </FormControl>
                           <FormDescription>Bound to default workspace for OpenAI/Gemini requests</FormDescription>
                           <FormMessage />
