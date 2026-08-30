@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { apiGetUserPermissions, ApiUserPermissionsResponse } from '@/lib/api';
 import { UserRole } from '@/types/roles';
@@ -11,6 +12,7 @@ interface PermissionContextType {
   permissions: string[];
   hasPermission: (perm: string) => boolean;
   isLoading: boolean;
+  isOnboarded: boolean;
 }
 
 const PermissionContext = createContext<PermissionContextType>({
@@ -18,12 +20,17 @@ const PermissionContext = createContext<PermissionContextType>({
   permissions: [],
   hasPermission: () => true,
   isLoading: false,
+  isOnboarded: true,
 });
 
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const { data, isLoading } = useQuery<ApiUserPermissionsResponse>({
     queryKey: ['user-permissions'],
     queryFn: apiGetUserPermissions,
+    retry: 1,
   });
 
   const rawRole = (data?.primaryRole || data?.roleSlug || 'owner').toLowerCase();
@@ -37,6 +44,15 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       : UserRole.OWNER;
 
   const permissions = data?.permissions || [];
+  const isOnboarded = data?.isOnboarded ?? true;
+
+  useEffect(() => {
+    if (!isLoading && data) {
+      if (data.isOnboarded === false && pathname && !pathname.startsWith('/onboarding') && !pathname.startsWith('/login')) {
+        router.replace('/onboarding');
+      }
+    }
+  }, [data, isLoading, pathname, router]);
 
   const hasPermission = (perm: string): boolean => {
     if (role === UserRole.OWNER || role === UserRole.ADMIN) return true;
@@ -44,7 +60,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <PermissionContext.Provider value={{ role, permissions, hasPermission, isLoading }}>
+    <PermissionContext.Provider value={{ role, permissions, hasPermission, isLoading, isOnboarded }}>
       {children}
     </PermissionContext.Provider>
   );

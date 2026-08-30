@@ -1,29 +1,36 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
 
 type OnboardingHandler struct {
+	db       *sql.DB
 	userRepo *repository.UserRepository
 	keyRepo  *repository.GatewayKeyRepository
 }
 
-func NewOnboardingHandler(userRepo *repository.UserRepository, keyRepo *repository.GatewayKeyRepository) *OnboardingHandler {
+func NewOnboardingHandler(db *sql.DB, userRepo *repository.UserRepository, keyRepo *repository.GatewayKeyRepository) *OnboardingHandler {
 	return &OnboardingHandler{
+		db:       db,
 		userRepo: userRepo,
 		keyRepo:  keyRepo,
 	}
 }
 
 type OnboardingRequest struct {
-	WorkspaceName string `json:"workspaceName" binding:"required"`
-	PrimaryRole   string `json:"primaryRole"` // developer, agent_manager, finops_manager, auditor
+	OrganizationName string `json:"organizationName"`
+	WorkspaceName    string `json:"workspaceName"`
+	GatewayKeyName   string `json:"gatewayKeyName"`
+	InitialProvider  string `json:"initialProvider"`
+	InitialApiKey    string `json:"initialApiKey"`
+	PrimaryRole      string `json:"primaryRole"`
 }
 
 func (h *OnboardingHandler) Complete(c *gin.Context) {
@@ -36,38 +43,110 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 	}
 
 	var req OnboardingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": gin.H{"message": "Invalid onboarding request: " + err.Error(), "type": "invalid_request_error"},
-		})
+	_ = c.ShouldBindJSON(&req)
+
+	orgName := strings.TrimSpace(req.OrganizationName)
+	if orgName == "" {
+		orgName = "RoozyLabs Enterprise"
+	}
+	wsName := strings.TrimSpace(req.WorkspaceName)
+	if wsName == "" {
+		wsName = "Production Environment"
+	}
+	keyName := strings.TrimSpace(req.GatewayKeyName)
+	if keyName == "" {
+		keyName = "Primary Control Key"
+	}
+	role := strings.TrimSpace(req.PrimaryRole)
+	if role == "" {
+		role = "owner"
+	}
+
+	ctx := c.Request.Context()
+	orgID := "org_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:16]
+	wsID := "ws_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:16]
+	memberID := "mem_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:16]
+	orgSlug := strings.ToLower(strings.ReplaceAll(orgName, " ", "-")) + "-" + orgID[4:8]
+	wsSlug := strings.ToLower(strings.ReplaceAll(wsName, " ", "-")) + "-" + wsID[3:7]
+
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin onboarding transaction: " + err.Error()})
+		return
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// 1. Create Organization
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO organizations (id, name, slug, plan_tier, created_at, updated_at)
+		 VALUES ($1, $2, $3, 'enterprise', NOW(), NOW())
+		 ON CONFLICT (id) DO NOTHING`,
+		orgID, orgName, orgSlug,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create organization: " + err.Error()})
 		return
 	}
 
-	if req.PrimaryRole == "" {
-		req.PrimaryRole = "developer"
+	// 2. Create Workspace
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO workspaces (id, org_id, name, slug, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, NOW(), NOW())
+		 ON CONFLICT (org_id, slug) DO NOTHING`,
+		wsID, orgID, wsName, wsSlug,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workspace: " + err.Error()})
+		return
 	}
 
-	// Create initial Gateway API key for the onboarded user
-	keyVal := "gw_sk_live_" + uuid.New().String()[:24]
-	gwKey := &models.GatewayAPIKey{
-		ID:        uuid.New().String(),
-		UserID:    userID,
-		Name:      req.WorkspaceName + " Default Key",
-		KeyHash:   keyVal,
-		KeyPrefix: keyVal[:14],
-		Enabled:   true,
-		RateLimit: 600,
+	// 3. Add user as owner in organization_members
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO organization_members (id, org_id, user_id, role, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, NOW(), NOW())
+		 ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role`,
+		memberID, orgID, userID, role,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign organization membership: " + err.Error()})
+		return
 	}
 
-	if err := h.keyRepo.Create(c.Request.Context(), gwKey); err != nil {
-		// Non-fatal if key creation fails
-		_ = err
+	// 4. Create initial Gateway Key
+	rawKey := "gw_sk_live_" + strings.ReplaceAll(uuid.New().String(), "-", "")
+	keyID := uuid.New().String()
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO gateway_api_keys (id, user_id, org_id, workspace_id, name, key_hash, key_prefix, enabled, rate_limit, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, true, 600, NOW(), NOW())`,
+		keyID, userID, orgID, wsID, keyName, rawKey, rawKey[:14],
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create gateway key: " + err.Error()})
+		return
+	}
+
+	// 5. Update user onboarding status
+	_, err = tx.ExecContext(ctx,
+		`UPDATE "user" SET is_onboarded = true, org_id = $1, primary_role = $2, "updatedAt" = NOW() WHERE id = $3`,
+		orgID, role, userID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user onboarding status: " + err.Error()})
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit onboarding transaction: " + err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":      "Onboarding completed successfully",
-		"workspaceName": req.WorkspaceName,
-		"primaryRole":   req.PrimaryRole,
-		"apiKey":        keyVal,
+		"success":        true,
+		"message":        "Onboarding completed successfully",
+		"organizationId": orgID,
+		"workspaceId":    wsID,
+		"workspaceName":  wsName,
+		"primaryRole":    role,
+		"apiKey":         rawKey,
 	})
 }

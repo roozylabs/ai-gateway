@@ -216,7 +216,7 @@ func main() {
 	governancePolicyHandler := handlers.NewGovernancePolicyHandler(governancePolicyRepo, rbacEngine)
 	auditTrailHandler := handlers.NewAuditTrailHandler(auditTrailRepo, auditRecorder)
 	userPermissionsHandler := handlers.NewUserPermissionsHandler(rbacRepo, userRepo)
-	onboardingHandler := handlers.NewOnboardingHandler(userRepo, gatewayKeyRepo)
+	onboardingHandler := handlers.NewOnboardingHandler(db.DB, userRepo, gatewayKeyRepo)
 	oauthHandler := handlers.NewOAuthHandler(authService)
 	quotaHandler := handlers.NewQuotaHandler(quotaRepo)
 	billingHandler := handlers.NewBillingHandler(billingRepo)
