@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Proxy**: `newMCPClient` merges per-server headers and dispatches to `transport.NewStdio` for local servers or SSE/Streamable HTTP for remote servers.
   - **SDK (`@roozylabs/prism` v2.2.0)**: `MCPModule` gains `getServer`, `createServer`, `updateServer`, `deleteServer` plus the new remote/local fields on `MCPServer`.
   - **UI**: MCP form supports a Remote/Local type selector, conditional headers/command/args/env editors, an enable toggle, and a quick enable/disable switch on each server card.
+- **MCP Test Tool Browser**: The MCP test modal now loads the actual tools synced from any connected MCP server (e.g. Context7, Firecrawl, or any Streamable HTTP/SSE endpoint) and renders a tool selector with a Guided vs Raw JSON argument editor. Guided mode generates form fields from each tool's JSON input schema (string/number/boolean/enum/array/object with defaults and required markers), so context7/firecrawl-style servers (and all others) can be exercised without hand-authoring argument JSON. Backend exposes `GET /mcp/servers/:id/tools` and the SDK `MCPModule.getTools` reads the same catalog.
 
 ## [2.8.0] - 2026-08-28
 
