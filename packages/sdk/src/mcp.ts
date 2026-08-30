@@ -1,5 +1,5 @@
 import { HttpClient } from "./client.js";
-import { MCPServer, MCPTool, MCPServerWithTools, MCPServerEdit, CreateMCPServerRequest } from "./types.js";
+import { MCPServer, MCPTool, MCPServerWithTools, MCPServerEdit, CreateMCPServerRequest, MCPServerStats } from "./types.js";
 
 export class MCPModule {
   constructor(private client: HttpClient) {}
@@ -40,5 +40,11 @@ export class MCPModule {
 
   public async getTools(serverId: string): Promise<MCPTool[]> {
     return this.client.request<MCPTool[]>(`/api/mcp/servers/${serverId}/tools`);
+  }
+
+  public async getServerStats(serverId: string, days?: number): Promise<MCPServerStats> {
+    const params = days && days > 0 ? `?days=${days}` : "";
+    const res = await this.client.request<{ data: MCPServerStats }>(`/api/mcp/servers/${serverId}/stats${params}`);
+    return res.data;
   }
 }
