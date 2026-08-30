@@ -32,3 +32,8 @@ export async function apiCompleteOnboarding(data: ApiCompleteOnboardingRequest):
   const response = await api.post<ApiCompleteOnboardingResponse>('/onboarding', data);
   return response.data;
 }
+
+export async function apiGetTurnstileConfig(): Promise<{ siteKey: string }> {
+  const response = await api.get<{ siteKey: string }>('/auth/turnstile-config');
+  return response.data;
+}
