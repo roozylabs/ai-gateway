@@ -34,6 +34,10 @@ export async function apiCompleteOnboarding(data: ApiCompleteOnboardingRequest):
 }
 
 export async function apiGetTurnstileConfig(): Promise<{ siteKey: string }> {
-  const response = await api.get<{ siteKey: string }>('/auth/turnstile-config');
-  return response.data;
+  try {
+    const response = await api.get<{ siteKey: string }>('/auth/turnstile-config');
+    return response.data;
+  } catch {
+    return { siteKey: process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY || '1x00000000000000000000AA' };
+  }
 }
