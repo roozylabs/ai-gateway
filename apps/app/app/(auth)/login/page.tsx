@@ -72,6 +72,9 @@ export default function LoginPage() {
     turnstileConfig?.siteKey ||
     '1x00000000000000000000AA';
 
+  const showTurnstile = siteKey && siteKey !== 'disabled' && siteKey !== 'none';
+  const isVerified = !showTurnstile || Boolean(turnstileToken);
+
   useEffect(() => {
     if (isAuthenticated) {
       router.replace(AppRoutes.HOME);
@@ -88,6 +91,11 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
+    if (!isVerified) {
+      toast.error('Please complete the security verification first.');
+      return;
+    }
+
     try {
       setLoading(true);
       await login({
@@ -107,6 +115,11 @@ export default function LoginPage() {
   };
 
   const handleOAuthLogin = async (provider: 'google' | 'github') => {
+    if (!isVerified) {
+      toast.error('Please complete the security verification first.');
+      return;
+    }
+
     try {
       setOauthLoading(provider);
       toast.info(`Connecting to ${provider === 'google' ? 'Google' : 'GitHub'} OAuth...`);
@@ -121,8 +134,6 @@ export default function LoginPage() {
       setOauthLoading(null);
     }
   };
-
-  const showTurnstile = siteKey && siteKey !== 'disabled' && siteKey !== 'none';
 
   return (
     <AuthLayout>
@@ -143,7 +154,11 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="admin@roozylabs.dev" {...field} />
+                      <Input
+                        placeholder="Enter your an email"
+                        disabled={loading || !isVerified}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -157,7 +172,12 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="Enter your password"
+                        disabled={loading || !isVerified}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,7 +185,7 @@ export default function LoginPage() {
               />
 
               {showTurnstile && (
-                <div className="flex justify-start my-2 min-h-[65px]">
+                <div className="flex flex-col items-start justify-center my-3 min-h-[65px] gap-1.5">
                   <Turnstile
                     siteKey={siteKey}
                     onSuccess={(token) => {
@@ -188,7 +208,12 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <Button type="submit" variant="prismViolet" className="w-full gap-2 mt-2 cursor-pointer" disabled={loading}>
+              <Button
+                type="submit"
+                variant="prismViolet"
+                className="w-full gap-2 mt-2 cursor-pointer"
+                disabled={loading || !isVerified}
+              >
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -219,7 +244,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               className="w-full text-xs gap-2 cursor-pointer hover:bg-muted/60 transition-colors"
-              disabled={loading || oauthLoading !== null}
+              disabled={loading || oauthLoading !== null || !isVerified}
               onClick={() => handleOAuthLogin('google')}
             >
               {oauthLoading === 'google' ? (
@@ -235,7 +260,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               className="w-full text-xs gap-2 cursor-pointer hover:bg-muted/60 transition-colors"
-              disabled={loading || oauthLoading !== null}
+              disabled={loading || oauthLoading !== null || !isVerified}
               onClick={() => handleOAuthLogin('github')}
             >
               {oauthLoading === 'github' ? (
