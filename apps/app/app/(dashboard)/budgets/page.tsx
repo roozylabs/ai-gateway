@@ -114,7 +114,7 @@ export default function BudgetsPage() {
       title: 'Daily Limit',
       dataIndex: 'dailyLimit',
       key: 'dailyLimit',
-      render: (val) => <span className="font-mono text-sm">{(val as number) > 0 ? `$${(val as number).toFixed(2)}` : '—'}</span>,
+      render: (val) => <span className="font-mono text-sm">{(val as number) > 0 ? `$${(val as number).toFixed(2)}` : '-'}</span>,
     },
     {
       title: 'Hard Limit',

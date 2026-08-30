@@ -44,8 +44,8 @@ export default function PlaygroundPage() {
         provider: decision.selectedProvider,
         routingPolicy: decision.policyName,
         score: `${Math.round((decision.candidates?.[0]?.score ?? 0) * 100)}%`,
-        latency: decision.candidates?.[0]?.speedScore != null ? `${decision.candidates[0].speedScore}ms` : '—',
-        cost: decision.candidates?.[0]?.inputPrice1M != null ? `$${decision.candidates[0].inputPrice1M}/1M` : '—',
+        latency: decision.candidates?.[0]?.speedScore != null ? `${decision.candidates[0].speedScore}ms` : '-',
+        cost: decision.candidates?.[0]?.inputPrice1M != null ? `$${decision.candidates[0].inputPrice1M}/1M` : '-',
         candidates: candidateList,
       });
 

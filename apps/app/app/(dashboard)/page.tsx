@@ -163,28 +163,28 @@ export default function DashboardPage() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <MetricCard
           title="Total Requests (24h)"
-          value={stats?.totalRequests ? stats.totalRequests.toLocaleString() : '—'}
+          value={stats?.totalRequests ? stats.totalRequests.toLocaleString() : '-'}
           subtitle="vs previous 24-hour period"
           icon={<Activity className="h-4 w-4 text-[#8B5CF6]" />}
           loading={isLoading}
         />
         <MetricCard
           title="Tokens Processed"
-          value={stats?.totalTokens ? `${(stats.totalTokens / 1000000).toFixed(1)}M` : '—'}
+          value={stats?.totalTokens ? `${(stats.totalTokens / 1000000).toFixed(1)}M` : '-'}
           subtitle={stats ? `${(stats.totalTokens / 1000000 * 0.667).toFixed(1)}M Input / ${(stats.totalTokens / 1000000 * 0.333).toFixed(1)}M Output` : undefined}
           icon={<Zap className="h-4 w-4 text-cyan-500" />}
           loading={isLoading}
         />
         <MetricCard
           title="Total Expenditure"
-          value={stats?.totalEstimatedCost != null ? `$${stats.totalEstimatedCost.toFixed(2)}` : '—'}
+          value={stats?.totalEstimatedCost != null ? `$${stats.totalEstimatedCost.toFixed(2)}` : '-'}
           subtitle="via Smart Routing"
           icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
           loading={isLoading}
         />
         <MetricCard
           title="Gateway Success Rate"
-          value={stats ? `${(100 - stats.errorRate).toFixed(2)}%` : '—'}
+          value={stats ? `${(100 - stats.errorRate).toFixed(2)}%` : '-'}
           subtitle={stats ? `${stats.errorRate.toFixed(2)}% failover auto-rerouted` : undefined}
           icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
           loading={isLoading}

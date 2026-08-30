@@ -64,7 +64,7 @@ export default function ModelsPage() {
       title: 'Provider',
       dataIndex: 'providerName',
       key: 'providerName',
-      render: (providerName) => <Badge variant="outline">{providerName || '—'}</Badge>,
+      render: (providerName) => <Badge variant="outline">{providerName || '-'}</Badge>,
     },
     {
       title: 'Pricing (Input / Output)',
@@ -80,8 +80,8 @@ export default function ModelsPage() {
       key: 'scores',
       render: (_, record) => (
         <div className="flex gap-1.5 flex-wrap">
-          <Badge variant="violet" className="font-mono text-[10px]">Q: {record.qualityScore != null ? `${record.qualityScore}%` : '—'}</Badge>
-          <Badge variant="info" className="font-mono text-[10px]">S: {record.speedScore != null ? `${record.speedScore}%` : '—'}</Badge>
+          <Badge variant="violet" className="font-mono text-[10px]">Q: {record.qualityScore != null ? `${record.qualityScore}%` : '-'}</Badge>
+          <Badge variant="info" className="font-mono text-[10px]">S: {record.speedScore != null ? `${record.speedScore}%` : '-'}</Badge>
           {record.codingScore != null && <Badge variant="outline" className="font-mono text-[10px]">Code: {record.codingScore}%</Badge>}
         </div>
       ),

@@ -19,7 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'RoozyLabs Prism — Universal AI Control Plane',
+  title: 'RoozyLabs Prism: Universal AI Control Plane',
   description: 'AI Infrastructure Control Plane, Model Gateway, Credential Rotation & Governance',
 };
 
