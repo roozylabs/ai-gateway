@@ -89,6 +89,10 @@ func ResolveCanonicalTenantContext(c *gin.Context, gatewayKey *models.GatewayAPI
 
 	if c != nil {
 		c.Set(TenantContextKey, tc)
+		c.Set("organization_id", tc.OrgID)
+		c.Set("organizationId", tc.OrgID)
+		c.Set("workspace_id", tc.WorkspaceID)
+		c.Set("project_id", tc.ProjectID)
 	}
 
 	return tc, nil
@@ -122,6 +126,10 @@ func TenantMiddleware(orgChecker ...OrgMemberChecker) gin.HandlerFunc {
 		}
 
 		c.Set(TenantContextKey, tc)
+		c.Set("organization_id", tc.OrgID)
+		c.Set("organizationId", tc.OrgID)
+		c.Set("workspace_id", tc.WorkspaceID)
+		c.Set("project_id", tc.ProjectID)
 		c.Next()
 	}
 }
