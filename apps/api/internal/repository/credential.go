@@ -322,6 +322,13 @@ func (r *CredentialRepository) UpdateHealthAndStatus(ctx context.Context, creden
 	return err
 }
 
+func (r *CredentialRepository) ResetErrorCount(ctx context.Context, credentialID string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE credentials SET error_count = 0, health_score = 100.00, status = 'active', updated_at = NOW() WHERE id = $1`,
+		credentialID)
+	return err
+}
+
 func (r *CredentialRepository) FindRoundRobin(ctx context.Context, providerID string, excludeIDs []string) ([]models.Credential, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, provider_id, name, encrypted_key, key_prefix, masked_key, COALESCE(auth_type, 'api_key'), encrypted_metadata, priority, enabled, status, COALESCE(health_score, 100.00),

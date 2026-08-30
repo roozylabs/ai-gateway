@@ -115,10 +115,18 @@ func isInvalidSignature(v interface{}) bool {
 }
 
 func ensureSignature(m map[string]interface{}) {
-	if sig, hasSig := m["thought_signature"]; !hasSig || isInvalidSignature(sig) {
-		m["thought_signature"] = SentinelThoughtSignature
+	var validSig interface{}
+	if sig, hasSig := m["thought_signature"]; hasSig && !isInvalidSignature(sig) {
+		validSig = sig
+	} else if sig, hasSig := m["thoughtSignature"]; hasSig && !isInvalidSignature(sig) {
+		validSig = sig
 	}
-	if sig, hasSig := m["thoughtSignature"]; !hasSig || isInvalidSignature(sig) {
+
+	if validSig != nil {
+		m["thought_signature"] = validSig
+		m["thoughtSignature"] = validSig
+	} else {
+		m["thought_signature"] = SentinelThoughtSignature
 		m["thoughtSignature"] = SentinelThoughtSignature
 	}
 }

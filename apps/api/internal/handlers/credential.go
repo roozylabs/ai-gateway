@@ -445,14 +445,19 @@ func (h *CredentialHandler) ResetCooldown(c *gin.Context) {
 		_ = h.cooldownStore.ClearCooldown(c.Request.Context(), credID)
 		_ = h.cooldownStore.DeleteCredentialQuota(c.Request.Context(), credID)
 	}
-	_ = h.credentials.UpdateStatus(c.Request.Context(), credID, "active")
+	_ = h.credentials.ResetErrorCount(c.Request.Context(), credID)
 	if h.publisher != nil {
 		_ = h.publisher.Publish(c.Request.Context(), "CREDENTIAL_STATUS_CHANGED", map[string]interface{}{
 			"credentialId": credID,
 			"status":       "active",
+			"healthScore":  100.00,
+		})
+		_ = h.publisher.Publish(c.Request.Context(), "CREDENTIAL_QUOTA_UPDATED", map[string]interface{}{
+			"credentialId": credID,
+			"quota":        nil,
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Cooldown reset successfully"})
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Cooldown and health reset successfully"})
 }
 
 // Reveal godoc
@@ -544,11 +549,18 @@ func (h *CredentialHandler) Test(c *gin.Context) {
 	latency := int(time.Since(start).Milliseconds())
 
 	success := statusCode >= 200 && statusCode < 300
-	if success && h.cooldownStore != nil {
-		_ = h.cooldownStore.ClearCooldown(c.Request.Context(), credID)
-		_ = h.cooldownStore.DeleteCredentialQuota(c.Request.Context(), credID)
-		_ = h.credentials.UpdateStatus(c.Request.Context(), credID, "active")
+	if success {
+		if h.cooldownStore != nil {
+			_ = h.cooldownStore.ClearCooldown(c.Request.Context(), credID)
+			_ = h.cooldownStore.DeleteCredentialQuota(c.Request.Context(), credID)
+		}
+		_ = h.credentials.ResetErrorCount(c.Request.Context(), credID)
 		if h.publisher != nil {
+			_ = h.publisher.Publish(c.Request.Context(), "CREDENTIAL_STATUS_CHANGED", map[string]interface{}{
+				"credentialId": credID,
+				"status":       "active",
+				"healthScore":  100.00,
+			})
 			_ = h.publisher.Publish(c.Request.Context(), "CREDENTIAL_QUOTA_UPDATED", map[string]interface{}{
 				"credentialId": credID,
 				"quota":        nil,

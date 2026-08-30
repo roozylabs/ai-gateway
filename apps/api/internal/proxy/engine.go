@@ -504,6 +504,22 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 			continue
 		}
 
+		// 4xx other errors (e.g. 400 Bad Request, 404, 422)
+		if httpResp.StatusCode >= 400 && httpResp.StatusCode < 500 {
+			bodyStr := string(body)
+			lastErr = fmt.Errorf("upstream error %d on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
+			lastAttemptStatus = httpResp.StatusCode
+			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
+			go e.syncCredentialHealth(context.Background(), route.Credential, false, false)
+
+			// If running smart routing (prism-auto/roozy-auto/auto) and more candidate routes exist, failover to next candidate!
+			if (req.Model == "prism-auto" || req.Model == "roozy-auto" || req.Model == "auto") && i < len(routes)-1 {
+				time.Sleep(calculateBackoff(i))
+				continue
+			}
+			return nil, nil, lastErr
+		}
+
 		// Success → reset 50x error count
 		_ = e.cooldown.RecordSuccess(ctx, route.Credential.ID)
 		_ = e.creds.IncrementUsage(ctx, route.Credential.ID)
@@ -800,19 +816,19 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			bodyStr := string(bodyBytes)
 			bodyLower := strings.ToLower(bodyStr)
 			if strings.Contains(bodyLower, "quota") || strings.Contains(bodyLower, "limit") || strings.Contains(bodyLower, "exhausted") || strings.Contains(bodyLower, "too many") || strings.Contains(bodyLower, "resource_exhausted") {
-			retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
-			e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
-			_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
-			RecordCredentialEventTelemetry(c.Request.Context(), telemetry.CredentialEventExhaustion, route.Credential.ID, route.Credential.ProviderID)
-			lastErr = fmt.Errorf("upstream rate/quota limit (%d) on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
-			lastAttemptStatus = httpResp.StatusCode
-			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
-			continue
-		}
+				retryAfter := determineCooldownDuration(httpResp.Header, bodyStr)
+				e.extractAndSaveQuota(c.Request.Context(), route.Credential.ID, httpResp.Header, true, retryAfter, bodyStr)
+				_ = e.cooldown.SetCooldown(c.Request.Context(), route.Credential.ID, retryAfter)
+				RecordCredentialEventTelemetry(c.Request.Context(), telemetry.CredentialEventExhaustion, route.Credential.ID, route.Credential.ProviderID)
+				lastErr = fmt.Errorf("upstream rate/quota limit (%d) on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
+				lastAttemptStatus = httpResp.StatusCode
+				attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
+				continue
+			}
 
-		_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
-		RecordCredentialEventTelemetry(c.Request.Context(), telemetry.CredentialEventFailure, route.Credential.ID, route.Credential.ProviderID)
-		lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
+			_ = e.creds.UpdateStatus(c.Request.Context(), route.Credential.ID, "invalid")
+			RecordCredentialEventTelemetry(c.Request.Context(), telemetry.CredentialEventFailure, route.Credential.ID, route.Credential.ProviderID)
+			lastErr = fmt.Errorf("credential %s returned %d", route.Credential.ID, httpResp.StatusCode)
 			lastAttemptStatus = httpResp.StatusCode
 			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
 			continue
@@ -839,12 +855,23 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 			continue
 		}
 
-		// 4xx (other than 401/403/429) → abort immediately, do not retry
+		// 4xx (other than 401/403/429)
 		if httpResp.StatusCode >= 400 && httpResp.StatusCode < 500 {
 			bodyBytes, _ := io.ReadAll(httpResp.Body)
 			_ = httpResp.Body.Close()
 			release()
-			return nil, fmt.Errorf("upstream error %d: %s", httpResp.StatusCode, string(bodyBytes))
+			bodyStr := string(bodyBytes)
+			lastErr = fmt.Errorf("upstream error %d on credential %s: %s", httpResp.StatusCode, route.Credential.ID, strings.TrimSpace(bodyStr))
+			lastAttemptStatus = httpResp.StatusCode
+			attempts = append(attempts, newAttemptRecord(route, httpResp.StatusCode, lastErr.Error(), attemptStart))
+			go e.syncCredentialHealth(context.Background(), route.Credential, false, false)
+
+			// If running smart routing (prism-auto/roozy-auto/auto) and more candidate routes exist, failover to next candidate!
+			if (req.Model == "prism-auto" || req.Model == "roozy-auto" || req.Model == "auto") && i < len(routes)-1 {
+				time.Sleep(calculateBackoff(i))
+				continue
+			}
+			return nil, lastErr
 		}
 
 		// Success → start streaming & reset 50x error count
@@ -875,7 +902,6 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 		streamToolAcc := NewStreamToolAccumulator()
 		forwardedAny := false
-
 		for scanner.Scan() {
 			line := scanner.Bytes()
 			if len(line) == 0 {
