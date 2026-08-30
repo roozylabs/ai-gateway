@@ -23,13 +23,21 @@ const PermissionContext = createContext<PermissionContextType>({
   isOnboarded: true,
 });
 
-export function PermissionProvider({ children }: { children: React.ReactNode }) {
+export function PermissionProvider({
+  children,
+  initialData,
+}: {
+  children: React.ReactNode;
+  initialData?: ApiUserPermissionsResponse | null;
+}) {
   const router = useRouter();
   const pathname = usePathname();
 
   const { data, isLoading } = useQuery<ApiUserPermissionsResponse>({
     queryKey: ['user-permissions'],
     queryFn: apiGetUserPermissions,
+    initialData: initialData ?? undefined,
+    staleTime: 60 * 1000,
     retry: 1,
   });
 
