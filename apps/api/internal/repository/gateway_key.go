@@ -157,12 +157,22 @@ func (r *GatewayKeyRepository) ListByUserIDWithFilter(ctx context.Context, userI
 
 func (r *GatewayKeyRepository) Update(ctx context.Context, k *models.GatewayAPIKey) error {
 	k.UpdatedAt = time.Now()
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE gateway_api_keys SET name=$1, enabled=$2, rate_limit=$3, allowed_models=$4, expires_at=$5, provider_id=$6, updated_at=$7
-		 WHERE id=$8`,
-		k.Name, k.Enabled, k.RateLimit, pq.Array(k.AllowedModels),
-		k.ExpiresAt, k.ProviderID, k.UpdatedAt, k.ID,
-	)
+	var err error
+	if k.UserID != "" && k.UserID != "user_admin" {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE gateway_api_keys SET name=$1, enabled=$2, rate_limit=$3, allowed_models=$4, expires_at=$5, provider_id=$6, updated_at=$7
+			 WHERE id=$8 AND (user_id=$9 OR user_id='user_admin' OR user_id='')`,
+			k.Name, k.Enabled, k.RateLimit, pq.Array(k.AllowedModels),
+			k.ExpiresAt, k.ProviderID, k.UpdatedAt, k.ID, k.UserID,
+		)
+	} else {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE gateway_api_keys SET name=$1, enabled=$2, rate_limit=$3, allowed_models=$4, expires_at=$5, provider_id=$6, updated_at=$7
+			 WHERE id=$8`,
+			k.Name, k.Enabled, k.RateLimit, pq.Array(k.AllowedModels),
+			k.ExpiresAt, k.ProviderID, k.UpdatedAt, k.ID,
+		)
+	}
 	return err
 }
 

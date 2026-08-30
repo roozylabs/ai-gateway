@@ -78,11 +78,20 @@ func (r *ProviderRepository) Update(ctx context.Context, p *models.Provider) err
 		p.RoutingStrategy = "round_robin"
 	}
 	p.UpdatedAt = time.Now()
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE providers SET name=$1, slug=$2, base_url=$3, type=$4, enabled=$5, routing_strategy=$6, updated_at=$7
-		 WHERE id=$8`,
-		p.Name, p.Slug, p.BaseURL, p.Type, p.Enabled, p.RoutingStrategy, p.UpdatedAt, p.ID,
-	)
+	var err error
+	if p.UserID != "" && p.UserID != "user_admin" {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE providers SET name=$1, slug=$2, base_url=$3, type=$4, enabled=$5, routing_strategy=$6, updated_at=$7
+			 WHERE id=$8 AND (user_id=$9 OR user_id='user_admin' OR user_id='')`,
+			p.Name, p.Slug, p.BaseURL, p.Type, p.Enabled, p.RoutingStrategy, p.UpdatedAt, p.ID, p.UserID,
+		)
+	} else {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE providers SET name=$1, slug=$2, base_url=$3, type=$4, enabled=$5, routing_strategy=$6, updated_at=$7
+			 WHERE id=$8`,
+			p.Name, p.Slug, p.BaseURL, p.Type, p.Enabled, p.RoutingStrategy, p.UpdatedAt, p.ID,
+		)
+	}
 	return err
 }
 

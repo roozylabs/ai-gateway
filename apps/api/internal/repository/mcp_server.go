@@ -135,11 +135,20 @@ func (r *MCPServerRepository) Update(ctx context.Context, s *models.MCPServer) e
 	if s.Type == "" {
 		s.Type = "remote"
 	}
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE mcp_servers SET display_name=$1, description=$2, transport_type=$3, endpoint_url=$4, auth_token_encrypted=$5, status=$6, enabled=$7, config_type=$8, headers_encrypted=$9, command=$10, args=$11, env=$12, updated_at=$13
-		 WHERE id = $14`,
-		s.DisplayName, s.Description, s.TransportType, s.EndpointURL, s.AuthTokenEncrypted, s.Status, s.Enabled, s.Type, s.HeadersEncrypted, s.Command, pq.Array(s.Args), encodeEnvJSON(s.Env), s.UpdatedAt, s.ID,
-	)
+	var err error
+	if s.UserID != "" && s.UserID != "user_admin" {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE mcp_servers SET display_name=$1, description=$2, transport_type=$3, endpoint_url=$4, auth_token_encrypted=$5, status=$6, enabled=$7, config_type=$8, headers_encrypted=$9, command=$10, args=$11, env=$12, updated_at=$13
+			 WHERE id = $14 AND (user_id = $15 OR user_id = 'user_admin' OR user_id = '')`,
+			s.DisplayName, s.Description, s.TransportType, s.EndpointURL, s.AuthTokenEncrypted, s.Status, s.Enabled, s.Type, s.HeadersEncrypted, s.Command, pq.Array(s.Args), encodeEnvJSON(s.Env), s.UpdatedAt, s.ID, s.UserID,
+		)
+	} else {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE mcp_servers SET display_name=$1, description=$2, transport_type=$3, endpoint_url=$4, auth_token_encrypted=$5, status=$6, enabled=$7, config_type=$8, headers_encrypted=$9, command=$10, args=$11, env=$12, updated_at=$13
+			 WHERE id = $14`,
+			s.DisplayName, s.Description, s.TransportType, s.EndpointURL, s.AuthTokenEncrypted, s.Status, s.Enabled, s.Type, s.HeadersEncrypted, s.Command, pq.Array(s.Args), encodeEnvJSON(s.Env), s.UpdatedAt, s.ID,
+		)
+	}
 	return err
 }
 

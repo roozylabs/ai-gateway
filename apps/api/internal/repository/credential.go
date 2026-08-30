@@ -61,7 +61,7 @@ func (r *CredentialRepository) ListByProviderID(ctx context.Context, providerID 
 	return credentials, nil
 }
 
-func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, search string, limit, offset int) ([]models.Credential, int64, error) {
+func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, search string, limit, offset int, userID ...string) ([]models.Credential, int64, error) {
 	query := `SELECT c.id, c.provider_id, COALESCE(p.name, ''), c.name, c.encrypted_key, c.key_prefix, c.masked_key, COALESCE(c.auth_type, 'api_key'), c.encrypted_metadata, c.priority, c.enabled, c.status, COALESCE(c.health_score, 100.00),
 		        c.last_used_at, c.request_count, c.error_count, c.last_error, c.last_error_at,
 		        c.created_at, c.updated_at
@@ -70,6 +70,18 @@ func (r *CredentialRepository) ListWithFilter(ctx context.Context, providerID, s
 
 	var args []interface{}
 	var countArgs []interface{}
+
+	uid := ""
+	if len(userID) > 0 {
+		uid = userID[0]
+	}
+	if uid != "" && uid != "user_admin" {
+		args = append(args, uid)
+		countArgs = append(countArgs, uid)
+		filter := fmt.Sprintf(" AND (p.user_id = $%d OR p.user_id = 'user_admin' OR p.user_id = '')", len(args))
+		query += filter
+		countQuery += filter
+	}
 
 	if providerID != "" && providerID != "all" {
 		args = append(args, providerID)
@@ -182,18 +194,33 @@ func (r *CredentialRepository) Create(ctx context.Context, c *models.Credential)
 	return err
 }
 
-func (r *CredentialRepository) Update(ctx context.Context, c *models.Credential) error {
+func (r *CredentialRepository) Update(ctx context.Context, c *models.Credential, userID ...string) error {
 	c.UpdatedAt = time.Now()
 	if c.AuthType == "" {
 		c.AuthType = "api_key"
 	}
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE credentials SET name=$1, encrypted_key=$2, key_prefix=$3, auth_type=$4, encrypted_metadata=$5, priority=$6,
-		        enabled=$7, status=$8, updated_at=$9
-		 WHERE id=$10`,
-		c.Name, c.EncryptedKey, c.KeyPrefix, c.AuthType, c.EncryptedMetadata, c.Priority,
-		c.Enabled, c.Status, c.UpdatedAt, c.ID,
-	)
+	uid := ""
+	if len(userID) > 0 {
+		uid = userID[0]
+	}
+	var err error
+	if uid != "" && uid != "user_admin" {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE credentials SET name=$1, encrypted_key=$2, key_prefix=$3, auth_type=$4, encrypted_metadata=$5, priority=$6,
+			        enabled=$7, status=$8, updated_at=$9
+			 WHERE id=$10 AND provider_id IN (SELECT id FROM providers WHERE user_id = $11 OR user_id = 'user_admin' OR user_id = '')`,
+			c.Name, c.EncryptedKey, c.KeyPrefix, c.AuthType, c.EncryptedMetadata, c.Priority,
+			c.Enabled, c.Status, c.UpdatedAt, c.ID, uid,
+		)
+	} else {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE credentials SET name=$1, encrypted_key=$2, key_prefix=$3, auth_type=$4, encrypted_metadata=$5, priority=$6,
+			        enabled=$7, status=$8, updated_at=$9
+			 WHERE id=$10`,
+			c.Name, c.EncryptedKey, c.KeyPrefix, c.AuthType, c.EncryptedMetadata, c.Priority,
+			c.Enabled, c.Status, c.UpdatedAt, c.ID,
+		)
+	}
 	return err
 }
 

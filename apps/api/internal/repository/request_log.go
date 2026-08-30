@@ -58,6 +58,10 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 }
 
 func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, limit, offset int) ([]models.RequestLog, error) {
+	whereClause := `(gak.user_id = $1 OR rl.gateway_api_key_id IS NULL OR $1 = '')`
+	if userID != "" && userID != "user_admin" {
+		whereClause = `gak.user_id = $1`
+	}
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT rl.id, rl.request_id, rl.gateway_api_key_id, rl.provider_id, rl.credential_id, rl.model,
 		        rl.status_code, rl.latency_ms, rl.input_tokens, rl.output_tokens, rl.total_tokens,
@@ -65,7 +69,7 @@ func (r *RequestLogRepository) ListByUserID(ctx context.Context, userID string, 
 		        COALESCE(rl.client_app, ''), COALESCE(rl.is_stream, false), COALESCE(rl.ttft_ms, 0), rl.created_at
 		 FROM request_logs rl
 		 LEFT JOIN gateway_api_keys gak ON rl.gateway_api_key_id = gak.id
-		 WHERE (gak.user_id = $1 OR rl.gateway_api_key_id IS NULL OR $1 = '')
+		 WHERE `+whereClause+`
 		 ORDER BY rl.created_at DESC
 		 LIMIT $2 OFFSET $3`, userID, limit, offset,
 	)
@@ -108,7 +112,11 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 	argIdx := 1
 
 	if f.UserID != "" {
-		where = append(where, fmt.Sprintf("(gak.user_id = $%d OR rl.gateway_api_key_id IS NULL)", argIdx))
+		if f.UserID != "user_admin" {
+			where = append(where, fmt.Sprintf("gak.user_id = $%d", argIdx))
+		} else {
+			where = append(where, fmt.Sprintf("(gak.user_id = $%d OR rl.gateway_api_key_id IS NULL)", argIdx))
+		}
 		args = append(args, f.UserID)
 		argIdx++
 	}
