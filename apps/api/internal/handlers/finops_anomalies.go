@@ -40,7 +40,8 @@ func (h *FinOpsAnomaliesHandler) ListBudgetAlerts(c *gin.Context) {
 			limit = v
 		}
 	}
-	alerts, err := h.alerts.ListUnacknowledged(c.Request.Context(), limit)
+	userID := c.GetString("userId")
+	alerts, err := h.alerts.ListUnacknowledged(c.Request.Context(), limit, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": "Failed to fetch budget alerts"}})
 		return

@@ -27,6 +27,12 @@ func (h *SettingsHandler) List(c *gin.Context) {
 }
 
 func (h *SettingsHandler) Update(c *gin.Context) {
+	userID := c.GetString("userId")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var req struct {
 		Settings map[string]string `json:"settings" binding:"required"`
 	}

@@ -95,7 +95,8 @@ func (h *CredentialHandler) List(c *gin.Context) {
 
 	offset := (page - 1) * limit
 
-	credentials, total, err := h.credentials.ListWithFilter(c.Request.Context(), providerID, search, limit, offset)
+	userID := c.GetString("userId")
+	credentials, total, err := h.credentials.ListWithFilter(c.Request.Context(), providerID, search, limit, offset, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list credentials"})
 		return
@@ -142,7 +143,7 @@ func (h *CredentialHandler) Get(c *gin.Context) {
 
 // Create godoc
 // @Summary      Create credential
-// @Description  Create a new credential for a provider
+// @Description  Create a new credential
 // @Tags         credentials
 // @Security     BearerAuth
 // @Param        id path string true "Provider ID"
@@ -152,6 +153,15 @@ func (h *CredentialHandler) Get(c *gin.Context) {
 // @Router       /api/providers/{id}/credentials [post]
 func (h *CredentialHandler) Create(c *gin.Context) {
 	providerID := c.Param("id")
+	userID := c.GetString("userId")
+
+	if h.providers != nil && userID != "" && userID != "user_admin" {
+		prov, err := h.providers.FindByID(c.Request.Context(), providerID)
+		if err != nil || (prov.UserID != userID && prov.UserID != "user_admin" && prov.UserID != "") {
+			c.JSON(http.StatusForbidden, gin.H{"error": "cannot attach credentials to a provider you do not own"})
+			return
+		}
+	}
 
 	var req CreateCredentialRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -357,7 +367,7 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 		}
 	}
 
-	if err := h.credentials.Update(c.Request.Context(), existing); err != nil {
+	if err := h.credentials.Update(c.Request.Context(), existing, userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update credential"})
 		return
 	}
@@ -441,6 +451,11 @@ func (h *CredentialHandler) Delete(c *gin.Context) {
 // @Router       /api/providers/{id}/credentials/{credId}/reset-cooldown [post]
 func (h *CredentialHandler) ResetCooldown(c *gin.Context) {
 	credID := c.Param("credId")
+	userID := c.GetString("userId")
+	if _, err := h.credentials.FindByID(c.Request.Context(), credID, userID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
+		return
+	}
 	if h.cooldownStore != nil {
 		_ = h.cooldownStore.ClearCooldown(c.Request.Context(), credID)
 		_ = h.cooldownStore.DeleteCredentialQuota(c.Request.Context(), credID)

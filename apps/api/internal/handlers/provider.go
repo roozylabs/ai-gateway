@@ -53,8 +53,9 @@ func (h *ProviderHandler) List(c *gin.Context) {
 // @Router       /api/providers/{id} [get]
 func (h *ProviderHandler) Get(c *gin.Context) {
 	id := c.Param("id")
+	userID := c.GetString("userId")
 	provider, err := h.providers.FindByID(c.Request.Context(), id)
-	if err != nil {
+	if err != nil || (userID != "" && provider.UserID != userID && provider.UserID != "user_admin" && provider.UserID != "") {
 		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
 		return
 	}
@@ -98,8 +99,9 @@ func (h *ProviderHandler) Create(c *gin.Context) {
 // @Router       /api/providers/{id} [put]
 func (h *ProviderHandler) Update(c *gin.Context) {
 	id := c.Param("id")
+	userID := c.GetString("userId")
 	existing, err := h.providers.FindByID(c.Request.Context(), id)
-	if err != nil {
+	if err != nil || (userID != "" && existing.UserID != userID && existing.UserID != "user_admin" && existing.UserID != "") {
 		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
 		return
 	}
@@ -128,6 +130,12 @@ func (h *ProviderHandler) Update(c *gin.Context) {
 // @Router       /api/providers/{id} [delete]
 func (h *ProviderHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
+	userID := c.GetString("userId")
+	existing, err := h.providers.FindByID(c.Request.Context(), id)
+	if err != nil || (userID != "" && existing.UserID != userID && existing.UserID != "user_admin" && existing.UserID != "") {
+		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
+		return
+	}
 
 	// Guard against deleting provider that has active Gateway API Keys
 	if h.gatewayKeys != nil {
