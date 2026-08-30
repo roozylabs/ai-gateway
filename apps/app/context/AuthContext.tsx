@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: apiLogin,
     onSuccess: (data) => {
-      Cookies.set('auth_token', data.token, { expires: 7 });
+      Cookies.set('auth_token', data.token, { expires: 7, path: '/', sameSite: 'lax' });
       queryClient.setQueryData(['auth', 'me'], data.user);
     },
   });
@@ -52,9 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: apiLogout,
     onSettled: () => {
-      Cookies.remove('auth_token');
+      Cookies.remove('auth_token', { path: '/' });
       queryClient.clear();
-      router.push('/login');
+      router.replace('/login');
     },
   });
 

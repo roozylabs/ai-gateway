@@ -36,6 +36,8 @@ export function DashboardTopbar() {
   const { isConnected: isSseConnected } = useSSE();
   const { user, logout } = useAuth();
 
+  console.log('user',user)
+
   const systemStatus = isSseConnected ? 'operational' : 'degraded';
   const systemStatusLabel = isSseConnected ? 'System operational' : 'System degraded';
 
