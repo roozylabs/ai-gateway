@@ -542,7 +542,7 @@ export function MCPTestModal({
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      This tool declares no input schema — it will be called with
+                      This tool declares no input schema, so it will be called with
                       no arguments. Switch to Raw JSON to pass arbitrary
                       arguments.
                     </p>

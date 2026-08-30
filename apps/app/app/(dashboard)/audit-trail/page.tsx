@@ -85,7 +85,7 @@ export default function AuditTrailPage() {
       title: 'Request ID',
       dataIndex: 'requestId',
       key: 'requestId',
-      render: (val) => <span className="font-mono text-xs text-[#8B5CF6] truncate max-w-[120px] block">{String(val)}</span>,
+      render: (val) => <span className="font-mono text-xs text-[#7C3AED] truncate max-w-[120px] block">{String(val)}</span>,
     },
     {
       title: 'User / Role',

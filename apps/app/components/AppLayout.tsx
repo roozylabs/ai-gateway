@@ -152,7 +152,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                       className={cn(
                         'group relative flex items-center gap-3 rounded-none px-3 py-2 text-xs font-medium transition-colors',
                         isActive
-                          ? 'bg-[#8B5CF6]/10 text-[#8B5CF6] font-semibold'
+                          ? 'bg-[#8B5CF6]/10 text-[#7C3AED] font-semibold'
                           : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                       )}
                     >
@@ -160,7 +160,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                       {isActive && (
                         <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-none bg-[#8B5CF6]" />
                       )}
-                      <span className={cn('shrink-0', isActive ? 'text-[#8B5CF6]' : 'text-muted-foreground group-hover:text-foreground')}>
+                      <span className={cn('shrink-0', isActive ? 'text-[#7C3AED]' : 'text-muted-foreground group-hover:text-foreground')}>
                         {item.icon}
                       </span>
                       {!collapsed && <span className="truncate">{item.label}</span>}
@@ -181,7 +181,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="border-t border-border p-3 flex items-center justify-between">
               <div className="flex items-center gap-2 overflow-hidden">
                 <Avatar className="h-7 w-7">
-                  <AvatarFallback className="bg-[#8B5CF6]/20 text-[#8B5CF6] text-xs font-bold">
+                  <AvatarFallback className="bg-[#8B5CF6]/20 text-[#7C3AED] text-xs font-bold">
                     RP
                   </AvatarFallback>
                 </Avatar>

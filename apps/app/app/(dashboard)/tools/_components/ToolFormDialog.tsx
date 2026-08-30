@@ -296,7 +296,7 @@ export function ToolFormDialog({
                     <FormLabel>
                       Input Schema (JSON){" "}
                       <span className="text-muted-foreground font-normal">
-                        — defines the function-call arguments for the AI model
+                        : defines the function-call arguments for the AI model
                       </span>
                     </FormLabel>
                     <FormControl>

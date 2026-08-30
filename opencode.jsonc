@@ -12,6 +12,7 @@
     },
   },
   "instructions": [
+    ".agents/rules/antislop.md",
     ".agents/rules/api-sdk-contract-sync.md",
     ".agents/rules/atomic-commits-and-conventional-commits.md",
     ".agents/rules/changelog-and-readme.md",

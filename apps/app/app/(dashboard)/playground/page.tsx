@@ -44,8 +44,8 @@ export default function PlaygroundPage() {
         provider: decision.selectedProvider,
         routingPolicy: decision.policyName,
         score: `${Math.round((decision.candidates?.[0]?.score ?? 0) * 100)}%`,
-        latency: decision.candidates?.[0]?.speedScore != null ? `${decision.candidates[0].speedScore}ms` : '—',
-        cost: decision.candidates?.[0]?.inputPrice1M != null ? `$${decision.candidates[0].inputPrice1M}/1M` : '—',
+        latency: decision.candidates?.[0]?.speedScore != null ? `${decision.candidates[0].speedScore}ms` : '-',
+        cost: decision.candidates?.[0]?.inputPrice1M != null ? `$${decision.candidates[0].inputPrice1M}/1M` : '-',
         candidates: candidateList,
       });
 
@@ -156,7 +156,7 @@ export default function PlaygroundPage() {
                   </div>
                   <div>
                     <span className="text-muted-foreground block text-[10px]">TOP MATCH SCORE</span>
-                    <span className="font-bold text-[#8B5CF6]">{decisionDetails.score}</span>
+                    <span className="font-bold text-[#7C3AED]">{decisionDetails.score}</span>
                   </div>
                 </div>
 
@@ -166,7 +166,7 @@ export default function PlaygroundPage() {
                     {decisionDetails.candidates.map((cand: ApiModelScoreDetail, idx: number) => (
                       <div key={idx} className="flex justify-between items-center font-mono text-[11px] border-t border-border/40 pt-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-[#8B5CF6] font-bold">#{idx + 1}</span>
+                          <span className="text-[#7C3AED] font-bold">#{idx + 1}</span>
                           <span className="font-semibold">{cand.displayName || cand.slug || cand.modelId}</span>
                           <span className="text-muted-foreground text-[10px]">({cand.providerName})</span>
                         </div>

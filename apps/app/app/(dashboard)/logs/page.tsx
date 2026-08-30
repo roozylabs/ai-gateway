@@ -39,7 +39,7 @@ export default function LogsPage() {
       title: 'Timestamp',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (t) => <span className="font-mono text-muted-foreground text-xs">{t ? new Date(String(t)).toLocaleString() : '—'}</span>,
+      render: (t) => <span className="font-mono text-muted-foreground text-xs">{t ? new Date(String(t)).toLocaleString() : '-'}</span>,
     },
     {
       title: 'Client App / IP',
@@ -194,7 +194,7 @@ export default function LogsPage() {
                 <div className="p-3 rounded-md border border-border bg-muted/40 space-y-1 font-mono text-[11px]">
                   <p><span className="text-muted-foreground">Client App:</span> {selectedLog.clientApp || 'API Client'}</p>
                   <p><span className="text-muted-foreground">Client IP:</span> {selectedLog.clientIp || '127.0.0.1'}</p>
-                  <p><span className="text-muted-foreground">User Agent:</span> {selectedLog.userAgent || '—'}</p>
+                  <p><span className="text-muted-foreground">User Agent:</span> {selectedLog.userAgent || '-'}</p>
                   <p><span className="text-muted-foreground">Is Stream:</span> {selectedLog.isStream ? 'Yes (SSE)' : 'No (JSON)'}</p>
                 </div>
               </div>
