@@ -1,10 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiGetMCPServers, apiGetMCPServer, apiCreateMCPServer, apiUpdateMCPServer, apiDeleteMCPServer, apiSyncMCPServer } from '@/lib/api';
+import { apiGetMCPServers, apiGetMCPServer, apiCreateMCPServer, apiUpdateMCPServer, apiDeleteMCPServer, apiSyncMCPServer, apiGetMCPServerTools } from '@/lib/api';
 
 export function useMCPServersQuery() {
   return useQuery({
     queryKey: ['mcp-servers'],
     queryFn: apiGetMCPServers,
+  });
+}
+
+export function useMCPServerToolsQuery(serverId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['mcp-servers', serverId, 'tools'],
+    queryFn: () => apiGetMCPServerTools(serverId as string),
+    enabled: Boolean(serverId),
   });
 }
 

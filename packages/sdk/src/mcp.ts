@@ -37,4 +37,8 @@ export class MCPModule {
       method: "POST",
     });
   }
+
+  public async getTools(serverId: string): Promise<MCPTool[]> {
+    return this.client.request<MCPTool[]>(`/api/mcp/servers/${serverId}/tools`);
+  }
 }

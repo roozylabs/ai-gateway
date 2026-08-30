@@ -403,6 +403,7 @@ func main() {
 			protected.DELETE("/mcp/servers/:id", mcpHandler.Delete)
 			protected.POST("/mcp/servers/:id/sync", mcpHandler.Sync)
 			protected.POST("/mcp/servers/:id/test", mcpHandler.TestTool)
+			protected.GET("/mcp/servers/:id/tools", mcpHandler.ListTools)
 
 			// MCP Registry Catalog
 			protected.GET("/mcp/registry", mcpRegistryHandler.ListCatalog)

@@ -953,6 +953,11 @@ export async function apiTestMCPTool(id: string, tool: string, args: Record<stri
   return response.data;
 }
 
+export async function apiGetMCPServerTools(id: string): Promise<ApiMCPTool[]> {
+  const response = await api.get<ApiMCPTool[]>(`/mcp/servers/${id}/tools`);
+  return response.data;
+}
+
 // MCP Registry Catalog API
 export interface ApiMCPRegistryServer {
   id: string;

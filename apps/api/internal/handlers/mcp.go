@@ -91,17 +91,49 @@ func (h *MCPHandler) toEdit(srv *models.MCPServer) (*MCPServerEdit, error) {
 	}, nil
 }
 
+func cleanToken(tok string) string {
+	tok = strings.TrimSpace(tok)
+	for strings.HasPrefix(strings.ToLower(tok), "bearer ") {
+		tok = strings.TrimSpace(tok[7:])
+	}
+	return tok
+}
+
+func cleanAuthorizationHeader(val string) string {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return ""
+	}
+	token := cleanToken(val)
+	if token == "" {
+		return ""
+	}
+	return "Bearer " + token
+}
+
 // buildConfigHeaders merges the request's explicit authToken into the generic
-// headers map (Authroization shortcut) and returns the serialized+encrypted
+// headers map (Authorization shortcut) and returns the serialized+encrypted
 // payload for the headers_encrypted column.
 func (h *MCPHandler) buildConfigHeaders(req CreateMCPServerRequest) (*string, error) {
 	headers := map[string]string{}
 	for k, v := range req.Headers {
-		headers[k] = v
+		kClean := strings.TrimSpace(k)
+		vClean := strings.TrimSpace(v)
+		if kClean != "" && vClean != "" {
+			if strings.EqualFold(kClean, "Authorization") {
+				vClean = cleanAuthorizationHeader(vClean)
+			}
+			headers[kClean] = vClean
+		}
 	}
+
 	if req.AuthToken != "" {
-		headers["Authorization"] = "Bearer " + req.AuthToken
+		token := cleanToken(req.AuthToken)
+		if token != "" {
+			headers["Authorization"] = "Bearer " + token
+		}
 	}
+
 	if len(headers) == 0 || h.encKey == "" {
 		return nil, nil
 	}
@@ -333,4 +365,24 @@ func (h *MCPHandler) TestTool(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, res)
+}
+
+// ListTools returns the tools previously synced from an MCP server so the
+// dashboard test modal can render a tool selector and its input schema.
+func (h *MCPHandler) ListTools(c *gin.Context) {
+	userID := c.GetString("userId")
+	id := c.Param("id")
+
+	if _, err := h.servers.FindByID(c.Request.Context(), id, userID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "mcp server not found"})
+		return
+	}
+
+	tools, err := h.tools.ListByServerID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load mcp tools: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tools)
 }
