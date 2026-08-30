@@ -37,6 +37,7 @@ export default function OnboardingPage() {
 
   const form = useForm<OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
+    mode: 'onTouched',
     defaultValues: {
       organizationName: '',
       workspaceName: '',
@@ -91,9 +92,11 @@ export default function OnboardingPage() {
                       name="organizationName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Organization Name</FormLabel>
+                          <FormLabel>
+                            Organization Name <span className="text-destructive">*</span>
+                          </FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. RoozyLabs Inc." {...field} />
+                            <Input placeholder="e.g. RoozyLabs Inc." required {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -105,9 +108,11 @@ export default function OnboardingPage() {
                       name="workspaceName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Default Workspace Name</FormLabel>
+                          <FormLabel>
+                            Default Workspace Name <span className="text-destructive">*</span>
+                          </FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. Production Workspace" {...field} />
+                            <Input placeholder="e.g. Production Workspace" required {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -127,9 +132,11 @@ export default function OnboardingPage() {
                       name="gatewayKeyName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>First Gateway Key Label</FormLabel>
+                          <FormLabel>
+                            First Gateway Key Label <span className="text-destructive">*</span>
+                          </FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. Primary Production Key" {...field} />
+                            <Input placeholder="e.g. Primary Production Key" required {...field} />
                           </FormControl>
                           <FormDescription>Bound to default workspace for OpenAI/Gemini requests</FormDescription>
                           <FormMessage />
