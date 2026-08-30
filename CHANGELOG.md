@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **AntiSloP Install, Design Baseline & Audit**: Installed the full anti-slop skill family (core filter plus `code`, `ui`, `copywriting`, `layoutmobile`, and `human` companions) under `.agents/skills/`, authored `DESIGN.md` as the visual/UX direction for the Prism console (single Prism Violet accent, Inter + JetBrains Mono, low-energy flat surfaces), registered an every-session pointer rule in `.agents/rules/antislop.md`, and ran a full AFTER-mode audit of `apps/app` recorded in `anti-slop/audit-001-2026-08-30.md`.
+- **Anti-slop copy & accessibility polish**: Replaced em dashes with colons/commas across dashboard copy and table/summary null placeholders (anti-slop R-02), and raised the violet accent used as small text from `#8B5CF6` to `#7C3AED` to reach WCAG AA 4.5:1 contrast (R-25). Icon, brand, and graphical usages of the violet accent are unchanged.
+
 ### Changed
 - **React Hook Form + Zod Form Refactor**: Migrated all Dashboard create/edit/test/invite forms (`mcp`, `tools`, `agents`, `governance`, `credentials`, `providers`, `resources`, `models`, `policies`, `gateway-keys`, `budgets`, `settings/*`) from scattered primitive `useState` fields to structured React Hook Form (`useForm`) with `zodResolver` validation. Each page now co-locates its form/modal components under a page-scoped `_components/` folder (e.g. `MCPServerFormDialog`, `ToolTestModal`, `AgentFormDialog`, `PolicyTuner`, `BudgetFormSheet`, `QuotaFormSheet`, `SettingFormSheet`, `InviteMemberSheet`). Form submission is wired through React Query `useMutation` hooks with typed Zod schemas, inline field validation messages, and declarative success/error workflows.
 
