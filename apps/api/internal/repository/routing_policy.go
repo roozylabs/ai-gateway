@@ -112,7 +112,11 @@ func (r *RoutingPolicyRepository) Create(ctx context.Context, p *models.RoutingP
 	}
 
 	if p.IsDefault {
-		_, _ = r.db.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1 OR user_id IS NULL OR user_id = ''`, p.UserID)
+		if p.UserID != "" && p.UserID != "user_admin" {
+			_, _ = r.db.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1`, p.UserID)
+		} else {
+			_, _ = r.db.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1 OR user_id IS NULL OR user_id = ''`, p.UserID)
+		}
 	}
 
 	_, err := r.db.ExecContext(ctx,
@@ -132,7 +136,11 @@ func (r *RoutingPolicyRepository) Update(ctx context.Context, p *models.RoutingP
 	}
 
 	if p.IsDefault {
-		_, _ = r.db.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1 OR user_id IS NULL OR user_id = ''`, p.UserID)
+		if p.UserID != "" && p.UserID != "user_admin" {
+			_, _ = r.db.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1`, p.UserID)
+		} else {
+			_, _ = r.db.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1 OR user_id IS NULL OR user_id = ''`, p.UserID)
+		}
 	}
 
 	_, err := r.db.ExecContext(ctx,
@@ -154,14 +162,22 @@ func (r *RoutingPolicyRepository) SetDefault(ctx context.Context, id, userID str
 		_ = tx.Rollback()
 	}()
 
-	// Reset default for all policies belonging to user or global system
-	_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1 OR user_id IS NULL OR user_id = ''`, userID)
+	// Reset default for policies belonging to user
+	if userID != "" && userID != "user_admin" {
+		_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1`, userID)
+	} else {
+		_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = false WHERE user_id = $1 OR user_id IS NULL OR user_id = ''`, userID)
+	}
 	if err != nil {
 		return err
 	}
 
-	// Set selected policy as default
-	_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = true, enabled = true, updated_at = NOW() WHERE id = $1`, id)
+	// Set selected policy as default with user check
+	if userID != "" && userID != "user_admin" {
+		_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = true, enabled = true, updated_at = NOW() WHERE id = $1 AND (user_id = $2 OR user_id = 'user_admin' OR user_id = '')`, id, userID)
+	} else {
+		_, err = tx.ExecContext(ctx, `UPDATE routing_policies SET is_default = true, enabled = true, updated_at = NOW() WHERE id = $1`, id)
+	}
 	if err != nil {
 		return err
 	}

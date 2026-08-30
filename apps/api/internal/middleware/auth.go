@@ -51,6 +51,8 @@ func AuthMiddleware(sessions *repository.SessionRepository, keys GatewayKeyFinde
 				}
 				c.Set("token", token)
 				c.Set("userId", gatewayKey.UserID)
+				c.Set("userID", gatewayKey.UserID)
+				c.Set("user_id", gatewayKey.UserID)
 				c.Set("gatewayKey", gatewayKey)
 				c.Next()
 				return
@@ -66,6 +68,8 @@ func AuthMiddleware(sessions *repository.SessionRepository, keys GatewayKeyFinde
 
 		c.Set("token", token)
 		c.Set("userId", session.UserID)
+		c.Set("userID", session.UserID)
+		c.Set("user_id", session.UserID)
 		c.Set("sessionId", session.ID)
 		c.Next()
 	}

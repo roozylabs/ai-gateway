@@ -155,13 +155,24 @@ func (r *AgentRepository) Create(ctx context.Context, a *models.Agent) error {
 
 func (r *AgentRepository) Update(ctx context.Context, a *models.Agent) error {
 	a.UpdatedAt = time.Now()
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE agents SET display_name=$1, description=$2, agent_type=$3, system_prompt_override=$4, allowed_models=$5, allowed_tools=$6, allowed_resources=$7, allowed_mcp_servers=$8, max_budget_cents=$9, status=$10, enabled=$11, updated_at=$12
-		 WHERE id = $13`,
-		a.DisplayName, a.Description, a.AgentType, a.SystemPromptOverride,
-		pq.Array(a.AllowedModels), pq.Array(a.AllowedTools), pq.Array(a.AllowedResources), pq.Array(a.AllowedMCPServers),
-		a.MaxBudgetCents, a.Status, a.Enabled, a.UpdatedAt, a.ID,
-	)
+	var err error
+	if a.UserID != "" && a.UserID != "user_admin" {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE agents SET display_name=$1, description=$2, agent_type=$3, system_prompt_override=$4, allowed_models=$5, allowed_tools=$6, allowed_resources=$7, allowed_mcp_servers=$8, max_budget_cents=$9, status=$10, enabled=$11, updated_at=$12
+			 WHERE id = $13 AND (user_id = $14 OR user_id = 'user_admin' OR user_id = '')`,
+			a.DisplayName, a.Description, a.AgentType, a.SystemPromptOverride,
+			pq.Array(a.AllowedModels), pq.Array(a.AllowedTools), pq.Array(a.AllowedResources), pq.Array(a.AllowedMCPServers),
+			a.MaxBudgetCents, a.Status, a.Enabled, a.UpdatedAt, a.ID, a.UserID,
+		)
+	} else {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE agents SET display_name=$1, description=$2, agent_type=$3, system_prompt_override=$4, allowed_models=$5, allowed_tools=$6, allowed_resources=$7, allowed_mcp_servers=$8, max_budget_cents=$9, status=$10, enabled=$11, updated_at=$12
+			 WHERE id = $13`,
+			a.DisplayName, a.Description, a.AgentType, a.SystemPromptOverride,
+			pq.Array(a.AllowedModels), pq.Array(a.AllowedTools), pq.Array(a.AllowedResources), pq.Array(a.AllowedMCPServers),
+			a.MaxBudgetCents, a.Status, a.Enabled, a.UpdatedAt, a.ID,
+		)
+	}
 	return err
 }
 

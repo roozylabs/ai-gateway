@@ -37,13 +37,29 @@ func (r *BudgetAlertRepository) CreateIfNew(ctx context.Context, a *BudgetAlert)
 	return n > 0, nil
 }
 
-func (r *BudgetAlertRepository) ListUnacknowledged(ctx context.Context, limit int) ([]BudgetAlert, error) {
+func (r *BudgetAlertRepository) ListUnacknowledged(ctx context.Context, limit int, userID ...string) ([]BudgetAlert, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, budget_id, alert_type, usage_percent, monthly_spent, monthly_limit, acknowledged_at, created_at
-		 FROM budget_alerts WHERE acknowledged_at IS NULL ORDER BY created_at DESC LIMIT $1`, limit)
+	uid := ""
+	if len(userID) > 0 {
+		uid = userID[0]
+	}
+	var query string
+	var args []interface{}
+	if uid != "" && uid != "user_admin" {
+		query = `SELECT ba.id, ba.budget_id, ba.alert_type, ba.usage_percent, ba.monthly_spent, ba.monthly_limit, ba.acknowledged_at, ba.created_at
+		         FROM budget_alerts ba
+		         INNER JOIN budgets b ON ba.budget_id = b.id
+		         WHERE ba.acknowledged_at IS NULL AND b.user_id = $1
+		         ORDER BY ba.created_at DESC LIMIT $2`
+		args = []interface{}{uid, limit}
+	} else {
+		query = `SELECT id, budget_id, alert_type, usage_percent, monthly_spent, monthly_limit, acknowledged_at, created_at
+		         FROM budget_alerts WHERE acknowledged_at IS NULL ORDER BY created_at DESC LIMIT $1`
+		args = []interface{}{limit}
+	}
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

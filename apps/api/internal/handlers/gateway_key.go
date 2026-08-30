@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/middleware"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 	"github.com/roozylabs/prism/internal/utils"
@@ -76,8 +77,16 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 		expiresAt = &t
 	}
 
+	tc := middleware.GetTenantContext(c)
+	orgIDPtr := &tc.OrgID
+	wsIDPtr := &tc.WorkspaceID
+	projIDPtr := &tc.ProjectID
+
 	key := &models.GatewayAPIKey{
 		UserID:        c.GetString("userId"),
+		OrgID:         orgIDPtr,
+		WorkspaceID:   wsIDPtr,
+		ProjectID:     projIDPtr,
 		ProviderID:    providerIDPtr,
 		Name:          req.Name,
 		KeyHash:       keyHash,

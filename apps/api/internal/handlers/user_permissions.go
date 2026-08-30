@@ -22,6 +22,9 @@ func NewUserPermissionsHandler(rbacRepo *repository.RBACRepository, userRepo *re
 func (h *UserPermissionsHandler) GetPermissions(c *gin.Context) {
 	userID := c.GetString("userId")
 	orgID := c.GetString("organizationId")
+	if orgID == "" {
+		orgID = "org_default"
+	}
 
 	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{

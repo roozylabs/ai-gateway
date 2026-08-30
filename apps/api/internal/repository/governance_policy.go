@@ -103,13 +103,24 @@ func (r *GovernancePolicyRepository) Create(ctx context.Context, p *models.Gover
 
 func (r *GovernancePolicyRepository) Update(ctx context.Context, p *models.GovernancePolicy) error {
 	p.UpdatedAt = time.Now()
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE governance_policies SET name=$1, description=$2, role=$3, effect=$4, agent_pattern=$5, model_pattern=$6, tool_pattern=$7, resource_pattern=$8, priority=$9, enabled=$10, updated_at=$11
-		 WHERE id = $12`,
-		p.Name, p.Description, p.Role, p.Effect,
-		p.AgentPattern, p.ModelPattern, p.ToolPattern, p.ResourcePattern,
-		p.Priority, p.Enabled, p.UpdatedAt, p.ID,
-	)
+	var err error
+	if p.UserID != "" && p.UserID != "user_admin" {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE governance_policies SET name=$1, description=$2, role=$3, effect=$4, agent_pattern=$5, model_pattern=$6, tool_pattern=$7, resource_pattern=$8, priority=$9, enabled=$10, updated_at=$11
+			 WHERE id = $12 AND (user_id = $13 OR user_id = 'user_admin' OR user_id = '')`,
+			p.Name, p.Description, p.Role, p.Effect,
+			p.AgentPattern, p.ModelPattern, p.ToolPattern, p.ResourcePattern,
+			p.Priority, p.Enabled, p.UpdatedAt, p.ID, p.UserID,
+		)
+	} else {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE governance_policies SET name=$1, description=$2, role=$3, effect=$4, agent_pattern=$5, model_pattern=$6, tool_pattern=$7, resource_pattern=$8, priority=$9, enabled=$10, updated_at=$11
+			 WHERE id = $12`,
+			p.Name, p.Description, p.Role, p.Effect,
+			p.AgentPattern, p.ModelPattern, p.ToolPattern, p.ResourcePattern,
+			p.Priority, p.Enabled, p.UpdatedAt, p.ID,
+		)
+	}
 	return err
 }
 
