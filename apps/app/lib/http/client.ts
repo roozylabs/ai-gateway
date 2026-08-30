@@ -1,3 +1,4 @@
+import Cookies from 'js-cookie';
 import { parseApiError } from './errors';
 
 export interface HttpClientOptions extends RequestInit {
@@ -13,7 +14,7 @@ export class HttpClient {
 
   private getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('token');
+    return Cookies.get('auth_token') || null;
   }
 
   private getTenantHeaders(): Record<string, string> {
