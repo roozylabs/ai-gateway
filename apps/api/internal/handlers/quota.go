@@ -64,6 +64,11 @@ func (h *QuotaHandler) Update(c *gin.Context) {
 		return
 	}
 
+	if targetType == "organization" && orgID != "" && targetID != orgID && orgID != "org_default" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "cannot update quota for a different organization"})
+		return
+	}
+
 	orgIDStr := orgID
 	quota := &models.TenantQuota{
 		OrganizationID:       &orgIDStr,
