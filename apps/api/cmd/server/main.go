@@ -28,7 +28,7 @@ import (
 )
 
 // @title           RoozyLabs Prism AI Gateway API
-// @version         2.1.0
+// @version         2.2.0
 // @description     Centralized AI API Gateway
 // @host            localhost:8080
 // @BasePath        /api/v1
@@ -110,6 +110,7 @@ func main() {
 	resourceBackendRepo := repository.NewResourceBackendRepository(sqlDB)
 	mcpServerRepo := repository.NewMCPServerRepository(sqlDB)
 	mcpToolRepo := repository.NewMCPToolRepository(sqlDB)
+	mcpInvocationRepo := repository.NewMCPInvocationRepository(sqlDB)
 	mcpRegistryRepo := repository.NewMCPRegistryRepository(sqlDB)
 	agentRepo := repository.NewAgentRepository(sqlDB)
 	agentTemplateRepo := repository.NewAgentTemplateRepository(sqlDB)
@@ -135,7 +136,7 @@ func main() {
 	engine := proxy.NewEngine(router, credentialRepo, cooldown, telemetry, eventPublisher, cfg.EncryptionKey, cfg.MaxRetries, cfg.CooldownSeconds, budgetMgr, routingPolicyRepo, decisionRepo, payloadRepo, toolInvocationRepo)
 	toolGateway := proxy.NewToolGateway(toolRepo)
 	resourceGateway := proxy.NewResourceGateway(resourceRepo)
-	mcpGateway := proxy.NewMCPGateway(mcpServerRepo, mcpToolRepo)
+	mcpGateway := proxy.NewMCPGateway(mcpServerRepo, mcpToolRepo, mcpInvocationRepo)
 	agentGovernance := proxy.NewAgentGovernanceEngine(agentRepo)
 	rbacEngine := proxy.NewRBACEngine(governancePolicyRepo)
 	auditRecorder := proxy.NewAuditRecorder(auditTrailRepo)
@@ -208,7 +209,7 @@ func main() {
 	toolGatewayHandler := handlers.NewToolGatewayHandler(toolGateway, toolInvocationRepo, eventPublisher, cfg.EncryptionKey)
 	resourceHandler := handlers.NewResourceHandler(resourceRepo, resourceBackendRepo, resourceGateway, cfg.EncryptionKey)
 	resourceGatewayHandler := handlers.NewResourceGatewayHandler(resourceGateway, toolInvocationRepo, eventPublisher, cfg.EncryptionKey)
-	mcpHandler := handlers.NewMCPHandler(mcpServerRepo, mcpToolRepo, mcpGateway, cfg.EncryptionKey)
+	mcpHandler := handlers.NewMCPHandler(mcpServerRepo, mcpToolRepo, mcpGateway, mcpInvocationRepo, agentRepo, cfg.EncryptionKey)
 	mcpRegistryHandler := handlers.NewMCPRegistryHandler(mcpRegistryRepo)
 	agentHandler := handlers.NewAgentHandler(agentRepo, agentGovernance)
 	agentTemplateHandler := handlers.NewAgentTemplateHandler(agentTemplateRepo, agentRepo)
@@ -404,6 +405,7 @@ func main() {
 			protected.POST("/mcp/servers/:id/sync", mcpHandler.Sync)
 			protected.POST("/mcp/servers/:id/test", mcpHandler.TestTool)
 			protected.GET("/mcp/servers/:id/tools", mcpHandler.ListTools)
+			protected.GET("/mcp/servers/:id/stats", mcpHandler.Stats)
 
 			// MCP Registry Catalog
 			protected.GET("/mcp/registry", mcpRegistryHandler.ListCatalog)

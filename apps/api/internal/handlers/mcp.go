@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,14 +17,16 @@ import (
 )
 
 type MCPHandler struct {
-	servers *repository.MCPServerRepository
-	tools   *repository.MCPToolRepository
-	gateway *proxy.MCPGateway
-	encKey  string
+	servers     *repository.MCPServerRepository
+	tools       *repository.MCPToolRepository
+	gateway     *proxy.MCPGateway
+	invocations *repository.MCPInvocationRepository
+	agents      *repository.AgentRepository
+	encKey      string
 }
 
-func NewMCPHandler(servers *repository.MCPServerRepository, tools *repository.MCPToolRepository, gateway *proxy.MCPGateway, encKey string) *MCPHandler {
-	return &MCPHandler{servers: servers, tools: tools, gateway: gateway, encKey: encKey}
+func NewMCPHandler(servers *repository.MCPServerRepository, tools *repository.MCPToolRepository, gateway *proxy.MCPGateway, invocations *repository.MCPInvocationRepository, agents *repository.AgentRepository, encKey string) *MCPHandler {
+	return &MCPHandler{servers: servers, tools: tools, gateway: gateway, invocations: invocations, agents: agents, encKey: encKey}
 }
 
 type CreateMCPServerRequest struct {
@@ -385,4 +388,52 @@ func (h *MCPHandler) ListTools(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, tools)
+}
+
+// Stats returns aggregated usage metrics and agent bindings for a single MCP
+// server within a sliding day window, following the analytics response shape
+// ({ "data": ... }).
+func (h *MCPHandler) Stats(c *gin.Context) {
+	userID := c.GetString("userId")
+	id := c.Param("id")
+
+	srv, err := h.servers.FindByID(c.Request.Context(), id, userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "mcp server not found"})
+		return
+	}
+
+	days := 30
+	if d := c.Query("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+	if days > 90 {
+		days = 90
+	}
+
+	stats, err := h.invocations.GetStats(c.Request.Context(), userID, id, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load mcp server stats: " + err.Error()})
+		return
+	}
+
+	agents, err := h.agents.FindByMCPServerName(c.Request.Context(), userID, srv.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load mcp server agent bindings: " + err.Error()})
+		return
+	}
+
+	for _, a := range agents {
+		stats.Agents = append(stats.Agents, models.MCPAgentBinding{
+			ID:          a.ID,
+			Name:        a.Name,
+			DisplayName: a.DisplayName,
+			Status:      a.Status,
+			Enabled:     a.Enabled,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": stats})
 }
