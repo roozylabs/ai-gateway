@@ -118,6 +118,80 @@ function buildGuidedArgs(
   return out;
 }
 
+function buildGuidedArgsSchema(
+  schema: JsonObject | undefined,
+): z.ZodType<Record<string, unknown>> {
+  const props = schemaProperties(schema);
+  const required = new Set(schemaRequired(schema));
+  const shape: Record<string, z.ZodTypeAny> = {};
+  for (const [name, rawProp] of Object.entries(props)) {
+    const prop = rawProp as JsonObject;
+    const type = typeof prop.type === "string" ? prop.type : "string";
+    const isRequired = required.has(name);
+    let fieldSchema: z.ZodTypeAny;
+    if (type === "boolean") {
+      fieldSchema = z.boolean();
+    } else if (type === "integer" || type === "number") {
+      fieldSchema = isRequired
+        ? z
+            .string()
+            .trim()
+            .min(1, "Required")
+            .refine((v) => !Number.isNaN(Number(v)), "Must be a valid number")
+        : z.string().optional();
+    } else if (type === "array" || type === "object") {
+      fieldSchema = isRequired
+        ? z
+            .string()
+            .trim()
+            .min(1, "Required")
+            .refine(
+              (v) => {
+                try {
+                  JSON.parse(v);
+                  return true;
+                } catch {
+                  return false;
+                }
+              },
+              "Must be valid JSON",
+            )
+        : z.string().optional();
+    } else {
+      fieldSchema = isRequired
+        ? z.string().trim().min(1, "Required")
+        : z.string().optional();
+    }
+    shape[name] = fieldSchema;
+  }
+  return z.object(shape);
+}
+
+function samplePlaceholder(name: string, prop: JsonObject): string {
+  const examples = Array.isArray(prop.examples) ? prop.examples : [];
+  if (typeof examples[0] === "string" && examples[0].trim() !== "") {
+    return examples[0];
+  }
+  if (typeof prop.example === "string" && prop.example.trim() !== "") {
+    return prop.example;
+  }
+  const description =
+    typeof prop.description === "string" ? prop.description.trim() : "";
+  if (description !== "") return description;
+  const lower = name.toLowerCase();
+  if (/(repo|library|owner|path|slug|id|url|reference|package)/.test(lower)) {
+    return "/owner/repo";
+  }
+  if (
+    /(query|prompt|question|message|ask|describe|explain|search|input)/.test(
+      lower,
+    )
+  ) {
+    return "e.g. How to cache data with Next.js?";
+  }
+  return `Sample ${name}`;
+}
+
 function SchemaField({
   name,
   prop,
@@ -125,6 +199,7 @@ function SchemaField({
   onChange,
   disabled,
   required,
+  error,
 }: {
   name: string;
   prop: JsonObject;
@@ -132,11 +207,13 @@ function SchemaField({
   onChange: (value: JsonValue) => void;
   disabled: boolean;
   required: boolean;
+  error?: string;
 }) {
   const type = typeof prop.type === "string" ? prop.type : "string";
   const description =
     typeof prop.description === "string" ? prop.description : undefined;
   const enums = Array.isArray(prop.enum) ? prop.enum : undefined;
+  const placeholder = samplePlaceholder(name, prop);
 
   return (
     <div className="space-y-1.5">
@@ -185,9 +262,13 @@ function SchemaField({
       ) : (
         <Input
           type={type === "integer" || type === "number" ? "number" : "text"}
-          value={typeof value === "string" || typeof value === "number" ? String(value) : ""}
+          value={
+            typeof value === "string" || typeof value === "number"
+              ? String(value)
+              : ""
+          }
           onChange={(e) => onChange(e.target.value)}
-          placeholder={description || name}
+          placeholder={placeholder}
           disabled={disabled}
           className="h-8"
         />
@@ -195,6 +276,10 @@ function SchemaField({
 
       {description && (
         <p className="text-[11px] text-muted-foreground">{description}</p>
+      )}
+
+      {error && (
+        <p className="text-xs font-medium text-destructive">{error}</p>
       )}
     </div>
   );
@@ -214,6 +299,7 @@ export function MCPTestModal({
   );
   const [mode, setMode] = useState<InputMode>("guided");
   const [guidedArgs, setGuidedArgs] = useState<JsonObject>({});
+  const [guidedErrors, setGuidedErrors] = useState<Record<string, string>>({});
 
   const form = useForm<TestFormValues>({
     resolver: zodResolver(testSchema),
@@ -243,6 +329,7 @@ export function MCPTestModal({
 
   const handleToolSelect = (toolName: string) => {
     form.setValue("toolName", toolName, { shouldValidate: true });
+    setGuidedErrors({});
     if (mode === "guided") {
       const tool = tools.find((t) => t.name === toolName);
       const props = schemaProperties(
@@ -261,6 +348,24 @@ export function MCPTestModal({
     setTestResult(null);
     let parsedArgs: Record<string, unknown>;
     if (mode === "guided") {
+      const parsed = buildGuidedArgsSchema(schema).safeParse(guidedArgs);
+      if (!parsed.success) {
+        const fieldErrors: Record<string, string> = {};
+        let first = true;
+        for (const issue of parsed.error.issues) {
+          const key = String(issue.path[0] ?? "");
+          if (key && !fieldErrors[key]) {
+            fieldErrors[key] = issue.message;
+            if (first) {
+              toast.error(`Missing/invalid required argument: ${key}`);
+              first = false;
+            }
+          }
+        }
+        setGuidedErrors(fieldErrors);
+        return;
+      }
+      setGuidedErrors({});
       parsedArgs = buildGuidedArgs(schema, guidedArgs);
     } else {
       try {
@@ -297,6 +402,7 @@ export function MCPTestModal({
       setTestResult(null);
       setMode("guided");
       setGuidedArgs({});
+      setGuidedErrors({});
     } else {
       setTestResult(null);
     }
@@ -415,11 +521,22 @@ export function MCPTestModal({
                           name={name}
                           prop={prop as JsonObject}
                           value={guidedArgs[name]}
-                          onChange={(value) =>
-                            setGuidedArgs((prev) => ({ ...prev, [name]: value }))
-                          }
+                          onChange={(value) => {
+                            setGuidedArgs((prev) => ({
+                              ...prev,
+                              [name]: value,
+                            }));
+                            if (guidedErrors[name]) {
+                              setGuidedErrors((prev) => {
+                                const next = { ...prev };
+                                delete next[name];
+                                return next;
+                              });
+                            }
+                          }}
                           disabled={testMCPToolMutation.isPending}
                           required={required.includes(name)}
+                          error={guidedErrors[name]}
                         />
                       ))}
                     </div>
