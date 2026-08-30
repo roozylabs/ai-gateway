@@ -94,7 +94,7 @@ func (s *AuthService) CreateOAuthSession(ctx context.Context, email, name, image
 	user, err := s.users.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			userID := "usr_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:16]
+			userID := uuid.New().String()
 			userName := name
 			if userName == "" {
 				userName = strings.ToUpper(provider[:1]) + provider[1:] + " Developer"
@@ -105,6 +105,9 @@ func (s *AuthService) CreateOAuthSession(ctx context.Context, email, name, image
 				Email:         email,
 				EmailVerified: true,
 				Image:         image,
+				IsOnboarded:   false,
+				AuthProvider:  provider,
+				PrimaryRole:   "developer",
 			}
 			if createErr := s.users.Create(ctx, user); createErr != nil {
 				return nil, createErr

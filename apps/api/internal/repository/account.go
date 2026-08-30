@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/google/uuid"
 	"github.com/roozylabs/prism/internal/models"
 )
 
@@ -19,8 +20,8 @@ func (r *AccountRepository) FindByUserID(ctx context.Context, userID string) (*m
 	account := &models.Account{}
 	var password sql.NullString
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt"
-		 FROM account WHERE "userId" = $1 AND "providerId" = 'credential'`, userID,
+		`SELECT id, account_id, provider_id, user_id, password, created_at, updated_at
+		 FROM account WHERE user_id = $1 AND provider_id = 'credential'`, userID,
 	).Scan(&account.ID, &account.AccountID, &account.ProviderID,
 		&account.UserID, &password, &account.CreatedAt, &account.UpdatedAt)
 	if err != nil {
@@ -31,8 +32,11 @@ func (r *AccountRepository) FindByUserID(ctx context.Context, userID string) (*m
 }
 
 func (r *AccountRepository) Create(ctx context.Context, account *models.Account) error {
+	if account.ID == "" {
+		account.ID = uuid.New().String()
+	}
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+		`INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
 		account.ID, account.AccountID, account.ProviderID,
 		account.UserID, account.Password,

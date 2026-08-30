@@ -79,7 +79,7 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 	// 1. Create Organization
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO organizations (id, name, slug, plan_tier, created_at, updated_at)
-		 VALUES ($1, $2, $3, 'enterprise', NOW(), NOW())
+		 VALUES ($1, $2, $3, 'free', NOW(), NOW())
 		 ON CONFLICT (id) DO NOTHING`,
 		orgID, orgName, orgSlug,
 	)
@@ -127,7 +127,7 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 
 	// 5. Update user onboarding status
 	_, err = tx.ExecContext(ctx,
-		`UPDATE "user" SET is_onboarded = true, org_id = $1, primary_role = $2, "updatedAt" = NOW() WHERE id = $3`,
+		`UPDATE "user" SET is_onboarded = true, org_id = $1, primary_role = $2, updated_at = NOW() WHERE id = $3`,
 		orgID, role, userID,
 	)
 	if err != nil {

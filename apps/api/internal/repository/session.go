@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/roozylabs/prism/internal/models"
 )
 
@@ -17,10 +18,13 @@ func NewSessionRepository(db *sql.DB) *SessionRepository {
 }
 
 func (r *SessionRepository) Create(ctx context.Context, session *models.Session) error {
+	if session.ID == "" {
+		session.ID = uuid.New().String()
+	}
 	session.CreatedAt = time.Now()
 	session.UpdatedAt = time.Now()
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO session (id, "expiresAt", token, "ipAddress", "userAgent", "userId", "createdAt", "updatedAt")
+		`INSERT INTO session (id, expires_at, token, ip_address, user_agent, user_id, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		session.ID, session.ExpiresAt, session.Token,
 		session.IPAddress, session.UserAgent, session.UserID,
@@ -33,7 +37,7 @@ func (r *SessionRepository) FindByToken(ctx context.Context, token string) (*mod
 	session := &models.Session{}
 	var ipAddress, userAgent sql.NullString
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, "expiresAt", token, "ipAddress", "userAgent", "userId", "createdAt", "updatedAt"
+		`SELECT id, expires_at, token, ip_address, user_agent, user_id, created_at, updated_at
 		 FROM session WHERE token = $1`, token,
 	).Scan(&session.ID, &session.ExpiresAt, &session.Token,
 		&ipAddress, &userAgent, &session.UserID,
@@ -50,8 +54,8 @@ func (r *SessionRepository) FindValidByToken(ctx context.Context, token string) 
 	session := &models.Session{}
 	var ipAddress, userAgent sql.NullString
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, "expiresAt", token, "ipAddress", "userAgent", "userId", "createdAt", "updatedAt"
-		 FROM session WHERE token = $1 AND "expiresAt" > NOW()`, token,
+		`SELECT id, expires_at, token, ip_address, user_agent, user_id, created_at, updated_at
+		 FROM session WHERE token = $1 AND expires_at > NOW()`, token,
 	).Scan(&session.ID, &session.ExpiresAt, &session.Token,
 		&ipAddress, &userAgent, &session.UserID,
 		&session.CreatedAt, &session.UpdatedAt)
@@ -69,6 +73,6 @@ func (r *SessionRepository) Delete(ctx context.Context, token string) error {
 }
 
 func (r *SessionRepository) DeleteExpired(ctx context.Context) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM session WHERE "expiresAt" < NOW()`)
+	_, err := r.db.ExecContext(ctx, `DELETE FROM session WHERE expires_at < NOW()`)
 	return err
 }
