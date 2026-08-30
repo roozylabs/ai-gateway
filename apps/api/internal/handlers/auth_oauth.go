@@ -60,7 +60,8 @@ func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 	baseURL := h.getBaseURL(c)
 	state := uuid.New().String()
 
-	if provider == "google" {
+	switch provider {
+	case "google":
 		clientID := os.Getenv("GOOGLE_CLIENT_ID")
 		if clientID != "" {
 			redirectURI := baseURL + "/api/auth/oauth/google/callback"
@@ -75,7 +76,7 @@ func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 			c.Redirect(http.StatusTemporaryRedirect, authURL)
 			return
 		}
-	} else if provider == "github" {
+	case "github":
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
 		if clientID != "" {
 			redirectURI := baseURL + "/api/auth/oauth/github/callback"
@@ -135,7 +136,8 @@ func (h *OAuthHandler) OAuthCallback(c *gin.Context) {
 	baseURL := h.getBaseURL(c)
 	var email, name, avatar string
 
-	if provider == "google" {
+	switch provider {
+	case "google":
 		clientID := os.Getenv("GOOGLE_CLIENT_ID")
 		clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
 		redirectURI := baseURL + "/api/auth/oauth/google/callback"
@@ -175,7 +177,7 @@ func (h *OAuthHandler) OAuthCallback(c *gin.Context) {
 				}
 			}
 		}
-	} else if provider == "github" {
+	case "github":
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
 		clientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
 		redirectURI := baseURL + "/api/auth/oauth/github/callback"
