@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 import { Button } from "@/components/atoms/Button";
+import { Textarea } from "@/components/atoms/Textarea";
 import { Label } from "@/components/atoms/Label";
 import { Badge } from "@/components/atoms/Badge";
 import {
@@ -125,7 +126,9 @@ export function ToolTestModal({
                 <FormItem className="space-y-2">
                   <FormLabel>Input Arguments (JSON)</FormLabel>
                   <FormControl>
-                    <textarea
+                    <Textarea
+                      counter
+                      counterLabel="characters"
                       className="w-full h-32 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       {...field}
                       placeholder="{}"

@@ -62,11 +62,11 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 	tr := &http.Transport{
 		Proxy: proxyFunc,
 		DialContext: (&net.Dialer{
-			Timeout:   10 * time.Second,
+			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 30 * time.Second,
+		TLSHandshakeTimeout:   15 * time.Second,
+		ResponseHeaderTimeout: 5 * time.Minute,
 		MaxIdleConns:          100,
 		MaxIdleConnsPerHost:   50,
 		IdleConnTimeout:       90 * time.Second,
@@ -88,7 +88,7 @@ func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown 
 		encKey:       encKey,
 		maxRetries:   maxRetries,
 		cooldownSecs: cooldownSecs,
-		client:       &http.Client{Transport: tr, Timeout: 5 * time.Minute},
+		client:       &http.Client{Transport: tr, Timeout: 15 * time.Minute},
 	}
 }
 
@@ -898,8 +898,8 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		var outputCharCount int
 		hasher := sha256.New()
 		mw := io.MultiWriter(c.Writer, hasher)
-		scanner := bufio.NewScanner(newIdleTimeoutReader(httpResp.Body, 60*time.Second))
-		scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+		scanner := bufio.NewScanner(httpResp.Body)
+		scanner.Buffer(make([]byte, 0, 64*1024), 20*1024*1024)
 		streamToolAcc := NewStreamToolAccumulator()
 		forwardedAny := false
 		for scanner.Scan() {
@@ -1287,36 +1287,6 @@ func calculateBackoff(attempt int) time.Duration {
 	}
 	jitter := rand.Intn(100)
 	return time.Duration(baseMs+jitter) * time.Millisecond
-}
-
-type idleTimeoutReader struct {
-	r       io.Reader
-	timeout time.Duration
-	n       chan int
-	err     chan error
-}
-
-func newIdleTimeoutReader(r io.Reader, timeout time.Duration) *idleTimeoutReader {
-	return &idleTimeoutReader{
-		r:       r,
-		timeout: timeout,
-		n:       make(chan int, 1),
-		err:     make(chan error, 1),
-	}
-}
-
-func (r *idleTimeoutReader) Read(p []byte) (int, error) {
-	go func() {
-		n, err := r.r.Read(p)
-		r.n <- n
-		r.err <- err
-	}()
-	select {
-	case n := <-r.n:
-		return n, <-r.err
-	case <-time.After(r.timeout):
-		return 0, fmt.Errorf("idle timeout: no data received for %v", r.timeout)
-	}
 }
 
 func (e *Engine) syncCredentialHealth(ctx context.Context, cred *models.Credential, isCoolingDown bool, isExhausted bool) {

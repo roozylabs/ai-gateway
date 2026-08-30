@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
+import { Textarea } from "@/components/atoms/Textarea";
 import { Label } from "@/components/atoms/Label";
 import { Switch } from "@/components/atoms/Switch";
 import {
@@ -497,7 +498,9 @@ export function MCPServerFormDialog({
                     <FormItem className="space-y-2">
                       <FormLabel>Arguments</FormLabel>
                       <FormControl>
-                        <textarea
+                        <Textarea
+                          counter
+                          counterLabel="characters"
                           className="w-full h-20 rounded-md border border-border bg-background p-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                           {...field}
                           placeholder={"One argument per line, e.g.\n--token\nxxx"}
