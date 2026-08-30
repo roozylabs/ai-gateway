@@ -36,8 +36,6 @@ export function DashboardTopbar() {
   const { isConnected: isSseConnected } = useSSE();
   const { user, logout } = useAuth();
 
-  console.log('user',user)
-
   const systemStatus = isSseConnected ? 'operational' : 'degraded';
   const systemStatusLabel = isSseConnected ? 'System operational' : 'System degraded';
 
@@ -45,6 +43,7 @@ export function DashboardTopbar() {
   const email = user?.email || 'admin@prism.local';
   const role = user?.role || 'Admin';
   const initials = getUserInitials(user?.name, user?.email);
+  const avatarSrc = user?.avatarUrl || user?.image;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-6 backdrop-blur">
@@ -64,7 +63,7 @@ export function DashboardTopbar() {
               aria-label="User account menu"
             >
               <Avatar className="h-8 w-8">
-                {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={displayName} />}
+                {avatarSrc && <AvatarImage src={avatarSrc} alt={displayName} />}
                 <AvatarFallback className="bg-[#7C3AED] text-white text-xs font-bold font-mono">
                   {initials}
                 </AvatarFallback>
