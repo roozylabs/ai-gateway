@@ -22,7 +22,7 @@ export interface ApiBudgetStatus {
   id?: string;
   name: string;
   amountUSD?: number;
-  budget?: number;
+  budget?: ApiBudget;
   currentSpendUSD?: number;
   monthlySpent?: number;
   spendPercentage?: number;
