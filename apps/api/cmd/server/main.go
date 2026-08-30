@@ -253,6 +253,8 @@ func main() {
 		api.GET("/ready", healthHandler.Ready)
 		api.POST("/auth/login", authHandler.Login)
 		api.GET("/auth/turnstile-config", authHandler.GetTurnstileConfig)
+		api.GET("/auth/oauth/:provider", oauthHandler.InitiateOAuth)
+		api.GET("/auth/oauth/:provider/callback", oauthHandler.OAuthCallback)
 		api.GET("/auth/google/login", googleOAuthHandler.Login)
 		api.GET("/auth/google/callback", googleOAuthHandler.Callback)
 
@@ -264,8 +266,6 @@ func main() {
 			// Auth
 			protected.POST("/auth/logout", authHandler.Logout)
 			protected.GET("/auth/me", authHandler.Me)
-			protected.GET("/auth/oauth/:provider", oauthHandler.InitiateOAuth)
-			protected.GET("/auth/oauth/:provider/callback", oauthHandler.OAuthCallback)
 
 			// User Permissions & Onboarding
 			protected.GET("/user/permissions", userPermissionsHandler.GetPermissions)

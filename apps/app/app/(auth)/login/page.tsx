@@ -90,7 +90,7 @@ export default function LoginPage() {
       setOauthLoading(provider);
       toast.info(`Connecting to ${provider === 'google' ? 'Google' : 'GitHub'} OAuth...`);
       if (provider === 'google') {
-        window.location.href = '/api/auth/google/login';
+        window.location.href = '/api/auth/oauth/google';
       } else {
         window.location.href = '/api/auth/oauth/github';
       }
