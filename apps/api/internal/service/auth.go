@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -52,7 +53,7 @@ type SignupRequest struct {
 }
 
 type LoginResponse struct {
-	Token string      `json:"token"`
+	Token string       `json:"token"`
 	User  *models.User `json:"user"`
 }
 
@@ -74,7 +75,7 @@ func (s *AuthService) Login(ctx context.Context, email, password, ip, ua string)
 		return nil, err
 	}
 
-	if account.Password == "" || !utils.CheckPassword(password, account.Password) {
+	if !utils.CheckPassword(password, account.Password) {
 		return nil, ErrInvalidCredentials
 	}
 
@@ -125,6 +126,7 @@ func (s *AuthService) Signup(ctx context.Context, name, email, password, ip, ua 
 	}
 
 	if err := s.users.Create(ctx, user); err != nil {
+		log.Printf("[AuthService Signup] failed to create user %s: %v", email, err)
 		return nil, err
 	}
 
@@ -137,6 +139,7 @@ func (s *AuthService) Signup(ctx context.Context, name, email, password, ip, ua 
 	}
 
 	if err := s.accounts.Create(ctx, account); err != nil {
+		log.Printf("[AuthService Signup] failed to create account %s: %v", email, err)
 		return nil, err
 	}
 
@@ -151,6 +154,7 @@ func (s *AuthService) Signup(ctx context.Context, name, email, password, ip, ua 
 	}
 
 	if err := s.sessions.Create(ctx, session); err != nil {
+		log.Printf("[AuthService Signup] failed to create session %s: %v", email, err)
 		return nil, err
 	}
 
@@ -158,14 +162,16 @@ func (s *AuthService) Signup(ctx context.Context, name, email, password, ip, ua 
 }
 
 func (s *AuthService) CreateOAuthSession(ctx context.Context, email, name, image, provider, ip, ua string) (*LoginResponse, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
 	if email == "" {
 		email = provider + "_user@prism.local"
 	}
+
 	user, err := s.users.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			userID := uuid.New().String()
-			userName := name
+			userName := strings.TrimSpace(name)
 			if userName == "" {
 				userName = strings.ToUpper(provider[:1]) + provider[1:] + " Developer"
 			}
@@ -175,17 +181,41 @@ func (s *AuthService) CreateOAuthSession(ctx context.Context, email, name, image
 				Email:         email,
 				EmailVerified: true,
 				Image:         image,
+				AvatarURL:     image,
 				IsOnboarded:   false,
 				AuthProvider:  provider,
 				PrimaryRole:   "developer",
 			}
 			if createErr := s.users.Create(ctx, user); createErr != nil {
+				log.Printf("[AuthService CreateOAuthSession] failed to create user %s: %v", email, createErr)
 				return nil, createErr
 			}
 		} else {
+			log.Printf("[AuthService CreateOAuthSession] find by email error %s: %v", email, err)
 			return nil, err
 		}
+	} else if user != nil {
+		// Update user profile info and ensure email_verified is true
+		if strings.TrimSpace(name) != "" && user.Name == "" {
+			user.Name = strings.TrimSpace(name)
+		}
+		if strings.TrimSpace(image) != "" && user.Image == "" {
+			user.Image = strings.TrimSpace(image)
+			user.AvatarURL = strings.TrimSpace(image)
+		}
+		user.EmailVerified = true
+		_ = s.users.UpdateProfile(ctx, user)
 	}
+
+	// Create account record if it does not exist
+	account := &models.Account{
+		ID:         uuid.New().String(),
+		AccountID:  user.ID,
+		ProviderID: provider,
+		UserID:     user.ID,
+		Password:   "",
+	}
+	_ = s.accounts.Create(ctx, account)
 
 	token := utils.HashSHA256(uuid.New().String())
 	session := &models.Session{
@@ -198,6 +228,7 @@ func (s *AuthService) CreateOAuthSession(ctx context.Context, email, name, image
 	}
 
 	if err := s.sessions.Create(ctx, session); err != nil {
+		log.Printf("[AuthService CreateOAuthSession] failed to create session for %s: %v", email, err)
 		return nil, err
 	}
 

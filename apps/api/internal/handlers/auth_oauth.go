@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -131,6 +132,7 @@ func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 		c.Request.UserAgent(),
 	)
 	if err != nil {
+		log.Printf("[OAuth Initiate Fallback Error] provider=%s err=%v", provider, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create OAuth session: " + err.Error()})
 		return
 	}
@@ -170,33 +172,42 @@ func (h *OAuthHandler) OAuthCallback(c *gin.Context) {
 		form.Set("grant_type", "authorization_code")
 
 		tokenResp, err := http.PostForm("https://oauth2.googleapis.com/token", form)
-		if err == nil && tokenResp != nil && tokenResp.StatusCode == http.StatusOK {
+		if err != nil {
+			log.Printf("[OAuth Google token error] %v", err)
+		} else if tokenResp != nil {
 			defer func() { _ = tokenResp.Body.Close() }()
-			var tokResult struct {
-				AccessToken string `json:"access_token"`
-			}
 			bodyBytes, _ := io.ReadAll(tokenResp.Body)
-			_ = json.Unmarshal(bodyBytes, &tokResult)
+			if tokenResp.StatusCode != http.StatusOK {
+				log.Printf("[OAuth Google token status=%d] body=%s", tokenResp.StatusCode, string(bodyBytes))
+			} else {
+				var tokResult struct {
+					AccessToken string `json:"access_token"`
+				}
+				_ = json.Unmarshal(bodyBytes, &tokResult)
 
-			if tokResult.AccessToken != "" {
-				userReq, _ := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
-				userReq.Header.Set("Authorization", "Bearer "+tokResult.AccessToken)
-				userResp, userErr := http.DefaultClient.Do(userReq)
-				if userErr == nil && userResp != nil && userResp.StatusCode == http.StatusOK {
-					defer func() { _ = userResp.Body.Close() }()
-					var uInfo struct {
-						Email   string `json:"email"`
-						Name    string `json:"name"`
-						Picture string `json:"picture"`
+				if tokResult.AccessToken != "" {
+					userReq, _ := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+					userReq.Header.Set("Authorization", "Bearer "+tokResult.AccessToken)
+					userResp, userErr := http.DefaultClient.Do(userReq)
+					if userErr != nil {
+						log.Printf("[OAuth Google userinfo error] %v", userErr)
+					} else if userResp != nil {
+						defer func() { _ = userResp.Body.Close() }()
+						var uInfo struct {
+							Email   string `json:"email"`
+							Name    string `json:"name"`
+							Picture string `json:"picture"`
+						}
+						uBytes, _ := io.ReadAll(userResp.Body)
+						_ = json.Unmarshal(uBytes, &uInfo)
+						email = strings.TrimSpace(uInfo.Email)
+						name = strings.TrimSpace(uInfo.Name)
+						avatar = strings.TrimSpace(uInfo.Picture)
 					}
-					uBytes, _ := io.ReadAll(userResp.Body)
-					_ = json.Unmarshal(uBytes, &uInfo)
-					email = uInfo.Email
-					name = uInfo.Name
-					avatar = uInfo.Picture
 				}
 			}
 		}
+
 	case "github":
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
 		clientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
@@ -213,35 +224,78 @@ func (h *OAuthHandler) OAuthCallback(c *gin.Context) {
 		req.Header.Set("Accept", "application/json")
 
 		tokenResp, err := http.DefaultClient.Do(req)
-		if err == nil && tokenResp != nil && tokenResp.StatusCode == http.StatusOK {
+		if err != nil {
+			log.Printf("[OAuth GitHub token error] %v", err)
+		} else if tokenResp != nil {
 			defer func() { _ = tokenResp.Body.Close() }()
-			var tokResult struct {
-				AccessToken string `json:"access_token"`
-			}
 			bodyBytes, _ := io.ReadAll(tokenResp.Body)
-			_ = json.Unmarshal(bodyBytes, &tokResult)
+			if tokenResp.StatusCode != http.StatusOK {
+				log.Printf("[OAuth GitHub token status=%d] body=%s", tokenResp.StatusCode, string(bodyBytes))
+			} else {
+				var tokResult struct {
+					AccessToken string `json:"access_token"`
+				}
+				_ = json.Unmarshal(bodyBytes, &tokResult)
 
-			if tokResult.AccessToken != "" {
-				userReq, _ := http.NewRequest("GET", "https://api.github.com/user", nil)
-				userReq.Header.Set("Authorization", "Bearer "+tokResult.AccessToken)
-				userReq.Header.Set("Accept", "application/json")
-				userResp, userErr := http.DefaultClient.Do(userReq)
-				if userErr == nil && userResp != nil && userResp.StatusCode == http.StatusOK {
-					defer func() { _ = userResp.Body.Close() }()
-					var uInfo struct {
-						Email     string `json:"email"`
-						Name      string `json:"name"`
-						Login     string `json:"login"`
-						AvatarURL string `json:"avatar_url"`
+				if tokResult.AccessToken != "" {
+					userReq, _ := http.NewRequest("GET", "https://api.github.com/user", nil)
+					userReq.Header.Set("Authorization", "Bearer "+tokResult.AccessToken)
+					userReq.Header.Set("Accept", "application/json")
+					userResp, userErr := http.DefaultClient.Do(userReq)
+					if userErr != nil {
+						log.Printf("[OAuth GitHub user error] %v", userErr)
+					} else if userResp != nil {
+						defer func() { _ = userResp.Body.Close() }()
+						var uInfo struct {
+							Email     string `json:"email"`
+							Name      string `json:"name"`
+							Login     string `json:"login"`
+							AvatarURL string `json:"avatar_url"`
+						}
+						uBytes, _ := io.ReadAll(userResp.Body)
+						_ = json.Unmarshal(uBytes, &uInfo)
+						email = strings.TrimSpace(uInfo.Email)
+						name = strings.TrimSpace(uInfo.Name)
+						if name == "" {
+							name = strings.TrimSpace(uInfo.Login)
+						}
+						avatar = strings.TrimSpace(uInfo.AvatarURL)
 					}
-					uBytes, _ := io.ReadAll(userResp.Body)
-					_ = json.Unmarshal(uBytes, &uInfo)
-					email = uInfo.Email
-					name = uInfo.Name
-					if name == "" {
-						name = uInfo.Login
+
+					// If email is private on GitHub profile, fetch from /user/emails endpoint
+					if email == "" {
+						emailsReq, _ := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
+						emailsReq.Header.Set("Authorization", "Bearer "+tokResult.AccessToken)
+						emailsReq.Header.Set("Accept", "application/json")
+						emailsResp, emailsErr := http.DefaultClient.Do(emailsReq)
+						if emailsErr == nil && emailsResp != nil && emailsResp.StatusCode == http.StatusOK {
+							defer func() { _ = emailsResp.Body.Close() }()
+							var emailsList []struct {
+								Email    string `json:"email"`
+								Primary  bool   `json:"primary"`
+								Verified bool   `json:"verified"`
+							}
+							eBytes, _ := io.ReadAll(emailsResp.Body)
+							_ = json.Unmarshal(eBytes, &emailsList)
+							for _, item := range emailsList {
+								if item.Primary && item.Verified {
+									email = strings.TrimSpace(item.Email)
+									break
+								}
+							}
+							if email == "" {
+								for _, item := range emailsList {
+									if item.Verified {
+										email = strings.TrimSpace(item.Email)
+										break
+									}
+								}
+							}
+							if email == "" && len(emailsList) > 0 {
+								email = strings.TrimSpace(emailsList[0].Email)
+							}
+						}
 					}
-					avatar = uInfo.AvatarURL
 				}
 			}
 		}
@@ -264,6 +318,7 @@ func (h *OAuthHandler) OAuthCallback(c *gin.Context) {
 		c.Request.UserAgent(),
 	)
 	if err != nil {
+		log.Printf("[OAuth Callback Session Error] provider=%s email=%s err=%v", provider, email, err)
 		c.Redirect(http.StatusTemporaryRedirect, "/signin?error=session_creation_failed")
 		return
 	}

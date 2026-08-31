@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { useTheme } from 'next-themes';
@@ -21,8 +21,10 @@ import { useAuth } from '@/context/AuthContext';
 import { apiGetTurnstileConfig } from '@/lib/api';
 import { loginSchema, LoginFormValues } from '@/features/auth/schemas/login.schema';
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const oauthError = searchParams?.get('error');
   const { resolvedTheme } = useTheme();
   const { login, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -48,6 +50,18 @@ export default function SignInPage() {
       router.replace(AppRoutes.HOME);
     }
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (oauthError) {
+      if (oauthError === 'session_creation_failed') {
+        toast.error('OAuth sign-in failed. Please try again or sign in with your password.');
+      } else if (oauthError === 'missing_code') {
+        toast.error('OAuth authorization code was missing.');
+      } else {
+        toast.error(`Authentication error: ${oauthError}`);
+      }
+    }
+  }, [oauthError]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -87,7 +101,6 @@ export default function SignInPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
       toast.error(message);
-      // Automatically reset Turnstile after failed attempt so subsequent submissions use a fresh token
       resetTurnstile();
     } finally {
       setLoading(false);
@@ -264,5 +277,13 @@ export default function SignInPage() {
         </CardContent>
       </Card>
     </AuthLayout>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
   );
 }
