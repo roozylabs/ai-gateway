@@ -41,7 +41,7 @@ func InitOTel(ctx context.Context) (OTelShutdownFunc, error) {
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(serviceName),
-			semconv.ServiceVersionKey.String("0.2.3"),
+			semconv.ServiceVersionKey.String("0.3.0"),
 		),
 	)
 	if err != nil {

@@ -1,6 +1,6 @@
 {
   "name": "@roozylabs/prism",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Official TypeScript SDK for RoozyLabs Prism AI Control Plane & Gateway",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
