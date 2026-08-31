@@ -61,16 +61,12 @@ func (r *BillingRepository) ListPlans() []models.BillingPlanSummary {
 func (r *BillingRepository) GetActiveSubscription(ctx context.Context, orgID string) (*models.SubscriptionStatusResponse, error) {
 	plans := r.ListPlans()
 
-	// Query total monthly spend for specific organization
+	// Query total monthly spend for specific organization (strict tenant filter)
 	querySpent := `
 		SELECT COALESCE(SUM(cost_usd), 0.0)
 		FROM request_logs
 		WHERE created_at >= date_trunc('month', NOW())
-		  AND (
-			org_id = $1
-			OR gateway_api_key_id IN (SELECT id FROM gateway_api_keys WHERE org_id = $1)
-			OR ($1 = '' AND (org_id = 'org_default' OR org_id IS NULL OR org_id = ''))
-		  )
+		  AND org_id = $1
 	`
 	var monthlySpent float64
 	_ = r.db.QueryRowContext(ctx, querySpent, orgID).Scan(&monthlySpent)
@@ -92,10 +88,7 @@ func (r *BillingRepository) ListInvoices(ctx context.Context, orgID string) ([]m
 		       currency, status, line_items_json, period_start, period_end,
 		       due_date, paid_at, created_at, updated_at
 		FROM billing_invoices
-		WHERE (
-			organization_id = $1
-			OR ($1 = '' AND (organization_id IS NULL OR organization_id = 'org_default'))
-		)
+		WHERE organization_id = $1
 		ORDER BY created_at DESC
 	`
 	rows, err := r.db.QueryContext(ctx, query, orgID)
@@ -139,10 +132,7 @@ func (r *BillingRepository) GetDailyUsage(ctx context.Context, orgID string) ([]
 		       request_count, prompt_tokens, completion_tokens,
 		       provider_cost_usd, markup_usd, customer_cost_usd, created_at
 		FROM daily_usage_aggregates
-		WHERE (
-			organization_id = $1
-			OR ($1 = '' AND (organization_id IS NULL OR organization_id = 'org_default'))
-		)
+		WHERE organization_id = $1
 		ORDER BY usage_date DESC, provider_slug ASC
 	`
 	rows, err := r.db.QueryContext(ctx, query, orgID)

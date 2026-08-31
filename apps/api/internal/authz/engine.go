@@ -68,6 +68,8 @@ func NewAuthorizationEngine(permFinder PermissionFinder, wsFinder WorkspaceMembe
 }
 
 // Can evaluates whether the given principal is authorized to perform action on the target resource.
+// Evaluation follows the canonical chain:
+// Principal -> Org Boundary -> Org Permissions -> Workspace Gate (Membership OR workspace:admin) -> Resource Permission
 // Evaluation is deterministic and strictly fail-closed.
 func (e *AuthorizationEngine) Can(ctx context.Context, p *Principal, action string, target *ResourceContext) (bool, error) {
 	if p == nil || p.ID == "" {
@@ -94,14 +96,7 @@ func (e *AuthorizationEngine) Can(ctx context.Context, p *Principal, action stri
 		}
 	}
 
-	// 3. Workspace Boundary Check
-	if target != nil && target.WorkspaceID != "" && p.WorkspaceID != "" {
-		if p.WorkspaceID != target.WorkspaceID {
-			return false, ErrCrossWorkspaceDenied
-		}
-	}
-
-	// 4. Resolve permissions if not pre-populated
+	// 3. Resolve Organization Permissions (Required for all subsequent gates)
 	perms := p.Permissions
 	if len(perms) == 0 && e.permFinder != nil && p.OrgID != "" && p.Type == PrincipalHumanUser {
 		fetchedPerms, roleSlug, err := e.permFinder.GetUserPermissions(ctx, p.ID, p.OrgID)
@@ -114,11 +109,44 @@ func (e *AuthorizationEngine) Can(ctx context.Context, p *Principal, action stri
 		p.Permissions = fetchedPerms
 	}
 
-	// 5. Evaluate Permission Rules
+	// 4. Workspace Access Gate (Mandatory workspace membership OR explicit org-level workspace:admin permission)
+	if target != nil && target.WorkspaceID != "" {
+		// 4a. If principal is explicitly bound to a workspace (e.g. Gateway API Key), scopes must match
+		if p.WorkspaceID != "" && p.WorkspaceID != target.WorkspaceID {
+			return false, ErrCrossWorkspaceDenied
+		}
+
+		// 4b. Check for explicit org-level administrative override (workspace:admin permission)
+		hasWsAdmin := false
+		for _, perm := range perms {
+			cleanPerm := strings.ToLower(strings.TrimSpace(perm))
+			if cleanPerm == "workspace:admin" || cleanPerm == "workspace:*" {
+				hasWsAdmin = true
+				break
+			}
+		}
+
+		if !hasWsAdmin {
+			// 4c. Mandatory workspace membership verification for human users
+			if p.Type == PrincipalHumanUser {
+				if e.wsFinder == nil {
+					// Fail-closed if workspace membership checker is unavailable
+					return false, ErrCrossWorkspaceDenied
+				}
+				_, err := e.wsFinder.GetWorkspaceMemberRole(ctx, target.WorkspaceID, p.ID)
+				if err != nil {
+					return false, ErrCrossWorkspaceDenied
+				}
+			}
+		}
+	}
+
+	// 5. Evaluate Resource Permission Match (Explicit <resource>:<action> taxonomy, no wildcard *)
 	return evaluatePermissionMatch(perms, action), nil
 }
 
-// evaluatePermissionMatch matches permission codes supporting exact match, wildcard '*', and prefix wildcards 'resource:*'.
+// evaluatePermissionMatch matches permission codes supporting exact match and prefix wildcards 'resource:*'.
+// Note: Global '*' is explicitly eliminated in favor of canonical explicit permissions.
 func evaluatePermissionMatch(perms []string, targetAction string) bool {
 	if len(perms) == 0 {
 		return false
@@ -133,13 +161,10 @@ func evaluatePermissionMatch(perms []string, targetAction string) bool {
 
 	for _, perm := range perms {
 		perm = strings.ToLower(strings.TrimSpace(perm))
-		if perm == "*" || perm == "all" {
-			return true
-		}
 		if perm == targetAction {
 			return true
 		}
-		if resourcePrefix != "" && (perm == resourcePrefix || perm == parts[0]+":write" && parts[1] == "update") {
+		if resourcePrefix != "" && (perm == resourcePrefix || (perm == parts[0]+":write" && parts[1] == "update")) {
 			return true
 		}
 	}

@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	ErrNotMember               = errors.New("user is not a member of the organization")
-	ErrCannotRemoveLastOwner   = errors.New("cannot remove the last owner of an organization")
-	ErrCannotDemoteLastOwner   = errors.New("cannot demote the last owner of an organization")
-	ErrInvalidRole             = errors.New("invalid role specified")
+	ErrNotMember             = errors.New("user is not a member of the organization")
+	ErrCannotRemoveLastOwner = errors.New("cannot remove the last owner of an organization")
+	ErrCannotDemoteLastOwner = errors.New("cannot demote the last owner of an organization")
+	ErrInvalidRole           = errors.New("invalid role specified")
 )
 
 type RBACRepository struct {
@@ -27,17 +27,18 @@ func NewRBACRepository(db *sql.DB) *RBACRepository {
 }
 
 // GetUserPermissions queries the authoritative role and permissions for a user in the specified organization.
-// Returns strictly fail-closed error if query fails or membership record is absent.
+// role_id is the sole authoritative link. Returns strictly fail-closed error if query fails or membership record is absent.
+// Note: Owner wildcard '*' injection is eliminated; owner permissions are explicitly sourced from role_permissions rows.
 func (r *RBACRepository) GetUserPermissions(ctx context.Context, userID string, orgID string) ([]string, string, error) {
 	if userID == "" || orgID == "" {
 		return nil, "", ErrNotMember
 	}
 
-	// 1. Query role and permissions joined through roles and role_permissions
+	// Authoritative join using om.role_id = r.id (role string column is deprecated read-only)
 	query := `
-		SELECT COALESCE(r.slug, om.role), COALESCE(p.code, '')
+		SELECT r.slug, COALESCE(p.code, '')
 		FROM organization_members om
-		LEFT JOIN roles r ON (om.role_id = r.id OR om.role = r.slug)
+		JOIN roles r ON om.role_id = r.id
 		LEFT JOIN role_permissions rp ON r.id = rp.role_id
 		LEFT JOIN permissions p ON rp.permission_id = p.id
 		WHERE om.user_id = $1 AND om.org_id = $2
@@ -72,20 +73,6 @@ func (r *RBACRepository) GetUserPermissions(ctx context.Context, userID string, 
 		return nil, "", ErrNotMember
 	}
 
-	// Owner role inherently retains wildcard access
-	if roleSlug == "owner" {
-		hasWildcard := false
-		for _, p := range permissions {
-			if p == "*" {
-				hasWildcard = true
-				break
-			}
-		}
-		if !hasWildcard {
-			permissions = append(permissions, "*")
-		}
-	}
-
 	return permissions, roleSlug, nil
 }
 
@@ -105,7 +92,7 @@ func (r *RBACRepository) CountOwners(ctx context.Context, orgID string) (int, er
 // ListOrganizationMembers returns all members for an organization.
 func (r *RBACRepository) ListOrganizationMembers(ctx context.Context, orgID string) ([]models.OrganizationMember, error) {
 	query := `
-		SELECT om.id, om.org_id, om.user_id, COALESCE(u.email, ''), COALESCE(u.name, ''), om.role, om.created_at, om.updated_at
+		SELECT om.id, om.org_id, om.user_id, COALESCE(u.email, ''), COALESCE(u.name, ''), om.role, COALESCE(om.role_id::text, ''), om.created_at, om.updated_at
 		FROM organization_members om
 		LEFT JOIN "user" u ON om.user_id = u.id
 		WHERE om.org_id = $1
@@ -120,7 +107,7 @@ func (r *RBACRepository) ListOrganizationMembers(ctx context.Context, orgID stri
 	var members []models.OrganizationMember
 	for rows.Next() {
 		var m models.OrganizationMember
-		if err := rows.Scan(&m.ID, &m.OrgID, &m.UserID, &m.UserEmail, &m.UserName, &m.Role, &m.CreatedAt, &m.UpdatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.OrgID, &m.UserID, &m.UserEmail, &m.UserName, &m.Role, &m.RoleID, &m.CreatedAt, &m.UpdatedAt); err != nil {
 			return nil, err
 		}
 		members = append(members, m)
@@ -128,24 +115,38 @@ func (r *RBACRepository) ListOrganizationMembers(ctx context.Context, orgID stri
 	return members, rows.Err()
 }
 
-// AddOrganizationMember adds a user to an organization.
+// AddOrganizationMember adds a user to an organization, resolving role_id dynamically.
 func (r *RBACRepository) AddOrganizationMember(ctx context.Context, orgID, userID, role string) error {
 	now := time.Now()
 	id := uuid.New().String()
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO organization_members (id, org_id, user_id, role, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)
-		 ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role, updated_at = EXCLUDED.updated_at`,
+		`INSERT INTO organization_members (id, org_id, user_id, role, role_id, created_at, updated_at)
+		 VALUES (
+			$1, $2, $3, $4,
+			COALESCE((SELECT id FROM roles WHERE (slug = $4 OR id::text = $4) AND (is_system = true OR organization_id = $2) LIMIT 1), '00000000-0000-0000-0000-000000000001'::uuid),
+			$5, $6
+		 )
+		 ON CONFLICT (org_id, user_id) DO UPDATE SET
+			role = EXCLUDED.role,
+			role_id = EXCLUDED.role_id,
+			updated_at = EXCLUDED.updated_at`,
 		id, orgID, userID, role, now, now,
 	)
 	return err
 }
 
-// UpdateMemberRole updates a member's role with Last-Owner invariant safety.
+// UpdateMemberRole updates a member's role with atomic Last-Owner invariant safety using row-level locking.
 func (r *RBACRepository) UpdateMemberRole(ctx context.Context, orgID, userID, newRole string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Lock target member row for atomic update
 	var currentRole string
-	err := r.db.QueryRowContext(ctx,
-		`SELECT role FROM organization_members WHERE org_id = $1 AND user_id = $2`,
+	err = tx.QueryRowContext(ctx,
+		`SELECT role FROM organization_members WHERE org_id = $1 AND user_id = $2 FOR UPDATE`,
 		orgID, userID,
 	).Scan(&currentRole)
 	if err != nil {
@@ -156,7 +157,12 @@ func (r *RBACRepository) UpdateMemberRole(ctx context.Context, orgID, userID, ne
 	}
 
 	if currentRole == "owner" && newRole != "owner" {
-		ownerCount, err := r.CountOwners(ctx, orgID)
+		// Lock all owner rows in this organization to prevent concurrent demotion race conditions
+		var ownerCount int
+		err = tx.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM organization_members WHERE org_id = $1 AND role = 'owner' FOR UPDATE`,
+			orgID,
+		).Scan(&ownerCount)
 		if err != nil {
 			return err
 		}
@@ -165,18 +171,33 @@ func (r *RBACRepository) UpdateMemberRole(ctx context.Context, orgID, userID, ne
 		}
 	}
 
-	_, err = r.db.ExecContext(ctx,
-		`UPDATE organization_members SET role = $1, updated_at = $2 WHERE org_id = $3 AND user_id = $4`,
+	_, err = tx.ExecContext(ctx,
+		`UPDATE organization_members
+		 SET role = $1,
+		     role_id = COALESCE((SELECT id FROM roles WHERE (slug = $1 OR id::text = $1) AND (is_system = true OR organization_id = $3) LIMIT 1), role_id),
+		     updated_at = $2
+		 WHERE org_id = $3 AND user_id = $4`,
 		newRole, time.Now(), orgID, userID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
-// RemoveOrganizationMember removes a member from an organization with Last-Owner invariant safety.
+// RemoveOrganizationMember removes a member from an organization with atomic Last-Owner invariant safety using row-level locking.
 func (r *RBACRepository) RemoveOrganizationMember(ctx context.Context, orgID, userID string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Lock target member row for atomic delete
 	var currentRole string
-	err := r.db.QueryRowContext(ctx,
-		`SELECT role FROM organization_members WHERE org_id = $1 AND user_id = $2`,
+	err = tx.QueryRowContext(ctx,
+		`SELECT role FROM organization_members WHERE org_id = $1 AND user_id = $2 FOR UPDATE`,
 		orgID, userID,
 	).Scan(&currentRole)
 	if err != nil {
@@ -187,7 +208,12 @@ func (r *RBACRepository) RemoveOrganizationMember(ctx context.Context, orgID, us
 	}
 
 	if currentRole == "owner" {
-		ownerCount, err := r.CountOwners(ctx, orgID)
+		// Lock all owner rows to prevent concurrent removal race conditions
+		var ownerCount int
+		err = tx.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM organization_members WHERE org_id = $1 AND role = 'owner' FOR UPDATE`,
+			orgID,
+		).Scan(&ownerCount)
 		if err != nil {
 			return err
 		}
@@ -196,11 +222,15 @@ func (r *RBACRepository) RemoveOrganizationMember(ctx context.Context, orgID, us
 		}
 	}
 
-	_, err = r.db.ExecContext(ctx,
+	_, err = tx.ExecContext(ctx,
 		`DELETE FROM organization_members WHERE org_id = $1 AND user_id = $2`,
 		orgID, userID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // GetWorkspaceMemberRole returns the role of a user in a workspace.
@@ -245,11 +275,37 @@ func (r *RBACRepository) ListWorkspaceMembers(ctx context.Context, wsID string) 
 	return members, rows.Err()
 }
 
-// AddWorkspaceMember adds a user to a workspace.
+// AddWorkspaceMember adds a user to a workspace only after verifying organizational membership chain.
 func (r *RBACRepository) AddWorkspaceMember(ctx context.Context, wsID, userID, role string) error {
+	// 1. Resolve workspace's parent organization
+	var wsOrgID string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT org_id FROM workspaces WHERE id = $1`, wsID,
+	).Scan(&wsOrgID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("workspace %s not found: %w", wsID, err)
+		}
+		return fmt.Errorf("lookup workspace parent organization: %w", err)
+	}
+
+	// 2. Verify user is an active member of that parent organization
+	var orgMemberCount int
+	err = r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM organization_members WHERE org_id = $1 AND user_id = $2`,
+		wsOrgID, userID,
+	).Scan(&orgMemberCount)
+	if err != nil {
+		return fmt.Errorf("check organization membership: %w", err)
+	}
+	if orgMemberCount == 0 {
+		return ErrNotMember
+	}
+
+	// 3. Insert workspace membership with natural UUID
 	now := time.Now()
 	id := uuid.New().String()
-	_, err := r.db.ExecContext(ctx,
+	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO workspace_members (id, workspace_id, user_id, role, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5, $6)
 		 ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = EXCLUDED.role, updated_at = EXCLUDED.updated_at`,

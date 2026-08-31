@@ -30,15 +30,6 @@ func (r *RequestLogRepository) Create(ctx context.Context, log *models.RequestLo
 	if log.CreatedAt.IsZero() {
 		log.CreatedAt = time.Now()
 	}
-	if log.OrgID == "" {
-		log.OrgID = "org_default"
-	}
-	if log.WorkspaceID == "" {
-		log.WorkspaceID = "ws_default"
-	}
-	if log.ProjectID == "" {
-		log.ProjectID = "proj_default"
-	}
 	attemptsJSON := string(log.Attempts)
 	if attemptsJSON == "" || attemptsJSON == "null" {
 		attemptsJSON = "[]"
