@@ -40,6 +40,7 @@
 | 4.3 | 30 August 2026, 10:00 WIB | Added MCP Server Detail Page + Invocation Usage Tracking specifications: migration 073 (mcp_server_invocations with tenant RLS + indexes), MCPGateway execution instrumentation, stats endpoint GET /api/mcp/servers/:id/stats?days=, and dynamic route /mcp/[id] |
 | 0.1.0 | 31 August 2026, 12:00 WIB | Established SemVer 2.0.0 baseline at v0.1.0, multi-tier feature flags engine (/features), 24-role dummy identity test matrix, and release rules |
 | 0.2.0 | 31 August 2026, 14:15 WIB | Added dedicated /signup registration page & API, reusable brand icons design system, FormLabel required asterisk standard, form input error border validation, and OAuth session foreign key fix |
+| 0.2.1 | 31 August 2026, 18:30 WIB | Improved Cloudflare Turnstile UX: non-blocking form inputs, invisible mode for login, unblocked OAuth, and shared useTurnstile hook |
 
 ---
 
