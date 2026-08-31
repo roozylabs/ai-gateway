@@ -64,22 +64,43 @@ Provide a clear executive summary of the features, architectural decisions, and 
 - [x] `CHANGELOG.md` updated
 ```
 
-## 3. Mandatory End-of-Task Completion Pipeline (Commit -> Push -> PR -> Labels)
+## 3. Mandatory End-of-Task Completion Pipeline (Commit -> Push -> PR -> Labels -> Merge)
 
-Upon completing any feature, bug fix, or task implementation, the agent MUST automatically execute the following sequence:
+> [!CRITICAL]
+> **MANDATORY PR LABELING (NO UNLABELED PRs)**:
+> Every Pull Request created MUST have at least 1-3 appropriate GitHub labels attached immediately after creation via `github-mcp-server` tool `issue_write`.
+> Merging an unlabeled Pull Request is strictly prohibited.
 
-1. **Commit**: Verify `pnpm typecheck` / `go test` pass, then commit staged changes using Conventional Commit syntax.
-2. **Push**: Push the feature branch to remote (`git push origin <branch>`).
-3. **Pull Request**: Call `create_pull_request` on `github-mcp-server` passing standard title and body template.
-4. **Labels**: Immediately call `issue_write` (`method: "update"`, `issue_number: <pr_number>`, `labels: [...]`) on `github-mcp-server` to attach relevant labels (`feat`, `fix`, `refactor`, `documentation`, `chore`, `ci`, `rules`).
+Upon completing any feature, bug fix, refactor, or rule update, the agent MUST execute the following sequence without skipping any step:
 
-- **Merge Strategy**: Use `merge_pull_request` only after verification checks (`pnpm build`, `go test`) pass cleanly.
-- **Post-Merge Cleanup**: After merging, delete the head branch on remote and delete local feature branch / worktree according to `.agents/rules/feature-branch-creation.md`.
-- **Release Tagging on `main` (if releasing a version)**:
-  1. Switch to `main` and pull latest: `git checkout main && git pull origin main`.
-  2. Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: <Summary>"`.
-  3. Push tag to GitHub: `git push origin vX.Y.Z`.
-  See `.agents/rules/semantic-versioning-and-releases.md` for full release guidelines.
+1. **Verification**: Run `pnpm --filter prism-dashboard typecheck`, `pnpm --filter prism-dashboard build`, and `cd apps/api && go test ./...`.
+2. **Commit**: Stage changes and commit with conventional commit format (`git add -A; git commit -m "..."`).
+3. **Push**: Push feature branch to remote (`git push origin <branch>`).
+4. **Create Pull Request**: Call `create_pull_request` on `github-mcp-server` passing standard title and body.
+5. **Attach Labels (MANDATORY)**: Immediately call `issue_write` on `github-mcp-server` with:
+   - `owner: "roozylabs"`
+   - `repo: "prism"`
+   - `issue_number: <pr_number>`
+   - `method: "update"`
+   - `labels: ["<label1>", "<label2>"]`
+   
+   **Standard Label Mapping Matrix**:
+   | PR Type / Scope | Mandatory GitHub Labels |
+   |---|---|
+   | Feature (`feat:`) | `enhancement`, plus functional label (`auth`, `proxy`, `ui`, `database`, `api`) |
+   | Bug Fix (`fix:`) | `bug`, plus functional label (`auth`, `proxy`, `ui`, `database`) |
+   | Release Bump (`chore(release):`) | `release`, `chore` |
+   | Documentation & Rules (`docs:`) | `documentation`, `rules` |
+   | Refactoring (`refactor:`) | `refactor`, `enhancement` |
+   | CI / Tooling (`chore:`, `ci:`) | `chore`, `ci` |
+
+6. **Merge Pull Request**: Call `merge_pull_request` (`merge_method: "squash"`).
+7. **Post-Merge Cleanup**: Delete remote and local feature branches.
+8. **Release Tagging on `main` (if releasing a version)**:
+   1. Switch to `main` and pull latest: `git checkout main && git pull origin main`.
+   2. Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: <Summary>"`.
+   3. Push tag to GitHub: `git push origin vX.Y.Z`.
+   See `.agents/rules/semantic-versioning-and-releases.md` for full release guidelines.
 
 
 
