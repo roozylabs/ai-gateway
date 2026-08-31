@@ -5,6 +5,30 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-31
+
+### Added
+- **Dedicated `/signup` Registration Flow & Backend API**:
+  - Implemented Next.js registration page ([`/signup`](file:///c:/me/projects/ai-gateway/apps/app/app/(auth)/signup/page.tsx)) with Name, Email, Password, Confirm Password, Cloudflare Turnstile, Google/GitHub OAuth, and Sign-in link.
+  - Added backend registration handler `POST /api/auth/signup` with duplicate email check, bcrypt password hashing, and session provisioning.
+  - Standardized URL convention using `/signup` across frontend routing, API endpoints, and middleware.
+- **Reusable Brand Icons Design System**:
+  - Extracted SVG `GoogleIcon` and `GitHubIcon` into reusable component module [`@/components/icons`](file:///c:/me/projects/ai-gateway/apps/app/components/icons/index.tsx) and re-exported via atomic design system [`@/components/atoms`](file:///c:/me/projects/ai-gateway/apps/app/components/atoms/Icons.tsx).
+- **Form Label Required Asterisk Standard**:
+  - Standardized `<FormLabel required>` and `<Label required>` rendering a red asterisk `<span className="text-destructive font-bold ml-1">*</span>` across all dialogs, sheets, modals, and auth pages.
+- **Input Error Validation Border & Ring Styling**:
+  - Added automatic `aria-invalid:border-destructive`, `data-[invalid=true]:border-destructive`, and `focus-visible:ring-destructive` validation borders across `Input`, `Textarea`, `Select`, `SearchableSelect`, `MultiSelect`, `NumberInput`, and `FormControl`.
+- **GitHub Private Email Resolution**:
+  - Enhanced OAuth callback to query `GET https://api.github.com/user/emails` when a GitHub user's public profile email is set to private.
+
+### Fixed
+- **OAuth Session Creation Foreign Key Violations**:
+  - Replaced empty string fallback in `UserRepository.Create` and `SessionRepository.Create` with `sql.NullString`, preventing PostgreSQL `23503: foreign_key_violation` against `organizations(id)`.
+  - Added user profile synchronization and `account` record creation upon OAuth sign-in.
+- **OAuth Cookie Forwarding in Next.js Reverse Proxy**:
+  - Preserved backend `Set-Cookie` headers across 200/201 responses and 307 redirects using `headers.getSetCookie()`.
+  - Added `X-Forwarded-Host` and `X-Forwarded-Proto` forwarding to generate accurate public callback URLs.
+
 ## [0.1.0] - 2026-08-31
 
 ### Added
