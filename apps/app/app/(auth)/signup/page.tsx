@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { useTheme } from 'next-themes';
-import { useQuery } from '@tanstack/react-query';
-import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { AppRoutes } from '@/constants/routes';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
@@ -18,7 +17,7 @@ import { GoogleIcon, GitHubIcon } from '@/components/icons';
 import { toast } from 'sonner';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { apiGetTurnstileConfig } from '@/lib/api';
+import { useTurnstile } from '@/hooks/useTurnstile';
 import { signupSchema, SignupFormValues } from '@/features/auth/schemas/signup.schema';
 
 export default function SignUpPage() {
@@ -26,22 +25,19 @@ export default function SignUpPage() {
   const { resolvedTheme } = useTheme();
   const { signup, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [oauthLoading, setOauthLoading] = useState<'google' | 'github' | null>(null);
-  const turnstileRef = useRef<TurnstileInstance>(null);
 
-  const { data: turnstileConfig } = useQuery({
-    queryKey: ['turnstile-config'],
-    queryFn: apiGetTurnstileConfig,
-  });
-
-  const siteKey =
-    process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY ||
-    turnstileConfig?.siteKey ||
-    '1x00000000000000000000AA';
-
-  const showTurnstile = siteKey && siteKey !== 'disabled' && siteKey !== 'none';
-  const isVerified = !showTurnstile || Boolean(turnstileToken);
+  const {
+    siteKey,
+    showTurnstile,
+    token: turnstileToken,
+    isReady,
+    turnstileRef,
+    onSuccess,
+    onError,
+    onExpire,
+    reset: resetTurnstile,
+  } = useTurnstile();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -56,23 +52,12 @@ export default function SignUpPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      turnstileToken: '',
     },
   });
 
-  const resetTurnstile = () => {
-    setTurnstileToken('');
-    form.setValue('turnstileToken', '');
-    try {
-      turnstileRef.current?.reset();
-    } catch (_err) {
-      // ignore
-    }
-  };
-
   const onSubmit = async (values: SignupFormValues) => {
-    if (!isVerified) {
-      toast.error('Please complete the security verification first.');
+    if (showTurnstile && !isReady) {
+      toast.error('Please complete security verification before creating your account.');
       return;
     }
 
@@ -82,7 +67,7 @@ export default function SignUpPage() {
         name: values.name,
         email: values.email,
         password: values.password,
-        turnstileToken: turnstileToken || values.turnstileToken,
+        turnstileToken: turnstileToken || undefined,
       });
       toast.success('Account created successfully! Welcome to RoozyLabs Prism.');
       router.replace(AppRoutes.ONBOARDING);
@@ -97,11 +82,6 @@ export default function SignUpPage() {
   };
 
   const handleOAuthLogin = async (provider: 'google' | 'github') => {
-    if (!isVerified) {
-      toast.error('Please complete the security verification first.');
-      return;
-    }
-
     try {
       setOauthLoading(provider);
       toast.info(`Connecting to ${provider === 'google' ? 'Google' : 'GitHub'} OAuth...`);
@@ -114,7 +94,6 @@ export default function SignUpPage() {
       const message = err instanceof Error ? err.message : 'OAuth redirection failed.';
       toast.error(message);
       setOauthLoading(null);
-      resetTurnstile();
     }
   };
 
@@ -139,7 +118,7 @@ export default function SignUpPage() {
                     <FormControl>
                       <Input
                         placeholder="John Doe"
-                        disabled={loading || !isVerified}
+                        disabled={loading}
                         {...field}
                       />
                     </FormControl>
@@ -158,7 +137,7 @@ export default function SignUpPage() {
                       <Input
                         type="email"
                         placeholder="name@company.com"
-                        disabled={loading || !isVerified}
+                        disabled={loading}
                         {...field}
                       />
                     </FormControl>
@@ -178,7 +157,7 @@ export default function SignUpPage() {
                         <Input
                           type="password"
                           placeholder="At least 8 chars"
-                          disabled={loading || !isVerified}
+                          disabled={loading}
                           {...field}
                         />
                       </FormControl>
@@ -197,7 +176,7 @@ export default function SignUpPage() {
                         <Input
                           type="password"
                           placeholder="Re-enter password"
-                          disabled={loading || !isVerified}
+                          disabled={loading}
                           {...field}
                         />
                       </FormControl>
@@ -212,16 +191,9 @@ export default function SignUpPage() {
                   <Turnstile
                     ref={turnstileRef}
                     siteKey={siteKey}
-                    onSuccess={(token) => {
-                      setTurnstileToken(token);
-                      form.setValue('turnstileToken', token);
-                    }}
-                    onError={() => {
-                      resetTurnstile();
-                    }}
-                    onExpire={() => {
-                      resetTurnstile();
-                    }}
+                    onSuccess={onSuccess}
+                    onError={onError}
+                    onExpire={onExpire}
                     options={{
                       theme: resolvedTheme === 'dark' ? 'dark' : 'light',
                       size: 'normal',
@@ -234,7 +206,7 @@ export default function SignUpPage() {
                 type="submit"
                 variant="prismViolet"
                 className="w-full gap-2 mt-2 cursor-pointer"
-                disabled={loading || !isVerified}
+                disabled={loading}
               >
                 {loading ? (
                   <>
@@ -266,7 +238,7 @@ export default function SignUpPage() {
               variant="outline"
               size="sm"
               className="w-full text-xs gap-2 cursor-pointer hover:bg-muted/60 transition-colors"
-              disabled={loading || oauthLoading !== null || !isVerified}
+              disabled={loading || oauthLoading !== null}
               onClick={() => handleOAuthLogin('google')}
             >
               {oauthLoading === 'google' ? (
@@ -282,7 +254,7 @@ export default function SignUpPage() {
               variant="outline"
               size="sm"
               className="w-full text-xs gap-2 cursor-pointer hover:bg-muted/60 transition-colors"
-              disabled={loading || oauthLoading !== null || !isVerified}
+              disabled={loading || oauthLoading !== null}
               onClick={() => handleOAuthLogin('github')}
             >
               {oauthLoading === 'github' ? (
