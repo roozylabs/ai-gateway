@@ -1,11 +1,11 @@
-# React Form State & React Query Mutation Guidelines
+# React Form State & React Query Guidelines
 
-This rule governs form handling and API mutations across all Next.js React pages and components in `apps/app`.
+This rule strictly governs form handling, data fetching, and API mutations across all Next.js React pages and components in `apps/app`.
 
 ## Directives
 
 ### 1. Prohibition of Scattered Primitive Form States
-- **DO NOT** declare separate individual `useState` hooks for each form input field:
+- **STRICTLY FORBIDDEN**: Declaring separate individual `useState` hooks for each form input field:
   - **Bad**:
     ```typescript
     const [formName, setFormName] = useState('');
@@ -13,9 +13,9 @@ This rule governs form handling and API mutations across all Next.js React pages
     const [formDescription, setFormDescription] = useState('');
     const [formEnabled, setFormEnabled] = useState(true);
     ```
-- **Mandatory Alternatives**:
-  - **Option A**: Use **React Hook Form (`useForm`)** + Radix `<Form>` components (`@/components/molecules/Form`).
-  - **Option B**: Wrap form values in a single strongly-typed object state:
+- **Mandatory Requirements**:
+  - **Option A (Preferred for Forms)**: Use **React Hook Form (`useForm`)** + Zod schema validation + Radix `<Form>` components (`@/components/molecules/Form`).
+  - **Option B (Simple State Objects)**: Wrap state in a single strongly-typed object:
     ```typescript
     interface FormState {
       name: string;
@@ -26,26 +26,17 @@ This rule governs form handling and API mutations across all Next.js React pages
     const [formData, setFormData] = useState<FormState>(initialFormState);
     ```
 
-### 2. Mandatory Use of React Query `useMutation` for API Writes & Executions
-- **DO NOT** execute un-wrapped imperative async fetch/API calls directly inside component event handlers with manual loading booleans and `try/catch` blocks:
-  - **Bad**:
-    ```typescript
-    const handleRunTest = async () => {
-      setExecuting(true);
-      try {
-        const res = await apiTestTool(id, args);
-        // ...
-      } catch (err: unknown) { ... }
-      finally { setExecuting(false); }
-    };
-    ```
-- **Mandatory Requirement**:
-  - Wrap all API write, test, execute, and reset operations in React Query **`useMutation`** hooks (or custom hooks in `@/hooks/queries`):
-    ```typescript
-    const testMutation = useMutation({
-      mutationFn: (d: { id: string; args: Record<string, unknown> }) => apiTestTool(d.id, d.args),
-      onSuccess: (res) => { ... },
-      onError: (err: Error) => { ... },
-    });
-    ```
-  - Utilize `testMutation.isPending`, `testMutation.mutateAsync()`, and automatic React Query cache invalidation (`queryClient.invalidateQueries`).
+### 2. Mandatory Encapsulation in `@/hooks/queries` and `@/hooks/mutations`
+- **STRICTLY FORBIDDEN**: Calling raw API functions (`apiGet*`, `apiCreate*`, `apiUpdate*`, `apiDelete*`, `apiComplete*`) or raw `fetch`/`axios` directly inside page or component files.
+- **STRICTLY FORBIDDEN**: Inlining raw `useQuery({ queryKey: ... })` or `useMutation({ mutationFn: ... })` directly inside page or component files.
+- **Mandatory Architecture**:
+  - **All Data Fetching (`GET`)**: Must be encapsulated inside dedicated custom query hooks under `apps/app/hooks/queries/` (e.g. `useAgentsQuery`, `useUserPermissionsQuery`, `useToolsQuery`).
+  - **All API Mutations (`POST`, `PUT`, `PATCH`, `DELETE`)**: Must be encapsulated inside dedicated custom mutation hooks under `apps/app/hooks/mutations/` (e.g. `useOnboardingMutation`, `useAgentMutations`, `useMemberMutations`).
+  - Pages and components must **ONLY** import and consume the custom hooks from `@/hooks/queries` and `@/hooks/mutations`.
+  - Pages and components may only import **TypeScript interfaces/types** (e.g. `import type { ApiModel } from '@/lib/api'`) from `@/lib/api`.
+
+### 3. Loading, Pending, and Error State Handling
+- Always use `isPending`, `isLoading`, `isError`, and `error` provided by the custom React Query hooks.
+- Handle mutations via `mutateAsync` or `mutate` with standard error parsing (`parseApiError(err)`) and toast notifications (`toast.error(apiErr.message)`).
+- Never maintain manual boolean loading states (`const [loading, setLoading] = useState(false)`) when `useMutation` / `useQuery` already provides `isPending` / `isLoading`.
+
