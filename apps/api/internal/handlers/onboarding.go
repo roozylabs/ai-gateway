@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/repository"
 )
 
@@ -36,26 +37,30 @@ type OnboardingRequest struct {
 func (h *OnboardingHandler) Complete(c *gin.Context) {
 	userID := c.GetString("userId")
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": gin.H{"message": "Unauthorized", "type": "auth_error"},
-		})
+		httputil.RespondError(c, http.StatusUnauthorized, "Unauthorized session", nil, "AUTH_REQUIRED")
 		return
 	}
 
 	var req OnboardingRequest
-	_ = c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httputil.RespondError(c, http.StatusBadRequest, "Invalid onboarding request payload", err, "VALIDATION_ERROR")
+		return
+	}
 
 	orgName := strings.TrimSpace(req.OrganizationName)
 	if orgName == "" {
-		orgName = "RoozyLabs Enterprise"
+		httputil.RespondError(c, http.StatusBadRequest, "Organization name is required", nil, "ORGANIZATION_NAME_REQUIRED")
+		return
 	}
 	wsName := strings.TrimSpace(req.WorkspaceName)
 	if wsName == "" {
-		wsName = "Production Environment"
+		httputil.RespondError(c, http.StatusBadRequest, "Workspace name is required", nil, "WORKSPACE_NAME_REQUIRED")
+		return
 	}
 	keyName := strings.TrimSpace(req.GatewayKeyName)
 	if keyName == "" {
-		keyName = "Primary Control Key"
+		httputil.RespondError(c, http.StatusBadRequest, "Gateway key name is required", nil, "GATEWAY_KEY_NAME_REQUIRED")
+		return
 	}
 	role := strings.TrimSpace(req.PrimaryRole)
 	if role == "" {
@@ -66,12 +71,13 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 	orgID := "org_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:16]
 	wsID := "ws_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:16]
 	memberID := "mem_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:16]
+	wsMemberID := uuid.New().String()
 	orgSlug := strings.ToLower(strings.ReplaceAll(orgName, " ", "-")) + "-" + orgID[4:8]
 	wsSlug := strings.ToLower(strings.ReplaceAll(wsName, " ", "-")) + "-" + wsID[3:7]
 
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin onboarding transaction: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to start workspace setup. Please try again.", err, "ONBOARDING_TX_START_FAILED")
 		return
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -84,7 +90,7 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 		orgID, orgName, orgSlug,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create organization: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to create organization. Please try again.", err, "ONBOARDING_ORG_CREATION_FAILED")
 		return
 	}
 
@@ -96,19 +102,38 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 		wsID, orgID, wsName, wsSlug,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workspace: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to create workspace. Please try again.", err, "ONBOARDING_WORKSPACE_CREATION_FAILED")
 		return
 	}
 
-	// 3. Add user as owner in organization_members
+	// 3. Add user as owner in organization_members with dynamic role_id resolution
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO organization_members (id, org_id, user_id, role, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, NOW(), NOW())
-		 ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role`,
+		`INSERT INTO organization_members (id, org_id, user_id, role, role_id, created_at, updated_at)
+		 VALUES (
+			$1, $2, $3, $4,
+			COALESCE(
+				(SELECT id FROM roles WHERE slug = $4 AND (is_system = true OR organization_id = $2) LIMIT 1),
+				(SELECT id FROM roles WHERE slug = 'owner' AND is_system = true LIMIT 1)
+			),
+			NOW(), NOW()
+		 )
+		 ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role, role_id = EXCLUDED.role_id, updated_at = EXCLUDED.updated_at`,
 		memberID, orgID, userID, role,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign organization membership: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to assign organization membership. Please try again.", err, "ONBOARDING_MEMBER_ASSIGN_FAILED")
+		return
+	}
+
+	// 3b. Add user as admin in workspace_members
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO workspace_members (id, workspace_id, user_id, role, created_at, updated_at)
+		 VALUES ($1, $2, $3, 'admin', NOW(), NOW())
+		 ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = EXCLUDED.role, updated_at = EXCLUDED.updated_at`,
+		wsMemberID, wsID, userID,
+	)
+	if err != nil {
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to assign workspace membership. Please try again.", err, "ONBOARDING_WS_MEMBER_ASSIGN_FAILED")
 		return
 	}
 
@@ -121,7 +146,7 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 		keyID, userID, orgID, wsID, keyName, rawKey, rawKey[:14],
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create gateway key: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to create gateway key. Please try again.", err, "ONBOARDING_KEY_CREATION_FAILED")
 		return
 	}
 
@@ -131,12 +156,12 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 		orgID, role, userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user onboarding status: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to update user profile. Please try again.", err, "ONBOARDING_USER_UPDATE_FAILED")
 		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit onboarding transaction: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to finalize workspace setup. Please try again.", err, "ONBOARDING_TX_COMMIT_FAILED")
 		return
 	}
 
@@ -150,3 +175,4 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 		"apiKey":         rawKey,
 	})
 }
+
