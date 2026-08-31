@@ -5,6 +5,13 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-08-31
+
+### Fixed
+- **Cloudflare Managed Turnstile Compatibility on Sign In**:
+  - Restored visible Turnstile widget (`size: 'normal'`) on Sign In page to ensure complete compatibility with Cloudflare Managed and Non-interactive site keys.
+  - Added `hasError` state tracking and fast rejection in `useTurnstile` so errors from adblockers or network interruptions immediately notify the user rather than stalling for timeout.
+
 ## [0.2.2] - 2026-08-31
 
 ### Added
