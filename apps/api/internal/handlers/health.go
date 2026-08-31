@@ -28,7 +28,7 @@ type HealthResponse struct {
 func (h *HealthHandler) Check(c *gin.Context) {
 	resp := HealthResponse{
 		Status:  "ok",
-		Version: "0.2.1",
+		Version: "0.2.2",
 	}
 
 	if h.db != nil && h.db.PingContext(c.Request.Context()) == nil {
@@ -50,7 +50,7 @@ func (h *HealthHandler) Check(c *gin.Context) {
 func (h *HealthHandler) Ready(c *gin.Context) {
 	resp := HealthResponse{
 		Status:  "ok",
-		Version: "0.2.1",
+		Version: "0.2.2",
 	}
 
 	dbOK := true
