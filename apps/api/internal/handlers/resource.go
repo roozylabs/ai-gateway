@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	"github.com/roozylabs/prism/internal/repository"
@@ -24,6 +25,22 @@ func NewResourceHandler(resources *repository.ResourceRepository, backends *repo
 	return &ResourceHandler{resources: resources, backends: backends, gateway: gateway, encKey: encKey}
 }
 
+func getTenantContext(c *gin.Context) (orgID, wsID, userID string) {
+	orgID = c.GetString("organization_id")
+	if orgID == "" {
+		orgID = c.GetHeader("X-Prism-Org-ID")
+	}
+	wsID = c.GetString("workspace_id")
+	if wsID == "" {
+		wsID = c.GetHeader("X-Prism-Workspace-ID")
+	}
+	userID = c.GetString("userId")
+	if userID == "" {
+		userID = c.GetString("userID")
+	}
+	return
+}
+
 type CreateResourceBackendRequest struct {
 	Name             string   `json:"name" binding:"required"`
 	BackendType      string   `json:"backendType" binding:"required"`
@@ -39,17 +56,17 @@ type CreateResourceBackendRequest struct {
 }
 
 type CreateResourceRequest struct {
-	Name             string                     `json:"name" binding:"required"`
-	DisplayName      string                     `json:"displayName"`
-	Description      string                     `json:"description"`
-	ParametersSchema json.RawMessage            `json:"parametersSchema"`
-	Enabled          *bool                      `json:"enabled"`
+	Name             string                         `json:"name" binding:"required"`
+	DisplayName      string                         `json:"displayName"`
+	Description      string                         `json:"description"`
+	ParametersSchema json.RawMessage                `json:"parametersSchema"`
+	Enabled          *bool                          `json:"enabled"`
 	Backends         []CreateResourceBackendRequest `json:"backends"`
 }
 
 func (h *ResourceHandler) List(c *gin.Context) {
-	userID := c.GetString("userId")
-	resources, err := h.resources.ListByUserID(c.Request.Context(), userID)
+	orgID, wsID, _ := getTenantContext(c)
+	resources, err := h.resources.ListByOrgID(c.Request.Context(), orgID, wsID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list resources: " + err.Error()})
 		return
@@ -61,8 +78,8 @@ func (h *ResourceHandler) List(c *gin.Context) {
 }
 
 func (h *ResourceHandler) Get(c *gin.Context) {
-	userID := c.GetString("userId")
-	rwb, err := h.resources.GetResourceWithBackendsByID(c.Request.Context(), c.Param("id"), userID)
+	orgID, _, _ := getTenantContext(c)
+	rwb, err := h.resources.GetResourceWithBackendsByID(c.Request.Context(), c.Param("id"), orgID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "resource not found"})
 		return
@@ -71,7 +88,7 @@ func (h *ResourceHandler) Get(c *gin.Context) {
 }
 
 func (h *ResourceHandler) Create(c *gin.Context) {
-	userID := c.GetString("userId")
+	orgID, wsID, userID := getTenantContext(c)
 	var req CreateResourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -87,6 +104,9 @@ func (h *ResourceHandler) Create(c *gin.Context) {
 		enabled = *req.Enabled
 	}
 	res := &models.Resource{
+		ID:               uuid.New().String(),
+		OrgID:            orgID,
+		WorkspaceID:      wsID,
 		UserID:           userID,
 		Name:             req.Name,
 		DisplayName:      req.DisplayName,
@@ -106,15 +126,15 @@ func (h *ResourceHandler) Create(c *gin.Context) {
 		}
 	}
 
-	rwb, _ := h.resources.GetResourceWithBackendsByID(c.Request.Context(), res.ID, userID)
+	rwb, _ := h.resources.GetResourceWithBackendsByID(c.Request.Context(), res.ID, orgID)
 	c.JSON(http.StatusCreated, rwb)
 }
 
 func (h *ResourceHandler) Update(c *gin.Context) {
-	userID := c.GetString("userId")
+	orgID, _, _ := getTenantContext(c)
 	id := c.Param("id")
 
-	existing, err := h.resources.FindByID(c.Request.Context(), id, userID)
+	existing, err := h.resources.FindByID(c.Request.Context(), id, orgID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "resource not found"})
 		return
@@ -153,13 +173,13 @@ func (h *ResourceHandler) Update(c *gin.Context) {
 		}
 	}
 
-	rwb, _ := h.resources.GetResourceWithBackendsByID(c.Request.Context(), id, userID)
+	rwb, _ := h.resources.GetResourceWithBackendsByID(c.Request.Context(), id, orgID)
 	c.JSON(http.StatusOK, rwb)
 }
 
 func (h *ResourceHandler) Delete(c *gin.Context) {
-	userID := c.GetString("userId")
-	if err := h.resources.Delete(c.Request.Context(), c.Param("id"), userID); err != nil {
+	orgID, _, _ := getTenantContext(c)
+	if err := h.resources.Delete(c.Request.Context(), c.Param("id"), orgID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete resource"})
 		return
 	}
@@ -171,10 +191,10 @@ type TestResourceRequest struct {
 }
 
 func (h *ResourceHandler) TestResource(c *gin.Context) {
-	userID := c.GetString("userId")
+	orgID, _, userID := getTenantContext(c)
 	id := c.Param("id")
 
-	res, err := h.resources.FindByID(c.Request.Context(), id, userID)
+	res, err := h.resources.FindByID(c.Request.Context(), id, orgID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "resource not found"})
 		return
@@ -185,9 +205,14 @@ func (h *ResourceHandler) TestResource(c *gin.Context) {
 		return
 	}
 
+	lookupKey := orgID
+	if lookupKey == "" {
+		lookupKey = userID
+	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel()
-	result, err := h.gateway.Execute(ctx, userID, res.Name, req.Args, h.encKey)
+	result, err := h.gateway.Execute(ctx, lookupKey, res.Name, req.Args, h.encKey)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -197,18 +222,18 @@ func (h *ResourceHandler) TestResource(c *gin.Context) {
 
 func (h *ResourceHandler) createBackend(ctx context.Context, resourceID string, br CreateResourceBackendRequest) error {
 	b := &models.ResourceBackend{
-		ResourceID:     resourceID,
-		Name:           br.Name,
-		BackendType:    br.BackendType,
-		EndpointURL:    br.EndpointURL,
-		HTTPMethod:     br.HTTPMethod,
-		QueryTemplate:  br.QueryTemplate,
-		SQLQuery:       br.SQLQuery,
-		ParamNames:     br.ParamNames,
-		TimeoutMs:      br.TimeoutMs,
-		Priority:       br.Priority,
-		Enabled:        true,
-		AuthHeaderName: "Authorization",
+		ResourceID:       resourceID,
+		Name:             br.Name,
+		BackendType:      br.BackendType,
+		EndpointURL:      br.EndpointURL,
+		HTTPMethod:       br.HTTPMethod,
+		QueryTemplate:    br.QueryTemplate,
+		SQLQuery:         br.SQLQuery,
+		ParamNames:       br.ParamNames,
+		TimeoutMs:        br.TimeoutMs,
+		Priority:         br.Priority,
+		Enabled:          true,
+		AuthHeaderName:   "Authorization",
 		AuthHeaderPrefix: "Bearer ",
 	}
 	if br.TimeoutMs <= 0 {
