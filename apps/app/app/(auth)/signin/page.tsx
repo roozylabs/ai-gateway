@@ -33,12 +33,12 @@ function SignInForm() {
     siteKey,
     showTurnstile,
     token: turnstileToken,
-    isReady,
     turnstileRef,
     onSuccess,
     onError,
     onExpire,
     reset: resetTurnstile,
+    getTokenOrWait,
   } = useTurnstile();
 
   useEffect(() => {
@@ -68,17 +68,22 @@ function SignInForm() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
-    if (showTurnstile && !isReady) {
-      toast.error('Please complete security verification before signing in.');
-      return;
-    }
-
     try {
       setLoading(true);
+
+      let activeToken = turnstileToken;
+      if (showTurnstile && !activeToken) {
+        activeToken = (await getTokenOrWait(3500)) || '';
+        if (!activeToken) {
+          toast.error('Security verification in progress. Please try again in a moment.');
+          return;
+        }
+      }
+
       await login({
         email: values.email,
         password: values.password,
-        turnstileToken: turnstileToken || undefined,
+        turnstileToken: activeToken && activeToken !== 'bypass' ? activeToken : undefined,
       });
       toast.success('Authentication successful! Welcome to RoozyLabs Prism.');
       router.replace(AppRoutes.HOME);
@@ -158,19 +163,17 @@ function SignInForm() {
               />
 
               {showTurnstile && (
-                <div aria-hidden="true" className="w-0 h-0 overflow-hidden">
-                  <Turnstile
-                    ref={turnstileRef}
-                    siteKey={siteKey}
-                    onSuccess={onSuccess}
-                    onError={onError}
-                    onExpire={onExpire}
-                    options={{
-                      theme: resolvedTheme === 'dark' ? 'dark' : 'light',
-                      size: 'invisible',
-                    }}
-                  />
-                </div>
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={siteKey}
+                  onSuccess={onSuccess}
+                  onError={onError}
+                  onExpire={onExpire}
+                  options={{
+                    theme: resolvedTheme === 'dark' ? 'dark' : 'light',
+                    size: 'invisible',
+                  }}
+                />
               )}
 
               <Button
