@@ -33,6 +33,7 @@ function SignInForm() {
     siteKey,
     showTurnstile,
     token: turnstileToken,
+    hasError,
     turnstileRef,
     onSuccess,
     onError,
@@ -73,9 +74,13 @@ function SignInForm() {
 
       let activeToken = turnstileToken;
       if (showTurnstile && !activeToken) {
+        if (hasError) {
+          toast.error('Security verification failed to load. Please check your connection or ad-blocker.');
+          return;
+        }
         activeToken = (await getTokenOrWait(3500)) || '';
         if (!activeToken) {
-          toast.error('Security verification in progress. Please try again in a moment.');
+          toast.error('Please complete the security verification challenge before signing in.');
           return;
         }
       }
@@ -163,17 +168,19 @@ function SignInForm() {
               />
 
               {showTurnstile && (
-                <Turnstile
-                  ref={turnstileRef}
-                  siteKey={siteKey}
-                  onSuccess={onSuccess}
-                  onError={onError}
-                  onExpire={onExpire}
-                  options={{
-                    theme: resolvedTheme === 'dark' ? 'dark' : 'light',
-                    size: 'invisible',
-                  }}
-                />
+                <div className="flex flex-col items-start justify-center my-3 min-h-[65px] gap-1.5">
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={siteKey}
+                    onSuccess={onSuccess}
+                    onError={onError}
+                    onExpire={onExpire}
+                    options={{
+                      theme: resolvedTheme === 'dark' ? 'dark' : 'light',
+                      size: 'normal',
+                    }}
+                  />
+                </div>
               )}
 
               <Button

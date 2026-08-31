@@ -10,6 +10,7 @@ export interface UseTurnstileReturn {
   showTurnstile: boolean;
   token: string;
   isReady: boolean;
+  hasError: boolean;
   turnstileRef: React.RefObject<TurnstileInstance | null>;
   onSuccess: (token: string) => void;
   onError: () => void;
@@ -20,9 +21,10 @@ export interface UseTurnstileReturn {
 
 export function useTurnstile(): UseTurnstileReturn {
   const [token, setToken] = useState<string>('');
+  const [hasError, setHasError] = useState<boolean>(false);
   const tokenRef = useRef<string>('');
   const turnstileRef = useRef<TurnstileInstance | null>(null);
-  const waitersRef = useRef<Array<(token: string) => void>>([]);
+  const waitersRef = useRef<Array<(token: string | null) => void>>([]);
 
   const { data: turnstileConfig } = useQuery({
     queryKey: ['turnstile-config'],
@@ -40,6 +42,7 @@ export function useTurnstile(): UseTurnstileReturn {
 
   const reset = useCallback(() => {
     setToken('');
+    setHasError(false);
     tokenRef.current = '';
     try {
       turnstileRef.current?.reset();
@@ -50,6 +53,7 @@ export function useTurnstile(): UseTurnstileReturn {
 
   const onSuccess = useCallback((newToken: string) => {
     setToken(newToken);
+    setHasError(false);
     tokenRef.current = newToken;
     if (waitersRef.current.length > 0) {
       waitersRef.current.forEach((resolve) => resolve(newToken));
@@ -58,8 +62,14 @@ export function useTurnstile(): UseTurnstileReturn {
   }, []);
 
   const onError = useCallback(() => {
-    reset();
-  }, [reset]);
+    setToken('');
+    setHasError(true);
+    tokenRef.current = '';
+    if (waitersRef.current.length > 0) {
+      waitersRef.current.forEach((resolve) => resolve(null));
+      waitersRef.current = [];
+    }
+  }, []);
 
   const onExpire = useCallback(() => {
     reset();
@@ -70,7 +80,7 @@ export function useTurnstile(): UseTurnstileReturn {
       if (!showTurnstile) return 'bypass';
       if (tokenRef.current) return tokenRef.current;
 
-      // Try triggering execute if Turnstile is in invisible mode
+      // Try triggering execute if supported
       try {
         turnstileRef.current?.execute?.();
       } catch {
@@ -80,7 +90,7 @@ export function useTurnstile(): UseTurnstileReturn {
       return new Promise<string | null>((resolve) => {
         let timer: NodeJS.Timeout | null = null;
 
-        const waiter = (resolvedToken: string) => {
+        const waiter = (resolvedToken: string | null) => {
           if (timer) clearTimeout(timer);
           resolve(resolvedToken);
         };
@@ -88,7 +98,6 @@ export function useTurnstile(): UseTurnstileReturn {
         waitersRef.current.push(waiter);
 
         timer = setTimeout(() => {
-          // Remove waiter from pending list
           waitersRef.current = waitersRef.current.filter((w) => w !== waiter);
           resolve(tokenRef.current || null);
         }, timeoutMs);
@@ -102,6 +111,7 @@ export function useTurnstile(): UseTurnstileReturn {
     showTurnstile,
     token,
     isReady,
+    hasError,
     turnstileRef,
     onSuccess,
     onError,
