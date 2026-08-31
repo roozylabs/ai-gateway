@@ -17,6 +17,8 @@ import { apiCompleteOnboarding, apiGetUserPermissions, ApiUserPermissionsRespons
 import { onboardingSchema, OnboardingValues } from '@/features/onboarding/schemas/onboarding.schema';
 import { useAuth } from '@/context/AuthContext';
 
+import { parseApiError } from '@/lib/http/errors';
+
 export default function OnboardingPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -86,8 +88,8 @@ export default function OnboardingPage() {
       setStep(3);
       toast.success('Onboarding complete! Your workspace is ready.');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to complete workspace onboarding';
-      toast.error('Onboarding error: ' + message);
+      const apiErr = parseApiError(err, 'Failed to complete workspace onboarding. Please try again.');
+      toast.error(apiErr.message);
     } finally {
       setLoading(false);
     }
