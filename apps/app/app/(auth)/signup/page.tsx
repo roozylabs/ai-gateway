@@ -31,6 +31,7 @@ export default function SignUpPage() {
     siteKey,
     showTurnstile,
     token: turnstileToken,
+    hasError,
     turnstileRef,
     onSuccess,
     onError,
@@ -61,9 +62,13 @@ export default function SignUpPage() {
 
       let activeToken = turnstileToken;
       if (showTurnstile && !activeToken) {
+        if (hasError) {
+          toast.error('Security verification failed to load. Please check your connection or ad-blocker.');
+          return;
+        }
         activeToken = (await getTokenOrWait(3500)) || '';
         if (!activeToken) {
-          toast.error('Please complete the security verification before creating your account.');
+          toast.error('Please complete the security verification challenge before creating your account.');
           return;
         }
       }
