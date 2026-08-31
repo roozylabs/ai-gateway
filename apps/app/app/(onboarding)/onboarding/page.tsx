@@ -4,40 +4,40 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/molecules/Card';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/molecules/Form';
 import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
-import { toast } from 'sonner';
-import { CheckCircle2, ArrowRight, LogOut, Zap, User as UserIcon } from 'lucide-react';
-import { apiCompleteOnboarding, apiGetUserPermissions, ApiUserPermissionsResponse } from '@/lib/api';
+import { CheckCircle2, ArrowRight, LogOut, Zap, User as UserIcon, Copy, Check, ShieldAlert } from 'lucide-react';
 import { onboardingSchema, OnboardingValues } from '@/features/onboarding/schemas/onboarding.schema';
 import { useAuth } from '@/context/AuthContext';
+import { useUserPermissionsQuery } from '@/hooks/queries/useUserPermissionsQuery';
+import { useOnboardingMutation } from '@/hooks/mutations/useOnboardingMutation';
 
 import { parseApiError } from '@/lib/http/errors';
+import { toast } from 'sonner';
 
 export default function OnboardingPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [justCompleted, setJustCompleted] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const { data: permissions, isLoading: permissionsLoading } = useQuery<ApiUserPermissionsResponse>({
-    queryKey: ['user-permissions'],
-    queryFn: apiGetUserPermissions,
-    retry: 1,
-  });
+  const { data: permissions, isLoading: permissionsLoading } = useUserPermissionsQuery();
+  const { mutateAsync: completeOnboarding, isPending: loading } = useOnboardingMutation();
 
   useEffect(() => {
-    if (!permissionsLoading && permissions?.isOnboarded === true) {
+    // Only redirect if user was already onboarded before visiting and not in the middle of completing setup
+    if (!justCompleted && step !== 3 && !permissionsLoading && permissions?.isOnboarded === true) {
       router.replace('/');
     }
-  }, [permissions, permissionsLoading, router]);
+  }, [permissions, permissionsLoading, router, step, justCompleted]);
 
   const form = useForm<OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
@@ -78,20 +78,25 @@ export default function OnboardingPage() {
     }
   };
 
+  const handleCopyKey = () => {
+    if (createdKey) {
+      navigator.clipboard.writeText(createdKey);
+      setCopied(true);
+      toast.success('Gateway API key copied to clipboard.');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const onSubmit = async (values: OnboardingValues) => {
     try {
-      setLoading(true);
-      const res = await apiCompleteOnboarding(values);
+      const res = await completeOnboarding(values);
+      setJustCompleted(true);
       setCreatedKey(res.apiKey || null);
-      await queryClient.invalidateQueries({ queryKey: ['user-permissions'] });
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       setStep(3);
       toast.success('Onboarding complete! Your workspace is ready.');
     } catch (err: unknown) {
       const apiErr = parseApiError(err, 'Failed to complete workspace onboarding. Please try again.');
       toast.error(apiErr.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -212,17 +217,36 @@ export default function OnboardingPage() {
           ) : (
             <div className="space-y-4 text-center">
               <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
-              <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-xs text-left">
-                <p className="text-muted-foreground text-[10px] uppercase">Generated Gateway Secret Key:</p>
-                <p className="font-semibold text-emerald-400 copyable select-all break-all mt-1">
-                  {createdKey || 'gw_sk_live_9f81a7b2c3d4e5f6'}
+              
+              <div className="rounded-lg border border-border bg-card/80 p-3.5 font-mono text-xs text-left space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-[10px] uppercase font-semibold">Generated Gateway Secret Key</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyKey}
+                    className="h-6 px-2 text-[11px] gap-1 cursor-pointer font-sans"
+                  >
+                    {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                    <span>{copied ? 'Copied' : 'Copy Key'}</span>
+                  </Button>
+                </div>
+                <p className="font-mono text-xs text-emerald-400 bg-background/60 p-2.5 rounded border border-border/60 break-all select-all">
+                  {createdKey || 'gw_sk_live_...'}
                 </p>
+                <div className="flex items-start gap-1.5 text-[11px] text-amber-400/90 font-sans mt-2 bg-amber-500/10 p-2 rounded border border-amber-500/20">
+                  <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>Please copy your API key now and store it securely. For security reasons, you will not be able to view this full key again.</span>
+                </div>
               </div>
 
               <Button
                 variant="prismViolet"
                 className="w-full gap-2 mt-4"
-                onClick={() => {
+                onClick={async () => {
+                  await queryClient.invalidateQueries({ queryKey: ['user-permissions'] });
+                  await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
                   router.push('/');
                   router.refresh();
                 }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,7 +18,8 @@ import {
   FormMessage,
 } from "@/components/molecules/Form";
 import { toast } from "sonner";
-import { apiInviteMember } from "@/lib/api/organizations";
+import { useInviteMemberMutation } from "@/hooks/mutations/useMemberMutations";
+import { parseApiError } from "@/lib/http/errors";
 
 const inviteSchema = z.object({
   email: z.string().min(1, "Email address is required").email("Enter a valid email address"),
@@ -39,7 +40,7 @@ interface InviteMemberSheetProps {
 }
 
 export function InviteMemberSheet({ open, onOpenChange, onInviteSuccess }: InviteMemberSheetProps) {
-  const [isSending, setIsSending] = useState(false);
+  const { mutateAsync: inviteMember, isPending: isSending } = useInviteMemberMutation();
 
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
@@ -53,16 +54,13 @@ export function InviteMemberSheet({ open, onOpenChange, onInviteSuccess }: Invit
   }, [open, reset]);
 
   const onSubmit = async (values: InviteFormValues) => {
-    setIsSending(true);
     try {
-      await apiInviteMember({ email: values.email, role: values.role });
-      toast.success(`Invitation created for ${values.email} with role "${values.role}"`);
+      await inviteMember({ email: values.email, role: values.role });
       onOpenChange(false);
       if (onInviteSuccess) onInviteSuccess();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || err?.message || "Failed to send invitation");
-    } finally {
-      setIsSending(false);
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err, "Failed to send invitation");
+      toast.error(apiErr.message);
     }
   };
 

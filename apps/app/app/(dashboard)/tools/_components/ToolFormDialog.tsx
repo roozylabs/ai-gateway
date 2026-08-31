@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -29,12 +29,11 @@ import {
   useCreateToolMutation,
   useUpdateToolMutation,
 } from "@/hooks/mutations/useToolMutations";
+import { useToolDetailQuery } from "@/hooks/queries/useToolsQuery";
 import {
   ApiTool,
   ApiCreateToolRequest,
   ApiCreateToolBackend,
-  ApiToolWithBackends,
-  apiGetTool,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
@@ -70,8 +69,9 @@ export function ToolFormDialog({
   const createMutation = useCreateToolMutation();
   const updateMutation = useUpdateToolMutation();
 
-  const [detail, setDetail] = useState<ApiToolWithBackends | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const { data: detail, isLoading: detailLoading } = useToolDetailQuery(
+    open && editingTool?.id ? editingTool.id : undefined
+  );
 
   const form = useForm<ToolFormValues>({
     resolver: zodResolver(toolSchema),
@@ -89,50 +89,35 @@ export function ToolFormDialog({
   useEffect(() => {
     if (!open) return;
     if (!editingTool) {
-      setDetail(null);
       reset(defaultValues);
       return;
     }
-    let cancelled = false;
-    setDetailLoading(true);
-    apiGetTool(editingTool.id)
-      .then((twb) => {
-        if (cancelled) return;
-        setDetail(twb);
-        reset({
-          name: twb.tool?.name ?? twb.name ?? editingTool.name,
-          displayName: twb.tool?.displayName ?? twb.displayName ?? editingTool.displayName,
-          description: twb.tool?.description ?? twb.description ?? editingTool.description,
-          enabled: twb.tool?.enabled ?? twb.enabled ?? editingTool.enabled,
-          inputSchema: formatSchemaJSON(twb.tool?.inputSchema ?? twb.inputSchema ?? editingTool.inputSchema),
-          backends: (twb.backends || []).map((b) => ({
-            name: b.name,
-            endpointUrl: b.endpointUrl,
-            authToken: "",
-            timeoutMs: b.timeoutMs,
-            priority: b.priority,
-          })),
-        });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setDetail(null);
-        reset({
-          name: editingTool.name,
-          displayName: editingTool.displayName,
-          description: editingTool.description,
-          enabled: editingTool.enabled,
-          inputSchema: formatSchemaJSON(editingTool.inputSchema),
-          backends: [],
-        });
-      })
-      .finally(() => {
-        if (!cancelled) setDetailLoading(false);
+    if (detail) {
+      reset({
+        name: detail.tool?.name ?? detail.name ?? editingTool.name,
+        displayName: detail.tool?.displayName ?? detail.displayName ?? editingTool.displayName,
+        description: detail.tool?.description ?? detail.description ?? editingTool.description,
+        enabled: detail.tool?.enabled ?? detail.enabled ?? editingTool.enabled,
+        inputSchema: formatSchemaJSON(detail.tool?.inputSchema ?? detail.inputSchema ?? editingTool.inputSchema),
+        backends: (detail.backends || []).map((b) => ({
+          name: b.name,
+          endpointUrl: b.endpointUrl,
+          authToken: "",
+          timeoutMs: b.timeoutMs,
+          priority: b.priority,
+        })),
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, editingTool, reset]);
+    } else {
+      reset({
+        name: editingTool.name,
+        displayName: editingTool.displayName,
+        description: editingTool.description,
+        enabled: editingTool.enabled,
+        inputSchema: formatSchemaJSON(editingTool.inputSchema),
+        backends: [],
+      });
+    }
+  }, [open, editingTool, detail, reset]);
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
