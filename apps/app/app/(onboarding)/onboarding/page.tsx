@@ -12,7 +12,7 @@ import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import { toast } from 'sonner';
-import { CheckCircle2, ArrowRight, LogOut, Sparkles, User as UserIcon } from 'lucide-react';
+import { CheckCircle2, ArrowRight, LogOut, Zap, User as UserIcon } from 'lucide-react';
 import { apiCompleteOnboarding, apiGetUserPermissions, ApiUserPermissionsResponse } from '@/lib/api';
 import { onboardingSchema, OnboardingValues } from '@/features/onboarding/schemas/onboarding.schema';
 import { useAuth } from '@/context/AuthContext';
@@ -148,7 +148,7 @@ export default function OnboardingPage() {
                               onClick={handleFillDefaults}
                               className="text-[11px] font-mono text-violet-400 hover:text-violet-300 flex items-center gap-1 cursor-pointer"
                             >
-                              <Sparkles className="h-3 w-3" />
+                              <Zap className="h-3 w-3" />
                               <span>Auto-fill</span>
                             </button>
                           </div>

@@ -24,7 +24,6 @@ import {
   ExternalLink,
   Save,
   RotateCcw,
-  Sparkles,
   Mail,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -128,7 +127,7 @@ export default function SettingsPage() {
           <div className="mt-8 p-3.5 rounded-lg border border-border bg-card/60 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-foreground flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-primary" /> Active Plan
+                <Shield className="h-3.5 w-3.5 text-primary" /> Active Plan
               </span>
               <Badge variant="violet" className="uppercase text-[10px]">
                 {subData?.planSlug ?? 'Free Tier'}
