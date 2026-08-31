@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useTheme } from 'next-themes';
 import { useQuery } from '@tanstack/react-query';
-import { Turnstile } from '@marsidev/react-turnstile';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { AppRoutes } from '@/constants/routes';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
@@ -61,6 +61,7 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [oauthLoading, setOauthLoading] = useState<'google' | 'github' | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const { data: turnstileConfig } = useQuery({
     queryKey: ['turnstile-config'],
@@ -90,6 +91,16 @@ export default function SignInPage() {
     },
   });
 
+  const resetTurnstile = () => {
+    setTurnstileToken('');
+    form.setValue('turnstileToken', '');
+    try {
+      turnstileRef.current?.reset();
+    } catch (_err) {
+      // ignore
+    }
+  };
+
   const onSubmit = async (values: LoginFormValues) => {
     if (!isVerified) {
       toast.error('Please complete the security verification first.');
@@ -109,6 +120,8 @@ export default function SignInPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
       toast.error(message);
+      // Automatically reset Turnstile after failed attempt so subsequent submissions use a fresh token
+      resetTurnstile();
     } finally {
       setLoading(false);
     }
@@ -132,6 +145,7 @@ export default function SignInPage() {
       const message = err instanceof Error ? err.message : 'OAuth redirection failed.';
       toast.error(message);
       setOauthLoading(null);
+      resetTurnstile();
     }
   };
 
@@ -187,18 +201,17 @@ export default function SignInPage() {
               {showTurnstile && (
                 <div className="flex flex-col items-start justify-center my-3 min-h-[65px] gap-1.5">
                   <Turnstile
+                    ref={turnstileRef}
                     siteKey={siteKey}
                     onSuccess={(token) => {
                       setTurnstileToken(token);
                       form.setValue('turnstileToken', token);
                     }}
                     onError={() => {
-                      setTurnstileToken('');
-                      form.setValue('turnstileToken', '');
+                      resetTurnstile();
                     }}
                     onExpire={() => {
-                      setTurnstileToken('');
-                      form.setValue('turnstileToken', '');
+                      resetTurnstile();
                     }}
                     options={{
                       theme: resolvedTheme === 'dark' ? 'dark' : 'light',
