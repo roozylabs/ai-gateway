@@ -68,6 +68,28 @@ When a version release is ready and merged into `main`, the release MUST be tagg
 
 ### Step-by-step Release Pipeline:
 1. **Synchronize Versions**: Update version strings across all manifest files and Go constants to match the target release (e.g. `0.1.0`).
+
+   ### Required Synchronization Target Locations:
+
+   1. **Root Configuration & Package Manifests**:
+      - `package.json`, `apps/app/package.json`, `apps/web/package.json`
+      - `packages/sdk/package.json`, `packages/cli/package.json`
+
+   2. **Frontend UI Footers & Headers**:
+      - `apps/app/components/AppLayout.tsx` (Sidebar/Header version badge)
+      - `apps/app/app/settings/page.tsx` (System & Infrastructure backend version)
+
+   3. **Backend API Endpoints, Telemetry & Swagger Annotations**:
+      - `apps/api/cmd/server/main.go` (`// @version X.Y.Z`)
+      - `apps/api/internal/handlers/health.go` (`HealthResponse{Version: "X.Y.Z"}`)
+      - `apps/api/internal/telemetry/otel.go` (`semconv.ServiceVersionKey.String("X.Y.Z")`)
+      - `apps/api/docs/docs.go` (`"version": "X.Y.Z"`)
+
+   4. **Documentation & Release Files**:
+      - `CHANGELOG.md`, `README.md`, `docs/PRD.md`
+
+   > NEVER leave stale hardcoded version strings when updating documentation or bumping versions.
+
 2. **Update CHANGELOG.md**: Add top release section with date and bullet points.
 3. **Merge PR**: Squash-merge feature PR into `main`.
 4. **Checkout `main` & Pull**:

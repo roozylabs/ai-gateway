@@ -37,17 +37,7 @@ Before modifying any source code:
 
 ## 4. Mandatory End-of-Task Delivery Pipeline
 
-Upon completing any feature, fix, enhancement, or refactoring task, the agent MUST execute the following 4-step delivery pipeline:
-
-1. **Atomic Conventional Commit**:
-   - Verify build and tests pass (`pnpm typecheck` / `go test`).
-   - Stage changes and create commit(s) using conventional commit format (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`).
-2. **Push Branch to Remote**:
-   - Push the feature branch to remote GitHub repository (`git push origin <type>/<description>`).
-3. **Automated Pull Request Creation**:
-   - Call `github-mcp-server` tool `create_pull_request` with title following Conventional Commits format and body following `.github/PULL_REQUEST_TEMPLATE.md`.
-4. **Automated Label Assignment**:
-   - Call `github-mcp-server` tool `issue_write` (`method: "update"`, `issue_number: <pr_number>`, `labels: [...]`) to attach relevant GitHub labels.
+> **End-of-Task Pipeline**: After implementation, follow the full delivery pipeline in `.agents/rules/pull-request-workflow.md` §3 (Commit -> Push -> PR -> Labels -> Merge).
 
 ## 5. Post-Merge Branch Cleanup & Lifecycle End
 

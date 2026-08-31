@@ -9,6 +9,7 @@ This rule governs feature branching, commit orchestration, and automated Pull Re
 
 - **Feature Branch Requirement**: For any new capability, bug fix, or refactoring, work MUST be performed on an isolated feature branch named according to `.agents/rules/feature-branch-creation.md` (`feat/...`, `fix/...`, `refactor/...`).
 - **Semantic Commit Messages**: Every commit MUST follow conventional commit specifications (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`, `test:`, `perf:`).
+  > See `.agents/rules/atomic-commits-and-conventional-commits.md` for full atomic commit & conventional commit discipline rules.
 
 ## 2. Robust Pull Request Standards (`github-mcp-server`)
 
