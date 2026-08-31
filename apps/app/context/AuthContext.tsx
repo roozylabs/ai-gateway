@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       Cookies.remove('auth_token');
       setToken(null);
       queryClient.clear();
-      window.location.href = '/login';
+      window.location.href = '/signin';
     }
   };
 
