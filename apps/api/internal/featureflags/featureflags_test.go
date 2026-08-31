@@ -1,7 +1,6 @@
 package featureflags
 
 import (
-	"os"
 	"testing"
 )
 
@@ -42,17 +41,15 @@ func TestFeatureFlags_DefaultsAndPlanEntitlements(t *testing.T) {
 func TestFeatureFlags_EnvVarOverride(t *testing.T) {
 	mgr := GetManager()
 
-	// Override Paperclip for free tier via Env Var
-	os.Setenv("FEATURE_FLAG_PAPERCLIP_ORCHESTRATOR", "true")
-	defer os.Unsetenv("FEATURE_FLAG_PAPERCLIP_ORCHESTRATOR")
+	// Override Paperclip for free tier via t.Setenv
+	t.Setenv("FEATURE_FLAG_PAPERCLIP_ORCHESTRATOR", "true")
 
 	if !mgr.IsEnabled(FlagPaperclipOrchestrator, "free") {
 		t.Errorf("expected paperclip_orchestrator to be overridden to true by env var")
 	}
 
-	// Disable SmartRouter for all plans via Env Var
-	os.Setenv("FEATURE_FLAG_SMART_ROUTER", "false")
-	defer os.Unsetenv("FEATURE_FLAG_SMART_ROUTER")
+	// Disable SmartRouter for all plans via t.Setenv
+	t.Setenv("FEATURE_FLAG_SMART_ROUTER", "false")
 
 	if mgr.IsEnabled(FlagSmartRouterAuto, "enterprise") {
 		t.Errorf("expected smart_router_auto to be overridden to false by env var")
