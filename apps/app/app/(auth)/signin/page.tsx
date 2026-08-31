@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { useTheme } from 'next-themes';
-import { useQuery } from '@tanstack/react-query';
-import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { AppRoutes } from '@/constants/routes';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
@@ -18,7 +17,7 @@ import { GoogleIcon, GitHubIcon } from '@/components/icons';
 import { toast } from 'sonner';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { apiGetTurnstileConfig } from '@/lib/api';
+import { useTurnstile } from '@/hooks/useTurnstile';
 import { loginSchema, LoginFormValues } from '@/features/auth/schemas/login.schema';
 
 function SignInForm() {
@@ -28,22 +27,19 @@ function SignInForm() {
   const { resolvedTheme } = useTheme();
   const { login, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [oauthLoading, setOauthLoading] = useState<'google' | 'github' | null>(null);
-  const turnstileRef = useRef<TurnstileInstance>(null);
 
-  const { data: turnstileConfig } = useQuery({
-    queryKey: ['turnstile-config'],
-    queryFn: apiGetTurnstileConfig,
-  });
-
-  const siteKey =
-    process.env.NEXT_PUBLIC_CLOUDFLARE_SITE_KEY ||
-    turnstileConfig?.siteKey ||
-    '1x00000000000000000000AA';
-
-  const showTurnstile = siteKey && siteKey !== 'disabled' && siteKey !== 'none';
-  const isVerified = !showTurnstile || Boolean(turnstileToken);
+  const {
+    siteKey,
+    showTurnstile,
+    token: turnstileToken,
+    isReady,
+    turnstileRef,
+    onSuccess,
+    onError,
+    onExpire,
+    reset: resetTurnstile,
+  } = useTurnstile();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -68,23 +64,12 @@ function SignInForm() {
     defaultValues: {
       email: '',
       password: '',
-      turnstileToken: '',
     },
   });
 
-  const resetTurnstile = () => {
-    setTurnstileToken('');
-    form.setValue('turnstileToken', '');
-    try {
-      turnstileRef.current?.reset();
-    } catch (_err) {
-      // ignore
-    }
-  };
-
   const onSubmit = async (values: LoginFormValues) => {
-    if (!isVerified) {
-      toast.error('Please complete the security verification first.');
+    if (showTurnstile && !isReady) {
+      toast.error('Please complete security verification before signing in.');
       return;
     }
 
@@ -93,7 +78,7 @@ function SignInForm() {
       await login({
         email: values.email,
         password: values.password,
-        turnstileToken: turnstileToken || values.turnstileToken,
+        turnstileToken: turnstileToken || undefined,
       });
       toast.success('Authentication successful! Welcome to RoozyLabs Prism.');
       router.replace(AppRoutes.HOME);
@@ -108,11 +93,6 @@ function SignInForm() {
   };
 
   const handleOAuthLogin = async (provider: 'google' | 'github') => {
-    if (!isVerified) {
-      toast.error('Please complete the security verification first.');
-      return;
-    }
-
     try {
       setOauthLoading(provider);
       toast.info(`Connecting to ${provider === 'google' ? 'Google' : 'GitHub'} OAuth...`);
@@ -125,7 +105,6 @@ function SignInForm() {
       const message = err instanceof Error ? err.message : 'OAuth redirection failed.';
       toast.error(message);
       setOauthLoading(null);
-      resetTurnstile();
     }
   };
 
@@ -150,7 +129,7 @@ function SignInForm() {
                     <FormControl>
                       <Input
                         placeholder="Enter your email"
-                        disabled={loading || !isVerified}
+                        disabled={loading}
                         {...field}
                       />
                     </FormControl>
@@ -169,7 +148,7 @@ function SignInForm() {
                       <Input
                         type="password"
                         placeholder="Enter your password"
-                        disabled={loading || !isVerified}
+                        disabled={loading}
                         {...field}
                       />
                     </FormControl>
@@ -179,23 +158,16 @@ function SignInForm() {
               />
 
               {showTurnstile && (
-                <div className="flex flex-col items-start justify-center my-3 min-h-[65px] gap-1.5">
+                <div aria-hidden="true" className="w-0 h-0 overflow-hidden">
                   <Turnstile
                     ref={turnstileRef}
                     siteKey={siteKey}
-                    onSuccess={(token) => {
-                      setTurnstileToken(token);
-                      form.setValue('turnstileToken', token);
-                    }}
-                    onError={() => {
-                      resetTurnstile();
-                    }}
-                    onExpire={() => {
-                      resetTurnstile();
-                    }}
+                    onSuccess={onSuccess}
+                    onError={onError}
+                    onExpire={onExpire}
                     options={{
                       theme: resolvedTheme === 'dark' ? 'dark' : 'light',
-                      size: 'normal',
+                      size: 'invisible',
                     }}
                   />
                 </div>
@@ -205,7 +177,7 @@ function SignInForm() {
                 type="submit"
                 variant="prismViolet"
                 className="w-full gap-2 mt-2 cursor-pointer"
-                disabled={loading || !isVerified}
+                disabled={loading}
               >
                 {loading ? (
                   <>
@@ -237,7 +209,7 @@ function SignInForm() {
               variant="outline"
               size="sm"
               className="w-full text-xs gap-2 cursor-pointer hover:bg-muted/60 transition-colors"
-              disabled={loading || oauthLoading !== null || !isVerified}
+              disabled={loading || oauthLoading !== null}
               onClick={() => handleOAuthLogin('google')}
             >
               {oauthLoading === 'google' ? (
@@ -253,7 +225,7 @@ function SignInForm() {
               variant="outline"
               size="sm"
               className="w-full text-xs gap-2 cursor-pointer hover:bg-muted/60 transition-colors"
-              disabled={loading || oauthLoading !== null || !isVerified}
+              disabled={loading || oauthLoading !== null}
               onClick={() => handleOAuthLogin('github')}
             >
               {oauthLoading === 'github' ? (
