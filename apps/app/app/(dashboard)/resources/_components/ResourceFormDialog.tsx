@@ -135,7 +135,7 @@ export function ResourceFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Resource Name</FormLabel>
+                  <FormLabel required>Resource Name</FormLabel>
                   <FormControl>
                     <Input
                       {...field}

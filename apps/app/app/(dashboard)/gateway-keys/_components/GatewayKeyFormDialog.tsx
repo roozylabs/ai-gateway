@@ -94,7 +94,7 @@ export function GatewayKeyFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Key Name</FormLabel>
+                  <FormLabel required>Key Name</FormLabel>
                   <FormControl>
                     <Input
                       {...field}

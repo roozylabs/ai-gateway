@@ -91,7 +91,7 @@ export function CredentialFormDialog({ open, onOpenChange }: CredentialFormDialo
               name="providerId"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Provider</FormLabel>
+                  <FormLabel required>Provider</FormLabel>
                   <FormControl>
                     <Select
                       value={field.value}
@@ -119,7 +119,7 @@ export function CredentialFormDialog({ open, onOpenChange }: CredentialFormDialo
               name="name"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Credential Label</FormLabel>
+                  <FormLabel required>Credential Label</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -136,7 +136,7 @@ export function CredentialFormDialog({ open, onOpenChange }: CredentialFormDialo
               name="apiKey"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>API Key</FormLabel>
+                  <FormLabel required>API Key</FormLabel>
                   <FormControl>
                     <Input
                       {...field}

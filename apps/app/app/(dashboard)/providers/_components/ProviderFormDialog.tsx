@@ -74,7 +74,7 @@ export function ProviderFormDialog({ open, onOpenChange }: ProviderFormDialogPro
               name="name"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Provider Name</FormLabel>
+                  <FormLabel required>Provider Name</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -91,7 +91,7 @@ export function ProviderFormDialog({ open, onOpenChange }: ProviderFormDialogPro
               name="type"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Provider Type</FormLabel>
+                  <FormLabel required>Provider Type</FormLabel>
                   <FormControl>
                     <Select
                       value={field.value}
@@ -118,7 +118,7 @@ export function ProviderFormDialog({ open, onOpenChange }: ProviderFormDialogPro
               name="baseUrl"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Base URL</FormLabel>
+                  <FormLabel required>Base URL</FormLabel>
                   <FormControl>
                     <Input
                       {...field}

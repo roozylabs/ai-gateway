@@ -9,3 +9,4 @@ export * from './Separator';
 export * from './Avatar';
 export * from './Tooltip';
 export * from './Label';
+export * from './Icons';

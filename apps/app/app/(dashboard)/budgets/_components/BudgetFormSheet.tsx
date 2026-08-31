@@ -88,7 +88,7 @@ export function BudgetFormSheet({ open, onOpenChange }: BudgetFormSheetProps) {
               name="name"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Budget Name</FormLabel>
+                  <FormLabel required>Budget Name</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -106,7 +106,7 @@ export function BudgetFormSheet({ open, onOpenChange }: BudgetFormSheetProps) {
                 name="monthlyLimit"
                 render={({ field }) => (
                   <FormItem className="space-y-2">
-                    <FormLabel>Monthly Limit ($)</FormLabel>
+                    <FormLabel required>Monthly Limit ($)</FormLabel>
                     <FormControl>
                       <Input
                         {...field}

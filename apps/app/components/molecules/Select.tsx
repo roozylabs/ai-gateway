@@ -4,6 +4,7 @@ import * as React from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFormField } from './Form';
 
 const Select = SelectPrimitive.Root;
 
@@ -13,22 +14,47 @@ const SelectValue = SelectPrimitive.Value;
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      'flex h-9 w-full items-center justify-between rounded-none border border-input bg-transparent px-3 py-2 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50" />
-    </SelectPrimitive.Icon>
-  </SelectPrimitive.Trigger>
-));
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+    error?: boolean;
+    'data-invalid'?: boolean | 'true' | 'false';
+  }
+>(({ className, children, error, ...props }, ref) => {
+  let isFieldInvalid = false;
+  try {
+    const field = useFormField();
+    if (field?.error) isFieldInvalid = true;
+  } catch {
+    // Outside FormField context
+  }
+
+  const isInvalid =
+    error ||
+    isFieldInvalid ||
+    props['aria-invalid'] === true ||
+    props['aria-invalid'] === 'true' ||
+    props['data-invalid'] === true ||
+    props['data-invalid'] === 'true';
+
+  return (
+    <SelectPrimitive.Trigger
+      ref={ref}
+      aria-invalid={isInvalid ? true : undefined}
+      data-invalid={isInvalid ? 'true' : undefined}
+      className={cn(
+        'flex h-9 w-full items-center justify-between rounded-none border border-input bg-transparent px-3 py-2 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
+        'aria-invalid:border-destructive aria-invalid:focus:ring-destructive data-[invalid=true]:border-destructive data-[invalid=true]:focus:ring-destructive',
+        isInvalid && 'border-destructive focus:ring-destructive',
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <SelectPrimitive.Icon asChild>
+        <ChevronDown className="h-4 w-4 opacity-50" />
+      </SelectPrimitive.Icon>
+    </SelectPrimitive.Trigger>
+  );
+});
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
 const SelectContent = React.forwardRef<

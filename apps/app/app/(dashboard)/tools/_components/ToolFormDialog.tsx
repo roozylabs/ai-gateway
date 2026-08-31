@@ -211,7 +211,7 @@ export function ToolFormDialog({
                 name="name"
                 render={({ field }) => (
                   <FormItem className="space-y-2">
-                    <FormLabel>Function Name (snake_case)</FormLabel>
+                    <FormLabel required>Function Name (snake_case)</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -262,7 +262,7 @@ export function ToolFormDialog({
                 name="inputSchema"
                 render={({ field }) => (
                   <FormItem className="space-y-2">
-                    <FormLabel>
+                    <FormLabel required>
                       Input Schema (JSON){" "}
                       <span className="text-muted-foreground font-normal">
                         : defines the function-call arguments for the AI model
