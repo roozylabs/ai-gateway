@@ -615,7 +615,7 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 
 		orgIDMetric := log.OrgID
 		if orgIDMetric == "" {
-			orgIDMetric = "org_default"
+			orgIDMetric = "unknown"
 		}
 		telemetry.RecordRequestMetrics(ctx, log.Model, log.ProviderType, strconv.Itoa(log.StatusCode), orgIDMetric, float64(log.LatencyMs)/1000.0, log.InputTokens, log.OutputTokens, log.CostUSD)
 
@@ -1072,7 +1072,7 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 
 		orgIDMetric := log.OrgID
 		if orgIDMetric == "" {
-			orgIDMetric = "org_default"
+			orgIDMetric = "unknown"
 		}
 		telemetry.RecordRequestMetrics(ctx, log.Model, log.ProviderType, strconv.Itoa(log.StatusCode), orgIDMetric, float64(latency)/1000.0, log.InputTokens, log.OutputTokens, log.CostUSD)
 

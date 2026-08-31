@@ -12,14 +12,12 @@ import (
 
 const (
 	TenantContextKey = "tenant_context"
-	DefaultOrgID     = "org_default"
-	DefaultWsID      = "ws_default"
-	DefaultProjID    = "proj_default"
 )
 
 var (
-	ErrCrossTenantForbidden = errors.New("cross-organization tenant context forbidden: gateway key belongs to different organization")
+	ErrCrossTenantForbidden  = errors.New("cross-organization tenant context forbidden: gateway key belongs to different organization")
 	ErrOrgMembershipRequired = errors.New("organization membership required: user is not a member of requested organization")
+	ErrMissingTenantContext  = errors.New("tenant context required: X-Prism-Org-ID header or gateway key must be provided")
 )
 
 // OrgMemberChecker abstracts checking if a user belongs to an organization.
@@ -29,15 +27,21 @@ type OrgMemberChecker interface {
 
 // ResolveCanonicalTenantContext resolves authoritative TenantContext.
 // GatewayKey is authoritative for OrgID ownership. Client-provided headers can only narrow scope.
+// Evaluation is strictly fail-closed: missing tenant context or failed membership checks return explicit errors.
 func ResolveCanonicalTenantContext(c *gin.Context, gatewayKey *models.GatewayAPIKey, orgChecker ...OrgMemberChecker) (models.TenantContext, error) {
 	var checker OrgMemberChecker
 	if len(orgChecker) > 0 {
 		checker = orgChecker[0]
 	}
 
-	headerOrgID := c.GetHeader("X-Prism-Org-ID")
-	headerWsID := c.GetHeader("X-Prism-Workspace-ID")
-	headerProjID := c.GetHeader("X-Prism-Project-ID")
+	headerOrgID := ""
+	headerWsID := ""
+	headerProjID := ""
+	if c != nil {
+		headerOrgID = c.GetHeader("X-Prism-Org-ID")
+		headerWsID = c.GetHeader("X-Prism-Workspace-ID")
+		headerProjID = c.GetHeader("X-Prism-Project-ID")
+	}
 
 	var canonicalOrgID string
 	if gatewayKey != nil && gatewayKey.OrgID != nil && *gatewayKey.OrgID != "" {
@@ -51,34 +55,41 @@ func ResolveCanonicalTenantContext(c *gin.Context, gatewayKey *models.GatewayAPI
 		userID := ""
 		if c != nil {
 			userID = c.GetString("userId")
-		}
-		if userID != "" && checker != nil {
-			isMember, err := checker.IsMember(c.Request.Context(), userID, headerOrgID)
-			if err != nil || !isMember {
-				return models.TenantContext{}, ErrOrgMembershipRequired
+			if userID == "" {
+				userID = c.GetString("user_id")
 			}
+		}
+		// Strict fail-closed: both authenticated user ID and membership checker MUST be present
+		if userID == "" {
+			return models.TenantContext{}, ErrOrgMembershipRequired
+		}
+		if checker == nil {
+			return models.TenantContext{}, ErrOrgMembershipRequired
+		}
+		isMember, err := checker.IsMember(c.Request.Context(), userID, headerOrgID)
+		if err != nil || !isMember {
+			return models.TenantContext{}, ErrOrgMembershipRequired
 		}
 		canonicalOrgID = headerOrgID
 	} else {
-		canonicalOrgID = DefaultOrgID
+		// Strict fail-closed: no implicit fallback to default organization
+		return models.TenantContext{}, ErrMissingTenantContext
 	}
 
 	canonicalWsID := headerWsID
 	if canonicalWsID == "" {
 		if gatewayKey != nil && gatewayKey.WorkspaceID != nil && *gatewayKey.WorkspaceID != "" {
 			canonicalWsID = *gatewayKey.WorkspaceID
-		} else {
-			canonicalWsID = DefaultWsID
 		}
+		// Empty string represents organization-wide scope (no dummy ws_default)
 	}
 
 	canonicalProjID := headerProjID
 	if canonicalProjID == "" {
 		if gatewayKey != nil && gatewayKey.ProjectID != nil && *gatewayKey.ProjectID != "" {
 			canonicalProjID = *gatewayKey.ProjectID
-		} else {
-			canonicalProjID = DefaultProjID
 		}
+		// Empty string represents workspace-wide scope (no dummy proj_default)
 	}
 
 	tc := models.TenantContext{
@@ -98,7 +109,7 @@ func ResolveCanonicalTenantContext(c *gin.Context, gatewayKey *models.GatewayAPI
 	return tc, nil
 }
 
-// TenantMiddleware extracts tenant identification headers (or applies default boundaries)
+// TenantMiddleware extracts tenant identification headers (or applies gateway key boundaries)
 // and attaches TenantContext to the Gin context.
 func TenantMiddleware(orgChecker ...OrgMemberChecker) gin.HandlerFunc {
 	var checker OrgMemberChecker
@@ -134,24 +145,19 @@ func TenantMiddleware(orgChecker ...OrgMemberChecker) gin.HandlerFunc {
 	}
 }
 
-// GetTenantContext retrieves TenantContext from Gin context.
+// GetTenantContext retrieves TenantContext from Gin context. Returns empty TenantContext if not found.
 func GetTenantContext(c *gin.Context) models.TenantContext {
+	if c == nil {
+		return models.TenantContext{}
+	}
 	val, exists := c.Get(TenantContextKey)
 	if !exists {
-		return models.TenantContext{
-			OrgID:       DefaultOrgID,
-			WorkspaceID: DefaultWsID,
-			ProjectID:   DefaultProjID,
-		}
+		return models.TenantContext{}
 	}
 
 	tc, ok := val.(models.TenantContext)
 	if !ok {
-		return models.TenantContext{
-			OrgID:       DefaultOrgID,
-			WorkspaceID: DefaultWsID,
-			ProjectID:   DefaultProjID,
-		}
+		return models.TenantContext{}
 	}
 
 	return tc

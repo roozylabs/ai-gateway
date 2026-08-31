@@ -265,21 +265,26 @@ func main() {
 		api.GET("/providers/google/oauth/login", googleOAuthHandler.Login)
 		api.GET("/providers/google/oauth/callback", googleOAuthHandler.Callback)
 
-		// Protected API routes
+		// Protected User-Scoped API routes (Session auth required, no active tenant required)
+		userProtected := api.Group("")
+		userProtected.Use(middleware.AuthMiddleware(sessionRepo, gatewayKeyCache))
+		{
+			// Auth Session
+			userProtected.POST("/auth/logout", authHandler.Logout)
+			userProtected.GET("/auth/me", authHandler.Me)
+
+			// User Permissions, Organization List & Onboarding
+			userProtected.GET("/user/permissions", userPermissionsHandler.GetPermissions)
+			userProtected.GET("/user/organizations", userPermissionsHandler.GetOrganizations)
+			userProtected.GET("/organizations", userPermissionsHandler.GetOrganizations)
+			userProtected.POST("/onboarding", onboardingHandler.Complete)
+		}
+
+		// Protected Tenant-Scoped API routes (Auth + Strict Tenant Membership required)
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware(sessionRepo, gatewayKeyCache))
 		protected.Use(middleware.TenantMiddleware(accountRepo))
 		{
-			// Auth
-			protected.POST("/auth/logout", authHandler.Logout)
-			protected.GET("/auth/me", authHandler.Me)
-
-			// User Permissions & Onboarding
-			protected.GET("/user/permissions", userPermissionsHandler.GetPermissions)
-			protected.GET("/user/organizations", userPermissionsHandler.GetOrganizations)
-			protected.GET("/organizations", userPermissionsHandler.GetOrganizations)
-			protected.POST("/onboarding", onboardingHandler.Complete)
-
 			// Organization Member Management
 			protected.GET("/organizations/members", middleware.RequirePermission(authzEngine, "member:read"), orgMemberHandler.ListMembers)
 			protected.POST("/organizations/invites", middleware.RequirePermission(authzEngine, "member:invite"), orgMemberHandler.InviteMember)

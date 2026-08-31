@@ -9,6 +9,7 @@ import (
 )
 
 // RequirePermission creates a Gin middleware ensuring the authenticated caller has the required permission.
+// Also validates scope boundaries for Gateway API Keys.
 func RequirePermission(authzEngine *authz.AuthorizationEngine, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if authzEngine == nil {
@@ -41,10 +42,30 @@ func RequirePermission(authzEngine *authz.AuthorizationEngine, action string) gi
 		if gwKeyVal, exists := c.Get("gatewayKey"); exists {
 			if gwKey, ok := gwKeyVal.(*models.GatewayAPIKey); ok {
 				pType = authz.PrincipalGatewayKey
-				if gwKey.OrgID != nil {
+				// Verify Gateway Key organization scope
+				if gwKey.OrgID != nil && *gwKey.OrgID != "" {
+					if orgID != "" && orgID != *gwKey.OrgID {
+						c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+							"error": gin.H{
+								"message": "API key not authorized for requested organization",
+								"type":    "scope_error",
+							},
+						})
+						return
+					}
 					orgID = *gwKey.OrgID
 				}
-				if gwKey.WorkspaceID != nil {
+				// Verify Gateway Key workspace scope
+				if gwKey.WorkspaceID != nil && *gwKey.WorkspaceID != "" {
+					if wsID != "" && wsID != *gwKey.WorkspaceID {
+						c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+							"error": gin.H{
+								"message": "API key not authorized for requested workspace",
+								"type":    "scope_error",
+							},
+						})
+						return
+					}
 					wsID = *gwKey.WorkspaceID
 				}
 			}

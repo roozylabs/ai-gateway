@@ -24,11 +24,7 @@ func (r *QuotaRepository) ListQuotas(ctx context.Context, orgID string) ([]model
 		       monthly_spend_limit_usd, daily_spend_limit_usd, daily_request_limit,
 		       max_concurrent_streams, created_at, updated_at
 		FROM tenant_quotas
-		WHERE (
-			organization_id = $1
-			OR ($1 = '' AND (organization_id IS NULL OR organization_id = 'org_default'))
-			OR ($1 != '' AND organization_id IS NULL)
-		)
+		WHERE organization_id = $1
 		ORDER BY target_type ASC, target_id ASC
 	`
 	rows, err := r.db.QueryContext(ctx, query, orgID)
@@ -135,11 +131,7 @@ func (r *QuotaRepository) EvaluateQuota(ctx context.Context, targetType, targetI
 		SELECT COALESCE(SUM(cost_usd), 0.0)
 		FROM request_logs
 		WHERE created_at >= date_trunc('month', NOW())
-		  AND (
-			org_id = $1
-			OR gateway_api_key_id IN (SELECT id FROM gateway_api_keys WHERE org_id = $1 OR user_id = $1)
-			OR ($1 = '' AND (org_id = 'org_default' OR org_id IS NULL OR org_id = ''))
-		  )
+		  AND org_id = $1
 	`
 	_ = r.db.QueryRowContext(ctx, queryMonthly, targetID).Scan(&monthlySpent)
 
@@ -147,11 +139,7 @@ func (r *QuotaRepository) EvaluateQuota(ctx context.Context, targetType, targetI
 		SELECT COALESCE(SUM(cost_usd), 0.0)
 		FROM request_logs
 		WHERE created_at >= date_trunc('day', NOW())
-		  AND (
-			org_id = $1
-			OR gateway_api_key_id IN (SELECT id FROM gateway_api_keys WHERE org_id = $1 OR user_id = $1)
-			OR ($1 = '' AND (org_id = 'org_default' OR org_id IS NULL OR org_id = ''))
-		  )
+		  AND org_id = $1
 	`
 	_ = r.db.QueryRowContext(ctx, queryDaily, targetID).Scan(&dailySpent)
 
