@@ -192,14 +192,14 @@ export default function DashboardPage() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <MetricCard
           title={`Total Requests (${currentRangeLabel})`}
-          value={stats?.totalRequests ? stats.totalRequests.toLocaleString() : '-'}
+          value={stats?.totalRequests ? stats.totalRequests.toLocaleString() : (stats?.totalRequests === 0 ? '0' : '-')}
           subtitle={`selected ${currentRangeLabel} period`}
           icon={<Activity className="h-4 w-4 text-[#8B5CF6]" />}
           loading={isLoading}
         />
         <MetricCard
           title="Tokens Processed"
-          value={stats?.totalTokens ? `${(stats.totalTokens / 1000000).toFixed(1)}M` : '-'}
+          value={stats?.totalTokens ? `${(stats.totalTokens / 1000000).toFixed(1)}M` : (stats?.totalTokens === 0 ? '0 Tokens' : '-')}
           subtitle={tokenSubtitle}
           icon={<Zap className="h-4 w-4 text-cyan-500" />}
           loading={isLoading}
@@ -213,8 +213,8 @@ export default function DashboardPage() {
         />
         <MetricCard
           title="Gateway Success Rate"
-          value={stats ? `${(100 - stats.errorRate).toFixed(2)}%` : '-'}
-          subtitle={stats ? `${stats.errorRate.toFixed(2)}% failover auto-rerouted` : undefined}
+          value={stats && stats.totalRequests > 0 ? `${(100 - stats.errorRate).toFixed(2)}%` : '-'}
+          subtitle={stats && stats.totalRequests > 0 ? `${stats.errorRate.toFixed(2)}% failover auto-rerouted` : 'No requests recorded yet'}
           icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
           loading={isLoading}
         />

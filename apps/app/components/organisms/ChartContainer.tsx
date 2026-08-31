@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Activity } from 'lucide-react';
 
 export interface TrafficChartData {
   time: string;
@@ -39,6 +40,23 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 };
 
 function TrafficChartInner({ data, height = 240 }: TrafficChartProps) {
+  const hasData = Array.isArray(data) && data.length > 0 && data.some((d) => d.requests > 0);
+
+  if (!hasData) {
+    return (
+      <div
+        style={{ width: '100%', height }}
+        className="flex flex-col items-center justify-center border border-dashed border-border/60 bg-muted/5 p-6 text-center rounded-sm"
+      >
+        <Activity className="h-7 w-7 text-muted-foreground/40 mb-2.5" />
+        <p className="text-xs font-semibold text-foreground">No Request Traffic Recorded</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xs leading-relaxed">
+          Real-time metrics will appear here once requests are dispatched through your Gateway API Keys.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%">

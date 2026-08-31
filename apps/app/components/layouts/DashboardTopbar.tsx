@@ -13,8 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/molecules/DropdownMenu';
-import { useSSE } from '@/context/SSEContext';
 import { useAuth } from '@/context/AuthContext';
+import { useDashboardHealthQuery } from '@/hooks/queries/useDashboardQuery';
 import { AppRoutes } from '@/constants/routes';
 import { Settings, Building, CreditCard, LogOut, Users } from 'lucide-react';
 
@@ -33,11 +33,17 @@ function getUserInitials(name?: string, email?: string): string {
 }
 
 export function DashboardTopbar() {
-  const { isConnected: isSseConnected } = useSSE();
   const { user, logout } = useAuth();
+  const { data: healthData, isError: isHealthError } = useDashboardHealthQuery();
 
-  const systemStatus = isSseConnected ? 'operational' : 'degraded';
-  const systemStatusLabel = isSseConnected ? 'System operational' : 'System degraded';
+  const isAnyProviderDegraded =
+    isHealthError ||
+    (Array.isArray(healthData) &&
+      healthData.length > 0 &&
+      healthData.some((p) => p.status === 'down'));
+
+  const systemStatus = isAnyProviderDegraded ? 'degraded' : 'operational';
+  const systemStatusLabel = isAnyProviderDegraded ? 'System degraded' : 'System operational';
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'Prism Admin';
   const email = user?.email || 'admin@prism.local';
