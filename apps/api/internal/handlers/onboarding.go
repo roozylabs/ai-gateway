@@ -107,29 +107,39 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 		return
 	}
 
-	// 3. Add user as owner in organization_members with dynamic role_id resolution
+	// 3. Resolve role_id from roles table (or auto-seed owner role if table is empty)
+	var resolvedRoleID string
+	err = tx.QueryRowContext(ctx,
+		`SELECT id::text FROM roles WHERE (slug = $1 OR id::text = $1) AND (is_system = true OR organization_id IS NULL) LIMIT 1`,
+		role,
+	).Scan(&resolvedRoleID)
+	if err != nil || resolvedRoleID == "" {
+		_ = tx.QueryRowContext(ctx, `SELECT id::text FROM roles WHERE slug = 'owner' LIMIT 1`).Scan(&resolvedRoleID)
+		if resolvedRoleID == "" {
+			_ = tx.QueryRowContext(ctx, `SELECT id::text FROM roles LIMIT 1`).Scan(&resolvedRoleID)
+		}
+		if resolvedRoleID == "" {
+			_ = tx.QueryRowContext(ctx,
+				`INSERT INTO roles (id, organization_id, name, slug, description, is_system, created_at, updated_at)
+				 VALUES (gen_random_uuid(), NULL, 'Owner', 'owner', 'Organization Owner', true, NOW(), NOW())
+				 RETURNING id::text`,
+			).Scan(&resolvedRoleID)
+		}
+	}
+
+	// 3b. Add user as owner in organization_members
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO organization_members (id, org_id, user_id, role, role_id, created_at, updated_at)
-		 VALUES (
-			$1, $2, $3, $4,
-			COALESCE(
-				(SELECT id FROM roles WHERE (slug = $4 OR id::text = $4) AND is_system = true LIMIT 1),
-				(SELECT id FROM roles WHERE slug = $4 LIMIT 1),
-				(SELECT id FROM roles WHERE slug = 'owner' LIMIT 1),
-				(SELECT id FROM roles LIMIT 1),
-				'00000000-0000-0000-0000-000000000001'::uuid
-			),
-			NOW(), NOW()
-		 )
+		 VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 		 ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role, role_id = EXCLUDED.role_id, updated_at = EXCLUDED.updated_at`,
-		memberID, orgID, userID, role,
+		memberID, orgID, userID, role, resolvedRoleID,
 	)
 	if err != nil {
 		httputil.RespondError(c, http.StatusInternalServerError, "Failed to assign organization membership. Please try again.", err, "ONBOARDING_MEMBER_ASSIGN_FAILED")
 		return
 	}
 
-	// 3b. Add user as admin in workspace_members
+	// 3c. Add user as admin in workspace_members
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO workspace_members (id, workspace_id, user_id, role, created_at, updated_at)
 		 VALUES ($1, $2, $3, 'admin', NOW(), NOW())
