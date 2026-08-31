@@ -98,33 +98,33 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- 6. Seed Account Records with Password Hash
 INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at) VALUES
-('acc_owner_free', 'owner.free@prism.local', 'credential', 'usr_owner_free', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_dev_free', 'dev.free@prism.local', 'credential', 'usr_dev_free', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_agent_free', 'agent.free@prism.local', 'credential', 'usr_agent_free', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_finops_free', 'finops.free@prism.local', 'credential', 'usr_finops_free', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_auditor_free', 'auditor.free@prism.local', 'credential', 'usr_auditor_free', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_viewer_free', 'viewer.free@prism.local', 'credential', 'usr_viewer_free', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
+('acc_owner_free', 'owner.free@prism.local', 'credential', 'usr_owner_free', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_dev_free', 'dev.free@prism.local', 'credential', 'usr_dev_free', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_agent_free', 'agent.free@prism.local', 'credential', 'usr_agent_free', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_finops_free', 'finops.free@prism.local', 'credential', 'usr_finops_free', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_auditor_free', 'auditor.free@prism.local', 'credential', 'usr_auditor_free', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_viewer_free', 'viewer.free@prism.local', 'credential', 'usr_viewer_free', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
 
-('acc_owner_pro', 'owner.pro@prism.local', 'credential', 'usr_owner_pro', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_dev_pro', 'dev.pro@prism.local', 'credential', 'usr_dev_pro', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_agent_pro', 'agent.pro@prism.local', 'credential', 'usr_agent_pro', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_finops_pro', 'finops.pro@prism.local', 'credential', 'usr_finops_pro', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_auditor_pro', 'auditor.pro@prism.local', 'credential', 'usr_auditor_pro', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_viewer_pro', 'viewer.pro@prism.local', 'credential', 'usr_viewer_pro', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
+('acc_owner_pro', 'owner.pro@prism.local', 'credential', 'usr_owner_pro', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_dev_pro', 'dev.pro@prism.local', 'credential', 'usr_dev_pro', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_agent_pro', 'agent.pro@prism.local', 'credential', 'usr_agent_pro', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_finops_pro', 'finops.pro@prism.local', 'credential', 'usr_finops_pro', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_auditor_pro', 'auditor.pro@prism.local', 'credential', 'usr_auditor_pro', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_viewer_pro', 'viewer.pro@prism.local', 'credential', 'usr_viewer_pro', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
 
-('acc_owner_team', 'owner.team@prism.local', 'credential', 'usr_owner_team', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_dev_team', 'dev.team@prism.local', 'credential', 'usr_dev_team', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_agent_team', 'agent.team@prism.local', 'credential', 'usr_agent_team', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_finops_team', 'finops.team@prism.local', 'credential', 'usr_finops_team', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_auditor_team', 'auditor.team@prism.local', 'credential', 'usr_auditor_team', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_viewer_team', 'viewer.team@prism.local', 'credential', 'usr_viewer_team', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
+('acc_owner_team', 'owner.team@prism.local', 'credential', 'usr_owner_team', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_dev_team', 'dev.team@prism.local', 'credential', 'usr_dev_team', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_agent_team', 'agent.team@prism.local', 'credential', 'usr_agent_team', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_finops_team', 'finops.team@prism.local', 'credential', 'usr_finops_team', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_auditor_team', 'auditor.team@prism.local', 'credential', 'usr_auditor_team', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_viewer_team', 'viewer.team@prism.local', 'credential', 'usr_viewer_team', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
 
-('acc_owner_enterprise', 'owner.enterprise@prism.local', 'credential', 'usr_owner_enterprise', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_dev_enterprise', 'dev.enterprise@prism.local', 'credential', 'usr_dev_enterprise', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_agent_enterprise', 'agent.enterprise@prism.local', 'credential', 'usr_agent_enterprise', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_finops_enterprise', 'finops.enterprise@prism.local', 'credential', 'usr_finops_enterprise', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_auditor_enterprise', 'auditor.enterprise@prism.local', 'credential', 'usr_auditor_enterprise', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW()),
-('acc_viewer_enterprise', 'viewer.enterprise@prism.local', 'credential', 'usr_viewer_enterprise', '$2a$10$wBq6DFv5zQW7tV8b9X8Qe.OQ8aX1Z3eJ4k5l6m7n8o9p0q1r2s3t4', NOW(), NOW())
+('acc_owner_enterprise', 'owner.enterprise@prism.local', 'credential', 'usr_owner_enterprise', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_dev_enterprise', 'dev.enterprise@prism.local', 'credential', 'usr_dev_enterprise', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_agent_enterprise', 'agent.enterprise@prism.local', 'credential', 'usr_agent_enterprise', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_finops_enterprise', 'finops.enterprise@prism.local', 'credential', 'usr_finops_enterprise', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_auditor_enterprise', 'auditor.enterprise@prism.local', 'credential', 'usr_auditor_enterprise', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()),
+('acc_viewer_enterprise', 'viewer.enterprise@prism.local', 'credential', 'usr_viewer_enterprise', '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW())
 ON CONFLICT (id) DO UPDATE SET
     password = EXCLUDED.password,
     updated_at = NOW();

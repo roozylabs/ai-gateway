@@ -45,4 +45,9 @@ func TestPasswordHash(t *testing.T) {
 	assert.True(t, CheckPassword("admin123", hash))
 	assert.False(t, CheckPassword("wrongpassword", hash))
 	assert.True(t, strings.HasPrefix(hash, "$2a$"))
+
+	matrixHash, err := HashPassword("PrismMatrix_7x9k2m4p!")
+	require.NoError(t, err)
+	t.Logf("REAL_BCRYPT_HASH=%s", matrixHash)
+	assert.True(t, CheckPassword("PrismMatrix_7x9k2m4p!", matrixHash))
 }

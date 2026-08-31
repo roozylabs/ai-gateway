@@ -59,25 +59,41 @@ export function parseApiError(error: unknown, defaultMessage = 'An unexpected AP
       status?: number;
       response?: {
         status?: number;
-        data?: {
-          error?: {
-            message?: string;
-            type?: string;
-            code?: string;
-            policy_id?: string;
-            policy_name?: string;
-            request_id?: string;
-            details?: ApiErrorDetail[];
-          };
-          message?: string;
-        };
+        data?: unknown;
         headers?: Record<string, string>;
       };
     };
 
     const status = errObj.status || errObj.response?.status || 500;
-    const errPayload = errObj.response?.data?.error;
-    const message = errPayload?.message || errObj.response?.data?.message || defaultMessage;
+    const rawData = errObj.response?.data;
+
+    let message = defaultMessage;
+    let errPayload: {
+      message?: string;
+      type?: string;
+      code?: string;
+      policy_id?: string;
+      policy_name?: string;
+      request_id?: string;
+      details?: ApiErrorDetail[];
+    } | undefined;
+
+    if (typeof rawData === 'string' && rawData.trim()) {
+      message = rawData.trim();
+    } else if (rawData && typeof rawData === 'object') {
+      const untypedData = rawData as Record<string, unknown>;
+      if (typeof untypedData.error === 'string' && untypedData.error.trim()) {
+        message = untypedData.error.trim();
+      } else if (untypedData.error && typeof untypedData.error === 'object') {
+        errPayload = untypedData.error as typeof errPayload;
+        if (typeof errPayload?.message === 'string' && errPayload.message.trim()) {
+          message = errPayload.message.trim();
+        }
+      } else if (typeof untypedData.message === 'string' && untypedData.message.trim()) {
+        message = untypedData.message.trim();
+      }
+    }
+
     const requestId = errPayload?.request_id || errObj.response?.headers?.['x-request-id'];
 
     let code: ApiErrorCode = 'INTERNAL_ERROR';
