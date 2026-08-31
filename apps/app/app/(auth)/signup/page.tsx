@@ -31,12 +31,12 @@ export default function SignUpPage() {
     siteKey,
     showTurnstile,
     token: turnstileToken,
-    isReady,
     turnstileRef,
     onSuccess,
     onError,
     onExpire,
     reset: resetTurnstile,
+    getTokenOrWait,
   } = useTurnstile();
 
   useEffect(() => {
@@ -56,18 +56,23 @@ export default function SignUpPage() {
   });
 
   const onSubmit = async (values: SignupFormValues) => {
-    if (showTurnstile && !isReady) {
-      toast.error('Please complete security verification before creating your account.');
-      return;
-    }
-
     try {
       setLoading(true);
+
+      let activeToken = turnstileToken;
+      if (showTurnstile && !activeToken) {
+        activeToken = (await getTokenOrWait(3500)) || '';
+        if (!activeToken) {
+          toast.error('Please complete the security verification before creating your account.');
+          return;
+        }
+      }
+
       await signup({
         name: values.name,
         email: values.email,
         password: values.password,
-        turnstileToken: turnstileToken || undefined,
+        turnstileToken: activeToken && activeToken !== 'bypass' ? activeToken : undefined,
       });
       toast.success('Account created successfully! Welcome to RoozyLabs Prism.');
       router.replace(AppRoutes.ONBOARDING);

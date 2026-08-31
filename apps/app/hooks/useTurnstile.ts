@@ -15,11 +15,14 @@ export interface UseTurnstileReturn {
   onError: () => void;
   onExpire: () => void;
   reset: () => void;
+  getTokenOrWait: (timeoutMs?: number) => Promise<string | null>;
 }
 
 export function useTurnstile(): UseTurnstileReturn {
   const [token, setToken] = useState<string>('');
+  const tokenRef = useRef<string>('');
   const turnstileRef = useRef<TurnstileInstance | null>(null);
+  const waitersRef = useRef<Array<(token: string) => void>>([]);
 
   const { data: turnstileConfig } = useQuery({
     queryKey: ['turnstile-config'],
@@ -37,6 +40,7 @@ export function useTurnstile(): UseTurnstileReturn {
 
   const reset = useCallback(() => {
     setToken('');
+    tokenRef.current = '';
     try {
       turnstileRef.current?.reset();
     } catch {
@@ -46,6 +50,11 @@ export function useTurnstile(): UseTurnstileReturn {
 
   const onSuccess = useCallback((newToken: string) => {
     setToken(newToken);
+    tokenRef.current = newToken;
+    if (waitersRef.current.length > 0) {
+      waitersRef.current.forEach((resolve) => resolve(newToken));
+      waitersRef.current = [];
+    }
   }, []);
 
   const onError = useCallback(() => {
@@ -55,6 +64,38 @@ export function useTurnstile(): UseTurnstileReturn {
   const onExpire = useCallback(() => {
     reset();
   }, [reset]);
+
+  const getTokenOrWait = useCallback(
+    async (timeoutMs = 3500): Promise<string | null> => {
+      if (!showTurnstile) return 'bypass';
+      if (tokenRef.current) return tokenRef.current;
+
+      // Try triggering execute if Turnstile is in invisible mode
+      try {
+        turnstileRef.current?.execute?.();
+      } catch {
+        // Ignore if execute is not needed or not supported
+      }
+
+      return new Promise<string | null>((resolve) => {
+        let timer: NodeJS.Timeout | null = null;
+
+        const waiter = (resolvedToken: string) => {
+          if (timer) clearTimeout(timer);
+          resolve(resolvedToken);
+        };
+
+        waitersRef.current.push(waiter);
+
+        timer = setTimeout(() => {
+          // Remove waiter from pending list
+          waitersRef.current = waitersRef.current.filter((w) => w !== waiter);
+          resolve(tokenRef.current || null);
+        }, timeoutMs);
+      });
+    },
+    [showTurnstile]
+  );
 
   return {
     siteKey,
@@ -66,5 +107,6 @@ export function useTurnstile(): UseTurnstileReturn {
     onError,
     onExpire,
     reset,
+    getTokenOrWait,
   };
 }
