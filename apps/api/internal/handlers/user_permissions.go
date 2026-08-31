@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
@@ -24,17 +25,13 @@ func NewUserPermissionsHandler(rbacRepo *repository.RBACRepository, userRepo *re
 func (h *UserPermissionsHandler) GetPermissions(c *gin.Context) {
 	userID := c.GetString("userId")
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": gin.H{"message": "Unauthorized", "type": "auth_error"},
-		})
+		httputil.RespondError(c, http.StatusUnauthorized, "Unauthorized session", nil, "AUTH_REQUIRED")
 		return
 	}
 
 	user, err := h.userRepo.FindByID(c.Request.Context(), userID)
 	if err != nil || user == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": gin.H{"message": "User not found", "type": "auth_error"},
-		})
+		httputil.RespondError(c, http.StatusUnauthorized, "User session not found", err, "USER_NOT_FOUND")
 		return
 	}
 
@@ -62,9 +59,7 @@ func (h *UserPermissionsHandler) GetPermissions(c *gin.Context) {
 			roleSlug = ""
 		} else {
 			// Fail-closed: Database or internal error
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": gin.H{"message": "Failed to resolve permissions: " + err.Error(), "type": "rbac_error"},
-			})
+			httputil.RespondError(c, http.StatusInternalServerError, "Failed to resolve user permissions", err, "RBAC_RESOLVE_FAILED")
 			return
 		}
 	} else {
@@ -89,13 +84,13 @@ func (h *UserPermissionsHandler) GetPermissions(c *gin.Context) {
 func (h *UserPermissionsHandler) GetOrganizations(c *gin.Context) {
 	userID := c.GetString("userId")
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		httputil.RespondError(c, http.StatusUnauthorized, "Unauthorized session", nil, "AUTH_REQUIRED")
 		return
 	}
 
 	orgs, err := h.rbacRepo.ListUserOrganizations(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list organizations"})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to list user organizations", err, "ORG_LIST_FAILED")
 		return
 	}
 	if orgs == nil {
