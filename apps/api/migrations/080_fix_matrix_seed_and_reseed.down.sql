@@ -1,9 +1,9 @@
 -- Rollback Migration 080
 
-DELETE FROM workspace_members WHERE user_id IN (SELECT id FROM "user" WHERE email LIKE '%.prism.local');
+DELETE FROM workspace_members WHERE user_id IN (SELECT id FROM "user" WHERE email LIKE '%@prism.local');
 DELETE FROM organization_members WHERE org_id IN (SELECT id FROM organizations WHERE slug LIKE 'org-matrix-%');
-DELETE FROM account WHERE account_id LIKE '%.prism.local';
-DELETE FROM "user" WHERE email LIKE '%.prism.local';
+DELETE FROM account WHERE account_id LIKE '%@prism.local';
+DELETE FROM "user" WHERE email LIKE '%@prism.local';
 DELETE FROM tenant_quotas WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'org-matrix-%');
 DELETE FROM projects WHERE workspace_id IN (SELECT id FROM workspaces WHERE slug IN ('ws-free-eng', 'ws-free-finance', 'ws-pro-eng', 'ws-pro-finance', 'ws-team-eng', 'ws-team-finance', 'ws-enterprise-eng', 'ws-enterprise-finance'));
 DELETE FROM workspaces WHERE org_id IN (SELECT id FROM organizations WHERE slug LIKE 'org-matrix-%');
