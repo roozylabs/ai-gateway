@@ -130,6 +130,10 @@ definitions:
     type: object
   github_com_roozylabs_prism_internal_models.User:
     properties:
+      authProvider:
+        type: string
+      avatarUrl:
+        type: string
       createdAt:
         type: string
       email:
@@ -140,7 +144,13 @@ definitions:
         type: string
       image:
         type: string
+      isOnboarded:
+        type: boolean
       name:
+        type: string
+      orgId:
+        type: string
+      primaryRole:
         type: string
       updatedAt:
         type: string
@@ -184,6 +194,21 @@ definitions:
       user:
         $ref: '#/definitions/github_com_roozylabs_prism_internal_models.User'
     type: object
+  github_com_roozylabs_prism_internal_service.SignupRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      turnstileToken:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
   internal_handlers.CreateCredentialRequest:
     properties:
       apiKey:
@@ -198,6 +223,17 @@ definitions:
         type: integer
     required:
     - name
+    type: object
+  internal_handlers.FeaturesResponse:
+    properties:
+      flags:
+        additionalProperties:
+          type: boolean
+        type: object
+      planTier:
+        type: string
+      version:
+        type: string
     type: object
   internal_handlers.OAuthMetadataInput:
     properties:
@@ -259,7 +295,7 @@ info:
   contact: {}
   description: Centralized AI API Gateway
   title: RoozyLabs Prism AI Gateway API
-  version: 2.2.0
+  version: 0.3.0
 paths:
   /api/auth/login:
     post:
@@ -327,6 +363,40 @@ paths:
       security:
       - BearerAuth: []
       summary: Get current user
+      tags:
+      - auth
+  /api/auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Create new user account with email and password
+      parameters:
+      - description: Signup credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_roozylabs_prism_internal_service.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_roozylabs_prism_internal_service.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Signup
       tags:
       - auth
   /api/providers:
@@ -492,7 +562,7 @@ paths:
       tags:
       - credentials
     post:
-      description: Create a new credential for a provider
+      description: Create a new credential
       parameters:
       - description: Provider ID
         in: path
@@ -899,6 +969,20 @@ paths:
       summary: SSE event stream
       tags:
       - sse
+  /features:
+    get:
+      description: Returns resolved feature flag states evaluated against environment
+        variables and tenant plan tier.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handlers.FeaturesResponse'
+      summary: Get Active Feature Flags
+      tags:
+      - Features
   /v1/chat/completions:
     post:
       consumes:
