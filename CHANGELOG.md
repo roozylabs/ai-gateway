@@ -5,6 +5,19 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-08-31
+
+### Added
+- **Reusable `useTurnstile` Hook ([`apps/app/hooks/useTurnstile.ts`](file:///c:/me/projects/ai-gateway/apps/app/hooks/useTurnstile.ts))**:
+  - Encapsulated Turnstile site key resolution, token state management, automatic reset on error/expiration, and readiness checks into a shared React hook.
+
+### Changed
+- **Non-Blocking Authentication UX for Sign In & Sign Up**:
+  - Removed artificial `disabled={!isVerified}` input restrictions across Sign In and Sign Up pages. Users can focus, type email/password, and interact with form fields immediately upon page load without waiting for Turnstile initialization.
+  - Enabled invisible Turnstile mode (`size: 'invisible'`) for Sign In to provide a frictionless login experience while retaining automated background bot verification.
+  - Unblocked Google and GitHub OAuth buttons on authentication pages, delegating authorization security directly to identity providers.
+  - Cleaned up `loginSchema` and `signupSchema` Zod validation schemas by removing `turnstileToken` as a form-level field.
+
 ## [0.2.0] - 2026-08-31
 
 ### Added
