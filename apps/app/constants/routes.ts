@@ -19,7 +19,7 @@ export enum AppRoutes {
   BUDGETS = '/budgets',
   PLAYGROUND = '/playground',
   BILLING = '/settings/billing',
-  SETTINGS = '/settings/organization',
+  SETTINGS = '/settings',
   SETTINGS_MEMBERS = '/settings/members',
 }
 
