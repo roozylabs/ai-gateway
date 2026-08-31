@@ -95,12 +95,18 @@ Upon completing any feature, bug fix, refactor, or rule update, the agent MUST e
    | CI / Tooling (`chore:`, `ci:`) | `chore`, `ci` |
 
 6. **Merge Pull Request**: Call `merge_pull_request` (`merge_method: "squash"`).
-7. **Post-Merge Cleanup**: Delete remote and local feature branches.
-8. **Release Tagging on `main` (if releasing a version)**:
-   1. Switch to `main` and pull latest: `git checkout main && git pull origin main`.
-   2. Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: <Summary>"`.
-   3. Push tag to GitHub: `git push origin vX.Y.Z`.
-   See `.agents/rules/semantic-versioning-and-releases.md` for full release guidelines.
+7. **Mandatory Post-Merge Branch Deletion**:
+   - Delete the remote feature branch: `git push origin --delete <branch-name>`
+   - Switch back to `main`, pull latest, and force delete local branch:
+     ```bash
+     git checkout main && git pull origin main && git branch -D <branch-name>
+     ```
+8. **Release Tagging on `main` (OpenCode Model Only)**:
+   - *Note*: Gemini & Claude are strictly restricted to user code/logic. Only **OpenCode** executes release version bumps and tagging.
+   - Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: <Summary>"`.
+   - Push tag to GitHub: `git push origin vX.Y.Z`.
+   See `.agents/rules/semantic-versioning-and-releases.md` and `.agents/rules/planning-and-model-policy.md` for full guidelines.
+
 
 
 
