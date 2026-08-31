@@ -49,13 +49,25 @@ export default function ResourcesPage() {
     <AppLayout>
       <PageHeader
         title="Resource Gateway & Knowledge Sources"
-        description="Connect document stores, vector databases, and static resources for context injection."
+        description="Connect document stores, vector databases, and static resources for workspace context injection."
         extra={
           <Button variant="prismViolet" size="sm" className="gap-1.5" onClick={openCreateDrawer}>
             <Plus className="h-4 w-4" /> Add Resource Source
           </Button>
         }
       />
+
+      <div className="mb-6 p-3.5 rounded-lg border border-primary/20 bg-primary/5 flex items-start gap-3">
+        <Database className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-xs space-y-0.5">
+          <p className="font-semibold text-foreground">
+            Multi-Tenant Isolated Knowledge Sources
+          </p>
+          <p className="text-muted-foreground">
+            All configured database endpoints, vector stores, and external resources are isolated strictly within your active organization and workspace.
+          </p>
+        </div>
+      </div>
 
       {isError ? (
         <ErrorState
@@ -94,6 +106,12 @@ export default function ResourcesPage() {
                   <p className="text-xs text-muted-foreground line-clamp-2">{resource.description}</p>
                 )}
                 <div className="flex items-center justify-between text-xs border-t border-border pt-3">
+                  <span className="text-muted-foreground">Scope</span>
+                  <Badge variant="violet" className="text-[10px]">
+                    {resource.workspaceId ? 'Workspace' : 'Organization'}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Status</span>
                   <Badge variant={resource.enabled ? 'success' : 'outline'}>
                     {resource.enabled ? 'Enabled' : 'Disabled'}

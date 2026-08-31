@@ -1,12 +1,15 @@
 export interface ApiResource {
   id: string;
+  orgId?: string;
+  workspaceId?: string;
+  userId?: string;
   name: string;
   displayName: string;
   description: string;
-  resourceUri: string;
-  mimeType: string;
+  resourceUri?: string;
+  mimeType?: string;
   enabled: boolean;
-  cacheTtlSeconds: number;
+  cacheTtlSeconds?: number;
   createdAt: string;
   updatedAt: string;
 }
