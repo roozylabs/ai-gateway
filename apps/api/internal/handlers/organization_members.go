@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
@@ -26,13 +27,13 @@ func (h *OrganizationMemberHandler) ListMembers(c *gin.Context) {
 		orgID = c.GetString("organizationId")
 	}
 	if orgID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "organization context is required"})
+		httputil.RespondError(c, http.StatusBadRequest, "Organization context is required", nil, "ORG_CONTEXT_REQUIRED")
 		return
 	}
 
 	members, err := h.rbacRepo.ListOrganizationMembers(c.Request.Context(), orgID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list organization members: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to list organization members", err, "MEMBER_LIST_FAILED")
 		return
 	}
 	if members == nil {
@@ -57,13 +58,13 @@ func (h *OrganizationMemberHandler) InviteMember(c *gin.Context) {
 		orgID = c.GetString("organizationId")
 	}
 	if orgID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "organization context is required"})
+		httputil.RespondError(c, http.StatusBadRequest, "Organization context is required", nil, "ORG_CONTEXT_REQUIRED")
 		return
 	}
 
 	var req InviteMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid invitation payload: " + err.Error()})
+		httputil.RespondError(c, http.StatusBadRequest, "Invalid invitation payload", err, "INVALID_INVITATION_PAYLOAD")
 		return
 	}
 
@@ -73,7 +74,7 @@ func (h *OrganizationMemberHandler) InviteMember(c *gin.Context) {
 	}
 
 	if err := h.rbacRepo.CreateInvite(c.Request.Context(), invite); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create invite: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to create member invitation", err, "INVITE_CREATE_FAILED")
 		return
 	}
 
@@ -96,32 +97,27 @@ func (h *OrganizationMemberHandler) UpdateMemberRole(c *gin.Context) {
 	targetUserID := c.Param("userId")
 
 	if orgID == "" || targetUserID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "organizationId and userId are required"})
+		httputil.RespondError(c, http.StatusBadRequest, "Organization ID and User ID are required", nil, "MISSING_PARAMS")
 		return
 	}
 
 	var req UpdateMemberRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "role is required"})
+		httputil.RespondError(c, http.StatusBadRequest, "Role is required", err, "INVALID_ROLE_PAYLOAD")
 		return
 	}
 
 	err := h.rbacRepo.UpdateMemberRole(c.Request.Context(), orgID, targetUserID, req.Role)
 	if err != nil {
 		if errors.Is(err, repository.ErrCannotDemoteLastOwner) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": gin.H{
-					"message": "Cannot demote the last owner of the organization. Transfer ownership or assign another owner first.",
-					"type":    "owner_safety_invariant_violation",
-				},
-			})
+			httputil.RespondError(c, http.StatusBadRequest, "Cannot demote the last owner of the organization. Transfer ownership or assign another owner first.", err, "CANNOT_DEMOTE_LAST_OWNER")
 			return
 		}
 		if errors.Is(err, repository.ErrNotMember) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "member not found in organization"})
+			httputil.RespondError(c, http.StatusNotFound, "Member not found in organization", err, "MEMBER_NOT_FOUND")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update member role: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to update member role", err, "MEMBER_UPDATE_FAILED")
 		return
 	}
 
@@ -141,26 +137,21 @@ func (h *OrganizationMemberHandler) RemoveMember(c *gin.Context) {
 	targetUserID := c.Param("userId")
 
 	if orgID == "" || targetUserID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "organizationId and userId are required"})
+		httputil.RespondError(c, http.StatusBadRequest, "Organization ID and User ID are required", nil, "MISSING_PARAMS")
 		return
 	}
 
 	err := h.rbacRepo.RemoveOrganizationMember(c.Request.Context(), orgID, targetUserID)
 	if err != nil {
 		if errors.Is(err, repository.ErrCannotRemoveLastOwner) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": gin.H{
-					"message": "Cannot remove the last owner of the organization. Transfer ownership first.",
-					"type":    "owner_safety_invariant_violation",
-				},
-			})
+			httputil.RespondError(c, http.StatusBadRequest, "Cannot remove the last owner of the organization. Transfer ownership first.", err, "CANNOT_REMOVE_LAST_OWNER")
 			return
 		}
 		if errors.Is(err, repository.ErrNotMember) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "member not found in organization"})
+			httputil.RespondError(c, http.StatusNotFound, "Member not found in organization", err, "MEMBER_NOT_FOUND")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove member: " + err.Error()})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to remove member from organization", err, "MEMBER_REMOVE_FAILED")
 		return
 	}
 

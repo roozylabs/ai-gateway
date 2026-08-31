@@ -123,6 +123,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/auth/signup": {
+            "post": {
+                "description": "Create new user account with email and password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Signup",
+                "parameters": [
+                    {
+                        "description": "Signup credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_roozylabs_prism_internal_service.SignupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_roozylabs_prism_internal_service.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/providers": {
             "get": {
                 "security": [
@@ -385,7 +437,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new credential for a provider",
+                "description": "Create a new credential",
                 "tags": [
                     "credentials"
                 ],
@@ -1017,6 +1069,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/features": {
+            "get": {
+                "description": "Returns resolved feature flag states evaluated against environment variables and tenant plan tier.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Features"
+                ],
+                "summary": "Get Active Feature Flags",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.FeaturesResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/chat/completions": {
             "post": {
                 "security": [
@@ -1321,6 +1393,12 @@ const docTemplate = `{
         "github_com_roozylabs_prism_internal_models.User": {
             "type": "object",
             "properties": {
+                "authProvider": {
+                    "type": "string"
+                },
+                "avatarUrl": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -1336,7 +1414,16 @@ const docTemplate = `{
                 "image": {
                     "type": "string"
                 },
+                "isOnboarded": {
+                    "type": "boolean"
+                },
                 "name": {
+                    "type": "string"
+                },
+                "orgId": {
+                    "type": "string"
+                },
+                "primaryRole": {
                     "type": "string"
                 },
                 "updatedAt": {
@@ -1402,6 +1489,28 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_roozylabs_prism_internal_service.SignupRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "turnstileToken": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handlers.CreateCredentialRequest": {
             "type": "object",
             "required": [
@@ -1422,6 +1531,23 @@ const docTemplate = `{
                 },
                 "priority": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.FeaturesResponse": {
+            "type": "object",
+            "properties": {
+                "flags": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
+                },
+                "planTier": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
