@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -128,114 +129,133 @@ func SeedMatrix(ctx context.Context, db *sql.DB) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// 1. Generate bcrypt hash for shared password
+	// 1. Relax/Expand CHECK constraints on organization_members.role and workspace_members.role
+	_, _ = tx.ExecContext(ctx, `
+		ALTER TABLE organization_members DROP CONSTRAINT IF EXISTS organization_members_role_check;
+		ALTER TABLE organization_members ADD CONSTRAINT organization_members_role_check 
+			CHECK (role IN ('owner', 'admin', 'developer', 'billing_manager', 'agent_manager', 'finops_manager', 'auditor', 'viewer'));
+		ALTER TABLE workspace_members DROP CONSTRAINT IF EXISTS workspace_members_role_check;
+		ALTER TABLE workspace_members ADD CONSTRAINT workspace_members_role_check 
+			CHECK (role IN ('owner', 'admin', 'developer', 'operator', 'agent_manager', 'finops_manager', 'auditor', 'viewer'));
+	`)
+
+	// 2. Generate bcrypt hash for shared password
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(SharedMatrixPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("generate bcrypt hash: %w", err)
 	}
 
-	// 2. Iterate through all Plan Tiers
+	// 3. Iterate through all Plan Tiers
 	for _, plan := range PlanSpecs {
-		orgID := fmt.Sprintf("org_matrix_%s", plan.Slug)
-		wsEngID := fmt.Sprintf("ws_%s_eng", plan.Slug)
-		wsFinID := fmt.Sprintf("ws_%s_finance", plan.Slug)
-		projEngID := fmt.Sprintf("proj_%s_eng", plan.Slug)
-		projFinID := fmt.Sprintf("proj_%s_finance", plan.Slug)
+		orgSlug := fmt.Sprintf("org-matrix-%s", plan.Slug)
+		wsEngSlug := fmt.Sprintf("ws-%s-eng", plan.Slug)
+		wsFinSlug := fmt.Sprintf("ws-%s-finance", plan.Slug)
+		projEngSlug := fmt.Sprintf("proj-%s-eng", plan.Slug)
+		projFinSlug := fmt.Sprintf("proj-%s-finance", plan.Slug)
 
-		// 2a. Upsert Organization
-		_, err = tx.ExecContext(ctx, `
+		// 3a. Upsert Organization with natural generated UUID
+		var orgID string
+		err = tx.QueryRowContext(ctx, `
 			INSERT INTO organizations (id, name, slug, plan_tier, max_workspaces, max_projects_per_workspace, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-			ON CONFLICT (id) DO UPDATE SET
+			ON CONFLICT (slug) DO UPDATE SET
 				name = EXCLUDED.name,
 				plan_tier = EXCLUDED.plan_tier,
 				max_workspaces = EXCLUDED.max_workspaces,
 				max_projects_per_workspace = EXCLUDED.max_projects_per_workspace,
 				updated_at = NOW()
-		`, orgID, plan.Name, orgID, plan.Tier, plan.MaxWorkspaces, plan.MaxProjectsPerWs)
+			RETURNING id
+		`, uuid.New().String(), plan.Name, orgSlug, plan.Tier, plan.MaxWorkspaces, plan.MaxProjectsPerWs).Scan(&orgID)
 		if err != nil {
-			return fmt.Errorf("upsert organization %s: %w", orgID, err)
+			return fmt.Errorf("upsert organization %s: %w", orgSlug, err)
 		}
 
-		// 2b. Upsert Workspaces
-		_, err = tx.ExecContext(ctx, `
+		// 3b. Upsert Workspaces with natural generated UUID
+		var wsEngID, wsFinID string
+		err = tx.QueryRowContext(ctx, `
 			INSERT INTO workspaces (id, org_id, name, slug, created_at, updated_at)
-			VALUES
-				($1, $2, $3, $4, NOW(), NOW()),
-				($5, $2, $6, $7, NOW(), NOW())
-			ON CONFLICT (id) DO UPDATE SET
+			VALUES ($1, $2, $3, $4, NOW(), NOW())
+			ON CONFLICT (org_id, slug) DO UPDATE SET
 				name = EXCLUDED.name,
 				updated_at = NOW()
-		`, wsEngID, orgID, fmt.Sprintf("%s Engineering", plan.Name), wsEngID,
-			wsFinID, fmt.Sprintf("%s Finance & Ops", plan.Name), wsFinID)
+			RETURNING id
+		`, uuid.New().String(), orgID, fmt.Sprintf("%s Engineering", plan.Name), wsEngSlug).Scan(&wsEngID)
 		if err != nil {
-			return fmt.Errorf("upsert workspaces for %s: %w", orgID, err)
+			return fmt.Errorf("upsert ws eng for %s: %w", orgSlug, err)
 		}
 
-		// 2c. Upsert Projects
+		err = tx.QueryRowContext(ctx, `
+			INSERT INTO workspaces (id, org_id, name, slug, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, NOW(), NOW())
+			ON CONFLICT (org_id, slug) DO UPDATE SET
+				name = EXCLUDED.name,
+				updated_at = NOW()
+			RETURNING id
+		`, uuid.New().String(), orgID, fmt.Sprintf("%s Finance & Ops", plan.Name), wsFinSlug).Scan(&wsFinID)
+		if err != nil {
+			return fmt.Errorf("upsert ws fin for %s: %w", orgSlug, err)
+		}
+
+		// 3c. Upsert Projects with natural generated UUID
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO projects (id, workspace_id, name, slug, created_at, updated_at)
 			VALUES
-				($1, $2, 'AI Core Services', $1, NOW(), NOW()),
-				($3, $4, 'FinOps & Invoicing', $3, NOW(), NOW())
-			ON CONFLICT (id) DO UPDATE SET
+				($1, $2, 'AI Core Services', $3, NOW(), NOW()),
+				($4, $5, 'FinOps & Invoicing', $6, NOW(), NOW())
+			ON CONFLICT (workspace_id, slug) DO UPDATE SET
 				name = EXCLUDED.name,
 				updated_at = NOW()
-		`, projEngID, wsEngID, projFinID, wsFinID)
+		`, uuid.New().String(), wsEngID, projEngSlug, uuid.New().String(), wsFinID, projFinSlug)
 		if err != nil {
 			return fmt.Errorf("upsert projects for %s: %w", orgID, err)
 		}
 
-		// 2d. Upsert Quota for Organization
-		quotaID := fmt.Sprintf("quota_matrix_%s", plan.Slug)
+		// 3d. Upsert Quota for Organization
 		_, err = tx.ExecContext(ctx, `
-			INSERT INTO tenant_quotas (id, organization_id, target_type, target_id, monthly_spend_limit_usd, daily_spend_limit_usd, daily_request_limit, max_concurrent_streams, created_at, updated_at)
-			VALUES ($1, $2, 'organization', $2, $3, $4, $5, $6, NOW(), NOW())
+			INSERT INTO tenant_quotas (organization_id, target_type, target_id, monthly_spend_limit_usd, daily_spend_limit_usd, daily_request_limit, max_concurrent_streams, created_at, updated_at)
+			VALUES ($1, 'organization', $1, $2, $3, $4, $5, NOW(), NOW())
 			ON CONFLICT (target_type, target_id) DO UPDATE SET
+				organization_id = EXCLUDED.organization_id,
 				monthly_spend_limit_usd = EXCLUDED.monthly_spend_limit_usd,
 				daily_spend_limit_usd = EXCLUDED.daily_spend_limit_usd,
 				daily_request_limit = EXCLUDED.daily_request_limit,
 				max_concurrent_streams = EXCLUDED.max_concurrent_streams,
 				updated_at = NOW()
-		`, quotaID, orgID, plan.SpendCapMonthly, plan.SpendCapDaily, plan.DailyReqLimit, plan.MaxConcurrent)
+		`, orgID, plan.SpendCapMonthly, plan.SpendCapDaily, plan.DailyReqLimit, plan.MaxConcurrent)
 		if err != nil {
 			return fmt.Errorf("upsert quota for %s: %w", orgID, err)
 		}
 
-		// 2e. Seed 6 Users per Organization (Total 24 Matrix Users)
+		// 3e. Seed 6 Users per Organization (Total 24 Matrix Users)
 		for _, role := range RoleSpecs {
-			userID := fmt.Sprintf("usr_%s_%s", role.Prefix, plan.Slug)
 			email := fmt.Sprintf("%s.%s@prism.local", role.Prefix, plan.Slug)
 			name := fmt.Sprintf("%s (%s Tier)", role.Name, strings.ToUpper(plan.Slug))
-			memberID := fmt.Sprintf("mem_%s_%s", role.Prefix, plan.Slug)
-			accountID := fmt.Sprintf("acc_%s_%s", role.Prefix, plan.Slug)
 
 			// Insert / update "user" table
-			_, err = tx.ExecContext(ctx, `
+			var userID string
+			err = tx.QueryRowContext(ctx, `
 				INSERT INTO "user" (id, name, email, email_verified, is_onboarded, primary_role, auth_provider, org_id, created_at, updated_at)
 				VALUES ($1, $2, $3, true, true, $4, 'credential', $5, NOW(), NOW())
-				ON CONFLICT (id) DO UPDATE SET
+				ON CONFLICT (email) DO UPDATE SET
 					name = EXCLUDED.name,
-					email = EXCLUDED.email,
 					org_id = EXCLUDED.org_id,
 					primary_role = EXCLUDED.primary_role,
 					is_onboarded = true,
 					updated_at = NOW()
-			`, userID, name, email, role.Slug, orgID)
+				RETURNING id
+			`, uuid.New().String(), name, email, role.Slug, orgID).Scan(&userID)
 			if err != nil {
 				return fmt.Errorf("upsert user %s: %w", email, err)
 			}
 
-			// Insert / update "account" table with password hash
+			// Clean existing credential account and re-insert with natural UUID
+			_, _ = tx.ExecContext(ctx, `DELETE FROM account WHERE account_id = $1`, email)
 			_, err = tx.ExecContext(ctx, `
 				INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
 				VALUES ($1, $2, 'credential', $3, $4, NOW(), NOW())
-				ON CONFLICT (id) DO UPDATE SET
-					password = EXCLUDED.password,
-					updated_at = NOW()
-			`, accountID, email, userID, string(passwordHash))
+			`, uuid.New().String(), email, userID, string(passwordHash))
 			if err != nil {
-				return fmt.Errorf("upsert account %s: %w", email, err)
+				return fmt.Errorf("insert account %s: %w", email, err)
 			}
 
 			// Insert / update "organization_members" linking role_id dynamically
@@ -250,59 +270,50 @@ func SeedMatrix(ctx context.Context, db *sql.DB) error {
 					role = EXCLUDED.role,
 					role_id = EXCLUDED.role_id,
 					updated_at = NOW()
-			`, memberID, orgID, userID, role.Slug)
+			`, uuid.New().String(), orgID, userID, role.Slug)
 			if err != nil {
 				return fmt.Errorf("upsert org member %s (%s): %w", email, role.Slug, err)
 			}
 
-			// Insert workspace memberships:
-			// - owner: member of engineering ws (and has workspace:admin for all ws)
-			// - developer & agent_manager: members of wsEngID
-			// - finops_manager: member of wsFinID
-			// - auditor & viewer: members of wsEngID
+			// Insert workspace memberships (Omit ID so DB uses gen_random_uuid()):
 			targetWsID := wsEngID
 			if role.Slug == "finops_manager" {
 				targetWsID = wsFinID
 			}
 
-			wsMemberID := fmt.Sprintf("wm_%s_%s", role.Prefix, plan.Slug)
 			_, err = tx.ExecContext(ctx, `
-				INSERT INTO workspace_members (id, workspace_id, user_id, role, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, NOW(), NOW())
+				INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at)
+				VALUES ($1, $2, $3, NOW(), NOW())
 				ON CONFLICT (workspace_id, user_id) DO UPDATE SET
 					role = EXCLUDED.role,
 					updated_at = NOW()
-			`, wsMemberID, targetWsID, userID, role.Slug)
+			`, targetWsID, userID, role.Slug)
 			if err != nil {
 				return fmt.Errorf("upsert workspace member %s (%s): %w", email, targetWsID, err)
 			}
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+
+	return nil
 }
 
 func PrintMatrixTable() {
-	fmt.Println("\n========================================================================================================================")
-	fmt.Println("                           ROOZYLABS PRISM — MULTI-ROLE & MULTI-PLAN TEST MATRIX SEEDED                                ")
-	fmt.Println("========================================================================================================================")
-	fmt.Printf("Shared Password across all 24 dummy matrix accounts: %s\n\n", SharedMatrixPassword)
-
-	fmt.Printf("%-12s | %-16s | %-32s | %-24s | %-12s\n", "PLAN TIER", "ROLE", "LOGIN EMAIL", "ORGANIZATION ID", "SPEND CAP")
-	fmt.Println("------------------------------------------------------------------------------------------------------------------------")
+	fmt.Println("\n=========================================================================================================")
+	fmt.Println(" ROOZYLABS PRISM (v2.2.0) - ROLE & PLAN AUDIT MATRIX SEED COMPLETE")
+	fmt.Println("=========================================================================================================")
+	fmt.Printf("%-24s | %-12s | %-16s | %-12s | %-24s\n", "Email", "Plan Tier", "Role", "Spend Cap", "Password")
+	fmt.Println("---------------------------------------------------------------------------------------------------------")
 
 	for _, plan := range PlanSpecs {
 		for _, role := range RoleSpecs {
 			email := fmt.Sprintf("%s.%s@prism.local", role.Prefix, plan.Slug)
-			orgID := fmt.Sprintf("org_matrix_%s", plan.Slug)
-			spend := fmt.Sprintf("$%.2f/mo", plan.SpendCapMonthly)
-			fmt.Printf("%-12s | %-16s | %-32s | %-24s | %-12s\n",
-				strings.ToUpper(plan.Slug), role.Slug, email, orgID, spend)
+			spendCap := fmt.Sprintf("$%.0f/mo", plan.SpendCapMonthly)
+			fmt.Printf("%-24s | %-12s | %-16s | %-12s | %-24s\n", email, plan.Tier, role.Slug, spendCap, SharedMatrixPassword)
 		}
-		fmt.Println("------------------------------------------------------------------------------------------------------------------------")
 	}
-
-	fmt.Println("Test Login Endpoint: POST /api/auth/login")
-	fmt.Println("Example Payload:     {\"email\": \"dev.pro@prism.local\", \"password\": \"" + SharedMatrixPassword + "\"}")
-	fmt.Println("========================================================================================================================")
+	fmt.Println("=========================================================================================================")
 }

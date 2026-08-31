@@ -1,4 +1,4 @@
--- Migration 079: Multi-Role & Multi-Plan Matrix Seeder (24 Identities across 4 Plan Tiers & 6 RBAC Roles with Natural Generated UUIDs)
+-- Migration 080: Fix Role CHECK Constraints and Re-seed Matrix Users with Natural Generated UUIDs
 
 -- 1. Relax/Expand CHECK constraints on organization_members.role and workspace_members.role
 ALTER TABLE organization_members DROP CONSTRAINT IF EXISTS organization_members_role_check;

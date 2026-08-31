@@ -1,4 +1,4 @@
--- Rollback Migration 079
+-- Rollback Migration 080
 
 DELETE FROM workspace_members WHERE user_id IN (SELECT id FROM "user" WHERE email LIKE '%.prism.local');
 DELETE FROM organization_members WHERE org_id IN (SELECT id FROM organizations WHERE slug LIKE 'org-matrix-%');
