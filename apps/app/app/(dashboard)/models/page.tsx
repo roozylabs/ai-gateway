@@ -11,7 +11,7 @@ import { useModelsListQuery } from '@/hooks/queries/useModelsListQuery';
 import { useProvidersQuery } from '@/hooks/queries/useProvidersQuery';
 import { ApiModel } from '@/lib/api';
 import { ErrorState, EmptyState } from '@/components/molecules/StateAlerts';
-import { Layers, Sparkles, Zap, Code2, Eye, Cpu, Search, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Layers, Zap, Code2, Eye, Cpu, Search, CheckCircle2, ShieldCheck, Activity } from 'lucide-react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/molecules/Select';
 
 export default function ModelsPage() {
@@ -65,7 +65,7 @@ export default function ModelsPage() {
             </span>
             {record.capabilities?.reasoning && (
               <Badge variant="violet" className="text-[10px] gap-1 px-1.5 py-0">
-                <Sparkles className="h-2.5 w-2.5" /> Reasoning
+                <Cpu className="h-2.5 w-2.5" /> Reasoning
               </Badge>
             )}
           </div>
@@ -124,7 +124,7 @@ export default function ModelsPage() {
       render: (_, record) => (
         <div className="flex gap-1.5 flex-wrap items-center">
           <Badge variant="violet" className="font-mono text-[10px] gap-0.5 px-1.5 py-0.5">
-            <Sparkles className="h-2.5 w-2.5" /> Q: {record.qualityScore != null ? `${record.qualityScore}%` : '92%'}
+            <ShieldCheck className="h-2.5 w-2.5" /> Q: {record.qualityScore != null ? `${record.qualityScore}%` : '92%'}
           </Badge>
           <Badge variant="info" className="font-mono text-[10px] gap-0.5 px-1.5 py-0.5">
             <Zap className="h-2.5 w-2.5" /> S: {record.speedScore != null ? `${record.speedScore}%` : '95%'}
@@ -211,7 +211,7 @@ export default function ModelsPage() {
         <Card className="p-4 border-border">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground font-medium">Average Quality Benchmark</span>
-            <Sparkles className="h-4 w-4 text-emerald-500" />
+            <Activity className="h-4 w-4 text-emerald-500" />
           </div>
           <p className="text-2xl font-bold font-mono mt-2 text-foreground">{avgQuality}%</p>
         </Card>
