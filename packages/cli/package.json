@@ -1,6 +1,6 @@
 {
   "name": "@roozylabs/prism-cli",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Official CLI tool for RoozyLabs Prism AI Gateway & Control Plane",
   "bin": {
     "prism": "./dist/index.js"

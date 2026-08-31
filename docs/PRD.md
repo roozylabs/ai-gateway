@@ -42,6 +42,7 @@
 | 0.2.0 | 31 August 2026, 14:15 WIB | Added dedicated /signup registration page & API, reusable brand icons design system, FormLabel required asterisk standard, form input error border validation, and OAuth session foreign key fix |
 | 0.2.1 | 31 August 2026, 18:30 WIB | Improved Cloudflare Turnstile UX: non-blocking form inputs, invisible mode for login, unblocked OAuth, and shared useTurnstile hook |
 | 0.2.2 | 31 August 2026, 19:15 WIB | Added Turnstile Smart Token Waiter (getTokenOrWait) and removed CSS container throttling for seamless fast-autofill sign in |
+| 0.2.3 | 31 August 2026, 19:35 WIB | Restored visible Turnstile widget (size: normal) on Sign In for Cloudflare Managed key compatibility and error resilience |
 
 ---
 

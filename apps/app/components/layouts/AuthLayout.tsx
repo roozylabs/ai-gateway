@@ -26,7 +26,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             RoozyLabs <span className="text-[#8B5CF6]">Prism</span>
           </span>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground font-mono">
-            Universal AI Control Plane v0.2.2
+            Universal AI Control Plane v0.2.3
           </span>
         </div>
       </div>
