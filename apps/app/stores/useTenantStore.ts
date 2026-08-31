@@ -10,12 +10,26 @@ interface TenantState {
   resetTenant: () => void;
 }
 
+const getInitialOrgId = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('org_id');
+  }
+  return null;
+};
+
+const getInitialWsId = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('workspace_id');
+  }
+  return null;
+};
+
 export const useTenantStore = create<TenantState>()(
   persist(
     (set) => ({
-      selectedOrgId: null,
+      selectedOrgId: getInitialOrgId(),
       selectedOrgName: null,
-      selectedWorkspaceId: null,
+      selectedWorkspaceId: getInitialWsId(),
       setSelectedOrg: (orgId: string | null, orgName: string | null = null) => {
         if (typeof window !== 'undefined') {
           if (orgId) {

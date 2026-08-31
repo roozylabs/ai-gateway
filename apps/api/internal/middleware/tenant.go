@@ -25,6 +25,11 @@ type OrgMemberChecker interface {
 	IsMember(ctx context.Context, userID, orgID string) (bool, error)
 }
 
+// OrgPrimaryResolver abstracts resolving the primary organization for a user session.
+type OrgPrimaryResolver interface {
+	GetPrimaryOrganization(ctx context.Context, userID string) (string, error)
+}
+
 // ResolveCanonicalTenantContext resolves authoritative TenantContext.
 // GatewayKey is authoritative for OrgID ownership. Client-provided headers can only narrow scope.
 // Evaluation is strictly fail-closed: missing tenant context or failed membership checks return explicit errors.
@@ -72,8 +77,26 @@ func ResolveCanonicalTenantContext(c *gin.Context, gatewayKey *models.GatewayAPI
 		}
 		canonicalOrgID = headerOrgID
 	} else {
-		// Strict fail-closed: no implicit fallback to default organization
-		return models.TenantContext{}, ErrMissingTenantContext
+		// Fallback for authenticated user session when client has not explicitly passed X-Prism-Org-ID
+		userID := ""
+		if c != nil {
+			userID = c.GetString("userId")
+			if userID == "" {
+				userID = c.GetString("user_id")
+			}
+		}
+		if userID != "" && checker != nil {
+			if resolver, ok := checker.(OrgPrimaryResolver); ok {
+				primaryOrgID, err := resolver.GetPrimaryOrganization(c.Request.Context(), userID)
+				if err == nil && primaryOrgID != "" {
+					canonicalOrgID = primaryOrgID
+				}
+			}
+		}
+
+		if canonicalOrgID == "" {
+			return models.TenantContext{}, ErrMissingTenantContext
+		}
 	}
 
 	canonicalWsID := headerWsID
