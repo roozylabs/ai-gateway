@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/roozylabs/prism/internal/models"
@@ -54,4 +55,23 @@ func (r *AccountRepository) IsMember(ctx context.Context, userID, orgID string) 
 		userID, orgID,
 	).Scan(&exists)
 	return exists, err
+}
+
+// GetPrimaryOrganization resolves the first/primary organization a user belongs to.
+func (r *AccountRepository) GetPrimaryOrganization(ctx context.Context, userID string) (string, error) {
+	if userID == "" {
+		return "", nil
+	}
+	var orgID string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT org_id FROM organization_members WHERE user_id = $1 ORDER BY created_at ASC LIMIT 1`,
+		userID,
+	).Scan(&orgID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	return orgID, nil
 }
