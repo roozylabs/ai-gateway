@@ -2,6 +2,7 @@ import { api } from './client';
 import {
   User,
   LoginRequest,
+  SignupRequest,
   LoginResponse,
   ApiUserPermissionsResponse,
   ApiCompleteOnboardingRequest,
@@ -12,6 +13,11 @@ export * from './types/auth';
 
 export async function apiLogin(data: LoginRequest): Promise<LoginResponse> {
   const response = await api.post<LoginResponse>('/auth/login', data);
+  return response.data;
+}
+
+export async function apiSignup(data: SignupRequest): Promise<LoginResponse> {
+  const response = await api.post<LoginResponse>('/auth/signup', data);
   return response.data;
 }
 

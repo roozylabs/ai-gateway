@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('auth_token')?.value;
 
-  const isSigninPage = pathname === '/signin';
+  const isAuthPage = pathname === '/signin' || pathname === '/signup';
   const isOnboardingPage = pathname === '/onboarding';
   const isStaticAsset =
     pathname.startsWith('/_next') ||
@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Restrict protected pages if no auth_token cookie
-  if (!token && !isSigninPage) {
+  if (!token && !isAuthPage) {
     const signinUrl = new URL('/signin', request.url);
     return NextResponse.redirect(signinUrl);
   }
@@ -62,14 +62,14 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(onboardingUrl);
         }
 
-        // If user is already onboarded, redirect away from /onboarding and /signin to /
-        if (isOnboarded && (isOnboardingPage || isSigninPage)) {
+        // If user is already onboarded, redirect away from /onboarding and /signin or /signup to /
+        if (isOnboarded && (isOnboardingPage || isAuthPage)) {
           const dashboardUrl = new URL('/', request.url);
           return NextResponse.redirect(dashboardUrl);
         }
       }
     } catch (_err) {
-      if (token && isSigninPage) {
+      if (token && isAuthPage) {
         const dashboardUrl = new URL('/', request.url);
         return NextResponse.redirect(dashboardUrl);
       }

@@ -15,6 +15,13 @@ export interface LoginRequest {
   turnstileToken?: string;
 }
 
+export interface SignupRequest {
+  name: string;
+  email: string;
+  password?: string;
+  turnstileToken?: string;
+}
+
 export interface LoginResponse {
   token: string;
   user: User;

@@ -138,7 +138,7 @@ func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 	// Set HttpOnly, SameSite=Lax cookie for browser session
 	c.SetSameSite(http.SameSiteLaxMode)
 	isSecure := c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
-	c.SetCookie("auth_token", resp.Token, 7*24*3600, "/", "", isSecure, false)
+	c.SetCookie("auth_token", resp.Token, 7*24*3600, "/", "", isSecure, true)
 
 	// Redirect to dashboard
 	c.Redirect(http.StatusTemporaryRedirect, "/")
@@ -149,7 +149,7 @@ func (h *OAuthHandler) OAuthCallback(c *gin.Context) {
 	code := c.Query("code")
 
 	if code == "" {
-		c.Redirect(http.StatusTemporaryRedirect, "/login?error=missing_code")
+		c.Redirect(http.StatusTemporaryRedirect, "/signin?error=missing_code")
 		return
 	}
 
@@ -264,14 +264,14 @@ func (h *OAuthHandler) OAuthCallback(c *gin.Context) {
 		c.Request.UserAgent(),
 	)
 	if err != nil {
-		c.Redirect(http.StatusTemporaryRedirect, "/login?error=session_creation_failed")
+		c.Redirect(http.StatusTemporaryRedirect, "/signin?error=session_creation_failed")
 		return
 	}
 
 	// Set cookie and redirect to root dashboard
 	c.SetSameSite(http.SameSiteLaxMode)
 	isSecure := c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
-	c.SetCookie("auth_token", resp.Token, 7*24*3600, "/", "", isSecure, false)
+	c.SetCookie("auth_token", resp.Token, 7*24*3600, "/", "", isSecure, true)
 
 	c.Redirect(http.StatusTemporaryRedirect, "/")
 }
