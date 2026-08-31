@@ -257,6 +257,7 @@ func main() {
 		api.GET("/ready", healthHandler.Ready)
 		api.GET("/features", featuresHandler.GetFeatures)
 		api.POST("/auth/login", authHandler.Login)
+		api.POST("/auth/signup", authHandler.Signup)
 		api.GET("/auth/turnstile-config", authHandler.GetTurnstileConfig)
 		api.GET("/auth/oauth/:provider", oauthHandler.InitiateOAuth)
 		api.GET("/auth/oauth/:provider/callback", oauthHandler.OAuthCallback)

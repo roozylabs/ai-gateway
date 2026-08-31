@@ -1,15 +1,16 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Cookies from 'js-cookie';
-import { User, LoginRequest, apiLogin, apiLogout, apiGetMe } from '@/lib/api';
+import { User, LoginRequest, SignupRequest, apiLogin, apiSignup, apiLogout, apiGetMe } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
+  signup: (payload: SignupRequest) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: true,
   login: async () => {},
+  signup: async () => {},
   logout: async () => {},
 });
 
@@ -25,14 +27,6 @@ export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const [token, setToken] = useState<string | null>(() => Cookies.get('auth_token') || null);
-
-  useEffect(() => {
-    const currentToken = Cookies.get('auth_token') || null;
-    if (currentToken !== token) {
-      setToken(currentToken);
-    }
-  }, [token]);
 
   const {
     data: user = null,
@@ -41,7 +35,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: apiGetMe,
-    enabled: !!token,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -49,14 +42,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: apiLogin,
     onSuccess: (data) => {
-      Cookies.set('auth_token', data.token, { expires: 7, path: '/', sameSite: 'lax' });
-      setToken(data.token);
+      if (data.token) {
+        Cookies.set('auth_token', data.token, { expires: 7, path: '/', sameSite: 'lax' });
+      }
       queryClient.setQueryData(['auth', 'me'], data.user);
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+    },
+  });
+
+  const signupMutation = useMutation({
+    mutationFn: apiSignup,
+    onSuccess: (data) => {
+      if (data.token) {
+        Cookies.set('auth_token', data.token, { expires: 7, path: '/', sameSite: 'lax' });
+      }
+      queryClient.setQueryData(['auth', 'me'], data.user);
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
     },
   });
 
   const login = async (credentials: LoginRequest) => {
     await loginMutation.mutateAsync(credentials);
+  };
+
+  const signup = async (payload: SignupRequest) => {
+    await signupMutation.mutateAsync(payload);
   };
 
   const logout = async () => {
@@ -67,21 +77,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       Cookies.remove('auth_token', { path: '/' });
       Cookies.remove('auth_token');
-      setToken(null);
       queryClient.clear();
       window.location.href = '/signin';
     }
   };
 
-  const isAuthenticated = !!token && !!user && !isError;
+  const isAuthenticated = !!user && !isError;
 
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated,
-        isLoading: isLoading && !!token,
+        isLoading,
         login,
+        signup,
         logout,
       }}
     >

@@ -1,6 +1,7 @@
 export enum AppRoutes {
   HOME = '/',
   SIGNIN = '/signin',
+  SIGNUP = '/signup',
   ONBOARDING = '/onboarding',
   SANDBOX = '/sandbox',
   PROVIDERS = '/providers',
@@ -26,6 +27,7 @@ export enum ApiEndpoints {
   SSE = '/api/sse',
   HEALTH = '/api/health',
   LOGIN = '/api/auth/login',
+  SIGNUP = '/api/auth/signup',
   LOGOUT = '/api/auth/logout',
 }
 

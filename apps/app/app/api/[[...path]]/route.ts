@@ -37,6 +37,10 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
     : `${backendApiUrl}/api/${subPath}${searchParams}`;
 
   const headers = new Headers(request.headers);
+  const host = request.headers.get('host') || 'app.prism.roozylabs.com';
+  const proto = request.headers.get('x-forwarded-proto') || (request.url.startsWith('https') ? 'https' : 'http');
+  headers.set('x-forwarded-host', host);
+  headers.set('x-forwarded-proto', proto);
   headers.delete('host');
 
   const token = request.cookies.get('auth_token')?.value;
@@ -66,13 +70,22 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('content-length');
     responseHeaders.delete('transfer-encoding');
+    responseHeaders.delete('set-cookie');
+
+    const setCookies = typeof backendResponse.headers.getSetCookie === 'function'
+      ? backendResponse.headers.getSetCookie()
+      : [backendResponse.headers.get('set-cookie')].filter(Boolean) as string[];
 
     // Transparently forward 3xx redirects (e.g. OAuth to Google/GitHub and session callbacks)
     if (backendResponse.status >= 300 && backendResponse.status < 400) {
-      return new NextResponse(null, {
+      const redirectRes = new NextResponse(null, {
         status: backendResponse.status,
         headers: responseHeaders,
       });
+      for (const cookieStr of setCookies) {
+        redirectRes.headers.append('set-cookie', cookieStr);
+      }
+      return redirectRes;
     }
 
     const contentType = responseHeaders.get('content-type') || '';
@@ -95,27 +108,39 @@ async function proxyHandler(request: NextRequest, { params }: { params: Promise<
         }
       });
 
-      return new NextResponse(streamBody, {
+      const streamRes = new NextResponse(streamBody, {
         status: backendResponse.status,
         statusText: backendResponse.statusText,
         headers: responseHeaders,
       });
+      for (const cookieStr of setCookies) {
+        streamRes.headers.append('set-cookie', cookieStr);
+      }
+      return streamRes;
     }
 
     if (isNoBodyStatus) {
-      return new NextResponse(null, {
+      const noBodyRes = new NextResponse(null, {
         status: backendResponse.status,
         statusText: backendResponse.statusText,
         headers: responseHeaders,
       });
+      for (const cookieStr of setCookies) {
+        noBodyRes.headers.append('set-cookie', cookieStr);
+      }
+      return noBodyRes;
     }
 
     const responseData = await backendResponse.arrayBuffer();
-    return new NextResponse(responseData, {
+    const normalRes = new NextResponse(responseData, {
       status: backendResponse.status,
       statusText: backendResponse.statusText,
       headers: responseHeaders,
     });
+    for (const cookieStr of setCookies) {
+      normalRes.headers.append('set-cookie', cookieStr);
+    }
+    return normalRes;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown connection error';
     console.error('[API Proxy Error] Failed to proxy to:', targetUrl, error);

@@ -15,6 +15,7 @@ import (
 
 var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
+	ErrEmailAlreadyExists = errors.New("email already registered")
 	ErrSessionExpired     = errors.New("session expired")
 	ErrSessionNotFound    = errors.New("session not found")
 )
@@ -38,6 +39,13 @@ func NewAuthService(
 }
 
 type LoginRequest struct {
+	Email          string `json:"email" binding:"required"`
+	Password       string `json:"password" binding:"required"`
+	TurnstileToken string `json:"turnstileToken"`
+}
+
+type SignupRequest struct {
+	Name           string `json:"name" binding:"required"`
 	Email          string `json:"email" binding:"required"`
 	Password       string `json:"password" binding:"required"`
 	TurnstileToken string `json:"turnstileToken"`
@@ -68,6 +76,68 @@ func (s *AuthService) Login(ctx context.Context, email, password, ip, ua string)
 
 	if account.Password == "" || !utils.CheckPassword(password, account.Password) {
 		return nil, ErrInvalidCredentials
+	}
+
+	token := utils.HashSHA256(uuid.New().String())
+	session := &models.Session{
+		ID:        uuid.New().String(),
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		Token:     token,
+		IPAddress: ip,
+		UserAgent: ua,
+		UserID:    user.ID,
+	}
+
+	if err := s.sessions.Create(ctx, session); err != nil {
+		return nil, err
+	}
+
+	return &LoginResponse{Token: token, User: user}, nil
+}
+
+func (s *AuthService) Signup(ctx context.Context, name, email, password, ip, ua string) (*LoginResponse, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	name = strings.TrimSpace(name)
+
+	// Check if user already exists
+	existing, err := s.users.FindByEmail(ctx, email)
+	if err == nil && existing != nil {
+		return nil, ErrEmailAlreadyExists
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	hashedPassword, err := utils.HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+
+	userID := uuid.New().String()
+	user := &models.User{
+		ID:            userID,
+		Name:          name,
+		Email:         email,
+		EmailVerified: false,
+		IsOnboarded:   false,
+		AuthProvider:  "credential",
+		PrimaryRole:   "owner",
+	}
+
+	if err := s.users.Create(ctx, user); err != nil {
+		return nil, err
+	}
+
+	account := &models.Account{
+		ID:         uuid.New().String(),
+		AccountID:  userID,
+		ProviderID: "credential",
+		UserID:     userID,
+		Password:   hashedPassword,
+	}
+
+	if err := s.accounts.Create(ctx, account); err != nil {
+		return nil, err
 	}
 
 	token := utils.HashSHA256(uuid.New().String())

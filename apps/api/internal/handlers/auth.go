@@ -141,6 +141,61 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// Signup godoc
+// @Summary      Signup
+// @Description  Create new user account with email and password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body service.SignupRequest true "Signup credentials"
+// @Success      201 {object} service.LoginResponse
+// @Failure      400 {object} map[string]string
+// @Failure      409 {object} map[string]string
+// @Router       /api/auth/signup [post]
+func (h *AuthHandler) Signup(c *gin.Context) {
+	var req service.SignupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	secretKey := os.Getenv("CLOUDFLARE_SECRET_KEY")
+	if secretKey != "" {
+		if ok, detail := verifyCloudflareTurnstile(req.TurnstileToken, secretKey, c.ClientIP()); !ok {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":  "Security verification failed (Cloudflare Turnstile)",
+				"detail": detail,
+			})
+			return
+		}
+	}
+
+	resp, err := h.auth.Signup(
+		c.Request.Context(),
+		req.Name,
+		req.Email,
+		req.Password,
+		c.ClientIP(),
+		c.Request.UserAgent(),
+	)
+	if err != nil {
+		if errors.Is(err, service.ErrEmailAlreadyExists) {
+			c.JSON(http.StatusConflict, gin.H{"error": "An account with this email address already exists"})
+			return
+		}
+		log.Printf("[Auth Signup Error] email=%s err=%v", req.Email, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create account"})
+		return
+	}
+
+	// Set HttpOnly, SameSite=Lax cookie for browser session security
+	c.SetSameSite(http.SameSiteLaxMode)
+	isSecure := c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
+	c.SetCookie("auth_token", resp.Token, 7*24*3600, "/", "", isSecure, true)
+
+	c.JSON(http.StatusCreated, resp)
+}
+
 // Logout godoc
 // @Summary      Logout
 // @Description  Invalidate session token

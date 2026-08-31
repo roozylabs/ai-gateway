@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { apiGetTurnstileConfig } from '@/lib/api';
-import { loginSchema, LoginFormValues } from '@/features/auth/schemas/login.schema';
+import { signupSchema, SignupFormValues } from '@/features/auth/schemas/signup.schema';
 
 function GoogleIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
@@ -55,10 +55,10 @@ function GitHubIcon({ className = 'h-4 w-4' }: { className?: string }) {
   );
 }
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const router = useRouter();
   const { resolvedTheme } = useTheme();
-  const { login, isAuthenticated } = useAuth();
+  const { signup, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [oauthLoading, setOauthLoading] = useState<'google' | 'github' | null>(null);
@@ -83,11 +83,13 @@ export default function SignInPage() {
     }
   }, [isAuthenticated, router]);
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
     defaultValues: {
+      name: '',
       email: '',
       password: '',
+      confirmPassword: '',
       turnstileToken: '',
     },
   });
@@ -102,7 +104,7 @@ export default function SignInPage() {
     }
   };
 
-  const onSubmit = async (values: LoginFormValues) => {
+  const onSubmit = async (values: SignupFormValues) => {
     if (!isVerified) {
       toast.error('Please complete the security verification first.');
       return;
@@ -110,18 +112,18 @@ export default function SignInPage() {
 
     try {
       setLoading(true);
-      await login({
+      await signup({
+        name: values.name,
         email: values.email,
         password: values.password,
         turnstileToken: turnstileToken || values.turnstileToken,
       });
-      toast.success('Authentication successful! Welcome to RoozyLabs Prism.');
-      router.replace(AppRoutes.HOME);
+      toast.success('Account created successfully! Welcome to RoozyLabs Prism.');
+      router.replace(AppRoutes.ONBOARDING);
       router.refresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
+      const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
       toast.error(message);
-      // Automatically reset Turnstile after failed attempt so subsequent submissions use a fresh token
       resetTurnstile();
     } finally {
       setLoading(false);
@@ -154,9 +156,9 @@ export default function SignInPage() {
     <AuthLayout>
       <Card className="border-border shadow-xl">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-xl font-bold tracking-tight">Sign in to Prism Console</CardTitle>
+          <CardTitle className="text-xl font-bold tracking-tight">Create your Prism Account</CardTitle>
           <CardDescription>
-            Enter your credentials to access your universal AI control plane
+            Get started with your universal AI control plane and proxy mesh
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -164,13 +166,13 @@ export default function SignInPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="email"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email Address</FormLabel>
+                    <FormLabel>Full Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter your email"
+                        placeholder="John Doe"
                         disabled={loading || !isVerified}
                         {...field}
                       />
@@ -182,14 +184,14 @@ export default function SignInPage() {
 
               <FormField
                 control={form.control}
-                name="password"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Email Address</FormLabel>
                     <FormControl>
                       <Input
-                        type="password"
-                        placeholder="Enter your password"
+                        type="email"
+                        placeholder="name@company.com"
                         disabled={loading || !isVerified}
                         {...field}
                       />
@@ -198,6 +200,46 @@ export default function SignInPage() {
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="At least 8 chars"
+                          disabled={loading || !isVerified}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="Re-enter password"
+                          disabled={loading || !isVerified}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {showTurnstile && (
                 <div className="flex flex-col items-start justify-center my-3 min-h-[65px] gap-1.5">
@@ -231,11 +273,11 @@ export default function SignInPage() {
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Authenticating...</span>
+                    <span>Creating Account...</span>
                   </>
                 ) : (
                   <>
-                    <span>Sign In to Console</span>
+                    <span>Create Free Account</span>
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
@@ -248,7 +290,7 @@ export default function SignInPage() {
               <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground font-mono">Or continue with</span>
+              <span className="bg-card px-2 text-muted-foreground font-mono">Or sign up with</span>
             </div>
           </div>
 
@@ -287,12 +329,12 @@ export default function SignInPage() {
           </div>
 
           <div className="mt-6 text-center text-xs text-muted-foreground">
-            Don&apos;t have an account?{' '}
+            Already have an account?{' '}
             <Link
-              href={AppRoutes.SIGNUP}
+              href={AppRoutes.SIGNIN}
               className="font-medium text-foreground hover:text-violet-400 underline underline-offset-4 transition-colors"
             >
-              Sign up
+              Sign in
             </Link>
           </div>
         </CardContent>
