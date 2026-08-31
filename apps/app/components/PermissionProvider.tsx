@@ -56,7 +56,7 @@ export function PermissionProvider({
 
   useEffect(() => {
     if (!isLoading && data) {
-      if (data.isOnboarded === false && pathname && !pathname.startsWith('/onboarding') && !pathname.startsWith('/login')) {
+      if (data.isOnboarded === false && pathname && !pathname.startsWith('/onboarding') && !pathname.startsWith('/signin')) {
         router.replace('/onboarding');
       }
     }
