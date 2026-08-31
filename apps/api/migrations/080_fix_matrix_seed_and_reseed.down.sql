@@ -1,4 +1,4 @@
--- Rollback Migration 079
+-- Rollback Migration 080
 
 DELETE FROM workspace_members WHERE workspace_id IN (
     '20000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002',

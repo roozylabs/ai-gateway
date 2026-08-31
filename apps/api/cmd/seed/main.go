@@ -16,6 +16,7 @@ import (
 const SharedMatrixPassword = "PrismMatrix_7x9k2m4p!"
 
 type PlanSpec struct {
+	ID               string
 	Slug             string
 	Name             string
 	Tier             string
@@ -26,10 +27,15 @@ type PlanSpec struct {
 	MaxConcurrent    int
 	MaxWorkspaces    int
 	MaxProjectsPerWs int
+	WsEngID          string
+	WsFinID          string
+	ProjEngID        string
+	ProjFinID        string
 }
 
 var PlanSpecs = []PlanSpec{
 	{
+		ID:               "10000000-0000-0000-0000-000000000001",
 		Slug:             "free",
 		Name:             "Matrix Labs Free",
 		Tier:             "free",
@@ -40,8 +46,13 @@ var PlanSpecs = []PlanSpec{
 		MaxConcurrent:    5,
 		MaxWorkspaces:    1,
 		MaxProjectsPerWs: 2,
+		WsEngID:          "20000000-0000-0000-0000-000000000001",
+		WsFinID:          "20000000-0000-0000-0000-000000000002",
+		ProjEngID:        "30000000-0000-0000-0000-000000000001",
+		ProjFinID:        "30000000-0000-0000-0000-000000000002",
 	},
 	{
+		ID:               "10000000-0000-0000-0000-000000000002",
 		Slug:             "pro",
 		Name:             "Matrix Labs Pro",
 		Tier:             "pro",
@@ -52,8 +63,13 @@ var PlanSpecs = []PlanSpec{
 		MaxConcurrent:    20,
 		MaxWorkspaces:    3,
 		MaxProjectsPerWs: 5,
+		WsEngID:          "20000000-0000-0000-0000-000000000003",
+		WsFinID:          "20000000-0000-0000-0000-000000000004",
+		ProjEngID:        "30000000-0000-0000-0000-000000000003",
+		ProjFinID:        "30000000-0000-0000-0000-000000000004",
 	},
 	{
+		ID:               "10000000-0000-0000-0000-000000000003",
 		Slug:             "team",
 		Name:             "Matrix Labs Team",
 		Tier:             "team",
@@ -64,8 +80,13 @@ var PlanSpecs = []PlanSpec{
 		MaxConcurrent:    50,
 		MaxWorkspaces:    10,
 		MaxProjectsPerWs: 10,
+		WsEngID:          "20000000-0000-0000-0000-000000000005",
+		WsFinID:          "20000000-0000-0000-0000-000000000006",
+		ProjEngID:        "30000000-0000-0000-0000-000000000005",
+		ProjFinID:        "30000000-0000-0000-0000-000000000006",
 	},
 	{
+		ID:               "10000000-0000-0000-0000-000000000004",
 		Slug:             "enterprise",
 		Name:             "Matrix Labs Enterprise",
 		Tier:             "enterprise",
@@ -76,6 +97,10 @@ var PlanSpecs = []PlanSpec{
 		MaxConcurrent:    200,
 		MaxWorkspaces:    50,
 		MaxProjectsPerWs: 50,
+		WsEngID:          "20000000-0000-0000-0000-000000000007",
+		WsFinID:          "20000000-0000-0000-0000-000000000008",
+		ProjEngID:        "30000000-0000-0000-0000-000000000007",
+		ProjFinID:        "30000000-0000-0000-0000-000000000008",
 	},
 }
 
@@ -128,36 +153,48 @@ func SeedMatrix(ctx context.Context, db *sql.DB) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// 1. Generate bcrypt hash for shared password
+	// 1. Relax/Expand CHECK constraints on organization_members.role and workspace_members.role
+	_, _ = tx.ExecContext(ctx, `
+		ALTER TABLE organization_members DROP CONSTRAINT IF EXISTS organization_members_role_check;
+		ALTER TABLE organization_members ADD CONSTRAINT organization_members_role_check 
+			CHECK (role IN ('owner', 'admin', 'developer', 'billing_manager', 'agent_manager', 'finops_manager', 'auditor', 'viewer'));
+		ALTER TABLE workspace_members DROP CONSTRAINT IF EXISTS workspace_members_role_check;
+		ALTER TABLE workspace_members ADD CONSTRAINT workspace_members_role_check 
+			CHECK (role IN ('owner', 'admin', 'developer', 'operator', 'agent_manager', 'finops_manager', 'auditor', 'viewer'));
+	`)
+
+	// 2. Generate bcrypt hash for shared password
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(SharedMatrixPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("generate bcrypt hash: %w", err)
 	}
 
-	// 2. Iterate through all Plan Tiers
-	for _, plan := range PlanSpecs {
-		orgID := fmt.Sprintf("org_matrix_%s", plan.Slug)
-		wsEngID := fmt.Sprintf("ws_%s_eng", plan.Slug)
-		wsFinID := fmt.Sprintf("ws_%s_finance", plan.Slug)
-		projEngID := fmt.Sprintf("proj_%s_eng", plan.Slug)
-		projFinID := fmt.Sprintf("proj_%s_finance", plan.Slug)
+	// 3. Iterate through all Plan Tiers
+	for planIdx, plan := range PlanSpecs {
+		planNum := planIdx + 1
+		orgID := plan.ID
+		wsEngID := plan.WsEngID
+		wsFinID := plan.WsFinID
+		projEngID := plan.ProjEngID
+		projFinID := plan.ProjFinID
 
-		// 2a. Upsert Organization
+		// 3a. Upsert Organization
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO organizations (id, name, slug, plan_tier, max_workspaces, max_projects_per_workspace, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
 			ON CONFLICT (id) DO UPDATE SET
 				name = EXCLUDED.name,
+				slug = EXCLUDED.slug,
 				plan_tier = EXCLUDED.plan_tier,
 				max_workspaces = EXCLUDED.max_workspaces,
 				max_projects_per_workspace = EXCLUDED.max_projects_per_workspace,
 				updated_at = NOW()
-		`, orgID, plan.Name, orgID, plan.Tier, plan.MaxWorkspaces, plan.MaxProjectsPerWs)
+		`, orgID, plan.Name, fmt.Sprintf("org-matrix-%s", plan.Slug), plan.Tier, plan.MaxWorkspaces, plan.MaxProjectsPerWs)
 		if err != nil {
 			return fmt.Errorf("upsert organization %s: %w", orgID, err)
 		}
 
-		// 2b. Upsert Workspaces
+		// 3b. Upsert Workspaces
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO workspaces (id, org_id, name, slug, created_at, updated_at)
 			VALUES
@@ -165,50 +202,54 @@ func SeedMatrix(ctx context.Context, db *sql.DB) error {
 				($5, $2, $6, $7, NOW(), NOW())
 			ON CONFLICT (id) DO UPDATE SET
 				name = EXCLUDED.name,
+				slug = EXCLUDED.slug,
 				updated_at = NOW()
-		`, wsEngID, orgID, fmt.Sprintf("%s Engineering", plan.Name), wsEngID,
-			wsFinID, fmt.Sprintf("%s Finance & Ops", plan.Name), wsFinID)
+		`, wsEngID, orgID, fmt.Sprintf("%s Engineering", plan.Name), fmt.Sprintf("ws-%s-eng", plan.Slug),
+			wsFinID, orgID, fmt.Sprintf("%s Finance & Ops", plan.Name), fmt.Sprintf("ws-%s-finance", plan.Slug))
 		if err != nil {
 			return fmt.Errorf("upsert workspaces for %s: %w", orgID, err)
 		}
 
-		// 2c. Upsert Projects
+		// 3c. Upsert Projects
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO projects (id, workspace_id, name, slug, created_at, updated_at)
 			VALUES
-				($1, $2, 'AI Core Services', $1, NOW(), NOW()),
-				($3, $4, 'FinOps & Invoicing', $3, NOW(), NOW())
+				($1, $2, 'AI Core Services', $3, NOW(), NOW()),
+				($4, $5, 'FinOps & Invoicing', $6, NOW(), NOW())
 			ON CONFLICT (id) DO UPDATE SET
 				name = EXCLUDED.name,
+				slug = EXCLUDED.slug,
 				updated_at = NOW()
-		`, projEngID, wsEngID, projFinID, wsFinID)
+		`, projEngID, wsEngID, fmt.Sprintf("proj-%s-eng", plan.Slug),
+			projFinID, wsFinID, fmt.Sprintf("proj-%s-finance", plan.Slug))
 		if err != nil {
 			return fmt.Errorf("upsert projects for %s: %w", orgID, err)
 		}
 
-		// 2d. Upsert Quota for Organization
-		quotaID := fmt.Sprintf("quota_matrix_%s", plan.Slug)
+		// 3d. Upsert Quota for Organization (Omit ID so DB uses gen_random_uuid())
 		_, err = tx.ExecContext(ctx, `
-			INSERT INTO tenant_quotas (id, organization_id, target_type, target_id, monthly_spend_limit_usd, daily_spend_limit_usd, daily_request_limit, max_concurrent_streams, created_at, updated_at)
-			VALUES ($1, $2, 'organization', $2, $3, $4, $5, $6, NOW(), NOW())
+			INSERT INTO tenant_quotas (organization_id, target_type, target_id, monthly_spend_limit_usd, daily_spend_limit_usd, daily_request_limit, max_concurrent_streams, created_at, updated_at)
+			VALUES ($1, 'organization', $1, $2, $3, $4, $5, NOW(), NOW())
 			ON CONFLICT (target_type, target_id) DO UPDATE SET
+				organization_id = EXCLUDED.organization_id,
 				monthly_spend_limit_usd = EXCLUDED.monthly_spend_limit_usd,
 				daily_spend_limit_usd = EXCLUDED.daily_spend_limit_usd,
 				daily_request_limit = EXCLUDED.daily_request_limit,
 				max_concurrent_streams = EXCLUDED.max_concurrent_streams,
 				updated_at = NOW()
-		`, quotaID, orgID, plan.SpendCapMonthly, plan.SpendCapDaily, plan.DailyReqLimit, plan.MaxConcurrent)
+		`, orgID, plan.SpendCapMonthly, plan.SpendCapDaily, plan.DailyReqLimit, plan.MaxConcurrent)
 		if err != nil {
 			return fmt.Errorf("upsert quota for %s: %w", orgID, err)
 		}
 
-		// 2e. Seed 6 Users per Organization (Total 24 Matrix Users)
-		for _, role := range RoleSpecs {
-			userID := fmt.Sprintf("usr_%s_%s", role.Prefix, plan.Slug)
+		// 3e. Seed 6 Users per Organization (Total 24 Matrix Users)
+		for roleIdx, role := range RoleSpecs {
+			roleNum := roleIdx + 1
+			userID := fmt.Sprintf("40000000-0000-0000-%04d-%012d", planNum, roleNum)
+			accountID := fmt.Sprintf("50000000-0000-0000-%04d-%012d", planNum, roleNum)
+			memberID := fmt.Sprintf("60000000-0000-0000-%04d-%012d", planNum, roleNum)
 			email := fmt.Sprintf("%s.%s@prism.local", role.Prefix, plan.Slug)
 			name := fmt.Sprintf("%s (%s Tier)", role.Name, strings.ToUpper(plan.Slug))
-			memberID := fmt.Sprintf("mem_%s_%s", role.Prefix, plan.Slug)
-			accountID := fmt.Sprintf("acc_%s_%s", role.Prefix, plan.Slug)
 
 			// Insert / update "user" table
 			_, err = tx.ExecContext(ctx, `
@@ -255,24 +296,21 @@ func SeedMatrix(ctx context.Context, db *sql.DB) error {
 				return fmt.Errorf("upsert org member %s (%s): %w", email, role.Slug, err)
 			}
 
-			// Insert workspace memberships:
-			// - owner: member of engineering ws (and has workspace:admin for all ws)
-			// - developer & agent_manager: members of wsEngID
+			// Insert workspace memberships (Omit ID so DB uses gen_random_uuid()):
+			// - owner, developer, agent_manager, auditor, viewer: members of wsEngID
 			// - finops_manager: member of wsFinID
-			// - auditor & viewer: members of wsEngID
 			targetWsID := wsEngID
 			if role.Slug == "finops_manager" {
 				targetWsID = wsFinID
 			}
 
-			wsMemberID := fmt.Sprintf("wm_%s_%s", role.Prefix, plan.Slug)
 			_, err = tx.ExecContext(ctx, `
-				INSERT INTO workspace_members (id, workspace_id, user_id, role, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, NOW(), NOW())
+				INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at)
+				VALUES ($1, $2, $3, NOW(), NOW())
 				ON CONFLICT (workspace_id, user_id) DO UPDATE SET
 					role = EXCLUDED.role,
 					updated_at = NOW()
-			`, wsMemberID, targetWsID, userID, role.Slug)
+			`, targetWsID, userID, role.Slug)
 			if err != nil {
 				return fmt.Errorf("upsert workspace member %s (%s): %w", email, targetWsID, err)
 			}

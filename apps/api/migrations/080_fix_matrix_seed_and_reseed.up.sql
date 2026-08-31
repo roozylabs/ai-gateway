@@ -1,4 +1,4 @@
--- Migration 079: Multi-Role & Multi-Plan Matrix Seeder (24 Identities across 4 Plan Tiers & 6 RBAC Roles with Natural UUIDs)
+-- Migration 080: Fix Role CHECK Constraints and Re-seed Matrix Users with Natural UUIDs
 
 -- 1. Relax/Expand CHECK constraints on organization_members.role and workspace_members.role
 ALTER TABLE organization_members DROP CONSTRAINT IF EXISTS organization_members_role_check;
@@ -78,12 +78,12 @@ INSERT INTO "user" (id, name, email, email_verified, is_onboarded, primary_role,
 ('40000000-0000-0000-0001-000000000006', 'Viewer (Free Tier)', 'viewer.free@prism.local', true, true, 'viewer', 'credential', '10000000-0000-0000-0000-000000000001', NOW(), NOW()),
 
 -- Pro Tier Users
-('40000000-0000-0000-0002-000000000001', 'Owner (Pro Tier)', 'owner.pro@prism.local', true, true, 'owner', 'credential', '10000000-0000-0000-0002-000000000002', NOW(), NOW()),
-('40000000-0000-0000-0002-000000000002', 'Developer (Pro Tier)', 'dev.pro@prism.local', true, true, 'developer', 'credential', '10000000-0000-0000-0002-000000000002', NOW(), NOW()),
-('40000000-0000-0000-0002-000000000003', 'Agent Manager (Pro Tier)', 'agent.pro@prism.local', true, true, 'agent_manager', 'credential', '10000000-0000-0000-0002-000000000002', NOW(), NOW()),
-('40000000-0000-0000-0002-000000000004', 'FinOps Manager (Pro Tier)', 'finops.pro@prism.local', true, true, 'finops_manager', 'credential', '10000000-0000-0000-0002-000000000002', NOW(), NOW()),
-('40000000-0000-0000-0002-000000000005', 'Auditor (Pro Tier)', 'auditor.pro@prism.local', true, true, 'auditor', 'credential', '10000000-0000-0000-0002-000000000002', NOW(), NOW()),
-('40000000-0000-0000-0002-000000000006', 'Viewer (Pro Tier)', 'viewer.pro@prism.local', true, true, 'viewer', 'credential', '10000000-0000-0000-0002-000000000002', NOW(), NOW()),
+('40000000-0000-0000-0002-000000000001', 'Owner (Pro Tier)', 'owner.pro@prism.local', true, true, 'owner', 'credential', '10000000-0000-0000-0000-000000000002', NOW(), NOW()),
+('40000000-0000-0000-0002-000000000002', 'Developer (Pro Tier)', 'dev.pro@prism.local', true, true, 'developer', 'credential', '10000000-0000-0000-0000-000000000002', NOW(), NOW()),
+('40000000-0000-0000-0002-000000000003', 'Agent Manager (Pro Tier)', 'agent.pro@prism.local', true, true, 'agent_manager', 'credential', '10000000-0000-0000-0000-000000000002', NOW(), NOW()),
+('40000000-0000-0000-0002-000000000004', 'FinOps Manager (Pro Tier)', 'finops.pro@prism.local', true, true, 'finops_manager', 'credential', '10000000-0000-0000-0000-000000000002', NOW(), NOW()),
+('40000000-0000-0000-0002-000000000005', 'Auditor (Pro Tier)', 'auditor.pro@prism.local', true, true, 'auditor', 'credential', '10000000-0000-0000-0000-000000000002', NOW(), NOW()),
+('40000000-0000-0000-0002-000000000006', 'Viewer (Pro Tier)', 'viewer.pro@prism.local', true, true, 'viewer', 'credential', '10000000-0000-0000-0000-000000000002', NOW(), NOW()),
 
 -- Team Tier Users
 ('40000000-0000-0000-0003-000000000001', 'Owner (Team Tier)', 'owner.team@prism.local', true, true, 'owner', 'credential', '10000000-0000-0000-0000-000000000003', NOW(), NOW()),
@@ -159,7 +159,7 @@ INSERT INTO organization_members (id, org_id, user_id, role, role_id, created_at
 
 ('60000000-0000-0000-0003-000000000001', '10000000-0000-0000-0000-000000000003', '40000000-0000-0000-0003-000000000001', 'owner', (SELECT id FROM roles WHERE slug = 'owner' AND is_system = true LIMIT 1), NOW(), NOW()),
 ('60000000-0000-0000-0003-000000000002', '10000000-0000-0000-0000-000000000003', '40000000-0000-0000-0003-000000000002', 'developer', (SELECT id FROM roles WHERE slug = 'developer' AND is_system = true LIMIT 1), NOW(), NOW()),
-('60000000-0000-0000-0003-000000000003', '10000000-0000-0000-0000-000000000003', 'agent_manager', (SELECT id FROM roles WHERE slug = 'agent_manager' AND is_system = true LIMIT 1), NOW(), NOW()),
+('60000000-0000-0000-0003-000000000003', '10000000-0000-0000-0000-000000000003', '40000000-0000-0000-0003-000000000003', 'agent_manager', (SELECT id FROM roles WHERE slug = 'agent_manager' AND is_system = true LIMIT 1), NOW(), NOW()),
 ('60000000-0000-0000-0003-000000000004', '10000000-0000-0000-0000-000000000003', '40000000-0000-0000-0003-000000000004', 'finops_manager', (SELECT id FROM roles WHERE slug = 'finops_manager' AND is_system = true LIMIT 1), NOW(), NOW()),
 ('60000000-0000-0000-0003-000000000005', '10000000-0000-0000-0000-000000000003', '40000000-0000-0000-0003-000000000005', 'auditor', (SELECT id FROM roles WHERE slug = 'auditor' AND is_system = true LIMIT 1), NOW(), NOW()),
 ('60000000-0000-0000-0003-000000000006', '10000000-0000-0000-0000-000000000003', '40000000-0000-0000-0003-000000000006', 'viewer', (SELECT id FROM roles WHERE slug = 'viewer' AND is_system = true LIMIT 1), NOW(), NOW()),

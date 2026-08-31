@@ -230,30 +230,33 @@ func TestMatrixAudit_CrossTenantIsolationAllMatrixUsers(t *testing.T) {
 
 	engine := authz.NewAuthorizationEngine(&MockPermissionFinder{}, &MockWorkspaceMemberFinder{})
 
-	plans := []string{"free", "pro", "team", "enterprise"}
+	orgUUIDs := []string{
+		"10000000-0000-0000-0000-000000000001",
+		"10000000-0000-0000-0000-000000000002",
+		"10000000-0000-0000-0000-000000000003",
+		"10000000-0000-0000-0000-000000000004",
+	}
 
-	for _, callerPlan := range plans {
-		callerOrgID := fmt.Sprintf("org_matrix_%s", callerPlan)
-
+	// Test UUID-based cross-tenant isolation
+	for i, callerOrgID := range orgUUIDs {
 		principal := &authz.Principal{
 			Type:        authz.PrincipalHumanUser,
-			ID:          fmt.Sprintf("usr_dev_%s", callerPlan),
+			ID:          fmt.Sprintf("40000000-0000-0000-%04d-000000000002", i+1),
 			OrgID:       callerOrgID,
 			RoleSlug:    "developer",
 			Permissions: ExpectedRolePermissions["developer"],
 		}
 
-		for _, targetPlan := range plans {
-			targetOrgID := fmt.Sprintf("org_matrix_%s", targetPlan)
+		for j, targetOrgID := range orgUUIDs {
 			target := &authz.ResourceContext{
 				Type:  "credential",
-				ID:    "cred_123",
+				ID:    fmt.Sprintf("cred_%d", j+1),
 				OrgID: targetOrgID,
 			}
 
 			allowed, err := engine.Can(ctx, principal, "credential:read", target)
 
-			if callerPlan == targetPlan {
+			if i == j {
 				require.NoError(t, err)
 				assert.True(t, allowed, "User should access resource in their own organization")
 			} else {
@@ -270,11 +273,11 @@ func TestMatrixAudit_WorkspaceIsolationAndAdminOverride(t *testing.T) {
 
 	wsFinder := &MockWorkspaceMemberFinder{
 		WorkspaceRoles: map[string]map[string]string{
-			"ws_pro_eng": {
-				"usr_dev_pro": "developer",
+			"20000000-0000-0000-0000-000000000003": {
+				"40000000-0000-0000-0002-000000000002": "developer",
 			},
-			"ws_pro_finance": {
-				"usr_finops_pro": "finops_manager",
+			"20000000-0000-0000-0000-000000000004": {
+				"40000000-0000-0000-0002-000000000004": "finops_manager",
 			},
 		},
 	}
@@ -284,16 +287,16 @@ func TestMatrixAudit_WorkspaceIsolationAndAdminOverride(t *testing.T) {
 	// Developer in ws_pro_eng attempting to access ws_pro_finance -> DENIED
 	devPrincipal := &authz.Principal{
 		Type:        authz.PrincipalHumanUser,
-		ID:          "usr_dev_pro",
-		OrgID:       "org_matrix_pro",
-		WorkspaceID: "ws_pro_eng",
+		ID:          "40000000-0000-0000-0002-000000000002",
+		OrgID:       "10000000-0000-0000-0000-000000000002",
+		WorkspaceID: "20000000-0000-0000-0000-000000000003",
 		RoleSlug:    "developer",
 		Permissions: ExpectedRolePermissions["developer"],
 	}
 
 	allowed, err := engine.Can(ctx, devPrincipal, "budget:read", &authz.ResourceContext{
-		OrgID:       "org_matrix_pro",
-		WorkspaceID: "ws_pro_finance",
+		OrgID:       "10000000-0000-0000-0000-000000000002",
+		WorkspaceID: "20000000-0000-0000-0000-000000000004",
 	})
 	assert.False(t, allowed)
 	assert.ErrorIs(t, err, authz.ErrCrossWorkspaceDenied)
@@ -301,16 +304,16 @@ func TestMatrixAudit_WorkspaceIsolationAndAdminOverride(t *testing.T) {
 	// FinOps manager in ws_pro_finance accessing ws_pro_finance -> ALLOWED
 	finopsPrincipal := &authz.Principal{
 		Type:        authz.PrincipalHumanUser,
-		ID:          "usr_finops_pro",
-		OrgID:       "org_matrix_pro",
-		WorkspaceID: "ws_pro_finance",
+		ID:          "40000000-0000-0000-0002-000000000004",
+		OrgID:       "10000000-0000-0000-0000-000000000002",
+		WorkspaceID: "20000000-0000-0000-0000-000000000004",
 		RoleSlug:    "finops_manager",
 		Permissions: ExpectedRolePermissions["finops_manager"],
 	}
 
 	allowed, err = engine.Can(ctx, finopsPrincipal, "budget:read", &authz.ResourceContext{
-		OrgID:       "org_matrix_pro",
-		WorkspaceID: "ws_pro_finance",
+		OrgID:       "10000000-0000-0000-0000-000000000002",
+		WorkspaceID: "20000000-0000-0000-0000-000000000004",
 	})
 	require.NoError(t, err)
 	assert.True(t, allowed)
@@ -318,16 +321,16 @@ func TestMatrixAudit_WorkspaceIsolationAndAdminOverride(t *testing.T) {
 	// Owner with workspace:admin accessing ws_pro_finance without explicit membership -> ALLOWED (override)
 	ownerPrincipal := &authz.Principal{
 		Type:        authz.PrincipalHumanUser,
-		ID:          "usr_owner_pro",
-		OrgID:       "org_matrix_pro",
+		ID:          "40000000-0000-0000-0002-000000000001",
+		OrgID:       "10000000-0000-0000-0000-000000000002",
 		WorkspaceID: "", // org-level scope
 		RoleSlug:    "owner",
 		Permissions: ExpectedRolePermissions["owner"],
 	}
 
 	allowed, err = engine.Can(ctx, ownerPrincipal, "budget:read", &authz.ResourceContext{
-		OrgID:       "org_matrix_pro",
-		WorkspaceID: "ws_pro_finance",
+		OrgID:       "10000000-0000-0000-0000-000000000002",
+		WorkspaceID: "20000000-0000-0000-0000-000000000004",
 	})
 	require.NoError(t, err)
 	assert.True(t, allowed, "Owner with workspace:admin must have administrative override to any workspace")
