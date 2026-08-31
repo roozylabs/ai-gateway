@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { apiGetUserPermissions, ApiUserPermissionsResponse } from '@/lib/api';
+import { ApiUserPermissionsResponse } from '@/lib/api';
+import { useUserPermissionsQuery } from '@/hooks/queries/useUserPermissionsQuery';
 import { UserRole } from '@/types/roles';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/atoms/Tooltip';
 
@@ -33,12 +33,8 @@ export function PermissionProvider({
   const router = useRouter();
   const pathname = usePathname();
 
-  const { data, isLoading } = useQuery<ApiUserPermissionsResponse>({
-    queryKey: ['user-permissions'],
-    queryFn: apiGetUserPermissions,
+  const { data, isLoading } = useUserPermissionsQuery({
     initialData: initialData ?? undefined,
-    staleTime: 60 * 1000,
-    retry: 1,
   });
 
   const rawRole = (data?.primaryRole || data?.roleSlug || 'owner').toLowerCase();

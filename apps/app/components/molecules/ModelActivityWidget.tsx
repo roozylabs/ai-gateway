@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Layers, Activity, KeyRound } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { apiGetLogs, ApiRequestLog } from '@/lib/api';
+import { useLogsQuery } from '@/hooks/queries/useLogsQuery';
+import { ApiRequestLog } from '@/lib/api';
 import { useSSE } from '@/context/SSEContext';
 
 interface SSEEventData {
@@ -32,10 +32,7 @@ interface SSEEventPayload {
 
 export function ModelActivityWidget({ collapsed }: { collapsed?: boolean }) {
   const { lastEvent } = useSSE();
-  const { data: logsData } = useQuery({
-    queryKey: ['active-model-activity'],
-    queryFn: () => apiGetLogs({ page: 1, limit: 1 }),
-  });
+  const { data: logsData } = useLogsQuery();
 
   const latestLog: ApiRequestLog | undefined = logsData?.data?.[0];
 

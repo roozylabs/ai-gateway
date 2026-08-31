@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiGetTools } from '@/lib/api';
+import { apiGetTools, apiGetTool } from '@/lib/api';
 export {
   useCreateToolMutation as useCreateTool,
   useUpdateToolMutation as useUpdateTool,
@@ -13,3 +13,12 @@ export function useToolsQuery() {
     queryFn: apiGetTools,
   });
 }
+
+export function useToolDetailQuery(toolId?: string) {
+  return useQuery({
+    queryKey: ['tools', toolId],
+    queryFn: () => apiGetTool(toolId!),
+    enabled: Boolean(toolId),
+  });
+}
+
