@@ -29,7 +29,7 @@ import (
 )
 
 // @title           RoozyLabs Prism AI Gateway API
-// @version         0.1.0
+// @version         0.2.0
 // @description     Centralized AI API Gateway
 // @host            localhost:8080
 // @BasePath        /api/v1
