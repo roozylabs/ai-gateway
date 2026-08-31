@@ -5,6 +5,19 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-31
+
+### Added
+- **Automatic Primary Organization Fallback for Authenticated Sessions**:
+  - When an authenticated user session omits `X-Prism-Org-ID`, the tenant context now falls back to the user's primary organization via the new `OrgPrimaryResolver` interface and `AccountRepository.GetPrimaryOrganization`, instead of failing strict.
+  - Strict fail-closed behavior is preserved when no user session, no resolver, or no resolvable primary org exists.
+- **Tenant selection persistence in the dashboard**: `selectedOrgId` and `selectedWorkspaceId` are now hydrated from `localStorage` on store init, preserving the active tenant across reloads.
+- Added 4 middleware unit tests covering primary-org fallback success, missing-resolver fail-closed, empty-primary fail-closed, and missing-session fail-closed.
+
+### Changed
+- **Settings route alignment**: `AppRoutes.SETTINGS` now points to `/settings` instead of `/settings/organization`.
+- **Model policy enforcement**: Formalized OpenCode as the exclusive verification and release engine executing the automated test suite (`go test ./...`, `pnpm typecheck`, `pnpm build`) and the full Git & Release pipeline.
+
 ## [0.2.3] - 2026-08-31
 
 ### Fixed

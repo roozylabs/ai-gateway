@@ -43,6 +43,7 @@
 | 0.2.1 | 31 August 2026, 18:30 WIB | Improved Cloudflare Turnstile UX: non-blocking form inputs, invisible mode for login, unblocked OAuth, and shared useTurnstile hook |
 | 0.2.2 | 31 August 2026, 19:15 WIB | Added Turnstile Smart Token Waiter (getTokenOrWait) and removed CSS container throttling for seamless fast-autofill sign in |
 | 0.2.3 | 31 August 2026, 19:35 WIB | Restored visible Turnstile widget (size: normal) on Sign In for Cloudflare Managed key compatibility and error resilience |
+| 0.3.0 | 31 August 2026, 20:30 WIB | Added Automatic Primary Organization Fallback for authenticated user sessions (OrgPrimaryResolver + AccountRepository.GetPrimaryOrganization), tenant selection localStorage persistence in dashboard, settings route alignment to /settings, and middleware unit tests; formalized OpenCode as exclusive verification & release engine |
 
 ---
 
