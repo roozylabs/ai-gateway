@@ -335,9 +335,14 @@ func TestMatrixAudit_WorkspaceIsolationAndAdminOverride(t *testing.T) {
 
 // 5. Audit Shared Password Bcrypt Hashing
 func TestMatrixAudit_SharedPasswordAuthentication(t *testing.T) {
+	// 5a. Dynamic Hash verification
 	hash, err := utils.HashPassword(TestMatrixSharedPassword)
 	require.NoError(t, err)
 
-	assert.True(t, utils.CheckPassword(TestMatrixSharedPassword, hash), "Password verification must succeed for shared matrix password")
+	assert.True(t, utils.CheckPassword(TestMatrixSharedPassword, hash), "Password verification must succeed for dynamically generated hash")
 	assert.False(t, utils.CheckPassword("wrong_password", hash), "Incorrect password must be rejected")
+
+	// 5b. Exact migration 079 static seeded hash verification
+	seededHash := "$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46"
+	assert.True(t, utils.CheckPassword(TestMatrixSharedPassword, seededHash), "Seeded migration hash must match shared password PrismMatrix_7x9k2m4p!")
 }
