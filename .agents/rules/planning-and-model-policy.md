@@ -23,21 +23,6 @@
 - Jika sesi Claude digunakan untuk coding, batasi pada diskusi dan modifikasi kode yang diminta langsung oleh user.
 
 ### C. OpenCode Model Role (Exclusive Release Engine):
-- **Satu-satunya model/agent** yang berwenang melakukan:
-  1. Commit rilis & sinkronisasi versi (`package.json`, `apps/app/package.json`, `main.go`, `docs.go`, `CHANGELOG.md`, `PRD.md`, dll.).
-  2. Pembukaan PR rilis (`chore(release): bump monorepo version...`).
-  3. Pelabelan PR rilis (`release`, `chore`) via `issue_write`.
-  4. Penggabungan PR (*squash merge*) dan penghapusan branch.
-  5. Pembuatan dan push annotated Git tag (`git tag -a vX.Y.Z`).
-
----
-
-## 3. Mandatory Post-Merge Branch Deletion Rule
-
-> [!CRITICAL]
-> **AUTOMATIC BRANCH DELETION AFTER PR MERGE**:
-> Setiap kali Pull Request (`feat/*`, `fix/*`, `refactor/*`, `chore/*`, `docs/*`) telah di-merge ke `main`:
-> 1. **Hapus Remote Branch**: `git push origin --delete <branch-name>`
-> 2. **Hapus Local Branch**: `git checkout main && git pull origin main && git branch -D <branch-name>`
-> Tidak boleh ada branch usang (*stale/dangling branch*) yang tertinggal di repositori.
+- **Satu-satunya model/agent** yang berwenang melakukan seluruh pipeline otomatisasi rilis: commit rilis, version bump (sinkronisasi 17 target SemVer), pembukaan PR rilis, pelabelan PR, merge PR, dan tagging rilis.
+- Lihat `.agents/rules/semantic-versioning-and-releases.md` (proses rilis) dan `.agents/rules/pull-request-workflow.md` (flow delivery) untuk detail lengkap.
 
