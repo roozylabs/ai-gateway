@@ -113,8 +113,11 @@ func (h *OnboardingHandler) Complete(c *gin.Context) {
 		 VALUES (
 			$1, $2, $3, $4,
 			COALESCE(
-				(SELECT id FROM roles WHERE slug = $4 AND is_system = true LIMIT 1),
-				(SELECT id FROM roles WHERE slug = 'owner' AND is_system = true LIMIT 1)
+				(SELECT id FROM roles WHERE (slug = $4 OR id::text = $4) AND is_system = true LIMIT 1),
+				(SELECT id FROM roles WHERE slug = $4 LIMIT 1),
+				(SELECT id FROM roles WHERE slug = 'owner' LIMIT 1),
+				(SELECT id FROM roles LIMIT 1),
+				'00000000-0000-0000-0000-000000000001'::uuid
 			),
 			NOW(), NOW()
 		 )
