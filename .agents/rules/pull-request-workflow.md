@@ -75,6 +75,11 @@ Upon completing any feature, bug fix, or task implementation, the agent MUST aut
 
 - **Merge Strategy**: Use `merge_pull_request` only after verification checks (`pnpm build`, `go test`) pass cleanly.
 - **Post-Merge Cleanup**: After merging, delete the head branch on remote and delete local feature branch / worktree according to `.agents/rules/feature-branch-creation.md`.
+- **Release Tagging on `main` (if releasing a version)**:
+  1. Switch to `main` and pull latest: `git checkout main && git pull origin main`.
+  2. Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: <Summary>"`.
+  3. Push tag to GitHub: `git push origin vX.Y.Z`.
+  See `.agents/rules/semantic-versioning-and-releases.md` for full release guidelines.
 
 
 

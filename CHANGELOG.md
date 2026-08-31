@@ -5,7 +5,19 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.2.0] - 2026-08-30
+## [0.1.0] - 2026-08-31
+
+### Added
+- **SemVer (Semantic Versioning 2.0.0) Baseline & Pre-Release Standard**: Formalized monorepo versioning baseline at `v0.1.0` (Foundation Pre-Release).
+- **Multi-Layer Feature Flag Engine (`internal/featureflags` & `lib/features`)**:
+  - Environment variable overrides (`FEATURE_FLAG_*`) with Plan Tier entitlement matrix (`free`, `pro`, `team`, `enterprise`).
+  - Endpoint `GET /api/v1/features` exposing active capabilities to clients and dashboard.
+  - React hook `useFeatureFlags()` and declarative `<FeatureGate />` component.
+  - 12 core capability flags: `smart_router_auto`, `playground_multimodal`, `mcp_gateway`, `resource_gateway`, `governance_guardrails`, `turnstile_protection`, `realtime_anomaly_stream`, `finops_budget_alerts`, `paperclip_orchestrator`, `merkle_audit_verification`, `custom_role_builder`, `vault_kms_byok`.
+- **System & Provider Managed Model Catalog & Benchmark Browser**: Dynamic model browsing, filtering by provider, latency/quality scores, and token pricing without manual insertion friction.
+- **Strict Multi-Tenant Isolation for Resource Gateway**: Scoped all DB queries and REST/GraphQL context backends with `org_id` and `workspace_id`.
+- **2-Column Settings Layout with Vertical Subnavigation Sidebar**: Modern settings interface with notifications email switches, in-app alerts, profile, and security controls.
+- **24-Identity Multi-Role Dummy Matrix & Security Audit Suite**: Verified seeder with bcrypt credentials for all 6 RBAC roles across all 4 subscription tiers.
 
 ### Added
 - **MCP Server Detail Page with Invocation Usage Tracking**: A dedicated dynamic route `/mcp/[id]` in the Next.js dashboard now visualizes per-server usage and topology:

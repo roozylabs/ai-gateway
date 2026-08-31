@@ -29,7 +29,7 @@ import (
 )
 
 // @title           RoozyLabs Prism AI Gateway API
-// @version         2.2.0
+// @version         0.1.0
 // @description     Centralized AI API Gateway
 // @host            localhost:8080
 // @BasePath        /api/v1
@@ -223,6 +223,7 @@ func main() {
 	oauthHandler := handlers.NewOAuthHandler(authService)
 	quotaHandler := handlers.NewQuotaHandler(quotaRepo)
 	billingHandler := handlers.NewBillingHandler(billingRepo)
+	featuresHandler := handlers.NewFeaturesHandler()
 
 	// Background workers
 	workerCtx, workerStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -254,6 +255,7 @@ func main() {
 		// Public API routes
 		api.GET("/health", healthHandler.Check)
 		api.GET("/ready", healthHandler.Ready)
+		api.GET("/features", featuresHandler.GetFeatures)
 		api.POST("/auth/login", authHandler.Login)
 		api.GET("/auth/turnstile-config", authHandler.GetTurnstileConfig)
 		api.GET("/auth/oauth/:provider", oauthHandler.InitiateOAuth)
