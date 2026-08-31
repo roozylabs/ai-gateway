@@ -132,12 +132,12 @@ ON CONFLICT (email) DO UPDATE SET
     updated_at = NOW();
 
 -- 7. Clean and Seed Account Records (Verified bcrypt hash for PrismMatrix_7x9k2m4p!)
-DELETE FROM account WHERE account_id LIKE '%.prism.local';
+DELETE FROM account WHERE account_id LIKE '%@prism.local';
 
 INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
 SELECT gen_random_uuid()::text, u.email, 'credential', u.id, '$2a$10$rDzx8TEkL6g0kh78Nka8..Citem61KnwQTpbJnJ6xUmGSFPnIYi46', NOW(), NOW()
 FROM "user" u
-WHERE u.email LIKE '%.prism.local';
+WHERE u.email LIKE '%@prism.local';
 
 -- 8. Seed Organization Memberships using gen_random_uuid()
 INSERT INTO organization_members (id, org_id, user_id, role, role_id, created_at, updated_at)
@@ -151,7 +151,7 @@ SELECT
     NOW()
 FROM "user" u
 JOIN roles r ON r.slug = u.primary_role AND r.is_system = true
-WHERE u.email LIKE '%.prism.local'
+WHERE u.email LIKE '%@prism.local'
 ON CONFLICT (org_id, user_id) DO UPDATE SET
     role = EXCLUDED.role,
     role_id = EXCLUDED.role_id,
@@ -168,7 +168,7 @@ SELECT
     NOW()
 FROM "user" u
 JOIN workspaces w ON w.org_id = u.org_id AND w.slug LIKE '%-eng'
-WHERE u.email LIKE '%.prism.local' AND u.primary_role IN ('owner', 'developer', 'agent_manager', 'auditor', 'viewer')
+WHERE u.email LIKE '%@prism.local' AND u.primary_role IN ('owner', 'developer', 'agent_manager', 'auditor', 'viewer')
 ON CONFLICT (workspace_id, user_id) DO UPDATE SET
     role = EXCLUDED.role,
     updated_at = NOW();
@@ -183,7 +183,7 @@ SELECT
     NOW()
 FROM "user" u
 JOIN workspaces w ON w.org_id = u.org_id AND w.slug LIKE '%-finance'
-WHERE u.email LIKE '%.prism.local' AND u.primary_role = 'finops_manager'
+WHERE u.email LIKE '%@prism.local' AND u.primary_role = 'finops_manager'
 ON CONFLICT (workspace_id, user_id) DO UPDATE SET
     role = EXCLUDED.role,
     updated_at = NOW();
