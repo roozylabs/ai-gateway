@@ -5,6 +5,16 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-08-31
+
+### Added
+- **Turnstile Smart Token Waiter (`getTokenOrWait`)**:
+  - Implemented non-blocking async token resolution in [`apps/app/hooks/useTurnstile.ts`](file:///c:/me/projects/ai-gateway/apps/app/hooks/useTurnstile.ts) with timeout fallback. Prevents submission race conditions when users submit credentials quickly or via autofill.
+
+### Fixed
+- **Clean Turnstile Container Rendering**:
+  - Removed `w-0 h-0 overflow-hidden` CSS clamping in [`signin/page.tsx`](file:///c:/me/projects/ai-gateway/apps/app/app/(auth)/signin/page.tsx) that caused browser execution throttling of Cloudflare Turnstile verification iframes.
+
 ## [0.2.1] - 2026-08-31
 
 ### Added

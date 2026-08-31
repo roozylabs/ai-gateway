@@ -39,7 +39,7 @@ func (h *FeaturesHandler) GetFeatures(c *gin.Context) {
 	flags := h.manager.GetAll(planTier)
 
 	c.JSON(http.StatusOK, FeaturesResponse{
-		Version:  "0.2.1",
+		Version:  "0.2.2",
 		PlanTier: planTier,
 		Flags:    flags,
 	})
