@@ -20,8 +20,7 @@ import {
   Zap,
   DollarSign,
   CheckCircle2,
-  Server,
-  Calendar,
+  Server
 } from 'lucide-react';
 import {
   Select,
@@ -160,7 +159,6 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
             <Select value={dateRange} onValueChange={setDateRange}>
               <SelectTrigger className="w-[180px] h-8 text-xs bg-card border-border">
                 <SelectValue placeholder="Select period" />
