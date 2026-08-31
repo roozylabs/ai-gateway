@@ -16,6 +16,7 @@ import {
 } from "@/components/molecules/Card";
 import { Button } from "@/components/atoms/Button";
 import { Badge } from "@/components/atoms/Badge";
+import { Label } from "@/components/atoms/Label";
 import { Switch } from "@/components/atoms/Switch";
 import { Textarea } from "@/components/atoms/Textarea";
 import {
@@ -77,8 +78,9 @@ function FormTooltipLabel({
 }) {
   return (
     <div className="flex items-center gap-1.5 mb-1">
-      <span className="text-xs font-semibold text-foreground">{label}</span>
-      {required && <span className="text-destructive">*</span>}
+      <Label required={required} className="text-xs font-semibold text-foreground">
+        {label}
+      </Label>
       <Tooltip>
         <TooltipTrigger asChild>
           <button

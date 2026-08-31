@@ -82,9 +82,7 @@ export function InviteMemberSheet({ open, onOpenChange, onInviteSuccess }: Invit
               name="email"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>
-                    Email Address <span className="text-destructive">*</span>
-                  </FormLabel>
+                  <FormLabel required>Email Address</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -102,7 +100,7 @@ export function InviteMemberSheet({ open, onOpenChange, onInviteSuccess }: Invit
               name="role"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Organization Role</FormLabel>
+                  <FormLabel required>Organization Role</FormLabel>
                   <FormControl>
                     <Select
                       value={field.value}

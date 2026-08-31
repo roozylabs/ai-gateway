@@ -241,7 +241,7 @@ export function MCPServerFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Server Identifier Name</FormLabel>
+                  <FormLabel required>Server Identifier Name</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -322,7 +322,7 @@ export function MCPServerFormDialog({
                   name="endpointUrl"
                   render={({ field }) => (
                     <FormItem className="space-y-2">
-                      <FormLabel>Endpoint URL</FormLabel>
+                      <FormLabel required>Endpoint URL</FormLabel>
                       <FormControl>
                         <Input
                           {...field}

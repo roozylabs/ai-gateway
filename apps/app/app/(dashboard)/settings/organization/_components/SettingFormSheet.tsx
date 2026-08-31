@@ -82,7 +82,7 @@ export function SettingFormSheet({ open, onOpenChange, editingSetting }: Setting
               name="value"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Parameter Value</FormLabel>
+                  <FormLabel required>Parameter Value</FormLabel>
                   <FormControl>
                     <Input {...field} disabled={updateSettingsMutation.isPending} />
                   </FormControl>

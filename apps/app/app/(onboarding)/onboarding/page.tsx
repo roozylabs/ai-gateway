@@ -140,9 +140,7 @@ export default function OnboardingPage() {
                       render={({ field }) => (
                         <FormItem>
                           <div className="flex items-center justify-between">
-                            <FormLabel>
-                              Organization Name <span className="text-destructive">*</span>
-                            </FormLabel>
+                            <FormLabel required>Organization Name</FormLabel>
                             <button
                               type="button"
                               onClick={handleFillDefaults}
@@ -165,9 +163,7 @@ export default function OnboardingPage() {
                       name="workspaceName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>
-                            Default Workspace Name <span className="text-destructive">*</span>
-                          </FormLabel>
+                          <FormLabel required>Default Workspace Name</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g. Production Environment" required {...field} />
                           </FormControl>
@@ -189,9 +185,7 @@ export default function OnboardingPage() {
                       name="gatewayKeyName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>
-                            First Gateway Key Label <span className="text-destructive">*</span>
-                          </FormLabel>
+                          <FormLabel required>First Gateway Key Label</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g. Primary Control Key" required {...field} />
                           </FormControl>

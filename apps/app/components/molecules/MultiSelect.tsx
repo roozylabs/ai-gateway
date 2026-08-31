@@ -4,6 +4,7 @@ import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFormField } from './Form';
 
 export interface MultiSelectOption {
   value: string;
@@ -21,6 +22,9 @@ interface MultiSelectProps {
   className?: string;
   emptyMessage?: string;
   maxHeight?: string;
+  error?: boolean;
+  'aria-invalid'?: boolean | 'true' | 'false';
+  'data-invalid'?: boolean | 'true' | 'false';
 }
 
 function MultiSelect({
@@ -33,10 +37,28 @@ function MultiSelect({
   className,
   emptyMessage = 'No results found.',
   maxHeight = '280px',
+  error,
+  ...props
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  let isFieldInvalid = false;
+  try {
+    const field = useFormField();
+    if (field?.error) isFieldInvalid = true;
+  } catch {
+    // Outside FormField context
+  }
+
+  const isInvalid =
+    error ||
+    isFieldInvalid ||
+    props['aria-invalid'] === true ||
+    props['aria-invalid'] === 'true' ||
+    props['data-invalid'] === true ||
+    props['data-invalid'] === 'true';
 
   const filteredOptions = React.useMemo(() => {
     if (!search.trim()) return options;
@@ -79,8 +101,12 @@ function MultiSelect({
           type="button"
           role="combobox"
           aria-expanded={open}
+          aria-invalid={isInvalid ? true : undefined}
+          data-invalid={isInvalid ? 'true' : undefined}
           className={cn(
             'flex min-h-9 w-full items-center justify-between gap-2 rounded-none border border-input bg-transparent px-3 py-1.5 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+            'aria-invalid:border-destructive aria-invalid:focus:ring-destructive data-[invalid=true]:border-destructive data-[invalid=true]:focus:ring-destructive',
+            isInvalid && 'border-destructive focus:ring-destructive',
             className
           )}
         >

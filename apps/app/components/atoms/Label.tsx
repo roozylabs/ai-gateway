@@ -12,14 +12,24 @@ const labelVariants = cva(
 const Label = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
-    VariantProps<typeof labelVariants>
->(({ className, ...props }, ref) => (
-  <LabelPrimitive.Root
-    ref={ref}
-    className={cn(labelVariants(), className)}
-    {...props}
-  />
-));
+    VariantProps<typeof labelVariants> & {
+      required?: boolean;
+      isRequired?: boolean;
+    }
+>(({ className, children, required, isRequired, ...props }, ref) => {
+  const showAsterisk = required || isRequired;
+
+  return (
+    <LabelPrimitive.Root
+      ref={ref}
+      className={cn(labelVariants(), className)}
+      {...props}
+    >
+      {children}
+      {showAsterisk && <span className="text-destructive font-bold ml-1">*</span>}
+    </LabelPrimitive.Root>
+  );
+});
 Label.displayName = LabelPrimitive.Root.displayName;
 
 export { Label };

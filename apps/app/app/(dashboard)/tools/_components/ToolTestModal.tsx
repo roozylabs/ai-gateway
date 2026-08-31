@@ -124,7 +124,7 @@ export function ToolTestModal({
               name="argsJson"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Input Arguments (JSON)</FormLabel>
+                  <FormLabel required>Input Arguments (JSON)</FormLabel>
                   <FormControl>
                     <Textarea
                       counter

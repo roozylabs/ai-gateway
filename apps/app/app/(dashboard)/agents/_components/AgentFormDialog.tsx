@@ -174,7 +174,7 @@ export function AgentFormDialog({
               name="displayName"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Display Name</FormLabel>
+                  <FormLabel required>Display Name</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -192,9 +192,7 @@ export function AgentFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>
-                    Agent Name <span className="text-destructive">*</span>
-                  </FormLabel>
+                  <FormLabel required>Agent Name</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input

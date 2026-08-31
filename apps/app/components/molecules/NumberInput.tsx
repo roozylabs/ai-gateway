@@ -15,6 +15,9 @@ interface NumberInputProps {
   disabled?: boolean;
   id?: string;
   className?: string;
+  error?: boolean;
+  'aria-invalid'?: boolean | 'true' | 'false';
+  'data-invalid'?: boolean | 'true' | 'false';
 }
 
 function clamp(value: number, min: number | undefined, max: number | undefined): number {
@@ -34,6 +37,8 @@ function NumberInput({
   disabled = false,
   id,
   className,
+  error,
+  ...props
 }: NumberInputProps) {
   const [draft, setDraft] = React.useState<string>(String(value));
 
@@ -63,6 +68,9 @@ function NumberInput({
         step={step}
         value={draft}
         disabled={disabled}
+        error={error}
+        aria-invalid={props['aria-invalid']}
+        data-invalid={props['data-invalid']}
         placeholder={placeholder}
         onChange={(e) => {
           setDraft(e.target.value);

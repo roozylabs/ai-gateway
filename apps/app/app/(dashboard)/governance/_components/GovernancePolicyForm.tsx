@@ -146,9 +146,7 @@ export function GovernancePolicyForm({
               name="name"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>
-                    Name <span className="text-destructive">*</span>
-                  </FormLabel>
+                  <FormLabel required>Name</FormLabel>
                   <FormControl>
                     <Input
                       {...field}

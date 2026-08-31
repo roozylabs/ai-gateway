@@ -97,7 +97,7 @@ export function PolicyFormDialog({ open, onOpenChange }: PolicyFormDialogProps) 
               name="name"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Policy Name</FormLabel>
+                  <FormLabel required>Policy Name</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
