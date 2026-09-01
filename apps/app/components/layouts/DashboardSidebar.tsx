@@ -109,7 +109,7 @@ export function DashboardSidebar() {
           </div>
           {!collapsed && (
             <span className="font-mono text-base font-bold tracking-tight text-foreground truncate">
-              PRISM <span className="text-xs font-normal text-muted-foreground">v0.3.0</span>
+              PRISM <span className="text-xs font-normal text-muted-foreground">v0.4.0</span>
             </span>
           )}
         </Link>
