@@ -1,5 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { 
+	Shield, Zap, Route, ShieldCheck, Lock, Activity, 
+	Wallet, RefreshCw, KeyRound, Plug, Wrench, FileCheck, 
+	Terminal, Code, Bot, Network, Globe, XCircle, CheckCircle, 
+	Menu, X, Github, BookOpen 
+} from 'lucide-react';
 
 interface NavLink {
 	label: string;
@@ -8,73 +14,76 @@ interface NavLink {
 }
 
 const navLinks: NavLink[] = [
-	{ label: 'Pillars', href: '#pillars' },
+	{ label: 'Architecture', href: '#pillars' },
 	{ label: 'Resilience', href: '#resilience' },
-	{ label: 'Client Setup', href: '#integration' },
-	{ label: 'Docs', href: 'https://docs.prism.roozylabs.com', external: true },
+	{ label: 'Integration', href: '#integration' },
+	{ label: 'Documentation', href: 'https://docs.prism.roozylabs.com', external: true },
 	{ label: 'GitHub', href: 'https://github.com/roozylabs/prism', external: true },
 ];
 
 const benchmarkStats = [
-	{ value: '1.96 ms', label: 'p95 Latency Overhead', desc: 'Sub-2ms Gateway Engine' },
-	{ value: '3,585.5', label: 'Req / Sec Throughput', desc: 'Zero-downtime concurrency' },
-	{ value: '0 Races', label: 'Data Race Free', desc: 'go test -race verified' },
-	{ value: '100% RLS', label: 'Row Level Security', desc: '9 PostgreSQL RLS tables' },
+	{ value: '1.96 ms', label: 'p95 Latency Overhead', desc: 'Gateway processing overhead (sub-2ms)' },
+	{ value: '3,585.5', label: 'Req / Sec Throughput', desc: 'Empirical load test at 500 workers' },
+	{ value: '0 Races', label: 'Data Race Free', desc: 'Verified with go test -race ./...' },
+	{ value: '9 Tables', label: 'Row Level Security', desc: 'PostgreSQL RLS tenant isolation' },
 ];
 
 const clientEcosystem = [
-	{ name: 'OpenCode CLI', icon: 'terminal', type: 'AI Coding Assistant' },
-	{ name: 'Claude Code', icon: 'code_blocks', type: 'Anthropic CLI Agent' },
-	{ name: 'Antigravity IDE', icon: 'smart_toy', type: 'AI Pair Programmer' },
-	{ name: 'LangChain / LlamaIndex', icon: 'hub', type: 'Agent Frameworks' },
-	{ name: 'Vercel AI SDK / Custom Apps', icon: 'api', type: 'REST & SSE SDKs' },
+	{ name: 'OpenCode CLI', icon: Terminal, type: 'AI Coding Assistant' },
+	{ name: 'Claude Code', icon: Code, type: 'Anthropic CLI Agent' },
+	{ name: 'Antigravity IDE', icon: Bot, type: 'AI Pair Programmer' },
+	{ name: 'LangChain & LlamaIndex', icon: Network, type: 'Agent Frameworks' },
+	{ name: 'Vercel AI SDK & Custom Apps', icon: Globe, type: 'REST and SSE SDKs' },
 ];
 
 interface Pillar {
 	id: number;
-	icon: string;
+	icon: any;
 	title: string;
 	tagline: string;
 	description: string;
 	highlights: string[];
 }
 
-const pillars: Pillar[] = [
+const primaryPillars: Pillar[] = [
 	{
 		id: 1,
-		icon: 'power',
+		icon: Zap,
 		title: 'Universal Model Gateway',
 		tagline: 'Single OpenAI-Compatible Proxy Engine',
 		description: 'Unify OpenAI, Anthropic, Google Gemini, OpenRouter, and OpenCode through one API key with zero-latency streaming pass-through.',
-		highlights: ['/v1/chat/completions', '/v1/models', 'SSE Streaming Pass-Through'],
+		highlights: ['/v1/chat/completions', '/v1/models', 'SSE Streaming'],
 	},
 	{
 		id: 2,
-		icon: 'route',
+		icon: Route,
 		title: 'Prism Auto Smart Router',
-		tagline: 'prism-auto Prompt Classification Engine',
-		description: 'Deterministic task complexity & context window analysis with pre-filtered candidate scoring across balanced, cheap, or quality policies.',
-		highlights: ['Dynamic Candidate Scoring', 'Credential Pre-Filtering', 'Policy Presets'],
+		tagline: 'Prompt Classification Engine',
+		description: 'Deterministic task complexity and context window analysis with candidate scoring across balanced, cheap, or quality policies.',
+		highlights: ['Candidate Scoring', 'Credential Pre-Filtering', 'Policy Presets'],
 	},
 	{
 		id: 3,
-		icon: 'health_and_safety',
+		icon: ShieldCheck,
 		title: 'Deterministic Failure Resilience',
 		tagline: 'Circuit Breaker & Cooldown Quarantine',
 		description: 'Automatic 3x 50x error detection, 60s cooldown quarantine, 401/403 non-retry classification, and $0.00 retry billing guarantee.',
-		highlights: ['3x 50x Error Threshold', '60s Cooldown Vault', '$0.00 Retry Billing'],
+		highlights: ['3x 50x Threshold', '60s Cooldown Vault', '$0.00 Retry Billing'],
 	},
+];
+
+const corePillars: Pillar[] = [
 	{
 		id: 4,
-		icon: 'security',
+		icon: Lock,
 		title: 'Multi-Tenant Isolation & RLS',
 		tagline: 'PostgreSQL Row-Level Security',
-		description: 'Strict multi-tenancy enforcing OrgID ownership, user-scoped query isolation across 9 database tables, and authoritative key validation.',
+		description: 'Multi-tenancy enforcing OrgID ownership, user-scoped query isolation across 9 database tables, and authoritative key validation.',
 		highlights: ['PostgreSQL 070 RLS', 'OrgID Scoping', 'Tenant Isolation'],
 	},
 	{
 		id: 5,
-		icon: 'monitoring',
+		icon: Activity,
 		title: 'End-to-End Observability',
 		tagline: '5 Standardized Correlation Identifiers',
 		description: 'Trace every AI execution with request_id, execution_id, routing_decision_id, attempt_id, and audit_id. Secret-redacted structured JSON logging.',
@@ -82,7 +91,7 @@ const pillars: Pillar[] = [
 	},
 	{
 		id: 6,
-		icon: 'account_balance_wallet',
+		icon: Wallet,
 		title: 'FinOps & Multi-Tenant Quotas',
 		tagline: 'Real-Time Token Cost & Quota Manager',
 		description: '6-dimensional token cost tracking, daily/monthly spend limits, velocity alert thresholds, and gateway key quota limits.',
@@ -90,23 +99,26 @@ const pillars: Pillar[] = [
 	},
 	{
 		id: 7,
-		icon: 'published_with_changes',
+		icon: RefreshCw,
 		title: 'Production Operations & Migrator',
 		tagline: 'Blue-Green & Auto Schema Recovery',
-		description: 'Standalone schema migration with auto-dirty state recovery, separate /health (Liveness) and /ready (Readiness) probes for Blue-Green zero-downtime deployment.',
+		description: 'Standalone schema migration with auto-dirty state recovery, separate /health and /ready probes for Blue-Green zero-downtime deployment.',
 		highlights: ['Auto-Dirty Reset', 'Liveness & Readiness', 'Blue-Green Deployment'],
 	},
 	{
 		id: 8,
-		icon: 'vpn_key',
+		icon: KeyRound,
 		title: 'AES-256-GCM Vault & OAuth Exchange',
 		tagline: 'Dynamic Credential Allocation Pool',
 		description: 'Encrypted key vault supporting Round Robin, LRU, and Fallback Cascade rotation strategies with Google OAuth token exchange.',
 		highlights: ['AES-256-GCM Vault', 'Google OAuth Refresh', 'LRU & Round Robin'],
 	},
+];
+
+const protocolPillars: Pillar[] = [
 	{
 		id: 9,
-		icon: 'extension',
+		icon: Plug,
 		title: 'MCP Protocol Gateway',
 		tagline: 'Model Context Protocol Integrator',
 		description: 'Connect HTTP and SSE Model Context Protocol servers (GitHub, Notion, Custom Agents) with automatic JSON-RPC 2.0 discovery.',
@@ -114,15 +126,15 @@ const pillars: Pillar[] = [
 	},
 	{
 		id: 10,
-		icon: 'construction',
+		icon: Wrench,
 		title: 'Resource & Tool Gateway Control',
 		tagline: 'Centralized Function Calling & SQL Engine',
-		description: 'Register external REST API tools and parameterized PostgreSQL query templates with header injection, priority failover, and interactive sandbox execution.',
+		description: 'Register external REST API tools and parameterized PostgreSQL query templates with header injection, priority failover, and sandbox execution.',
 		highlights: ['REST API Tool Hub', 'Parameterized SQL', 'Sandbox Testing'],
 	},
 	{
 		id: 11,
-		icon: 'verified_user',
+		icon: FileCheck,
 		title: 'Cryptographic AI Audit Trail',
 		tagline: 'SHA-256 Tamper-Proof Execution Log',
 		description: '6-dimensional audit trail capturing WHO, REQUEST, MODEL, TOOLS/RESOURCES, COST, and OUTCOME with SHA-256 signature verification.',
@@ -131,16 +143,26 @@ const pillars: Pillar[] = [
 ];
 ---
 
-<Layout title="Prism - Universal AI Control Plane & Model Gateway (v2.8.0)">
+<Layout title="RoozyLabs Prism - Universal AI Control Plane v0.3.0">
+	<!-- Ambient Background Light (Static, Calm, Single Subtle Top Light) -->
+	<div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
+		<div class="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(139,92,246,0.08),transparent_70%)]"></div>
+	</div>
+
 	<!-- Header Navigation -->
-	<header class="fixed top-0 w-full z-50 bg-[#08090A]/90 backdrop-blur-xl border-b border-[#1B1F27]">
-		<div class="h-16 max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4">
+	<header class="fixed top-0 w-full z-50 bg-background/90 backdrop-blur-md border-b border-border">
+		<div class="h-14 max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4">
+			<!-- Brand Mark (Matching AuthLayout.tsx) -->
 			<div class="flex items-center gap-3">
 				<a href="/" class="flex items-center gap-2.5">
-					<div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#8B5CF6] via-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-base shadow-[0_0_20px_rgba(139,92,246,0.4)]">
-						💎
+					<div class="flex h-8 w-8 items-center justify-center rounded-none bg-[#7C3AED] text-white border border-violet-400/30">
+						<Shield className="h-4 w-4" />
 					</div>
-					<span class="font-bold text-lg text-slate-100 tracking-tight">Prism</span>
+					<div class="flex flex-col">
+						<span class="font-mono text-sm font-bold tracking-tight text-foreground">
+							RoozyLabs <span class="text-primary">Prism</span>
+						</span>
+					</div>
 				</a>
 			</div>
 			
@@ -150,7 +172,8 @@ const pillars: Pillar[] = [
 					<a 
 						href={link.href} 
 						target={link.external ? "_blank" : "_self"}
-						class="text-sm text-slate-300 hover:text-white transition-colors font-medium"
+						rel={link.external ? "noopener noreferrer" : undefined}
+						class="text-xs text-muted-foreground hover:text-foreground transition-colors font-medium"
 					>
 						{link.label}
 					</a>
@@ -160,196 +183,209 @@ const pillars: Pillar[] = [
 			<div class="flex items-center gap-3">
 				<a 
 					href="https://app.prism.roozylabs.com/login" 
-					class="hidden sm:flex items-center justify-center px-4 py-2 bg-[#8B5CF6]/10 text-[#8B5CF6] border border-[#8B5CF6]/30 font-mono text-xs font-semibold rounded-lg hover:bg-[#8B5CF6] hover:text-white transition-all shadow-[0_0_15px_rgba(139,92,246,0.2)]"
+					class="hidden sm:inline-flex items-center justify-center px-3.5 py-1.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-colors"
 				>
-					LAUNCH CONSOLE
+					Open Console
 				</a>
 
-				<!-- Mobile Hamburger Toggle -->
+				<!-- Mobile Navigation Toggle -->
 				<button 
 					id="mobile-menu-btn"
 					type="button"
 					aria-label="Toggle Navigation Menu"
-					class="md:hidden w-10 h-10 rounded-lg border border-[#1B1F27] bg-[#0F1115] flex items-center justify-center text-slate-300 hover:text-white hover:border-[#8B5CF6]/40 transition-all focus:outline-none"
+					aria-expanded="false"
+					class="md:hidden h-9 px-2.5 rounded-none border border-border bg-card flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 				>
-					<span id="menu-icon" class="material-symbols-outlined text-2xl">menu</span>
+					<span id="menu-icon-open"><Menu className="h-4 w-4" /></span>
+					<span id="menu-icon-close" class="hidden"><X className="h-4 w-4" /></span>
+					<span class="font-mono text-[11px]">Menu</span>
 				</button>
 			</div>
 		</div>
 
 		<!-- Mobile Navigation Drawer -->
-		<div id="mobile-menu" class="hidden md:hidden border-b border-[#1B1F27] bg-[#0F1115] px-6 py-4 transition-all duration-300">
-			<div class="flex flex-col gap-3 font-medium text-sm">
+		<div id="mobile-menu" class="hidden md:hidden border-b border-border bg-card px-6 py-4">
+			<div class="flex flex-col gap-2.5 font-medium text-xs">
 				{navLinks.map((link) => (
 					<a 
 						href={link.href} 
 						target={link.external ? "_blank" : "_self"}
-						class="py-2 text-slate-300 hover:text-[#8B5CF6] transition-colors border-b border-[#1B1F27] last:border-0"
+						rel={link.external ? "noopener noreferrer" : undefined}
+						class="py-2 text-muted-foreground hover:text-foreground transition-colors border-b border-border last:border-0"
 					>
 						{link.label}
 					</a>
 				))}
 				<a 
 					href="https://app.prism.roozylabs.com/login" 
-					class="mt-2 w-full py-2.5 bg-[#8B5CF6] text-white font-mono text-xs font-bold rounded-lg text-center shadow-lg shadow-[#8B5CF6]/20 flex items-center justify-center gap-2"
+					class="mt-2 w-full py-2 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none text-center"
 				>
-					LAUNCH CONSOLE <span class="material-symbols-outlined text-sm">arrow_forward</span>
+					Open Console
 				</a>
 			</div>
 		</div>
 	</header>
 
 	<!-- Main Content -->
-	<main class="w-full pt-16">
+	<main class="w-full pt-14 flex-1">
 		<div class="flex flex-col w-full relative z-0">
-			<!-- Background Glow & Grid Overlay -->
-			<div class="absolute inset-0 z-[-1] pointer-events-none opacity-[0.25]" style="background-image: radial-gradient(circle at 50% 0%, #8B5CF6 0%, transparent 55%);"></div>
-			<div class="absolute inset-0 z-[-1] pointer-events-none opacity-[0.04]" style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E'); background-size: 30px 30px;"></div>
-
 			<!-- Hero Section -->
-			<section class="w-full min-h-[680px] sm:min-h-[750px] flex flex-col items-center justify-center pt-16 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 relative overflow-hidden">
-				<div class="max-w-5xl mx-auto text-center relative z-10 flex flex-col items-center gap-6 sm:gap-8">
-					<div class="inline-flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-4 py-1.5 rounded-full border border-[#8B5CF6]/40 bg-[#8B5CF6]/10 shadow-[0_0_20px_rgba(139,92,246,0.15)]">
-						<span class="w-2 h-2 rounded-full bg-[#8B5CF6] animate-pulse"></span>
-						<span class="font-mono text-[#8B5CF6] uppercase tracking-widest text-[10px] sm:text-[11px] font-bold">PRISM CONTROL PLANE v2.8.0</span>
+			<section class="w-full py-16 sm:py-24 px-4 sm:px-6 flex flex-col items-center justify-center text-center">
+				<div class="max-w-4xl mx-auto flex flex-col items-center gap-6">
+					<!-- Version & System Badge -->
+					<div class="inline-flex items-center gap-2 px-3 py-1 rounded-none border border-border bg-card text-xs font-mono">
+						<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+						<span class="text-muted-foreground uppercase tracking-wider text-[11px]">Control Plane v0.3.0</span>
 					</div>
 
-					<h1 class="font-extrabold text-[34px] xs:text-[42px] sm:text-[58px] md:text-[74px] lg:text-[80px] leading-[1.1] sm:leading-[1.05] tracking-tight text-white max-w-4xl">
-						One Control Plane for Your Entire <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-indigo-400 to-[#06B6D4]">AI Stack</span>.
+					<h1 class="font-bold text-3xl sm:text-5xl md:text-6xl leading-[1.1] tracking-tight text-foreground max-w-3xl">
+						One Control Plane for Your Entire <span class="text-primary">AI Stack</span>
 					</h1>
 
-					<p class="text-base sm:text-xl md:text-2xl text-slate-300 max-w-3xl leading-relaxed font-normal px-2">
-						Sub-2ms Gateway Engine, Multi-Tenant Row-Level Security, Deterministic Auto-Failover, and End-to-End Correlation Observability.
+					<p class="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed">
+						Sub-2ms Gateway Engine, Multi-Tenant Row-Level Security, Deterministic Auto-Failover, and Correlation Observability.
 					</p>
 
-					<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto mt-2 px-4 sm:px-0">
+					<!-- Action Buttons (1 Deliberate Accent Glow on Primary CTA) -->
+					<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-2">
 						<a 
 							href="https://app.prism.roozylabs.com/login" 
-							class="h-12 px-8 bg-[#8B5CF6] text-white font-mono text-xs font-bold rounded-xl hover:bg-[#7C3AED] transition-all shadow-[0_0_25px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2"
+							class="h-10 px-6 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-[0_0_20px_rgba(139,92,246,0.25)] flex items-center justify-center"
 						>
-							GET STARTED FREE <span class="material-symbols-outlined text-sm">arrow_forward</span>
+							Open Console
 						</a>
 						<a 
 							href="https://github.com/roozylabs/prism" 
 							target="_blank" 
-							class="h-12 px-8 bg-[#0F1115] text-slate-200 font-mono text-xs font-semibold rounded-xl border border-[#1B1F27] hover:bg-[#181C23] hover:border-[#8B5CF6]/40 transition-all flex items-center justify-center gap-2"
+							rel="noopener noreferrer"
+							class="h-10 px-6 bg-card text-foreground font-mono text-xs font-semibold rounded-none border border-border hover:bg-secondary transition-colors flex items-center justify-center gap-2"
 						>
-							<span class="material-symbols-outlined text-sm">code</span> VIEW ON GITHUB
+							<Github className="h-4 w-4" /> View Source
 						</a>
 					</div>
 
-					<!-- Live Terminal Code Preview -->
-					<div class="w-full max-w-3xl mt-6 sm:mt-8 rounded-xl border border-[#1B1F27] bg-[#0A0C10] p-3 sm:p-4 text-left font-mono text-[11px] sm:text-xs shadow-2xl shadow-purple-950/30 relative">
-						<div class="flex flex-wrap items-center justify-between border-b border-[#1B1F27] pb-2.5 mb-3 gap-2">
-							<div class="flex items-center gap-2">
-								<span class="w-2.5 h-2.5 rounded-full bg-red-500/80"></span>
-								<span class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></span>
-								<span class="w-2.5 h-2.5 rounded-full bg-green-500/80"></span>
-								<span class="ml-1 text-slate-400 font-sans text-xs">opencode.jsonc ➔ Prism Gateway v2.8.0</span>
-							</div>
-							<span class="text-[10px] text-[#8B5CF6] bg-[#8B5CF6]/10 px-2 py-0.5 rounded border border-[#8B5CF6]/20 font-mono">https://api.prism.roozylabs.com</span>
+					<!-- Clean JSON Code Preview (No decorative traffic dots) -->
+					<div class="w-full max-w-2xl mt-6 rounded-none border border-border bg-console p-4 text-left font-mono text-xs">
+						<div class="flex items-center justify-between border-b border-border pb-2 mb-3 text-[11px] text-muted-foreground">
+							<span>opencode.jsonc config</span>
+							<span class="text-primary">https://api.prism.roozylabs.com</span>
 						</div>
 						<div class="overflow-x-auto">
-							<pre class="text-slate-300 leading-relaxed min-w-[320px]"><code><span class="text-purple-400">{</span>
+							<pre class="text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-purple-400">&#123;</span>
   <span class="text-cyan-400">"provider"</span>: <span class="text-emerald-400">"prism"</span>,
   <span class="text-cyan-400">"api_url"</span>: <span class="text-emerald-400">"https://api.prism.roozylabs.com"</span>,
-  <span class="text-cyan-400">"api_key"</span>: <span class="text-emerald-400">"gw_sk_f964aef205157f39cec3a879cee31a07..."</span>,
+  <span class="text-cyan-400">"api_key"</span>: <span class="text-emerald-400">"gw_sk_live_85061cbfc18e4ca58e0e..."</span>,
   <span class="text-cyan-400">"model"</span>: <span class="text-purple-400">"prism-auto"</span>, <span class="text-slate-500">// Smart Router auto-selects best model & provider</span>
-  <span class="text-cyan-400">"extra_headers"</span>: <span class="text-purple-400">{</span>
+  <span class="text-cyan-400">"extra_headers"</span>: <span class="text-purple-400">&#123;</span>
     <span class="text-cyan-400">"X-Request-ID"</span>: <span class="text-emerald-400">"req_uuid_v4"</span>,
     <span class="text-cyan-400">"X-Prism-Agent-ID"</span>: <span class="text-emerald-400">"opencode-agent-v2"</span>
-  <span class="text-purple-400">}</span>
-<span class="text-purple-400">}</span></code></pre>
+  <span class="text-purple-400">&#125;</span>
+<span class="text-purple-400">&#125;</span></code></pre>
 						</div>
 					</div>
 				</div>
 			</section>
 
 			<!-- Performance Benchmark & SLA Stats Ribbon -->
-			<section class="w-full py-8 sm:py-10 px-4 sm:px-6 bg-[#0F1115] border-y border-[#1B1F27]">
+			<section class="w-full py-8 px-4 sm:px-6 bg-card border-y border-border">
 				<div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
 					{benchmarkStats.map((stat) => (
-						<div class="p-4 sm:p-5 bg-[#08090A] border border-[#1B1F27] rounded-xl flex flex-col items-center text-center">
-							<span class="font-mono font-bold text-2xl sm:text-3xl text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4]">{stat.value}</span>
-							<span class="font-semibold text-xs text-slate-200 mt-1">{stat.label}</span>
-							<span class="font-mono text-[10px] text-slate-400 mt-0.5">{stat.desc}</span>
+						<div class="p-4 bg-background border border-border rounded-none flex flex-col items-center text-center">
+							<span class="font-mono font-bold text-xl sm:text-2xl text-primary">{stat.value}</span>
+							<span class="font-semibold text-xs text-foreground mt-1">{stat.label}</span>
+							<span class="font-mono text-[11px] text-muted-foreground mt-0.5">{stat.desc}</span>
 						</div>
 					))}
 				</div>
 			</section>
 
 			<!-- Compatible AI Tool Ecosystem Ribbon -->
-			<section class="w-full py-10 sm:py-12 px-4 sm:px-6 bg-[#08090A] border-b border-[#1B1F27]">
+			<section class="w-full py-10 px-4 sm:px-6 bg-background border-b border-border">
 				<div class="max-w-7xl mx-auto flex flex-col items-center gap-6">
-					<p class="font-mono text-[11px] sm:text-xs uppercase tracking-widest text-slate-400 text-center">Seamlessly Connects With Your AI Client Ecosystem</p>
+					<div class="text-center">
+						<span class="font-mono text-xs text-primary uppercase tracking-wider font-semibold">Integrations</span>
+						<h2 class="text-lg font-bold text-foreground mt-1">Compatible AI Clients</h2>
+					</div>
 					
-					<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 w-full">
-						{clientEcosystem.map((client) => (
-							<div class="flex items-center gap-3 p-3.5 bg-[#0F1115] border border-[#1B1F27] rounded-xl hover:border-[#8B5CF6]/40 transition-colors">
-								<span class="material-symbols-outlined text-[#8B5CF6] text-xl shrink-0">{client.icon}</span>
-								<div class="min-w-0">
-									<div class="font-semibold text-xs text-slate-200 truncate">{client.name}</div>
-									<div class="text-[10px] text-slate-400 truncate">{client.type}</div>
+					<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 w-full">
+						{clientEcosystem.map((client) => {
+							const IconComponent = client.icon;
+							return (
+								<div class="flex items-center gap-3 p-3 bg-card border border-border rounded-none hover:border-primary/50 transition-colors">
+									<div class="w-8 h-8 rounded-none bg-primary/10 flex items-center justify-center text-primary shrink-0">
+										<IconComponent className="h-4 w-4" />
+									</div>
+									<div class="min-w-0">
+										<div class="font-semibold text-xs text-foreground truncate">{client.name}</div>
+										<div class="text-[11px] text-muted-foreground truncate">{client.type}</div>
+									</div>
 								</div>
-							</div>
-						))}
+							);
+						})}
 					</div>
 				</div>
 			</section>
 
-			<!-- The Crisis vs Prism Resilience Comparison -->
-			<section id="resilience" class="w-full py-16 sm:py-24 px-4 sm:px-6 bg-[#08090A] relative">
-				<div class="max-w-7xl mx-auto flex flex-col gap-8 sm:gap-12">
+			<!-- Resilience Comparison Section -->
+			<section id="resilience" class="w-full py-16 sm:py-20 px-4 sm:px-6 bg-background">
+				<div class="max-w-7xl mx-auto flex flex-col gap-8 sm:gap-10">
 					<div class="text-center">
-						<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-destructive/10 border border-destructive/20 font-mono text-xs text-red-400 mb-3">
-							EXECUTION RESILIENCE
-						</div>
-						<h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">The AI Infrastructure Crisis vs. Prism Resilience</h2>
-						<p class="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base">Managing multiple AI provider keys without a control plane results in 429 rate limit crashes, unhandled provider outages, and zero security isolation.</p>
+						<span class="font-mono text-xs text-red-400 uppercase tracking-wider font-semibold">Resilience</span>
+						<h2 class="text-2xl sm:text-3xl font-bold text-foreground mt-1 mb-2">Direct Provider Access vs. Prism Resilience</h2>
+						<p class="text-muted-foreground max-w-2xl mx-auto text-xs sm:text-sm">
+							Connecting tools directly to upstream AI APIs exposes applications to rate limits, unexpected outages, and unmonitored costs.
+						</p>
 					</div>
 
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 						<!-- Without Prism -->
-						<div class="bg-[#0F1115] border border-red-500/30 rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-							<div class="absolute top-0 right-0 px-3 sm:px-4 py-1 bg-red-500/10 text-red-400 font-mono text-[10px] uppercase font-bold border-b border-l border-red-500/20 rounded-bl-xl">FRAGILE STACK</div>
-							<h3 class="text-red-400 font-semibold text-lg sm:text-xl mb-4 sm:mb-6 flex items-center gap-2.5">
-								<span class="material-symbols-outlined text-xl sm:text-2xl">cancel</span> Without Prism
-							</h3>
-							<ul class="space-y-3.5 text-slate-300 font-mono text-xs sm:text-sm">
-								<li class="flex items-start gap-3">
-									<span class="text-red-400 font-bold mt-0.5 shrink-0">✕</span> Hardcoded API keys scattered across CLI tools, IDEs, and un-isolated `.env` files.
+						<div class="bg-card border border-red-500/30 rounded-none p-6 relative">
+							<div class="flex items-center justify-between mb-4 border-b border-border pb-3">
+								<h3 class="text-red-400 font-semibold text-sm sm:text-base flex items-center gap-2">
+									<XCircle className="h-4 w-4" /> Without Prism
+								</h3>
+								<span class="px-2 py-0.5 bg-red-500/10 text-red-400 font-mono text-[10px] uppercase font-bold border border-red-500/20">
+									Direct Upstream
+								</span>
+							</div>
+							<ul class="space-y-3 text-muted-foreground text-xs sm:text-sm">
+								<li class="flex items-start gap-2.5">
+									<span class="text-red-400 font-bold shrink-0">✕</span> API keys scattered across multiple local configuration files.
 								</li>
-								<li class="flex items-start gap-3">
-									<span class="text-red-400 font-bold mt-0.5 shrink-0">✕</span> 429 Rate Limit crashes force manual API key replacements during active development.
+								<li class="flex items-start gap-2.5">
+									<span class="text-red-400 font-bold shrink-0">✕</span> 429 Rate Limit errors interrupt workflows without automatic retry fallback.
 								</li>
-								<li class="flex items-start gap-3">
-									<span class="text-red-400 font-bold mt-0.5 shrink-0">✕</span> 50x provider outages stall AI agents with no automatic model failover rerouting.
+								<li class="flex items-start gap-2.5">
+									<span class="text-red-400 font-bold shrink-0">✕</span> Provider outages stall development with no automatic model failover.
 								</li>
-								<li class="flex items-start gap-3">
-									<span class="text-red-400 font-bold mt-0.5 shrink-0">✕</span> Double-billing on retries and zero token cost visibility before monthly invoice shocks.
+								<li class="flex items-start gap-2.5">
+									<span class="text-red-400 font-bold shrink-0">✕</span> Unmonitored token spend with no organization-level budget enforcement.
 								</li>
 							</ul>
 						</div>
 
 						<!-- With Prism -->
-						<div class="bg-[#0F1115] border border-[#8B5CF6]/40 rounded-2xl p-6 sm:p-8 shadow-[0_0_35px_rgba(139,92,246,0.1)] relative overflow-hidden">
-							<div class="absolute top-0 right-0 px-3 sm:px-4 py-1 bg-[#8B5CF6]/20 text-[#8B5CF6] font-mono text-[10px] uppercase font-bold border-b border-l border-[#8B5CF6]/30 rounded-bl-xl">ENTERPRISE CONTROL</div>
-							<div class="absolute inset-0 bg-gradient-to-br from-[#8B5CF6]/5 to-transparent pointer-events-none"></div>
-							<h3 class="text-[#8B5CF6] font-semibold text-lg sm:text-xl mb-4 sm:mb-6 flex items-center gap-2.5 relative z-10">
-								<span class="material-symbols-outlined text-xl sm:text-2xl">check_circle</span> With Prism v2.8.0
-							</h3>
-							<ul class="space-y-3.5 text-slate-300 font-mono text-xs sm:text-sm relative z-10">
-								<li class="flex items-start gap-3">
-									<span class="text-[#8B5CF6] font-bold mt-0.5 shrink-0">✓</span> Single Gateway API Key connects all client tools to PostgreSQL Row-Level Security isolation.
+						<div class="bg-card border border-primary/40 rounded-none p-6 relative">
+							<div class="flex items-center justify-between mb-4 border-b border-border pb-3">
+								<h3 class="text-primary font-semibold text-sm sm:text-base flex items-center gap-2">
+									<CheckCircle className="h-4 w-4" /> With Prism v0.3.0
+								</h3>
+								<span class="px-2 py-0.5 bg-primary/10 text-primary font-mono text-[10px] uppercase font-bold border border-primary/30">
+									Control Plane
+								</span>
+							</div>
+							<ul class="space-y-3 text-muted-foreground text-xs sm:text-sm">
+								<li class="flex items-start gap-2.5">
+									<span class="text-primary font-bold shrink-0">✓</span> Single Gateway API Key backed by PostgreSQL Row-Level Security isolation.
 								</li>
-								<li class="flex items-start gap-3">
-									<span class="text-[#8B5CF6] font-bold mt-0.5 shrink-0">✓</span> Smart Router (`prism-auto`) auto-routes prompts by complexity, quality, and cost budget.
+								<li class="flex items-start gap-2.5">
+									<span class="text-primary font-bold shrink-0">✓</span> Smart Router auto-routes prompts by complexity, model capability, and cost policy.
 								</li>
-								<li class="flex items-start gap-3">
-									<span class="text-[#8B5CF6] font-bold mt-0.5 shrink-0">✓</span> 3x 50x Circuit Breaker quarantine, 60s cooldown, and 401/403 non-retry classification.
+								<li class="flex items-start gap-2.5">
+									<span class="text-primary font-bold shrink-0">✓</span> Circuit breaker quarantine with 60s cooldown and $0.00 retry billing guarantee.
 								</li>
-								<li class="flex items-start gap-3">
-									<span class="text-[#8B5CF6] font-bold mt-0.5 shrink-0">✓</span> $0.00 retry billing guarantee, 5 correlation IDs (`execution_id`), and SHA-256 audit logs.
+								<li class="flex items-start gap-2.5">
+									<span class="text-primary font-bold shrink-0">✓</span> 5 standardized correlation IDs (`execution_id`) and SHA-256 tamper-proof audit trail.
 								</li>
 							</ul>
 						</div>
@@ -357,105 +393,173 @@ const pillars: Pillar[] = [
 				</div>
 			</section>
 
-			<!-- 11 Core Pillars Architecture Grid -->
-			<section id="pillars" class="w-full py-16 sm:py-24 px-4 sm:px-6 bg-[#0F1115] border-t border-[#1B1F27]">
-				<div class="max-w-7xl mx-auto">
-					<div class="text-center mb-12 sm:mb-16">
-						<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 font-mono text-xs text-[#8B5CF6] mb-3">
-							SYSTEM ARCHITECTURE
-						</div>
-						<h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">The 11 Pillars of Prism</h2>
-						<p class="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base">Comprehensive control plane built strictly according to enterprise gateway specifications.</p>
+			<!-- 11 Pillars of Prism (Varied Composition Layout) -->
+			<section id="pillars" class="w-full py-16 sm:py-20 px-4 sm:px-6 bg-card border-t border-border">
+				<div class="max-w-7xl mx-auto flex flex-col gap-10">
+					<div class="text-center">
+						<span class="font-mono text-xs text-primary uppercase tracking-wider font-semibold">Architecture</span>
+						<h2 class="text-2xl sm:text-3xl font-bold text-foreground mt-1 mb-2">The 11 Pillars of Prism</h2>
+						<p class="text-muted-foreground max-w-2xl mx-auto text-xs sm:text-sm">
+							Engineered control plane specifications for model routing, resilience, security, and governance.
+						</p>
 					</div>
 
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-						{pillars.map((pillar) => (
-							<div class="p-5 sm:p-6 border border-[#1B1F27] rounded-2xl bg-[#08090A] hover:border-[#8B5CF6]/50 transition-all duration-300 flex flex-col justify-between group hover:shadow-[0_0_25px_rgba(139,92,246,0.1)]">
-								<div>
-									<div class="flex items-center justify-between mb-4">
-										<div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 flex items-center justify-center group-hover:bg-[#8B5CF6] transition-colors">
-											<span class="material-symbols-outlined text-[#8B5CF6] group-hover:text-white text-xl sm:text-2xl transition-colors">{pillar.icon}</span>
+					<!-- Tier 1: Featured Primary Pillars (3 Prominent Cards) -->
+					<div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+						{primaryPillars.map((pillar) => {
+							const IconComponent = pillar.icon;
+							return (
+								<div class="p-5 sm:p-6 border border-border rounded-none bg-background flex flex-col justify-between hover:border-primary/50 transition-colors">
+									<div>
+										<div class="flex items-center justify-between mb-4">
+											<div class="w-10 h-10 rounded-none bg-[#7C3AED] text-white flex items-center justify-center">
+												<IconComponent className="h-5 w-5" />
+											</div>
+											<span class="font-mono text-xs text-muted-foreground font-bold">PILLAR 0{pillar.id}</span>
 										</div>
-										<span class="font-mono text-xs text-slate-400 font-bold">PILLAR {pillar.id < 10 ? `0${pillar.id}` : pillar.id}</span>
+										<h3 class="text-base font-bold text-foreground mb-1">{pillar.title}</h3>
+										<p class="font-mono text-xs text-primary mb-2.5">{pillar.tagline}</p>
+										<p class="text-muted-foreground text-xs leading-relaxed mb-4">{pillar.description}</p>
 									</div>
-									<h3 class="text-base sm:text-lg font-bold text-white mb-1">{pillar.title}</h3>
-									<p class="font-mono text-xs text-[#8B5CF6] mb-3">{pillar.tagline}</p>
-									<p class="text-slate-300 text-xs leading-relaxed mb-6">{pillar.description}</p>
-								</div>
 
-								<div class="pt-4 border-t border-[#1B1F27] flex flex-wrap gap-1.5">
-									{pillar.highlights.map((tag) => (
-										<span class="px-2 py-0.5 rounded bg-[#0F1115] border border-[#1B1F27] font-mono text-[10px] text-slate-300">
-											{tag}
-										</span>
-									))}
+									<div class="pt-3 border-t border-border flex flex-wrap gap-1.5">
+										{pillar.highlights.map((tag) => (
+											<span class="px-2 py-0.5 rounded-none bg-card border border-border font-mono text-[10px] text-muted-foreground">
+												{tag}
+											</span>
+										))}
+									</div>
 								</div>
-							</div>
-						))}
+							);
+						})}
+					</div>
+
+					<!-- Tier 2: Core System Pillars (2-Column Grid) -->
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+						{corePillars.map((pillar) => {
+							const IconComponent = pillar.icon;
+							return (
+								<div class="p-4 sm:p-5 border border-border rounded-none bg-background flex flex-col justify-between hover:border-primary/40 transition-colors">
+									<div>
+										<div class="flex items-center justify-between mb-3">
+											<div class="w-8 h-8 rounded-none bg-secondary text-primary flex items-center justify-center">
+												<IconComponent className="h-4 w-4" />
+											</div>
+											<span class="font-mono text-xs text-muted-foreground">0{pillar.id}</span>
+										</div>
+										<h4 class="text-sm font-bold text-foreground mb-0.5">{pillar.title}</h4>
+										<p class="font-mono text-[11px] text-primary mb-2">{pillar.tagline}</p>
+										<p class="text-muted-foreground text-xs leading-relaxed mb-3">{pillar.description}</p>
+									</div>
+
+									<div class="pt-2.5 border-t border-border flex flex-wrap gap-1">
+										{pillar.highlights.map((tag) => (
+											<span class="px-1.5 py-0.5 rounded-none bg-card border border-border font-mono text-[10px] text-muted-foreground">
+												{tag}
+											</span>
+										))}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+
+					<!-- Tier 3: Protocol & Extensibility Pillars (3 Compact Cards) -->
+					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+						{protocolPillars.map((pillar) => {
+							const IconComponent = pillar.icon;
+							return (
+								<div class="p-4 border border-border rounded-none bg-background flex flex-col justify-between hover:border-primary/40 transition-colors">
+									<div>
+										<div class="flex items-center justify-between mb-2">
+											<div class="w-7 h-7 rounded-none bg-secondary text-primary flex items-center justify-center">
+												<IconComponent className="h-3.5 w-3.5" />
+											</div>
+											<span class="font-mono text-xs text-muted-foreground">{pillar.id < 10 ? `0${pillar.id}` : pillar.id}</span>
+										</div>
+										<h4 class="text-xs font-bold text-foreground mb-0.5">{pillar.title}</h4>
+										<p class="text-muted-foreground text-[11px] leading-relaxed mb-3">{pillar.description}</p>
+									</div>
+
+									<div class="pt-2 border-t border-border flex flex-wrap gap-1">
+										{pillar.highlights.map((tag) => (
+											<span class="px-1.5 py-0.5 rounded-none bg-card border border-border font-mono text-[10px] text-muted-foreground">
+												{tag}
+											</span>
+										))}
+									</div>
+								</div>
+							);
+						})}
 					</div>
 				</div>
 			</section>
 
-			<!-- Integration Code Showcase -->
-			<section id="integration" class="w-full py-16 sm:py-24 px-4 sm:px-6 bg-[#08090A] border-t border-[#1B1F27]">
-				<div class="max-w-5xl mx-auto flex flex-col gap-8 sm:gap-10">
+			<!-- Integration Showcase -->
+			<section id="integration" class="w-full py-16 sm:py-20 px-4 sm:px-6 bg-background border-t border-border">
+				<div class="max-w-4xl mx-auto flex flex-col gap-6 sm:gap-8">
 					<div class="text-center">
-						<h2 class="text-2xl sm:text-3xl font-bold text-white mb-3 sm:mb-4">1-Minute Client Setup</h2>
-						<p class="text-slate-300 max-w-xl mx-auto text-sm sm:text-base">Point any AI coding tool or SDK to your Prism Gateway Endpoint.</p>
+						<span class="font-mono text-xs text-primary uppercase tracking-wider font-semibold">Setup</span>
+						<h2 class="text-2xl sm:text-3xl font-bold text-foreground mt-1 mb-2">Client Configuration</h2>
+						<p class="text-muted-foreground max-w-xl mx-auto text-xs sm:text-sm">
+							Configure any OpenAI-compatible client or coding agent with your Prism Gateway Endpoint.
+						</p>
 					</div>
 
-					<div class="rounded-2xl border border-[#1B1F27] bg-[#0F1115] p-4 sm:p-6 shadow-2xl">
-						<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-[#1B1F27] pb-4 mb-4 gap-3">
-							<div class="flex flex-wrap items-center gap-2 font-mono text-xs">
-								<span class="px-3 py-1 rounded-lg bg-[#8B5CF6] text-white font-bold">OpenCode CLI</span>
-								<span class="px-3 py-1 rounded-lg bg-[#08090A] text-slate-300 border border-[#1B1F27]">cURL / Python</span>
-								<span class="px-3 py-1 rounded-lg bg-[#08090A] text-slate-300 border border-[#1B1F27]">Node.js SDK</span>
+					<div class="rounded-none border border-border bg-card p-4 sm:p-6">
+						<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border pb-3 mb-4 gap-2">
+							<div class="flex flex-wrap items-center gap-1.5 font-mono text-xs">
+								<span class="px-2.5 py-1 bg-primary text-primary-foreground font-semibold">OpenCode CLI</span>
+								<span class="px-2.5 py-1 bg-background text-muted-foreground border border-border">cURL / Python</span>
+								<span class="px-2.5 py-1 bg-background text-muted-foreground border border-border">Node.js SDK</span>
 							</div>
 							<span class="font-mono text-xs text-emerald-400 flex items-center gap-1.5 shrink-0">
-								<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Endpoint (https://api.prism.roozylabs.com)
+								<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Live Endpoint (api.prism.roozylabs.com)
 							</span>
 						</div>
 
 						<div class="overflow-x-auto">
-							<pre class="font-mono text-xs text-slate-200 leading-relaxed min-w-[320px]"><code><span class="text-slate-500">// ~/.config/opencode/opencode.jsonc</span>
-<span class="text-purple-400">{</span>
+							<pre class="font-mono text-xs text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-slate-500">// ~/.config/opencode/opencode.jsonc</span>
+<span class="text-purple-400">&#123;</span>
   <span class="text-cyan-400">"provider"</span>: <span class="text-emerald-400">"prism"</span>,
   <span class="text-cyan-400">"api_url"</span>: <span class="text-emerald-400">"https://api.prism.roozylabs.com"</span>,
-  <span class="text-cyan-400">"api_key"</span>: <span class="text-emerald-400">"gw_sk_f964aef205157f39cec3a879cee31a07..."</span>,
+  <span class="text-cyan-400">"api_key"</span>: <span class="text-emerald-400">"gw_sk_live_85061cbfc18e4ca58e0e..."</span>,
   <span class="text-cyan-400">"model"</span>: <span class="text-purple-400">"prism-auto"</span>,
-  <span class="text-cyan-400">"extra_headers"</span>: <span class="text-purple-400">{</span>
+  <span class="text-cyan-400">"extra_headers"</span>: <span class="text-purple-400">&#123;</span>
     <span class="text-cyan-400">"X-Request-ID"</span>: <span class="text-emerald-400">"req_uuid_v4"</span>,
     <span class="text-cyan-400">"X-Prism-Agent-ID"</span>: <span class="text-emerald-400">"opencode-cli-agent"</span>
-  <span class="text-purple-400">}</span>
-<span class="text-purple-400">}</span></code></pre>
+  <span class="text-purple-400">&#125;</span>
+<span class="text-purple-400">&#125;</span></code></pre>
 						</div>
 					</div>
 				</div>
 			</section>
 
-			<!-- Final High-Impact CTA -->
-			<section class="w-full py-24 sm:py-32 px-4 sm:px-6 relative overflow-hidden bg-[#08090A] border-t border-[#1B1F27]">
-				<div class="absolute inset-0 bg-[#8B5CF6]/5 pointer-events-none"></div>
-				<div class="max-w-4xl mx-auto text-center relative z-10 flex flex-col items-center">
-					<div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#8B5CF6] via-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-2xl sm:text-3xl mb-6 sm:mb-8 shadow-2xl shadow-[#8B5CF6]/30">
-						💎
+			<!-- Final Call to Action -->
+			<section class="w-full py-16 sm:py-24 px-4 sm:px-6 bg-card border-t border-border">
+				<div class="max-w-3xl mx-auto text-center flex flex-col items-center">
+					<div class="w-12 h-12 rounded-none bg-[#7C3AED] text-white flex items-center justify-center mb-5 border border-violet-400/30">
+						<Shield className="h-6 w-6" />
 					</div>
-					<h2 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 sm:mb-6 px-2">Ready to Unify Your AI Infrastructure?</h2>
-					<p class="text-slate-300 text-base sm:text-lg mb-8 sm:mb-10 max-w-2xl leading-relaxed px-2">Join engineering teams and AI developers building reliable, sub-2ms, cost-controlled, and RLS governance-backed AI applications.</p>
+					<h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3">Try Prism</h2>
+					<p class="text-muted-foreground text-xs sm:text-sm mb-6 max-w-xl leading-relaxed">
+						Unify AI provider adapters, deterministic smart routing, and multi-tenant security in one control plane.
+					</p>
 					
-					<div class="flex flex-col sm:flex-row gap-3.5 sm:gap-4 w-full sm:w-auto px-4 sm:px-0">
+					<div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
 						<a 
 							href="https://app.prism.roozylabs.com/login" 
-							class="h-12 px-8 bg-[#8B5CF6] text-white font-mono text-xs font-bold rounded-xl hover:bg-[#7C3AED] transition-all shadow-xl shadow-[#8B5CF6]/30 flex items-center justify-center gap-2"
+							class="h-10 px-6 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-[0_0_20px_rgba(139,92,246,0.25)] flex items-center justify-center"
 						>
-							LAUNCH CONSOLE NOW <span class="material-symbols-outlined text-sm">arrow_forward</span>
+							Open Console
 						</a>
 						<a 
 							href="https://docs.prism.roozylabs.com" 
-							target="_blank"
-							class="h-12 px-8 bg-[#0F1115] text-slate-200 font-mono text-xs font-semibold rounded-xl border border-[#1B1F27] hover:bg-[#181C23] hover:border-[#8B5CF6]/40 transition-all flex items-center justify-center gap-2"
+							target="_blank" 
+							rel="noopener noreferrer"
+							class="h-10 px-6 bg-background text-foreground font-mono text-xs font-semibold rounded-none border border-border hover:bg-secondary transition-colors flex items-center justify-center gap-2"
 						>
-							<span class="material-symbols-outlined text-sm">menu_book</span> READ DOCUMENTATION
+							<BookOpen className="h-4 w-4" /> Read the Docs
 						</a>
 					</div>
 				</div>
@@ -464,79 +568,86 @@ const pillars: Pillar[] = [
 	</main>
 
 	<!-- Footer -->
-	<footer class="w-full bg-[#08090A] border-t border-[#1B1F27] py-10 sm:py-12">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 sm:gap-10">
-			<div class="sm:col-span-2">
-				<div class="flex items-center gap-2.5 mb-4">
-					<div class="w-6 h-6 rounded bg-[#8B5CF6] flex items-center justify-center font-bold text-white text-xs">💎</div>
-					<span class="font-bold text-slate-200 text-base">Prism</span>
+	<footer class="w-full bg-background border-t border-border py-10 sm:py-12">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+			<div class="sm:col-span-1">
+				<div class="flex items-center gap-2.5 mb-3">
+					<div class="w-6 h-6 rounded-none bg-[#7C3AED] text-white flex items-center justify-center">
+						<Shield className="h-3.5 w-3.5" />
+					</div>
+					<span class="font-bold text-foreground text-sm font-mono">RoozyLabs Prism</span>
 				</div>
-				<p class="text-slate-300 text-xs max-w-xs leading-relaxed mb-4">The Universal AI Control Plane and model gateway for modern engineering teams and autonomous agents.</p>
-				<div class="flex flex-wrap items-center gap-3 text-xs text-slate-400 font-mono">
-					<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Status: Operational</span>
-					<span>•</span>
-					<span>Go 1.25 Engine</span>
-					<span>•</span>
-					<span>v2.8.0</span>
+				<p class="text-muted-foreground text-xs max-w-xs leading-relaxed mb-4">
+					Universal AI Control Plane and model gateway for engineering teams and autonomous agents.
+				</p>
+				<div class="flex flex-col gap-1 text-[11px] text-muted-foreground font-mono">
+					<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Status: Operational</span>
+					<span>Go 1.25 Engine • v0.3.0</span>
+					<span>AES-256-GCM Credential Encryption</span>
 				</div>
 			</div>
 
 			<div>
-				<h4 class="font-mono text-xs text-white mb-4 uppercase tracking-widest font-semibold">11 Pillars</h4>
-				<ul class="space-y-2 text-xs text-slate-300">
-					<li><a href="#pillars" class="hover:text-[#8B5CF6] transition-colors">Universal Gateway</a></li>
-					<li><a href="#pillars" class="hover:text-[#8B5CF6] transition-colors">Smart Router (prism-auto)</a></li>
-					<li><a href="#pillars" class="hover:text-[#8B5CF6] transition-colors">Failure Resilience</a></li>
-					<li><a href="#pillars" class="hover:text-[#8B5CF6] transition-colors">Multi-Tenant RLS</a></li>
-					<li><a href="#pillars" class="hover:text-[#8B5CF6] transition-colors">MCP Protocol Gateway</a></li>
+				<h4 class="font-mono text-xs text-foreground mb-3 uppercase tracking-wider font-semibold">Architecture</h4>
+				<ul class="space-y-2 text-xs text-muted-foreground">
+					<li><a href="#pillars" class="hover:text-foreground transition-colors">Universal Gateway</a></li>
+					<li><a href="#pillars" class="hover:text-foreground transition-colors">Smart Router (prism-auto)</a></li>
+					<li><a href="#pillars" class="hover:text-foreground transition-colors">Failure Resilience</a></li>
+					<li><a href="#pillars" class="hover:text-foreground transition-colors">Multi-Tenant RLS</a></li>
+					<li><a href="#pillars" class="hover:text-foreground transition-colors">MCP Protocol Gateway</a></li>
 				</ul>
 			</div>
 
 			<div>
-				<h4 class="font-mono text-xs text-white mb-4 uppercase tracking-widest font-semibold">Resources</h4>
-				<ul class="space-y-2 text-xs text-slate-300">
-					<li><a href="https://docs.prism.roozylabs.com" target="_blank" class="hover:text-[#8B5CF6] transition-colors">Documentation</a></li>
-					<li><a href="https://api.prism.roozylabs.com/health" target="_blank" class="hover:text-[#8B5CF6] transition-colors">API Liveness (/health)</a></li>
-					<li><a href="https://api.prism.roozylabs.com/ready" target="_blank" class="hover:text-[#8B5CF6] transition-colors">API Readiness (/ready)</a></li>
-					<li><a href="https://app.prism.roozylabs.com/login" class="hover:text-[#8B5CF6] transition-colors">Admin Console</a></li>
+				<h4 class="font-mono text-xs text-foreground mb-3 uppercase tracking-wider font-semibold">Resources</h4>
+				<ul class="space-y-2 text-xs text-muted-foreground">
+					<li><a href="https://docs.prism.roozylabs.com" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Documentation</a></li>
+					<li><a href="https://api.prism.roozylabs.com/health" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">API Liveness (/health)</a></li>
+					<li><a href="https://api.prism.roozylabs.com/ready" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">API Readiness (/ready)</a></li>
+					<li><a href="https://app.prism.roozylabs.com/login" class="hover:text-foreground transition-colors">Admin Console</a></li>
 				</ul>
 			</div>
 
 			<div>
-				<h4 class="font-mono text-xs text-white mb-4 uppercase tracking-widest font-semibold">Community</h4>
-				<ul class="space-y-2 text-xs text-slate-300">
-					<li><a href="https://github.com/roozylabs/prism" target="_blank" class="hover:text-[#8B5CF6] transition-colors">GitHub Repository</a></li>
-					<li><a href="https://github.com/roozylabs/prism/issues" target="_blank" class="hover:text-[#8B5CF6] transition-colors">Report Issue</a></li>
-					<li><a href="https://github.com/roozylabs/prism/releases" target="_blank" class="hover:text-[#8B5CF6] transition-colors">Release Notes</a></li>
+				<h4 class="font-mono text-xs text-foreground mb-3 uppercase tracking-wider font-semibold">Community</h4>
+				<ul class="space-y-2 text-xs text-muted-foreground">
+					<li><a href="https://github.com/roozylabs/prism" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">GitHub Repository</a></li>
+					<li><a href="https://github.com/roozylabs/prism/issues" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Report Issue</a></li>
+					<li><a href="https://github.com/roozylabs/prism/releases" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Release Notes</a></li>
 				</ul>
 			</div>
 		</div>
 
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 mt-10 sm:mt-12 pt-6 border-t border-[#1B1F27] flex flex-col md:flex-row items-center justify-between text-center md:text-left text-slate-400 font-mono text-xs gap-4">
-			<div>&copy; 2026 RoozyLabs. All rights reserved. Built with Prism Design System.</div>
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 mt-8 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between text-center md:text-left text-muted-foreground font-mono text-[11px] gap-3">
+			<div>&copy; 2026 RoozyLabs Prism. All rights reserved.</div>
 			<div class="flex flex-wrap justify-center items-center gap-4">
-				<a href="https://prism.roozylabs.com" class="hover:text-white transition-colors">prism.roozylabs.com</a>
-				<a href="https://app.prism.roozylabs.com" class="hover:text-white transition-colors">app.prism.roozylabs.com</a>
-				<a href="https://api.prism.roozylabs.com" class="hover:text-white transition-colors">api.prism.roozylabs.com</a>
+				<a href="https://prism.roozylabs.com" class="hover:text-foreground transition-colors">prism.roozylabs.com</a>
+				<a href="https://app.prism.roozylabs.com" class="hover:text-foreground transition-colors">app.prism.roozylabs.com</a>
+				<a href="https://api.prism.roozylabs.com" class="hover:text-foreground transition-colors">api.prism.roozylabs.com</a>
 			</div>
 		</div>
 	</footer>
 
-	<!-- Client-side Script for Mobile Navigation Drawer -->
+	<!-- Client-side Script for Accessible Mobile Navigation Drawer -->
 	<script>
 		const menuBtn = document.getElementById('mobile-menu-btn');
 		const mobileMenu = document.getElementById('mobile-menu');
-		const menuIcon = document.getElementById('menu-icon');
+		const menuIconOpen = document.getElementById('menu-icon-open');
+		const menuIconClose = document.getElementById('menu-icon-close');
 
-		if (menuBtn && mobileMenu && menuIcon) {
+		if (menuBtn && mobileMenu && menuIconOpen && menuIconClose) {
 			menuBtn.addEventListener('click', () => {
 				const isHidden = mobileMenu.classList.contains('hidden');
 				if (isHidden) {
 					mobileMenu.classList.remove('hidden');
-					menuIcon.textContent = 'close';
+					menuIconOpen.classList.add('hidden');
+					menuIconClose.classList.remove('hidden');
+					menuBtn.setAttribute('aria-expanded', 'true');
 				} else {
 					mobileMenu.classList.add('hidden');
-					menuIcon.textContent = 'menu';
+					menuIconOpen.classList.remove('hidden');
+					menuIconClose.classList.add('hidden');
+					menuBtn.setAttribute('aria-expanded', 'false');
 				}
 			});
 
@@ -545,7 +656,9 @@ const pillars: Pillar[] = [
 			links.forEach((link) => {
 				link.addEventListener('click', () => {
 					mobileMenu.classList.add('hidden');
-					menuIcon.textContent = 'menu';
+					menuIconOpen.classList.remove('hidden');
+					menuIconClose.classList.add('hidden');
+					menuBtn.setAttribute('aria-expanded', 'false');
 				});
 			});
 		}
