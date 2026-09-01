@@ -154,11 +154,14 @@ func (h *CredentialHandler) Get(c *gin.Context) {
 func (h *CredentialHandler) Create(c *gin.Context) {
 	providerID := c.Param("id")
 	userID := c.GetString("userId")
+	if userID == "" {
+		userID = c.GetString("user_id")
+	}
 
 	if h.providers != nil && userID != "" && userID != "user_admin" {
 		prov, err := h.providers.FindByID(c.Request.Context(), providerID)
-		if err != nil || (prov.UserID != userID && prov.UserID != "user_admin" && prov.UserID != "") {
-			c.JSON(http.StatusForbidden, gin.H{"error": "cannot attach credentials to a provider you do not own"})
+		if err != nil || (!prov.Enabled || (prov.UserID != userID && prov.UserID != "user_admin" && prov.UserID != "" && prov.UserID != "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "cannot attach credentials to a provider you do not own or is disabled"})
 			return
 		}
 	}
@@ -230,8 +233,20 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 		}
 	}
 
+	var uidPtr *string
+	if userID != "" {
+		uidPtr = &userID
+	}
+	orgID := c.GetString("organization_id")
+	var orgPtr *string
+	if orgID != "" {
+		orgPtr = &orgID
+	}
+
 	cred := &models.Credential{
 		ProviderID:        providerID,
+		UserID:            uidPtr,
+		OrgID:             orgPtr,
 		Name:              req.Name,
 		EncryptedKey:      encrypted,
 		KeyPrefix:         keyPrefix,

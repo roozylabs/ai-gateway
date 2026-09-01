@@ -193,7 +193,12 @@ func (r *Router) ResolveWithFallback(ctx context.Context, modelSlug string, gate
 
 	strategy := r.resolveStrategy(provider)
 
-	allCreds, err := r.selectByStrategy(ctx, provider.ID, strategy, cooldown)
+	var userOrOrgID string
+	if gatewayKey != nil {
+		userOrOrgID = gatewayKey.UserID
+	}
+
+	allCreds, err := r.selectByStrategy(ctx, provider.ID, strategy, cooldown, userOrOrgID)
 	if err != nil {
 		return nil, fmt.Errorf("select credentials: %w", err)
 	}
@@ -236,7 +241,7 @@ func (r *Router) resolveStrategy(provider *models.Provider) string {
 	return "round_robin"
 }
 
-func (r *Router) selectByStrategy(ctx context.Context, providerID, strategy string, cooldown *goredis.CooldownStore) ([]models.Credential, error) {
+func (r *Router) selectByStrategy(ctx context.Context, providerID, strategy string, cooldown *goredis.CooldownStore, userOrOrgID ...string) ([]models.Credential, error) {
 	var coolingIDs []string
 	if cooldown != nil {
 		coolingIDs, _ = cooldown.GetCoolingIDs(ctx)
@@ -246,11 +251,11 @@ func (r *Router) selectByStrategy(ctx context.Context, providerID, strategy stri
 	var err error
 	switch strategy {
 	case "lru":
-		rawCreds, err = r.creds.FindLRU(ctx, providerID, coolingIDs)
+		rawCreds, err = r.creds.FindLRU(ctx, providerID, coolingIDs, userOrOrgID...)
 	case "fallback_cascade":
-		rawCreds, err = r.creds.FindAllActiveByProviderID(ctx, providerID, coolingIDs)
+		rawCreds, err = r.creds.FindAllActiveByProviderID(ctx, providerID, coolingIDs, userOrOrgID...)
 	default:
-		rawCreds, err = r.creds.FindRoundRobin(ctx, providerID, coolingIDs)
+		rawCreds, err = r.creds.FindRoundRobin(ctx, providerID, coolingIDs, userOrOrgID...)
 	}
 	if err != nil {
 		return nil, err
@@ -310,7 +315,7 @@ func (r *Router) getCachedStrategy(state *requestState, prov *models.Provider) s
 	return strategy
 }
 
-func (r *Router) getCachedCredentials(ctx context.Context, state *requestState, providerID, strategy string) ([]models.Credential, error) {
+func (r *Router) getCachedCredentials(ctx context.Context, state *requestState, providerID, strategy string, userOrOrgID ...string) ([]models.Credential, error) {
 	if creds, ok := state.credSets[providerID]; ok {
 		return creds, nil
 	}
@@ -318,11 +323,11 @@ func (r *Router) getCachedCredentials(ctx context.Context, state *requestState, 
 	var err error
 	switch strategy {
 	case "lru":
-		creds, err = r.creds.FindLRU(ctx, providerID, state.coolingIDs)
+		creds, err = r.creds.FindLRU(ctx, providerID, state.coolingIDs, userOrOrgID...)
 	case "fallback_cascade":
-		creds, err = r.creds.FindAllActiveByProviderID(ctx, providerID, state.coolingIDs)
+		creds, err = r.creds.FindAllActiveByProviderID(ctx, providerID, state.coolingIDs, userOrOrgID...)
 	default:
-		creds, err = r.creds.FindRoundRobin(ctx, providerID, state.coolingIDs)
+		creds, err = r.creds.FindRoundRobin(ctx, providerID, state.coolingIDs, userOrOrgID...)
 	}
 	if err != nil {
 		return nil, err
@@ -347,6 +352,11 @@ func (r *Router) ResolveSemantic(
 		return nil, nil, ErrModelNotFound
 	}
 
+	var userOrOrgID string
+	if gatewayKey != nil {
+		userOrOrgID = gatewayKey.UserID
+	}
+
 	chars := ClassifyRequest(req.Messages)
 
 	// Extract prompt preview snippet (last user prompt or last message content)
@@ -358,8 +368,8 @@ func (r *Router) ResolveSemantic(
 		return nil, nil, fmt.Errorf("list enabled models: %w", err)
 	}
 
-	// Fetch active provider IDs with enabled credentials
-	activeProviderIDs, _ := r.creds.ListActiveProviderIDs(ctx)
+	// Fetch active provider IDs with enabled credentials for this specific tenant
+	activeProviderIDs, _ := r.creds.ListActiveProviderIDs(ctx, userOrOrgID)
 
 	// Filter by active credentials, gateway key allowed models & provider restriction
 	var candidates []*models.Model
@@ -368,6 +378,9 @@ func (r *Router) ResolveSemantic(
 			if !activeProviderIDs[m.ProviderID] {
 				continue
 			}
+		} else {
+			// If tenant has no active credentials, cannot route to any model
+			continue
 		}
 		if gatewayKey != nil && gatewayKey.ProviderID != nil && *gatewayKey.ProviderID != "" {
 			if m.ProviderID != *gatewayKey.ProviderID {
@@ -456,7 +469,7 @@ func (r *Router) ResolveSemantic(
 		}
 
 		strategy := r.getCachedStrategy(state, prov)
-		allCreds, err := r.getCachedCredentials(ctx, state, prov.ID, strategy)
+		allCreds, err := r.getCachedCredentials(ctx, state, prov.ID, strategy, userOrOrgID)
 		if err != nil || len(allCreds) == 0 {
 			continue
 		}
