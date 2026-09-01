@@ -83,6 +83,53 @@ func (r *ToolRepository) Create(ctx context.Context, t *models.Tool) error {
 	return err
 }
 
+func (r *ToolRepository) CreateWithBackendsTx(ctx context.Context, t *models.Tool, backends []models.ToolBackend) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if t.ID == "" {
+		t.ID = uuid.New().String()
+	}
+	now := time.Now()
+	t.CreatedAt = now
+	t.UpdatedAt = now
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO tools (id, user_id, name, display_name, description, input_schema, enabled, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		t.ID, t.UserID, t.Name, t.DisplayName, t.Description, []byte(t.InputSchema), t.Enabled, t.CreatedAt, t.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	for i := range backends {
+		b := &backends[i]
+		if b.ID == "" {
+			b.ID = uuid.New().String()
+		}
+		b.ToolID = t.ID
+		b.CreatedAt = now
+		b.UpdatedAt = now
+		if b.BackendType == "" {
+			b.BackendType = "http"
+		}
+		if b.TimeoutMs == 0 {
+			b.TimeoutMs = 10000
+		}
+		_, err = tx.ExecContext(ctx,
+			`INSERT INTO tool_backends (id, tool_id, name, backend_type, endpoint_url, auth_token_encrypted, auth_header_name, auth_header_prefix, timeout_ms, priority, enabled, created_at, updated_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+			b.ID, b.ToolID, b.Name, b.BackendType, b.EndpointURL, b.AuthTokenEncrypted, b.AuthHeaderName, b.AuthHeaderPrefix, b.TimeoutMs, b.Priority, b.Enabled, b.CreatedAt, b.UpdatedAt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (r *ToolRepository) Update(ctx context.Context, t *models.Tool) error {
 	t.UpdatedAt = time.Now()
 	_, err := r.db.ExecContext(ctx,

@@ -90,16 +90,37 @@ func (h *ToolHandler) Create(c *gin.Context) {
 		InputSchema: schema,
 		Enabled:     enabled,
 	}
-	if err := h.tools.Create(c.Request.Context(), tool); err != nil {
-		httputil.RespondInternalError(c, "Failed to create tool", err, "TOOL_CREATE_FAILED")
-		return
+
+	var backends []models.ToolBackend
+	for _, br := range req.Backends {
+		b := models.ToolBackend{
+			Name:        br.Name,
+			BackendType: "http",
+			EndpointURL: br.EndpointURL,
+			TimeoutMs:   br.TimeoutMs,
+			Priority:    br.Priority,
+			Enabled:     true,
+		}
+		if b.TimeoutMs <= 0 {
+			b.TimeoutMs = 30000
+		}
+		if b.Priority <= 0 {
+			b.Priority = 1
+		}
+		if br.AuthToken != "" && h.encKey != "" {
+			enc, err := utils.EncryptAES256GCM(br.AuthToken, h.encKey)
+			if err != nil {
+				httputil.RespondInternalError(c, "Failed to encrypt auth token for backend: "+br.Name, err, "ENCRYPTION_FAILED")
+				return
+			}
+			b.AuthTokenEncrypted = &enc
+		}
+		backends = append(backends, b)
 	}
 
-	for _, br := range req.Backends {
-		if err := h.createBackend(c.Request.Context(), tool.ID, br); err != nil {
-			httputil.RespondInternalError(c, "Tool created but backend failed: "+br.Name, err, "TOOL_BACKEND_FAILED")
-			return
-		}
+	if err := h.tools.CreateWithBackendsTx(c.Request.Context(), tool, backends); err != nil {
+		httputil.RespondInternalError(c, "Failed to create tool and backends atomically", err, "TOOL_CREATE_FAILED")
+		return
 	}
 
 	twb, _ := h.tools.GetToolWithBackendsByID(c.Request.Context(), tool.ID, userID)
