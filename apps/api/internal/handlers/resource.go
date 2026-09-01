@@ -115,16 +115,54 @@ func (h *ResourceHandler) Create(c *gin.Context) {
 		ParametersSchema: schema,
 		Enabled:          enabled,
 	}
-	if err := h.resources.Create(c.Request.Context(), res); err != nil {
-		httputil.RespondInternalError(c, "Failed to create resource", err, "RESOURCE_CREATE_FAILED")
-		return
+
+	var backends []models.ResourceBackend
+	for _, br := range req.Backends {
+		b := models.ResourceBackend{
+			Name:             br.Name,
+			BackendType:      br.BackendType,
+			EndpointURL:      br.EndpointURL,
+			HTTPMethod:       br.HTTPMethod,
+			QueryTemplate:    br.QueryTemplate,
+			SQLQuery:         br.SQLQuery,
+			ParamNames:       br.ParamNames,
+			TimeoutMs:        br.TimeoutMs,
+			Priority:         br.Priority,
+			Enabled:          true,
+			AuthHeaderName:   "Authorization",
+			AuthHeaderPrefix: "Bearer ",
+		}
+		if b.TimeoutMs <= 0 {
+			b.TimeoutMs = 30000
+		}
+		if b.Priority <= 0 {
+			b.Priority = 1
+		}
+		if b.HTTPMethod == "" {
+			b.HTTPMethod = "POST"
+		}
+		if br.AuthToken != "" && h.encKey != "" {
+			enc, err := utils.EncryptAES256GCM(br.AuthToken, h.encKey)
+			if err != nil {
+				httputil.RespondInternalError(c, "Failed to encrypt auth token for backend: "+br.Name, err, "ENCRYPTION_FAILED")
+				return
+			}
+			b.AuthTokenEncrypted = &enc
+		}
+		if br.ConnectionString != nil && *br.ConnectionString != "" && h.encKey != "" {
+			enc, err := utils.EncryptAES256GCM(*br.ConnectionString, h.encKey)
+			if err != nil {
+				httputil.RespondInternalError(c, "Failed to encrypt connection string for backend: "+br.Name, err, "ENCRYPTION_FAILED")
+				return
+			}
+			b.ConnectionStringEncrypted = &enc
+		}
+		backends = append(backends, b)
 	}
 
-	for _, br := range req.Backends {
-		if err := h.createBackend(c.Request.Context(), res.ID, br); err != nil {
-			httputil.RespondInternalError(c, "Resource created but backend failed: "+br.Name, err, "RESOURCE_BACKEND_FAILED")
-			return
-		}
+	if err := h.resources.CreateWithBackendsTx(c.Request.Context(), res, backends); err != nil {
+		httputil.RespondInternalError(c, "Failed to create resource and backends atomically", err, "RESOURCE_CREATE_FAILED")
+		return
 	}
 
 	rwb, _ := h.resources.GetResourceWithBackendsByID(c.Request.Context(), res.ID, orgID)

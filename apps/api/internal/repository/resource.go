@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/roozylabs/prism/internal/models"
 )
 
@@ -152,6 +153,55 @@ func (r *ResourceRepository) Create(ctx context.Context, res *models.Resource) e
 		 VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), $4, $5, $6, $7, $8, $9, $10, $11)`,
 		res.ID, res.OrgID, res.WorkspaceID, res.UserID, res.Name, res.DisplayName, res.Description, []byte(res.ParametersSchema), res.Enabled, res.CreatedAt, res.UpdatedAt)
 	return err
+}
+
+func (r *ResourceRepository) CreateWithBackendsTx(ctx context.Context, res *models.Resource, backends []models.ResourceBackend) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if res.ID == "" {
+		res.ID = uuid.New().String()
+	}
+	now := time.Now()
+	res.CreatedAt = now
+	res.UpdatedAt = now
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO resources (id, org_id, workspace_id, user_id, name, display_name, description, parameters_schema, enabled, created_at, updated_at)
+		 VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), $4, $5, $6, $7, $8, $9, $10, $11)`,
+		res.ID, res.OrgID, res.WorkspaceID, res.UserID, res.Name, res.DisplayName, res.Description, []byte(res.ParametersSchema), res.Enabled, res.CreatedAt, res.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	for i := range backends {
+		b := &backends[i]
+		if b.ID == "" {
+			b.ID = uuid.New().String()
+		}
+		b.ResourceID = res.ID
+		b.CreatedAt = now
+		b.UpdatedAt = now
+		if b.BackendType == "" {
+			b.BackendType = "rest"
+		}
+		if b.TimeoutMs == 0 {
+			b.TimeoutMs = 10000
+		}
+		_, err = tx.ExecContext(ctx,
+			`INSERT INTO resource_backends (id, resource_id, name, backend_type, endpoint_url, http_method, auth_token_encrypted, auth_header_name, auth_header_prefix, query_template, connection_string_encrypted, sql_query, param_names, timeout_ms, priority, enabled, created_at, updated_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+			b.ID, b.ResourceID, b.Name, b.BackendType, b.EndpointURL, b.HTTPMethod, b.AuthTokenEncrypted,
+			b.AuthHeaderName, b.AuthHeaderPrefix, b.QueryTemplate, b.ConnectionStringEncrypted,
+			b.SQLQuery, pq.Array(b.ParamNames), b.TimeoutMs, b.Priority, b.Enabled, b.CreatedAt, b.UpdatedAt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (r *ResourceRepository) Update(ctx context.Context, res *models.Resource) error {
