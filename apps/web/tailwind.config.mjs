@@ -4,6 +4,10 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
@@ -45,6 +49,18 @@ export default {
       },
       borderRadius: {
         none: '0px',
+        sm: '4px',
+        DEFAULT: '6px',
+        md: '8px',
+        lg: '12px',
+        xl: '16px',
+        '2xl': '20px',
+      },
+      boxShadow: {
+        'glow-subtle': '0 0 25px -5px rgba(139, 92, 246, 0.15)',
+        'glow-primary': '0 0 30px -5px rgba(139, 92, 246, 0.35)',
+        'card-depth': '0 4px 20px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
+        'terminal-depth': '0 8px 32px -4px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.08)',
       },
     },
   },
