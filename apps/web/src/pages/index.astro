@@ -1,7 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { 
-	Shield, Route, ShieldCheck, Lock, Activity, Code,
+	Shield, Route, ShieldCheck, Lock, Activity,
 	Menu, X, Github, BookOpen, Copy, ExternalLink, ArrowRight,
 	SlidersHorizontal, CheckCircle2, Sun, Moon
 } from 'lucide-react';
@@ -49,7 +49,7 @@ const pricingPlans: PricingPlan[] = [
 			'Community GitHub Support',
 		],
 		buttonText: 'Get Started Free',
-		buttonHref: 'https://app.prism.roozylabs.com/login',
+		buttonHref: 'https://app.prism.roozylabs.com/signin',
 	},
 	{
 		name: 'Pro',
@@ -68,7 +68,7 @@ const pricingPlans: PricingPlan[] = [
 			'Standard Email Support',
 		],
 		buttonText: 'Start Pro Plan',
-		buttonHref: 'https://app.prism.roozylabs.com/login',
+		buttonHref: 'https://app.prism.roozylabs.com/signin',
 	},
 	{
 		name: 'Team',
@@ -85,7 +85,7 @@ const pricingPlans: PricingPlan[] = [
 			'Priority Engineering Support',
 		],
 		buttonText: 'Start Team Trial',
-		buttonHref: 'https://app.prism.roozylabs.com/login',
+		buttonHref: 'https://app.prism.roozylabs.com/signin',
 	},
 	{
 		name: 'Enterprise',
@@ -102,7 +102,7 @@ const pricingPlans: PricingPlan[] = [
 			'24/7 Dedicated Support Channel',
 		],
 		buttonText: 'Contact Sales',
-		buttonHref: 'https://app.prism.roozylabs.com/login',
+		buttonHref: 'https://app.prism.roozylabs.com/signin',
 	},
 ];
 
@@ -124,19 +124,19 @@ const supportedProviders = [
 
 <Layout title="RoozyLabs Prism - Universal AI Control Plane & Model Gateway">
 	<!-- Header Navigation -->
-	<header class="sticky top-0 w-full z-50 bg-background/90 backdrop-blur-md border-b border-border/80">
-		<div class="h-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
+	<header class="sticky top-0 w-full z-50 bg-background/95 backdrop-blur-md border-b border-border/80">
+		<div class="h-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-3">
 			<!-- Brand Mark (Shield Mark) -->
-			<div class="flex items-center gap-3">
+			<div class="flex items-center gap-2.5 shrink-0">
 				<a href="/" class="flex items-center gap-2.5 group">
-					<div class="flex h-8 w-8 items-center justify-center rounded-none bg-[#7C3AED] text-white border border-violet-400/30 shadow-sm group-hover:bg-[#6D28D9] transition-colors">
+					<div class="flex h-8 w-8 items-center justify-center rounded-none bg-[#7C3AED] text-white border border-violet-400/30 shadow-sm group-hover:bg-[#6D28D9] transition-colors shrink-0">
 						<Shield className="h-4 w-4" />
 					</div>
-					<div class="flex items-center gap-2">
+					<div class="flex items-center gap-1.5 sm:gap-2">
 						<span class="font-mono text-sm font-bold tracking-tight text-foreground">
 							RoozyLabs <span class="text-primary">Prism</span>
 						</span>
-						<span class="font-mono text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-none border border-border">
+						<span class="font-mono text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-none border border-border shrink-0">
 							v0.3.0
 						</span>
 					</div>
@@ -144,7 +144,7 @@ const supportedProviders = [
 			</div>
 			
 			<!-- Desktop Nav Links -->
-			<nav class="hidden md:flex items-center gap-6 lg:gap-8">
+			<nav class="hidden lg:flex items-center gap-6 xl:gap-8">
 				{navLinks.map((link) => (
 					<a 
 						href={link.href} 
@@ -159,15 +159,15 @@ const supportedProviders = [
 			</nav>
 
 			<!-- Action CTA & Controls -->
-			<div class="flex items-center gap-2 sm:gap-3">
+			<div class="flex items-center gap-2 sm:gap-3 shrink-0">
 				<!-- Light/Dark Mode Theme Switcher Button -->
 				<button 
 					id="theme-toggle-btn"
 					type="button"
 					aria-label="Toggle Light and Dark Mode"
-					class="h-8 w-8 rounded-none border border-border bg-card/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shadow-sm"
+					class="h-8 w-8 rounded-none border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shadow-sm shrink-0"
 				>
-					<span class="theme-icon-sun hidden text-amber-400">
+					<span class="theme-icon-sun hidden text-amber-500">
 						<Sun className="h-4 w-4" />
 					</span>
 					<span class="theme-icon-moon hidden text-slate-700 dark:text-slate-200">
@@ -176,8 +176,8 @@ const supportedProviders = [
 				</button>
 
 				<a 
-					href="https://app.prism.roozylabs.com/login" 
-					class="hidden sm:inline-flex items-center justify-center h-8 px-3.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-sm"
+					href="https://app.prism.roozylabs.com/signin" 
+					class="hidden sm:inline-flex items-center justify-center h-8 px-3.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-sm shrink-0"
 				>
 					Launch Console
 				</a>
@@ -188,7 +188,7 @@ const supportedProviders = [
 					type="button"
 					aria-label="Toggle Navigation Menu"
 					aria-expanded="false"
-					class="md:hidden h-8 px-2.5 rounded-none border border-border bg-card flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+					class="lg:hidden h-8 px-2.5 rounded-none border border-border bg-card flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0"
 				>
 					<span id="menu-icon-open"><Menu className="h-4 w-4" /></span>
 					<span id="menu-icon-close" class="hidden"><X className="h-4 w-4" /></span>
@@ -198,7 +198,7 @@ const supportedProviders = [
 		</div>
 
 		<!-- Mobile Navigation Drawer -->
-		<div id="mobile-menu" class="hidden md:hidden border-b border-border bg-card/95 backdrop-blur-lg px-4 sm:px-6 py-4 shadow-xl">
+		<div id="mobile-menu" class="hidden lg:hidden border-b border-border bg-card/98 backdrop-blur-lg px-4 sm:px-6 py-4 shadow-xl">
 			<div class="flex flex-col gap-2 font-medium text-xs">
 				{navLinks.map((link) => (
 					<a 
@@ -214,24 +214,24 @@ const supportedProviders = [
 
 				<!-- Mobile Theme Switcher Row -->
 				<div class="flex items-center justify-between py-2.5 border-b border-border/50 text-muted-foreground">
-					<span class="font-medium">Color Theme</span>
+					<span class="font-medium">Theme Mode</span>
 					<button
 						id="mobile-theme-toggle-btn"
 						type="button"
 						class="h-8 px-3 rounded-none border border-border bg-secondary flex items-center gap-2 text-xs text-foreground cursor-pointer"
 					>
-						<span class="theme-icon-sun hidden text-amber-400">
+						<span class="theme-icon-sun hidden text-amber-500">
 							<Sun className="h-3.5 w-3.5" />
 						</span>
 						<span class="theme-icon-moon hidden text-slate-700 dark:text-slate-200">
 							<Moon className="h-3.5 w-3.5" />
 						</span>
-						<span id="mobile-theme-text" class="font-mono text-[11px]">Toggle Mode</span>
+						<span id="mobile-theme-text" class="font-mono text-[11px]">Toggle</span>
 					</button>
 				</div>
 
 				<a 
-					href="https://app.prism.roozylabs.com/login" 
+					href="https://app.prism.roozylabs.com/signin" 
 					class="mt-3 w-full py-2.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none text-center shadow-sm"
 				>
 					Launch Console
@@ -241,33 +241,33 @@ const supportedProviders = [
 	</header>
 
 	<!-- Main Content Container -->
-	<main class="w-full flex-1">
+	<main class="w-full flex-1 overflow-x-hidden">
 		
 		<!-- Hero Section -->
-		<section class="w-full pt-12 sm:pt-20 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
-			<div class="max-w-4xl mx-auto flex flex-col items-center gap-5 sm:gap-6">
+		<section class="w-full pt-10 sm:pt-16 md:pt-20 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
+			<div class="max-w-4xl mx-auto flex flex-col items-center gap-4 sm:gap-6 w-full">
 				
 				<!-- Status Badge -->
 				<div class="inline-flex items-center gap-2 px-3 py-1 rounded-none border border-border bg-card/90 text-xs font-mono shadow-sm">
-					<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+					<span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
 					<span class="text-muted-foreground text-[11px]">Sub-2ms AI Gateway Engine • Active</span>
 				</div>
 
 				<!-- Hero Title -->
-				<h1 class="font-bold text-3xl xs:text-4xl sm:text-5xl md:text-6xl leading-[1.12] sm:leading-[1.08] tracking-tight text-foreground max-w-4xl">
+				<h1 class="font-bold text-2xl xs:text-3xl sm:text-5xl md:text-6xl leading-[1.15] sm:leading-[1.08] tracking-tight text-foreground max-w-4xl">
 					One API endpoint for every LLM. <br class="hidden sm:inline" />
 					<span class="text-primary">Zero downtime, automatic failover.</span>
 				</h1>
 
 				<!-- Hero Subtitle -->
-				<p class="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed px-2">
+				<p class="text-xs xs:text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed px-1 sm:px-2">
 					Route OpenAI, Anthropic, Gemini, and DeepSeek through a single drop-in proxy. Protect your application from rate limits, cut token costs automatically, and enforce organization budgets.
 				</p>
 
 				<!-- Action Buttons -->
-				<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-2">
+				<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-1 sm:mt-2">
 					<a 
-						href="https://app.prism.roozylabs.com/login" 
+						href="https://app.prism.roozylabs.com/signin" 
 						class="h-10 px-6 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-[0_0_25px_rgba(139,92,246,0.3)] flex items-center justify-center gap-2"
 					>
 						<span>Launch Console</span>
@@ -284,57 +284,57 @@ const supportedProviders = [
 				</div>
 
 				<!-- Interactive Quickstart Console (SDK Switcher) -->
-				<div id="quickstart" class="w-full max-w-3xl mt-8 rounded-none border border-border bg-console shadow-2xl text-left font-mono text-xs overflow-hidden">
+				<div id="quickstart" class="w-full max-w-3xl mt-6 sm:mt-8 rounded-none border border-slate-800 bg-slate-950 shadow-2xl text-left font-mono text-xs overflow-hidden">
 					<!-- Console Header Bar -->
-					<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border/80 bg-console-header px-3 py-2 gap-2">
+					<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-800 bg-slate-900 px-3 py-2 gap-2">
 						<!-- Language Switcher Tabs -->
-						<div class="flex items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0" id="code-tabs">
+						<div class="flex items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none" id="code-tabs">
 							<button 
 								type="button" 
 								data-tab="opencode" 
-								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none bg-primary/20 text-primary border border-primary/30 font-semibold cursor-pointer transition-all"
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none bg-primary/20 text-primary border border-primary/30 font-semibold cursor-pointer transition-all whitespace-nowrap shrink-0"
 							>
 								OpenCode CLI
 							</button>
 							<button 
 								type="button" 
 								data-tab="claude" 
-								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-muted-foreground hover:text-foreground hover:bg-secondary font-medium cursor-pointer transition-all"
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-slate-400 hover:text-slate-100 hover:bg-slate-800 font-medium cursor-pointer transition-all whitespace-nowrap shrink-0"
 							>
 								Claude Code
 							</button>
 							<button 
 								type="button" 
 								data-tab="python" 
-								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-muted-foreground hover:text-foreground hover:bg-secondary font-medium cursor-pointer transition-all"
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-slate-400 hover:text-slate-100 hover:bg-slate-800 font-medium cursor-pointer transition-all whitespace-nowrap shrink-0"
 							>
 								Python
 							</button>
 							<button 
 								type="button" 
 								data-tab="node" 
-								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-muted-foreground hover:text-foreground hover:bg-secondary font-medium cursor-pointer transition-all"
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-slate-400 hover:text-slate-100 hover:bg-slate-800 font-medium cursor-pointer transition-all whitespace-nowrap shrink-0"
 							>
-								TypeScript / Node
+								TypeScript
 							</button>
 							<button 
 								type="button" 
 								data-tab="curl" 
-								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-muted-foreground hover:text-foreground hover:bg-secondary font-medium cursor-pointer transition-all"
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-slate-400 hover:text-slate-100 hover:bg-slate-800 font-medium cursor-pointer transition-all whitespace-nowrap shrink-0"
 							>
 								cURL
 							</button>
 						</div>
 
 						<!-- Copy Snippet Button -->
-						<div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+						<div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0">
 							<span class="text-[10px] text-emerald-400 font-mono flex items-center gap-1 shrink-0">
 								<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> api.prism.roozylabs.com
 							</span>
 							<button 
 								id="copy-code-btn" 
 								type="button"
-								class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none border border-border bg-console-card hover:bg-secondary text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+								class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none border border-slate-700 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 hover:text-white transition-colors cursor-pointer"
 							>
 								<Copy className="h-3 w-3" id="copy-icon" />
 								<span id="copy-label">Copy</span>
@@ -343,14 +343,14 @@ const supportedProviders = [
 					</div>
 
 					<!-- Code Snippet Area -->
-					<div class="p-4 overflow-x-auto">
+					<div class="p-3 sm:p-4 overflow-x-auto max-w-full">
 						<!-- OpenCode CLI -->
-						<pre id="snippet-opencode" class="code-snippet block text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-slate-500">// ~/.config/opencode/opencode.jsonc</span>
+						<pre id="snippet-opencode" class="code-snippet block text-slate-300 leading-relaxed text-[11px] sm:text-xs"><code><span class="text-slate-500">// ~/.config/opencode/opencode.jsonc</span>
 <span class="text-purple-400">&#123;</span>
   <span class="text-cyan-400">"provider"</span>: <span class="text-emerald-400">"prism"</span>,
   <span class="text-cyan-400">"api_url"</span>: <span class="text-emerald-400">"https://api.prism.roozylabs.com"</span>,
   <span class="text-cyan-400">"api_key"</span>: <span class="text-emerald-400">"gw_sk_live_85061cbfc18e4ca58e0e..."</span>,
-  <span class="text-cyan-400">"model"</span>: <span class="text-purple-400">"prism-auto"</span>, <span class="text-slate-500">// Automatically routes prompt by complexity</span>
+  <span class="text-cyan-400">"model"</span>: <span class="text-purple-400">"prism-auto"</span>, <span class="text-slate-500">// Dynamically routes prompt by task complexity</span>
   <span class="text-cyan-400">"extra_headers"</span>: <span class="text-purple-400">&#123;</span>
     <span class="text-cyan-400">"X-Request-ID"</span>: <span class="text-emerald-400">"req_uuid_v4"</span>,
     <span class="text-cyan-400">"X-Prism-Agent-ID"</span>: <span class="text-emerald-400">"opencode-coding-agent"</span>
@@ -358,7 +358,7 @@ const supportedProviders = [
 <span class="text-purple-400">&#125;</span></code></pre>
 
 						<!-- Claude Code CLI -->
-						<pre id="snippet-claude" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-slate-500"># Point Claude Code directly to your Prism AI Gateway</span>
+						<pre id="snippet-claude" class="code-snippet hidden text-slate-300 leading-relaxed text-[11px] sm:text-xs"><code><span class="text-slate-500"># Point Claude Code directly to your Prism AI Gateway</span>
 <span class="text-purple-400">export</span> <span class="text-cyan-400">ANTHROPIC_BASE_URL</span>=<span class="text-emerald-400">"https://api.prism.roozylabs.com"</span>
 <span class="text-purple-400">export</span> <span class="text-cyan-400">ANTHROPIC_API_KEY</span>=<span class="text-emerald-400">"gw_sk_live_85061cbfc18e4ca58e0e..."</span>
 
@@ -366,7 +366,7 @@ const supportedProviders = [
 claude</code></pre>
 
 						<!-- Python SDK -->
-						<pre id="snippet-python" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-purple-400">from</span> openai <span class="text-purple-400">import</span> OpenAI
+						<pre id="snippet-python" class="code-snippet hidden text-slate-300 leading-relaxed text-[11px] sm:text-xs"><code><span class="text-purple-400">from</span> openai <span class="text-purple-400">import</span> OpenAI
 
 <span class="text-slate-500"># Use standard OpenAI client pointing to Prism Gateway</span>
 client = OpenAI(
@@ -381,7 +381,7 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)</code></pre>
 
 						<!-- Node.js / TypeScript -->
-						<pre id="snippet-node" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-purple-400">import</span> OpenAI <span class="text-purple-400">from</span> <span class="text-emerald-400">'openai'</span>;
+						<pre id="snippet-node" class="code-snippet hidden text-slate-300 leading-relaxed text-[11px] sm:text-xs"><code><span class="text-purple-400">import</span> OpenAI <span class="text-purple-400">from</span> <span class="text-emerald-400">'openai'</span>;
 
 <span class="text-purple-400">const</span> prism = <span class="text-purple-400">new</span> OpenAI(&#123;
   baseURL: <span class="text-emerald-400">'https://api.prism.roozylabs.com/v1'</span>,
@@ -395,7 +395,7 @@ print(response.choices[0].message.content)</code></pre>
 console.log(completion.choices[0].message.content);</code></pre>
 
 						<!-- cURL -->
-						<pre id="snippet-curl" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code>curl -X POST https://api.prism.roozylabs.com/v1/chat/completions \
+						<pre id="snippet-curl" class="code-snippet hidden text-slate-300 leading-relaxed text-[11px] sm:text-xs"><code>curl -X POST https://api.prism.roozylabs.com/v1/chat/completions \
   -H <span class="text-emerald-400">"Authorization: Bearer gw_sk_live_85061cbfc18e4ca58e0e..."</span> \
   -H <span class="text-emerald-400">"Content-Type: application/json"</span> \
   -d <span class="text-emerald-400">'&#123;
@@ -409,43 +409,43 @@ console.log(completion.choices[0].message.content);</code></pre>
 
 		<!-- Benchmark Stats Banner -->
 		<section class="w-full py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-card/60 border-y border-border">
-			<div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+			<div class="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
 				{benchmarkStats.map((stat) => (
-					<div class="p-5 bg-background border border-border rounded-none shadow-sm flex flex-col items-center text-center">
-						<span class="font-mono font-bold text-2xl sm:text-3xl text-primary">{stat.value}</span>
+					<div class="p-3.5 sm:p-5 bg-background border border-border rounded-none shadow-sm flex flex-col items-center text-center">
+						<span class="font-mono font-bold text-xl sm:text-2xl lg:text-3xl text-primary">{stat.value}</span>
 						<span class="font-semibold text-xs sm:text-sm text-foreground mt-1">{stat.label}</span>
-						<span class="font-mono text-[11px] text-muted-foreground mt-1">{stat.desc}</span>
+						<span class="font-mono text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">{stat.desc}</span>
 					</div>
 				))}
 			</div>
 		</section>
 
 		<!-- Feature Section 1: Smart Routing -->
-		<section id="smart-routing" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-background">
+		<section id="smart-routing" class="w-full py-14 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-background">
 			<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 				<!-- Left Text -->
-				<div class="lg:col-span-5 flex flex-col gap-4">
+				<div class="lg:col-span-5 flex flex-col gap-3.5 sm:gap-4">
 					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-primary/10 border border-primary/20 text-primary font-mono text-[11px] font-semibold w-fit">
 						<Route className="h-3.5 w-3.5" /> SMART MODEL ROUTING
 					</div>
 					<h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
 						Cut token bills up to 70% without sacrificing quality.
 					</h2>
-					<p class="text-sm text-muted-foreground leading-relaxed">
-						Not every prompt needs a costly frontier model. When you specify <code class="text-primary font-mono bg-card px-1.5 py-0.5 rounded-none border border-border">model: "prism-auto"</code>, Prism dynamically scores candidate models based on task complexity, required context window, and your policy rules.
+					<p class="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+						Not every prompt needs a costly frontier model. When you specify <code class="text-primary font-mono bg-secondary px-1.5 py-0.5 rounded-none border border-border">model: "prism-auto"</code>, Prism dynamically scores candidate models based on task complexity, required context window, and your policy rules.
 					</p>
 					
-					<ul class="space-y-2.5 text-xs text-muted-foreground mt-2">
+					<ul class="space-y-2.5 text-xs text-muted-foreground mt-1">
 						<li class="flex items-start gap-2">
-							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
 							<span><strong>Simple queries</strong> route to lightweight models like GPT-4o-mini or Claude 3.5 Haiku ($0.15–$0.25/1M tokens).</span>
 						</li>
 						<li class="flex items-start gap-2">
-							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
 							<span><strong>Deep reasoning & code</strong> route to flagship models like Claude 3.7 Sonnet or DeepSeek R1.</span>
 						</li>
 						<li class="flex items-start gap-2">
-							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
 							<span><strong>Pre-filtering</strong> ensures requests only go to providers where you have active credentials and quota.</span>
 						</li>
 					</ul>
@@ -457,57 +457,57 @@ console.log(completion.choices[0].message.content);</code></pre>
 						<span class="font-mono text-xs font-semibold text-foreground flex items-center gap-2">
 							<SlidersHorizontal className="h-4 w-4 text-primary" /> Routing Policy Simulator
 						</span>
-						<span class="text-[11px] font-mono text-emerald-400">Live Decision Engine</span>
+						<span class="text-[11px] font-mono text-emerald-500 font-semibold">Live Decision Engine</span>
 					</div>
 
 					<!-- Policy Selector Buttons -->
-					<div class="grid grid-cols-3 gap-2 mb-4" id="policy-buttons">
+					<div class="grid grid-cols-3 gap-1.5 sm:gap-2 mb-4" id="policy-buttons">
 						<button 
 							type="button" 
 							data-policy="balanced" 
-							class="policy-btn px-2 sm:px-3 py-2 rounded-none bg-primary/20 text-primary border border-primary/40 font-mono text-[11px] sm:text-xs font-semibold text-center cursor-pointer transition-all"
+							class="policy-btn px-2 sm:px-3 py-2 rounded-none bg-primary/20 text-primary border border-primary/40 font-mono text-[11px] sm:text-xs font-semibold text-center cursor-pointer transition-all truncate"
 						>
 							Balanced
 						</button>
 						<button 
 							type="button" 
 							data-policy="cheap" 
-							class="policy-btn px-2 sm:px-3 py-2 rounded-none bg-background text-muted-foreground border border-border font-mono text-[11px] sm:text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all"
+							class="policy-btn px-2 sm:px-3 py-2 rounded-none bg-secondary text-muted-foreground border border-border font-mono text-[11px] sm:text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all truncate"
 						>
 							Lowest Cost
 						</button>
 						<button 
 							type="button" 
 							data-policy="quality" 
-							class="policy-btn px-2 sm:px-3 py-2 rounded-none bg-background text-muted-foreground border border-border font-mono text-[11px] sm:text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all"
+							class="policy-btn px-2 sm:px-3 py-2 rounded-none bg-secondary text-muted-foreground border border-border font-mono text-[11px] sm:text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all truncate"
 						>
 							Max Quality
 						</button>
 					</div>
 
-					<!-- Route Evaluation Box -->
-					<div class="p-4 rounded-none bg-console border border-border font-mono text-xs space-y-3">
-						<div class="flex flex-col sm:flex-row justify-between sm:items-center text-[11px] text-muted-foreground border-b border-border/70 pb-2 gap-1">
-							<span>Prompt: <span class="text-slate-300">"Summarize this 10-line customer feedback."</span></span>
+					<!-- Route Evaluation Box (Consistent Dark Container in Both Themes) -->
+					<div class="p-3.5 sm:p-4 rounded-none bg-slate-950 border border-slate-800 font-mono text-xs space-y-3">
+						<div class="flex flex-col sm:flex-row justify-between sm:items-center text-[11px] text-slate-400 border-b border-slate-800 pb-2 gap-1">
+							<span>Prompt: <span class="text-slate-200">"Summarize this 10-line customer feedback."</span></span>
 							<span class="text-cyan-400">Context: 420 tokens</span>
 						</div>
 
-						<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-							<div class="p-2.5 rounded-none bg-card/80 border border-border">
-								<span class="text-[10px] text-muted-foreground block">Selected Target Model</span>
+						<div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-1">
+							<div class="p-2.5 rounded-none bg-slate-900 border border-slate-800">
+								<span class="text-[10px] text-slate-400 block">Selected Target Model</span>
 								<span id="route-model" class="text-emerald-400 font-bold text-sm block mt-0.5">GPT-4o-mini</span>
 							</div>
-							<div class="p-2.5 rounded-none bg-card/80 border border-border">
-								<span class="text-[10px] text-muted-foreground block">Estimated Cost</span>
+							<div class="p-2.5 rounded-none bg-slate-900 border border-slate-800">
+								<span class="text-[10px] text-slate-400 block">Estimated Cost</span>
 								<span id="route-cost" class="text-primary font-bold text-sm block mt-0.5">$0.000063</span>
 							</div>
-							<div class="p-2.5 rounded-none bg-card/80 border border-border">
-								<span class="text-[10px] text-muted-foreground block">Expected Latency</span>
-								<span id="route-latency" class="text-slate-200 font-bold text-sm block mt-0.5">~195 ms</span>
+							<div class="p-2.5 rounded-none bg-slate-900 border border-slate-800">
+								<span class="text-[10px] text-slate-400 block">Expected Latency</span>
+								<span id="route-latency" class="text-slate-100 font-bold text-sm block mt-0.5">~195 ms</span>
 							</div>
 						</div>
 
-						<p id="route-explanation" class="text-[11px] text-slate-400 pt-1 leading-relaxed">
+						<p id="route-explanation" class="text-[11px] text-slate-300 pt-1 leading-relaxed">
 							Task classified as low complexity summarization. Balanced policy selected GPT-4o-mini for maximum speed and 90% cost savings over flagship models.
 						</p>
 					</div>
@@ -516,75 +516,75 @@ console.log(completion.choices[0].message.content);</code></pre>
 		</section>
 
 		<!-- Feature Section 2: Failure Resilience & Circuit Breakers -->
-		<section id="failover" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-card/40 border-t border-border">
+		<section id="failover" class="w-full py-14 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-card/40 border-t border-border">
 			<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 				<!-- Left Interactive Circuit Breaker Visual -->
-				<div class="lg:col-span-7 bg-console border border-border rounded-none p-4 sm:p-6 shadow-xl font-mono text-xs">
-					<div class="flex items-center justify-between border-b border-border/80 pb-3 mb-4">
-						<span class="text-xs text-foreground font-semibold flex items-center gap-2">
+				<div class="lg:col-span-7 bg-slate-950 border border-slate-800 rounded-none p-4 sm:p-6 shadow-xl font-mono text-xs">
+					<div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+						<span class="text-xs text-slate-100 font-semibold flex items-center gap-2">
 							<ShieldCheck className="h-4 w-4 text-emerald-400" /> Automatic Failover & Circuit Quarantine
 						</span>
 						<span class="text-[10px] text-emerald-400">$0.00 Retry Billing</span>
 					</div>
 
-					<div class="space-y-3.5">
+					<div class="space-y-3">
 						<!-- Step 1: Upstream error -->
-						<div class="p-3 rounded-none border border-red-500/30 bg-red-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+						<div class="p-3 rounded-none border border-red-500/30 bg-red-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
 							<div class="flex items-center gap-2.5">
 								<span class="w-6 h-6 rounded-none bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-[11px] shrink-0">1</span>
 								<div>
-									<span class="text-slate-200 font-semibold block">Primary Provider: OpenAI (GPT-4o)</span>
+									<span class="text-slate-100 font-semibold block">Primary Provider: OpenAI (GPT-4o)</span>
 									<span class="text-[11px] text-red-400">Returned HTTP 503 Overloaded (Attempt 1 Failed)</span>
 								</div>
 							</div>
-							<span class="text-[10px] px-2 py-0.5 rounded-none bg-red-500/10 text-red-400 border border-red-500/20 shrink-0">
+							<span class="text-[10px] px-2 py-0.5 rounded-none bg-red-500/20 text-red-300 border border-red-500/30 shrink-0">
 								Quarantined 60s
 							</span>
 						</div>
 
 						<!-- Step 2: Failover route -->
-						<div class="p-3 rounded-none border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+						<div class="p-3 rounded-none border border-primary/30 bg-primary/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
 							<div class="flex items-center gap-2.5">
-								<span class="w-6 h-6 rounded-none bg-primary/20 text-primary flex items-center justify-center font-bold text-[11px] shrink-0">2</span>
+								<span class="w-6 h-6 rounded-none bg-primary/30 text-primary flex items-center justify-center font-bold text-[11px] shrink-0">2</span>
 								<div>
-									<span class="text-slate-200 font-semibold block">Automatic Failover: Anthropic (Claude 3.7 Sonnet)</span>
+									<span class="text-slate-100 font-semibold block">Automatic Failover: Anthropic (Claude 3.7 Sonnet)</span>
 									<span class="text-[11px] text-emerald-400">Stream re-established in 1.96ms • 200 OK</span>
 								</div>
 							</div>
-							<span class="text-[10px] px-2 py-0.5 rounded-none bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+							<span class="text-[10px] px-2 py-0.5 rounded-none bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
 								Resolved
 							</span>
 						</div>
 
-						<div class="p-3 rounded-none bg-card/60 border border-border text-[11px] text-slate-400 leading-relaxed">
+						<div class="p-3 rounded-none bg-slate-900 border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
 							<strong>Guarantee:</strong> Failed attempts are logged with correlation ID <code class="text-primary">req_85061cb</code> and billed at exactly <span class="text-emerald-400 font-bold">$0.00</span>. The client app never receives a 50x drop.
 						</div>
 					</div>
 				</div>
 
 				<!-- Right Text -->
-				<div class="lg:col-span-5 flex flex-col gap-4">
-					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px] font-semibold w-fit">
+				<div class="lg:col-span-5 flex flex-col gap-3.5 sm:gap-4">
+					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-mono text-[11px] font-semibold w-fit">
 						<ShieldCheck className="h-3.5 w-3.5" /> ZERO-DOWNTIME RESILIENCE
 					</div>
 					<h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
 						Never let an upstream LLM outage crash your product.
 					</h2>
-					<p class="text-sm text-muted-foreground leading-relaxed">
+					<p class="text-xs sm:text-sm text-muted-foreground leading-relaxed">
 						Provider outages and 429 rate limit spikes are inevitable. Prism acts as an active circuit breaker: if an upstream provider fails 3 times, it enters a 60-second cooldown quarantine while traffic automatically reroutes to healthy fallbacks.
 					</p>
 
 					<ul class="space-y-2 text-xs text-muted-foreground mt-1">
 						<li class="flex items-start gap-2">
-							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
 							<span><strong>Immediate Fallback:</strong> Instant switch to backup models without client reconnections.</span>
 						</li>
 						<li class="flex items-start gap-2">
-							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
 							<span><strong>Non-Retry Filter:</strong> 401 and 403 invalid key errors are never retried, saving compute.</span>
 						</li>
 						<li class="flex items-start gap-2">
-							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
 							<span><strong>Zero-Cost Retries:</strong> Only successful completions are counted against tenant billing.</span>
 						</li>
 					</ul>
@@ -593,28 +593,28 @@ console.log(completion.choices[0].message.content);</code></pre>
 		</section>
 
 		<!-- Feature Section 3: Multi-Tenancy & Governance -->
-		<section id="governance" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-background border-t border-border">
+		<section id="governance" class="w-full py-14 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-background border-t border-border">
 			<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 				<!-- Left Text -->
-				<div class="lg:col-span-5 flex flex-col gap-4">
-					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-mono text-[11px] font-semibold w-fit">
+				<div class="lg:col-span-5 flex flex-col gap-3.5 sm:gap-4">
+					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 font-mono text-[11px] font-semibold w-fit">
 						<Lock className="h-3.5 w-3.5" /> MULTI-TENANCY & FINOPS
 					</div>
 					<h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
 						Control spending per team, user, and gateway key.
 					</h2>
-					<p class="text-sm text-muted-foreground leading-relaxed">
+					<p class="text-xs sm:text-sm text-muted-foreground leading-relaxed">
 						Prevent runaway AI bills before they happen. Set daily budget ceilings, enforce tokens-per-minute rate limits, and isolate data using native PostgreSQL Row-Level Security across all database models.
 					</p>
 
 					<div class="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
-						<div class="p-3 rounded-none bg-card border border-border">
+						<div class="p-3 rounded-none bg-card border border-border shadow-sm">
 							<span class="text-[10px] text-muted-foreground block">Key Encryption</span>
 							<span class="text-foreground font-bold mt-0.5 block">AES-256-GCM</span>
 						</div>
-						<div class="p-3 rounded-none bg-card border border-border">
+						<div class="p-3 rounded-none bg-card border border-border shadow-sm">
 							<span class="text-[10px] text-muted-foreground block">Tenant Isolation</span>
-							<span class="text-emerald-400 font-bold mt-0.5 block">PostgreSQL RLS</span>
+							<span class="text-emerald-500 font-bold mt-0.5 block">PostgreSQL RLS</span>
 						</div>
 					</div>
 				</div>
@@ -633,10 +633,10 @@ console.log(completion.choices[0].message.content);</code></pre>
 						<!-- Budget 1 -->
 						<div>
 							<div class="flex justify-between text-xs mb-1.5">
-								<span class="text-slate-200 font-semibold">Production Gateway Key (Engineering)</span>
-								<span class="text-slate-300">$184.20 / $500.00 (36.8%)</span>
+								<span class="text-foreground font-medium">Production Gateway Key (Engineering)</span>
+								<span class="text-muted-foreground">$184.20 / $500.00 (36.8%)</span>
 							</div>
-							<div class="w-full h-2 rounded-none bg-background border border-border overflow-hidden">
+							<div class="w-full h-2 rounded-none bg-secondary border border-border overflow-hidden">
 								<div class="h-full bg-primary rounded-none" style="width: 36.8%;"></div>
 							</div>
 						</div>
@@ -644,20 +644,20 @@ console.log(completion.choices[0].message.content);</code></pre>
 						<!-- Budget 2 -->
 						<div>
 							<div class="flex justify-between text-xs mb-1.5">
-								<span class="text-slate-200 font-semibold">Autonomous Coding Agents (OpenCode CLI)</span>
-								<span class="text-emerald-400">$42.80 / $100.00 (42.8%)</span>
+								<span class="text-foreground font-medium">Autonomous Coding Agents (OpenCode CLI)</span>
+								<span class="text-emerald-500 font-semibold">$42.80 / $100.00 (42.8%)</span>
 							</div>
-							<div class="w-full h-2 rounded-none bg-background border border-border overflow-hidden">
+							<div class="w-full h-2 rounded-none bg-secondary border border-border overflow-hidden">
 								<div class="h-full bg-emerald-500 rounded-none" style="width: 42.8%;"></div>
 							</div>
 						</div>
 
 						<!-- Velocity limit -->
-						<div class="p-3 rounded-none bg-console border border-border flex items-center justify-between text-[11px]">
+						<div class="p-3 rounded-none bg-secondary border border-border flex items-center justify-between text-[11px]">
 							<span class="text-muted-foreground flex items-center gap-1.5">
-								<Activity className="h-3.5 w-3.5 text-cyan-400" /> Velocity Spikeguard Limit
+								<Activity className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" /> Velocity Spikeguard Limit
 							</span>
-							<span class="text-cyan-400 font-semibold">Max 120 req / min</span>
+							<span class="text-cyan-600 dark:text-cyan-400 font-semibold font-mono">Max 120 req / min</span>
 						</div>
 					</div>
 				</div>
@@ -665,8 +665,8 @@ console.log(completion.choices[0].message.content);</code></pre>
 		</section>
 
 		<!-- Pricing & Subscription Tiers -->
-		<section id="pricing" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-card/40 border-t border-border">
-			<div class="max-w-7xl mx-auto flex flex-col items-center gap-10">
+		<section id="pricing" class="w-full py-14 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-card/40 border-t border-border">
+			<div class="max-w-7xl mx-auto flex flex-col items-center gap-8 sm:gap-10">
 				<div class="text-center max-w-2xl mx-auto">
 					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-primary/10 border border-primary/20 text-primary font-mono text-[11px] font-semibold w-fit mb-3">
 						PRICING & TIERS
@@ -681,9 +681,9 @@ console.log(completion.choices[0].message.content);</code></pre>
 
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
 					{pricingPlans.map((plan) => (
-						<div class={`p-5 sm:p-6 bg-card border rounded-none flex flex-col justify-between shadow-sm relative ${plan.highlighted ? 'border-primary/60 ring-1 ring-primary/40 bg-card/90 shadow-[0_0_25px_rgba(139,92,246,0.15)]' : 'border-border'}`}>
+						<div class={`p-5 sm:p-6 bg-card border rounded-none flex flex-col justify-between shadow-sm relative ${plan.highlighted ? 'border-primary/60 ring-1 ring-primary/40 bg-card/95 shadow-[0_0_25px_rgba(139,92,246,0.15)]' : 'border-border'}`}>
 							{plan.highlightBadge && (
-								<div class="absolute -top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-primary text-primary-foreground font-mono text-[10px] font-bold uppercase tracking-wider rounded-none shadow-sm">
+								<div class="absolute -top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-primary text-primary-foreground font-mono text-[10px] font-bold uppercase tracking-wider rounded-none shadow-sm whitespace-nowrap">
 									{plan.highlightBadge}
 								</div>
 							)}
@@ -700,7 +700,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 								<ul class="space-y-2.5 text-xs text-muted-foreground mb-6">
 									{plan.features.map((feat) => (
 										<li class="flex items-start gap-2">
-											<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+											<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
 											<span class="leading-tight">{feat}</span>
 										</li>
 									))}
@@ -720,7 +720,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 		</section>
 
 		<!-- Supported Providers & Ecosystem Grid -->
-		<section class="w-full py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-card/30 border-t border-border">
+		<section class="w-full py-14 sm:py-20 px-4 sm:px-6 lg:px-8 bg-card/30 border-t border-border">
 			<div class="max-w-7xl mx-auto flex flex-col items-center gap-8">
 				<div class="text-center">
 					<span class="font-mono text-xs text-primary uppercase tracking-wider font-semibold">Ecosystem</span>
@@ -763,7 +763,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 				
 				<div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
 					<a 
-						href="https://app.prism.roozylabs.com/login" 
+						href="https://app.prism.roozylabs.com/signin" 
 						class="h-11 px-7 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-[0_0_25px_rgba(139,92,246,0.35)] flex items-center justify-center gap-2"
 					>
 						<span>Launch Console Free</span>
@@ -815,7 +815,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 					<li><a href="https://docs.prism.roozylabs.com" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Documentation</a></li>
 					<li><a href="https://api.prism.roozylabs.com/health" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">API Liveness (/health)</a></li>
 					<li><a href="https://api.prism.roozylabs.com/ready" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">API Readiness (/ready)</a></li>
-					<li><a href="https://app.prism.roozylabs.com/login" class="hover:text-foreground transition-colors">Admin Console</a></li>
+					<li><a href="https://app.prism.roozylabs.com/signin" class="hover:text-foreground transition-colors">Admin Console</a></li>
 				</ul>
 			</div>
 
@@ -829,7 +829,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 			</div>
 		</div>
 
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between text-center md:text-left text-muted-foreground font-mono text-[11px] gap-3">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between text-center sm:text-left text-muted-foreground font-mono text-[11px] gap-3">
 			<div>&copy; 2026 RoozyLabs Prism.</div>
 			<div class="flex flex-wrap justify-center items-center gap-4">
 				<a href="https://prism.roozylabs.com" class="hover:text-foreground transition-colors">prism.roozylabs.com</a>
@@ -919,9 +919,9 @@ console.log(completion.choices[0].message.content);</code></pre>
 
 				tabButtons.forEach((btn) => {
 					btn.classList.remove('bg-primary/20', 'text-primary', 'border-primary/30', 'font-semibold');
-					btn.classList.add('text-muted-foreground', 'font-medium');
+					btn.classList.add('text-slate-400', 'font-medium');
 				});
-				button.classList.remove('text-muted-foreground', 'font-medium');
+				button.classList.remove('text-slate-400', 'font-medium');
 				button.classList.add('bg-primary/20', 'text-primary', 'border-primary/30', 'font-semibold');
 
 				snippets.forEach((snippet) => {
@@ -994,9 +994,9 @@ console.log(completion.choices[0].message.content);</code></pre>
 
 				policyButtons.forEach((b) => {
 					b.classList.remove('bg-primary/20', 'text-primary', 'border-primary/40', 'font-semibold');
-					b.classList.add('bg-background', 'text-muted-foreground', 'border-border', 'font-medium');
+					b.classList.add('bg-secondary', 'text-muted-foreground', 'border-border', 'font-medium');
 				});
-				btn.classList.remove('bg-background', 'text-muted-foreground', 'border-border', 'font-medium');
+				btn.classList.remove('bg-secondary', 'text-muted-foreground', 'border-border', 'font-medium');
 				btn.classList.add('bg-primary/20', 'text-primary', 'border-primary/40', 'font-semibold');
 
 				if (routeModel && routeCost && routeLatency && routeExp && policyData[policy]) {
