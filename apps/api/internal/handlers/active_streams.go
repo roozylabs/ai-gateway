@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/redis"
 )
 
@@ -18,7 +19,7 @@ func NewActiveStreamsHandler(cooldown *redis.CooldownStore) *ActiveStreamsHandle
 func (h *ActiveStreamsHandler) GetActiveStreams(c *gin.Context) {
 	summary, err := h.cooldown.GetActiveStreams(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch active streams: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to fetch active streams", err, "ACTIVE_STREAMS_FETCH_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, summary)

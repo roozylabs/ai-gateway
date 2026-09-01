@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/repository"
 )
 
@@ -41,7 +42,7 @@ func (h *RoutingDecisionHandler) List(c *gin.Context) {
 
 	decisions, total, err := h.repo.ListWithFilter(c.Request.Context(), userID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list routing decisions"})
+		httputil.RespondInternalError(c, "Failed to list routing decisions", err, "ROUTING_DECISIONS_LIST_FAILED")
 		return
 	}
 

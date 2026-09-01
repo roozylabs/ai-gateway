@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/service"
 )
 
@@ -72,9 +73,7 @@ func (h *OAuthHandler) GitHubCallback(c *gin.Context) {
 func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 	provider := strings.ToLower(c.Param("provider"))
 	if provider != "google" && provider != "github" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": gin.H{"message": "Unsupported OAuth provider", "type": "invalid_request_error"},
-		})
+		httputil.RespondBadRequest(c, "Unsupported OAuth provider", nil, "UNSUPPORTED_OAUTH_PROVIDER")
 		return
 	}
 
@@ -132,8 +131,7 @@ func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 		c.Request.UserAgent(),
 	)
 	if err != nil {
-		log.Printf("[OAuth Initiate Fallback Error] provider=%s err=%v", provider, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create OAuth session: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to create OAuth session", err, "OAUTH_SESSION_CREATION_FAILED")
 		return
 	}
 

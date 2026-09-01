@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	"github.com/roozylabs/prism/internal/repository"
@@ -71,7 +72,7 @@ func (h *AuditTrailHandler) List(c *gin.Context) {
 
 	trails, total, err := h.repo.ListWithFilter(c.Request.Context(), filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list audit trails: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to list audit trails", err, "AUDIT_TRAILS_LIST_FAILED")
 		return
 	}
 	if trails == nil {
@@ -91,7 +92,7 @@ func (h *AuditTrailHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	trail, err := h.repo.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "audit trail record not found"})
+		httputil.RespondNotFound(c, "Audit trail record not found", err, "AUDIT_RECORD_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, trail)
@@ -102,7 +103,7 @@ func (h *AuditTrailHandler) Verify(c *gin.Context) {
 	id := c.Param("id")
 	result, err := h.auditRecorder.VerifyIntegrity(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "audit record verification failed: " + err.Error()})
+		httputil.RespondNotFound(c, "Audit record verification failed: "+err.Error(), err, "AUDIT_VERIFICATION_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, result)
@@ -137,7 +138,7 @@ func (h *AuditTrailHandler) ListLogs(c *gin.Context) {
 
 	logs, total, err := h.repo.ListAuditLogs(c.Request.Context(), orgID, req, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query audit logs: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to query audit logs", err, "AUDIT_LOGS_QUERY_FAILED")
 		return
 	}
 
@@ -165,7 +166,7 @@ func (h *AuditTrailHandler) ExportLogs(c *gin.Context) {
 
 	logs, _, err := h.repo.ListAuditLogs(c.Request.Context(), orgID, req, 1000, 0)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export audit logs: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to export audit logs", err, "AUDIT_LOGS_EXPORT_FAILED")
 		return
 	}
 

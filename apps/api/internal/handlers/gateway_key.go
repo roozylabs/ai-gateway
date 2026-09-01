@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/middleware"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
@@ -39,7 +40,7 @@ type CreateGatewayKeyResponse struct {
 func (h *GatewayKeyHandler) Create(c *gin.Context) {
 	var req CreateGatewayKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: name is required"})
+		httputil.RespondBadRequest(c, "Invalid request: name is required", err, "NAME_REQUIRED")
 		return
 	}
 
@@ -51,7 +52,7 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 		if h.credentials != nil {
 			count, err := h.credentials.CountActiveByProviderID(c.Request.Context(), req.ProviderID)
 			if err != nil || count == 0 {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create Gateway Key: the selected provider has no active credentials"})
+				httputil.RespondBadRequest(c, "Cannot create Gateway Key: the selected provider has no active credentials", err, "PROVIDER_NO_CREDENTIALS")
 				return
 			}
 		}
@@ -59,7 +60,7 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 
 	rawBytes := make([]byte, 24)
 	if _, err := rand.Read(rawBytes); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate key"})
+		httputil.RespondInternalError(c, "Failed to generate key random bytes", err, "KEY_GENERATION_FAILED")
 		return
 	}
 	rawKey := "gw_sk_" + hex.EncodeToString(rawBytes)
@@ -98,7 +99,7 @@ func (h *GatewayKeyHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.keys.Create(c.Request.Context(), key); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create key"})
+		httputil.RespondInternalError(c, "Failed to create gateway key", err, "GATEWAY_KEY_CREATE_FAILED")
 		return
 	}
 
@@ -134,7 +135,7 @@ func (h *GatewayKeyHandler) List(c *gin.Context) {
 
 	keys, total, err := h.keys.ListByUserIDWithFilter(c.Request.Context(), userID, search, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list keys"})
+		httputil.RespondInternalError(c, "Failed to list gateway keys", err, "GATEWAY_KEYS_LIST_FAILED")
 		return
 	}
 	if keys == nil {
@@ -152,7 +153,7 @@ func (h *GatewayKeyHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 	userID := c.GetString("userId")
 	if err := h.keys.Delete(c.Request.Context(), id, userID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "key not found"})
+		httputil.RespondNotFound(c, "Gateway key not found", err, "GATEWAY_KEY_NOT_FOUND")
 		return
 	}
 	c.Status(http.StatusNoContent)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	goredis "github.com/redis/go-redis/v9"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 )
 
@@ -32,12 +33,7 @@ func GatewayRateLimitMiddleware(rdb *goredis.Client, limit int) gin.HandlerFunc 
 		}
 
 		if countCmd.Val() >= int64(limit) {
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": gin.H{
-					"message": "Rate limit exceeded",
-					"type":    "rate_limit_error",
-				},
-			})
+			httputil.RespondError(c, http.StatusTooManyRequests, "Rate limit exceeded", nil, "RATE_LIMIT_EXCEEDED")
 			return
 		}
 

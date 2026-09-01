@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
@@ -23,7 +24,7 @@ func (h *QuotaHandler) List(c *gin.Context) {
 	}
 	quotas, err := h.repo.ListQuotas(c.Request.Context(), orgID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list quotas: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to list quotas", err, "QUOTAS_LIST_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -38,7 +39,7 @@ func (h *QuotaHandler) Get(c *gin.Context) {
 
 	evalResult, err := h.repo.EvaluateQuota(c.Request.Context(), targetType, targetID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to evaluate quota: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to evaluate quota", err, "QUOTA_EVALUATION_FAILED")
 		return
 	}
 
@@ -66,12 +67,12 @@ func (h *QuotaHandler) Update(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid quota update payload: " + err.Error()})
+		httputil.RespondBadRequest(c, "Invalid quota update payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
 	if targetType == "organization" && orgID != "" && targetID != orgID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "cannot update quota for a different organization"})
+		httputil.RespondForbidden(c, "cannot update quota for a different organization", nil, "QUOTA_ACCESS_DENIED")
 		return
 	}
 
@@ -87,7 +88,7 @@ func (h *QuotaHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.repo.UpsertQuota(c.Request.Context(), quota); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update tenant quota: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to update tenant quota", err, "QUOTA_UPDATE_FAILED")
 		return
 	}
 

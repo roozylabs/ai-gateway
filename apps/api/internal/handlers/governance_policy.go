@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	"github.com/roozylabs/prism/internal/repository"
@@ -35,7 +36,7 @@ func (h *GovernancePolicyHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	policies, err := h.repo.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list governance policies: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to list governance policies", err, "GOVERNANCE_POLICIES_LIST_FAILED")
 		return
 	}
 	if policies == nil {
@@ -49,7 +50,7 @@ func (h *GovernancePolicyHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	policy, err := h.repo.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "governance policy not found"})
+		httputil.RespondNotFound(c, "Governance policy not found", err, "GOVERNANCE_POLICY_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, policy)
@@ -59,7 +60,7 @@ func (h *GovernancePolicyHandler) Create(c *gin.Context) {
 	userID := c.GetString("userId")
 	var req CreateGovernancePolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body: " + err.Error()})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -83,7 +84,7 @@ func (h *GovernancePolicyHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.repo.Create(c.Request.Context(), policy); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create governance policy: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to create governance policy", err, "GOVERNANCE_POLICY_CREATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusCreated, policy)
@@ -94,13 +95,13 @@ func (h *GovernancePolicyHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 	existing, err := h.repo.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "governance policy not found"})
+		httputil.RespondNotFound(c, "Governance policy not found", err, "GOVERNANCE_POLICY_NOT_FOUND")
 		return
 	}
 
 	var req CreateGovernancePolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body: " + err.Error()})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -124,7 +125,7 @@ func (h *GovernancePolicyHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.repo.Update(c.Request.Context(), existing); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update governance policy"})
+		httputil.RespondInternalError(c, "Failed to update governance policy", err, "GOVERNANCE_POLICY_UPDATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, existing)
@@ -134,7 +135,7 @@ func (h *GovernancePolicyHandler) Delete(c *gin.Context) {
 	userID := c.GetString("userId")
 	id := c.Param("id")
 	if err := h.repo.Delete(c.Request.Context(), id, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete governance policy"})
+		httputil.RespondInternalError(c, "Failed to delete governance policy", err, "GOVERNANCE_POLICY_DELETE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "governance policy deleted"})
@@ -144,13 +145,13 @@ func (h *GovernancePolicyHandler) Evaluate(c *gin.Context) {
 	userID := c.GetString("userId")
 	var req models.RBACEvaluationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid evaluation request"})
+		httputil.RespondBadRequest(c, "Invalid evaluation request", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
 	res, err := h.rbacEngine.Evaluate(c.Request.Context(), userID, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to evaluate governance policy: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to evaluate governance policy", err, "GOVERNANCE_POLICY_EVALUATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, res)

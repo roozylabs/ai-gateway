@@ -22,6 +22,7 @@ type ErrorResponse struct {
 
 // RespondError logs the detailed internal error on the server side with request context,
 // and returns a sanitized, clean, user-friendly JSON error to the HTTP client.
+// It uses c.AbortWithStatusJSON so that both Gin handlers and middleware chains halt safely.
 func RespondError(c *gin.Context, status int, clientMessage string, internalErr error, errCode string) {
 	if clientMessage == "" {
 		clientMessage = http.StatusText(status)
@@ -32,6 +33,10 @@ func RespondError(c *gin.Context, status int, clientMessage string, internalErr 
 
 	errType := "api_error"
 	switch {
+	case errCode == "TENANT_SECURITY_ERROR":
+		errType = "tenant_security_error"
+	case errCode == "PERMISSION_DENIED" || errCode == "AUTHORIZATION_ERROR":
+		errType = "authorization_error"
 	case status == http.StatusUnauthorized:
 		errType = "auth_error"
 	case status == http.StatusForbidden:
@@ -70,7 +75,7 @@ func RespondError(c *gin.Context, status int, clientMessage string, internalErr 
 	}
 
 	if c != nil {
-		c.JSON(status, ErrorResponse{
+		c.AbortWithStatusJSON(status, ErrorResponse{
 			Error: APIError{
 				Message: clientMessage,
 				Type:    errType,
@@ -78,4 +83,59 @@ func RespondError(c *gin.Context, status int, clientMessage string, internalErr 
 			},
 		})
 	}
+}
+
+// RespondUnauthorized is a shorthand for 401 Unauthorized errors.
+func RespondUnauthorized(c *gin.Context, clientMessage string, internalErr error, errCode string) {
+	if clientMessage == "" {
+		clientMessage = "Authentication required"
+	}
+	if errCode == "" {
+		errCode = "AUTH_REQUIRED"
+	}
+	RespondError(c, http.StatusUnauthorized, clientMessage, internalErr, errCode)
+}
+
+// RespondForbidden is a shorthand for 403 Forbidden errors.
+func RespondForbidden(c *gin.Context, clientMessage string, internalErr error, errCode string) {
+	if clientMessage == "" {
+		clientMessage = "Access forbidden"
+	}
+	if errCode == "" {
+		errCode = "PERMISSION_DENIED"
+	}
+	RespondError(c, http.StatusForbidden, clientMessage, internalErr, errCode)
+}
+
+// RespondNotFound is a shorthand for 404 Not Found errors.
+func RespondNotFound(c *gin.Context, clientMessage string, internalErr error, errCode string) {
+	if clientMessage == "" {
+		clientMessage = "Resource not found"
+	}
+	if errCode == "" {
+		errCode = "NOT_FOUND"
+	}
+	RespondError(c, http.StatusNotFound, clientMessage, internalErr, errCode)
+}
+
+// RespondBadRequest is a shorthand for 400 Bad Request errors.
+func RespondBadRequest(c *gin.Context, clientMessage string, internalErr error, errCode string) {
+	if clientMessage == "" {
+		clientMessage = "Invalid request payload"
+	}
+	if errCode == "" {
+		errCode = "INVALID_REQUEST"
+	}
+	RespondError(c, http.StatusBadRequest, clientMessage, internalErr, errCode)
+}
+
+// RespondInternalError is a shorthand for 500 Internal Server Error.
+func RespondInternalError(c *gin.Context, clientMessage string, internalErr error, errCode string) {
+	if clientMessage == "" {
+		clientMessage = "Internal server error"
+	}
+	if errCode == "" {
+		errCode = "INTERNAL_ERROR"
+	}
+	RespondError(c, http.StatusInternalServerError, clientMessage, internalErr, errCode)
 }

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
@@ -65,7 +66,7 @@ func (h *LogsHandler) List(c *gin.Context) {
 		Offset:   offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list logs"})
+		httputil.RespondInternalError(c, "Failed to list request logs", err, "LOGS_LIST_FAILED")
 		return
 	}
 
@@ -95,12 +96,7 @@ func (h *LogsHandler) GetAnalytics(c *gin.Context) {
 
 	analytics, err := h.logs.GetLogAnalytics(c.Request.Context(), userID, days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "internal_error",
-				"message": err.Error(),
-			},
-		})
+		httputil.RespondInternalError(c, "Failed to retrieve log analytics", err, "LOGS_ANALYTICS_FAILED")
 		return
 	}
 

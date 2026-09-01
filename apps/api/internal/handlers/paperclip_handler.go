@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 )
@@ -31,15 +32,13 @@ type RegisterPaperclipAgentRequest struct {
 func (h *PaperclipHandler) RegisterAgent(c *gin.Context) {
 	gatewayKey, _ := c.MustGet("gatewayKey").(*models.GatewayAPIKey)
 	if gatewayKey == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "gateway key required"})
+		httputil.RespondUnauthorized(c, "Gateway key required", nil, "GATEWAY_KEY_REQUIRED")
 		return
 	}
 
 	var req RegisterPaperclipAgentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": gin.H{"message": "Invalid request body: " + err.Error(), "type": "invalid_request_error"},
-		})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -53,9 +52,7 @@ func (h *PaperclipHandler) RegisterAgent(c *gin.Context) {
 		req.AllowedTools,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{"message": "Failed to register Paperclip agent: " + err.Error(), "type": "internal_error"},
-		})
+		httputil.RespondInternalError(c, "Failed to register Paperclip agent", err, "PAPERCLIP_AGENT_REGISTER_FAILED")
 		return
 	}
 

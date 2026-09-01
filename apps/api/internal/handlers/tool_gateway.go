@@ -8,10 +8,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	goredis "github.com/roozylabs/prism/internal/redis"
-	"github.com/roozylabs/prism/internal/repository"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
+	goredis "github.com/roozylabs/prism/internal/redis"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 type ToolGatewayHandler struct {
@@ -33,7 +34,7 @@ func (h *ToolGatewayHandler) ExecuteTool(c *gin.Context) {
 	toolName := c.Param("toolName")
 	gatewayKey, _ := c.MustGet("gatewayKey").(*models.GatewayAPIKey)
 	if gatewayKey == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "gateway key required"})
+		httputil.RespondUnauthorized(c, "Gateway key required", nil, "GATEWAY_KEY_REQUIRED")
 		return
 	}
 
@@ -47,12 +48,7 @@ func (h *ToolGatewayHandler) ExecuteTool(c *gin.Context) {
 				}
 			}
 			if !allowed {
-				c.JSON(http.StatusForbidden, gin.H{
-					"error": gin.H{
-						"message": "Agent is not authorized to execute tool '" + toolName + "'",
-						"type":    "permission_denied",
-					},
-				})
+				httputil.RespondForbidden(c, "Agent is not authorized to execute tool '"+toolName+"'", nil, "TOOL_PERMISSION_DENIED")
 				return
 			}
 		}
@@ -60,7 +56,7 @@ func (h *ToolGatewayHandler) ExecuteTool(c *gin.Context) {
 
 	var req ExecuteToolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -70,12 +66,7 @@ func (h *ToolGatewayHandler) ExecuteTool(c *gin.Context) {
 
 	result, err := h.gateway.Execute(ctx, gatewayKey.UserID, toolName, req.Args, h.encKey)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"error": gin.H{
-				"message": err.Error(),
-				"type":    "tool_execution_error",
-			},
-		})
+		httputil.RespondError(c, http.StatusBadGateway, "Tool execution failed: "+err.Error(), err, "TOOL_EXECUTION_FAILED")
 		return
 	}
 

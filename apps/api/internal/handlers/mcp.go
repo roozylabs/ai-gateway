@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	"github.com/roozylabs/prism/internal/repository"
@@ -44,9 +45,6 @@ type CreateMCPServerRequest struct {
 	Enabled       *bool             `json:"enabled"`
 }
 
-// MCPServerEdit is the editable representation returned to the dashboard so the
-// edit form can be repopulated from a fresh API fetch. It exposes the decrypted
-// headers (and whether an auth token is stored) but never returns secret values.
 type MCPServerEdit struct {
 	ID            string            `json:"id"`
 	Name          string            `json:"name"`
@@ -114,9 +112,6 @@ func cleanAuthorizationHeader(val string) string {
 	return "Bearer " + token
 }
 
-// buildConfigHeaders merges the request's explicit authToken into the generic
-// headers map (Authorization shortcut) and returns the serialized+encrypted
-// payload for the headers_encrypted column.
 func (h *MCPHandler) buildConfigHeaders(req CreateMCPServerRequest) (*string, error) {
 	headers := map[string]string{}
 	for k, v := range req.Headers {
@@ -155,7 +150,7 @@ func (h *MCPHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	servers, err := h.servers.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list mcp servers: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to list MCP servers", err, "MCP_SERVERS_LIST_FAILED")
 		return
 	}
 	if servers == nil {
@@ -169,12 +164,12 @@ func (h *MCPHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	srv, err := h.servers.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "mcp server not found"})
+		httputil.RespondNotFound(c, "MCP server not found", err, "MCP_SERVER_NOT_FOUND")
 		return
 	}
 	edit, err := h.toEdit(srv)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load mcp server: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to load MCP server", err, "MCP_SERVER_LOAD_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, edit)
@@ -184,7 +179,7 @@ func (h *MCPHandler) Create(c *gin.Context) {
 	userID := c.GetString("userId")
 	var req CreateMCPServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -194,11 +189,11 @@ func (h *MCPHandler) Create(c *gin.Context) {
 	}
 	if configType == "local" {
 		if strings.TrimSpace(req.Command) == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "command is required for local MCP servers"})
+			httputil.RespondBadRequest(c, "Command is required for local MCP servers", nil, "COMMAND_REQUIRED")
 			return
 		}
 	} else if strings.TrimSpace(req.EndpointURL) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "endpointUrl is required for remote MCP servers"})
+		httputil.RespondBadRequest(c, "endpointUrl is required for remote MCP servers", nil, "ENDPOINT_URL_REQUIRED")
 		return
 	}
 
@@ -213,7 +208,7 @@ func (h *MCPHandler) Create(c *gin.Context) {
 
 	headersEnc, err := h.buildConfigHeaders(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt headers"})
+		httputil.RespondInternalError(c, "Failed to encrypt headers", err, "ENCRYPTION_FAILED")
 		return
 	}
 
@@ -241,7 +236,7 @@ func (h *MCPHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.servers.Create(c.Request.Context(), srv); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create mcp server: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to create MCP server", err, "MCP_SERVER_CREATE_FAILED")
 		return
 	}
 
@@ -261,13 +256,13 @@ func (h *MCPHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 	existing, err := h.servers.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "mcp server not found"})
+		httputil.RespondNotFound(c, "MCP server not found", err, "MCP_SERVER_NOT_FOUND")
 		return
 	}
 
 	var req CreateMCPServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -295,12 +290,10 @@ func (h *MCPHandler) Update(c *gin.Context) {
 		existing.Enabled = *req.Enabled
 	}
 
-	// Rebuild encrypted headers only when auth or headers were supplied; the
-	// absent flag allows clearing previously stored headers.
 	if req.AuthToken != "" || len(req.Headers) > 0 {
 		headersEnc, err := h.buildConfigHeaders(req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt headers"})
+			httputil.RespondInternalError(c, "Failed to encrypt headers", err, "ENCRYPTION_FAILED")
 			return
 		}
 		existing.HeadersEncrypted = headersEnc
@@ -308,7 +301,7 @@ func (h *MCPHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.servers.Update(c.Request.Context(), existing); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update mcp server"})
+		httputil.RespondInternalError(c, "Failed to update MCP server", err, "MCP_SERVER_UPDATE_FAILED")
 		return
 	}
 
@@ -320,7 +313,7 @@ func (h *MCPHandler) Delete(c *gin.Context) {
 	userID := c.GetString("userId")
 	id := c.Param("id")
 	if err := h.servers.Delete(c.Request.Context(), id, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete mcp server"})
+		httputil.RespondInternalError(c, "Failed to delete MCP server", err, "MCP_SERVER_DELETE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "mcp server deleted"})
@@ -334,7 +327,7 @@ func (h *MCPHandler) Sync(c *gin.Context) {
 
 	st, err := h.gateway.SyncServerTools(ctx, id, userID, h.encKey)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "sync failed: " + err.Error()})
+		httputil.RespondError(c, http.StatusBadGateway, "MCP Server sync failed: "+err.Error(), err, "MCP_SYNC_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, st)
@@ -350,13 +343,13 @@ func (h *MCPHandler) TestTool(c *gin.Context) {
 	id := c.Param("id")
 	srv, err := h.servers.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "mcp server not found"})
+		httputil.RespondNotFound(c, "MCP server not found", err, "MCP_SERVER_NOT_FOUND")
 		return
 	}
 
 	var req TestMCPToolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -364,42 +357,37 @@ func (h *MCPHandler) TestTool(c *gin.Context) {
 	defer cancel()
 	res, err := h.gateway.ExecuteTool(ctx, userID, srv.Name, req.Tool, req.Args, h.encKey)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		httputil.RespondError(c, http.StatusBadGateway, "Tool execution failed: "+err.Error(), err, "MCP_TOOL_EXECUTION_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, res)
 }
 
-// ListTools returns the tools previously synced from an MCP server so the
-// dashboard test modal can render a tool selector and its input schema.
 func (h *MCPHandler) ListTools(c *gin.Context) {
 	userID := c.GetString("userId")
 	id := c.Param("id")
 
 	if _, err := h.servers.FindByID(c.Request.Context(), id, userID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "mcp server not found"})
+		httputil.RespondNotFound(c, "MCP server not found", err, "MCP_SERVER_NOT_FOUND")
 		return
 	}
 
 	tools, err := h.tools.ListByServerID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load mcp tools: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to load MCP tools", err, "MCP_TOOLS_LOAD_FAILED")
 		return
 	}
 
 	c.JSON(http.StatusOK, tools)
 }
 
-// Stats returns aggregated usage metrics and agent bindings for a single MCP
-// server within a sliding day window, following the analytics response shape
-// ({ "data": ... }).
 func (h *MCPHandler) Stats(c *gin.Context) {
 	userID := c.GetString("userId")
 	id := c.Param("id")
 
 	srv, err := h.servers.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "mcp server not found"})
+		httputil.RespondNotFound(c, "MCP server not found", err, "MCP_SERVER_NOT_FOUND")
 		return
 	}
 
@@ -415,13 +403,13 @@ func (h *MCPHandler) Stats(c *gin.Context) {
 
 	stats, err := h.invocations.GetStats(c.Request.Context(), userID, id, days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load mcp server stats: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to load MCP server stats", err, "MCP_STATS_LOAD_FAILED")
 		return
 	}
 
 	agents, err := h.agents.FindByMCPServerName(c.Request.Context(), userID, srv.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load mcp server agent bindings: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to load MCP server agent bindings", err, "MCP_AGENTS_LOAD_FAILED")
 		return
 	}
 

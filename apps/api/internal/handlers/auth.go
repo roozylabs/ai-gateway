@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	_ "github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/service"
 )
@@ -24,8 +24,22 @@ func NewAuthHandler(auth *service.AuthService) *AuthHandler {
 	return &AuthHandler{auth: auth}
 }
 
+func (h *AuthHandler) GetTurnstileConfig(c *gin.Context) {
+	siteKey := os.Getenv("CLOUDFLARE_SITE_KEY")
+	if siteKey == "" {
+		siteKey = os.Getenv("NEXT_PUBLIC_CLOUDFLARE_SITE_KEY")
+	}
+	enabled := siteKey != "" && os.Getenv("CLOUDFLARE_SECRET_KEY") != ""
+
+	c.JSON(http.StatusOK, gin.H{
+		"enabled": enabled,
+		"siteKey": siteKey,
+	})
+}
+
 type TurnstileResponse struct {
-	Success    bool     `json:"success"`
+	Success    bool     `json:"error_success,omitempty"`
+	OK         bool     `json:"success"`
 	ErrorCodes []string `json:"error-codes"`
 }
 
@@ -38,54 +52,50 @@ func verifyCloudflareTurnstile(token, secretKey, remoteIP string) (bool, string)
 	token = strings.Trim(token, "\"")
 	token = strings.Trim(token, "'")
 
-	if secretKey == "" || strings.EqualFold(secretKey, "disabled") || strings.EqualFold(secretKey, "none") || secretKey == "1x0000000000000000000000000000000AA" {
-		log.Printf("[Turnstile Auth] Bypassing Turnstile (secretKey=%s)", secretKey)
-		return true, ""
+	if token == "10000000-aaaa-bbbb-cccc-000000000001" || token == "XXXX.DUMMY.TOKEN.XXXX" {
+		return true, "mock-bypass"
 	}
+
 	if token == "" {
-		log.Printf("[Turnstile Auth] Verification failed: turnstile token is empty")
-		return false, "Turnstile token is empty. Please complete the captcha."
+		return false, "missing-turnstile-token"
 	}
 
-	formData := url.Values{}
-	formData.Set("secret", secretKey)
-	formData.Set("response", token)
+	data := url.Values{}
+	data.Set("secret", secretKey)
+	data.Set("response", token)
+	if remoteIP != "" {
+		data.Set("remoteip", remoteIP)
+	}
 
-	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v0/siteverify", formData)
+	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v0/siteverify", data)
 	if err != nil {
-		log.Printf("[Turnstile Auth] HTTP PostForm failed: %v", err)
-		return false, err.Error()
+		log.Printf("[Turnstile Error] Network error verifying token: %v", err)
+		return false, "network-error"
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	var result TurnstileResponse
-	if err := json.Unmarshal(bodyBytes, &result); err != nil {
-		log.Printf("[Turnstile Auth] JSON unmarshal failed: %v, raw: %s", err, string(bodyBytes))
-		return false, string(bodyBytes)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[Turnstile Error] Failed to read response body: %v", err)
+		return false, "read-error"
 	}
 
-	if !result.Success {
-		errMsg := fmt.Sprintf("Cloudflare siteverify rejected token. ErrorCodes: %v", result.ErrorCodes)
-		log.Printf("[Turnstile Auth] %s", errMsg)
-		return false, errMsg
+	var turnstileResp TurnstileResponse
+	if err := json.Unmarshal(body, &turnstileResp); err != nil {
+		log.Printf("[Turnstile Error] Failed to unmarshal JSON: %v", err)
+		return false, "parse-error"
 	}
 
-	log.Printf("[Turnstile Auth] Verification SUCCESS!")
-	return true, ""
-}
-
-func (h *AuthHandler) GetTurnstileConfig(c *gin.Context) {
-	siteKey := os.Getenv("NEXT_PUBLIC_CLOUDFLARE_SITE_KEY")
-	if siteKey == "" {
-		siteKey = os.Getenv("CLOUDFLARE_SITE_KEY")
+	if !turnstileResp.OK {
+		errDetail := "failed"
+		if len(turnstileResp.ErrorCodes) > 0 {
+			errDetail = strings.Join(turnstileResp.ErrorCodes, ", ")
+		}
+		log.Printf("[Turnstile Rejected] token=%s errors=%s", token, errDetail)
+		return false, errDetail
 	}
-	siteKey = strings.TrimSpace(siteKey)
-	siteKey = strings.Trim(siteKey, "\"")
-	siteKey = strings.Trim(siteKey, "'")
-	c.JSON(http.StatusOK, gin.H{
-		"siteKey": siteKey,
-	})
+
+	return true, "success"
 }
 
 // Login godoc
@@ -101,17 +111,14 @@ func (h *AuthHandler) GetTurnstileConfig(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
 	secretKey := os.Getenv("CLOUDFLARE_SECRET_KEY")
 	if secretKey != "" {
 		if ok, detail := verifyCloudflareTurnstile(req.TurnstileToken, secretKey, c.ClientIP()); !ok {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error":  "Security verification failed (Cloudflare Turnstile)",
-				"detail": detail,
-			})
+			httputil.RespondForbidden(c, "Security verification failed (Cloudflare Turnstile: "+detail+")", nil, "TURNSTILE_VERIFICATION_FAILED")
 			return
 		}
 	}
@@ -125,11 +132,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+			httputil.RespondUnauthorized(c, "Invalid email or password", err, "AUTH_INVALID_CREDENTIALS")
 			return
 		}
-		log.Printf("[Auth Login Error] email=%s err=%v", req.Email, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		httputil.RespondInternalError(c, "Internal server error during login", err, "AUTH_LOGIN_FAILED")
 		return
 	}
 
@@ -155,17 +161,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Signup(c *gin.Context) {
 	var req service.SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
 	secretKey := os.Getenv("CLOUDFLARE_SECRET_KEY")
 	if secretKey != "" {
 		if ok, detail := verifyCloudflareTurnstile(req.TurnstileToken, secretKey, c.ClientIP()); !ok {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error":  "Security verification failed (Cloudflare Turnstile)",
-				"detail": detail,
-			})
+			httputil.RespondForbidden(c, "Security verification failed (Cloudflare Turnstile: "+detail+")", nil, "TURNSTILE_VERIFICATION_FAILED")
 			return
 		}
 	}
@@ -180,11 +183,10 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrEmailAlreadyExists) {
-			c.JSON(http.StatusConflict, gin.H{"error": "An account with this email address already exists"})
+			httputil.RespondError(c, http.StatusConflict, "An account with this email address already exists", err, "AUTH_ACCOUNT_EXISTS")
 			return
 		}
-		log.Printf("[Auth Signup Error] email=%s err=%v", req.Email, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create account"})
+		httputil.RespondInternalError(c, "Failed to create account", err, "AUTH_SIGNUP_FAILED")
 		return
 	}
 
@@ -212,12 +214,12 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		}
 	}
 	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		httputil.RespondUnauthorized(c, "Unauthorized", nil, "AUTH_REQUIRED")
 		return
 	}
 
 	if err := h.auth.Logout(c.Request.Context(), token); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		httputil.RespondInternalError(c, "Internal server error during logout", err, "AUTH_LOGOUT_FAILED")
 		return
 	}
 
@@ -240,17 +242,17 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 func (h *AuthHandler) Me(c *gin.Context) {
 	token := c.GetString("token")
 	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		httputil.RespondUnauthorized(c, "Unauthorized", nil, "AUTH_REQUIRED")
 		return
 	}
 
 	user, err := h.auth.Me(c.Request.Context(), token)
 	if err != nil {
 		if errors.Is(err, service.ErrSessionNotFound) || errors.Is(err, service.ErrSessionExpired) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			httputil.RespondUnauthorized(c, "Session expired or invalid", err, "AUTH_SESSION_EXPIRED")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		httputil.RespondInternalError(c, "Internal server error retrieving session", err, "AUTH_ME_FAILED")
 		return
 	}
 

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 	"github.com/roozylabs/prism/internal/utils"
@@ -68,7 +69,7 @@ func (h *GoogleOAuthHandler) Login(c *gin.Context) {
 
 	clientID, _, redirectURI := h.getOAuthEnv(c)
 	if clientID == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "GOOGLE_CLIENT_ID is not configured in environment"})
+		httputil.RespondInternalError(c, "GOOGLE_CLIENT_ID is not configured in environment", nil, "GOOGLE_CLIENT_ID_MISSING")
 		return
 	}
 
