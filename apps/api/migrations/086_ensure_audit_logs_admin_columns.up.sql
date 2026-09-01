@@ -1,7 +1,5 @@
 -- Migration 086: Ensure audit_logs baseline columns for System Administration Action Logs
--- Migration 074 guarantees the baseline audit_logs table; 074/065 create the
--- org/action/actor indexes and actor_ip/actor_user_agent. This migration fills the
--- remaining columns consumed by AuditLogRepository.CreateAuditLog and ListAuditLogs.
+-- Guarantees all columns and indexes consumed by AuditLogRepository exist idempotently.
 
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -24,16 +22,37 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 
 ALTER TABLE audit_logs
+    ADD COLUMN IF NOT EXISTS organization_id VARCHAR(64) DEFAULT 'org_default',
+    ADD COLUMN IF NOT EXISTS actor_id VARCHAR(255),
     ADD COLUMN IF NOT EXISTS actor_email VARCHAR(255) DEFAULT '',
     ADD COLUMN IF NOT EXISTS resource VARCHAR(255) DEFAULT '',
+    ADD COLUMN IF NOT EXISTS resource_type VARCHAR(255) DEFAULT '',
+    ADD COLUMN IF NOT EXISTS resource_id VARCHAR(255),
     ADD COLUMN IF NOT EXISTS details_json TEXT DEFAULT '{}',
+    ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '{}'::jsonb,
     ADD COLUMN IF NOT EXISTS actor_ip VARCHAR(45) DEFAULT '',
-    ADD COLUMN IF NOT EXISTS actor_user_agent TEXT DEFAULT '';
+    ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45) DEFAULT '',
+    ADD COLUMN IF NOT EXISTS actor_user_agent TEXT DEFAULT '',
+    ADD COLUMN IF NOT EXISTS user_agent TEXT DEFAULT '',
+    ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'success',
+    ADD COLUMN IF NOT EXISTS error_message TEXT DEFAULT '';
 
--- 074 created resource_type NOT NULL without a default; CreateAuditLog no longer
--- supplies it, so relax the column so admin action inserts do not fail on fresh DBs.
-ALTER TABLE audit_logs ALTER COLUMN resource_type DROP NOT NULL;
-ALTER TABLE audit_logs ALTER COLUMN resource_type SET DEFAULT '';
+-- Safely relax NOT NULL on resource_type if present
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'audit_logs' AND column_name = 'resource_type' AND is_nullable = 'NO'
+    ) THEN
+        ALTER TABLE audit_logs ALTER COLUMN resource_type DROP NOT NULL;
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'audit_logs' AND column_name = 'resource_type'
+    ) THEN
+        ALTER TABLE audit_logs ALTER COLUMN resource_type SET DEFAULT '';
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_org_created ON audit_logs(organization_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action_status ON audit_logs(action, status);
