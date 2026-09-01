@@ -6,7 +6,7 @@ import { MetricCard } from '@/components/molecules/MetricCard';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/molecules/Card';
 import { StatusDot, Badge, StatusType } from '@/components/atoms/Badge';
 import { DataTable, Column } from '@/components/organisms/DataTable';
-import { LazyTrafficChart } from '@/components/organisms/ChartContainer';
+import { LazyTrafficChart, TrafficChartData } from '@/components/organisms/ChartContainer';
 import { ErrorState } from '@/components/molecules/StateAlerts';
 import {
   useDashboardStatsQuery,
@@ -69,9 +69,26 @@ export default function DashboardPage() {
   };
   const currentRangeLabel = rangeLabelMap[dateRange] || '30d';
 
-  const trafficData = useMemo(() => {
-    if (!usageData) return [];
-    return usageData.map((p) => ({ time: p.date, requests: p.requests }));
+  const { trafficData, modelKeys } = useMemo(() => {
+    if (!usageData || usageData.length === 0) return { trafficData: [] as TrafficChartData[], modelKeys: [] as string[] };
+
+    const dateMap = new Map<string, TrafficChartData>();
+    const modelsSet = new Set<string>();
+
+    for (const p of usageData) {
+      const model = p.model || 'default';
+      modelsSet.add(model);
+
+      const existing = dateMap.get(p.date) || { time: p.date, requests: 0 };
+      existing.requests += p.requests;
+      existing[model] = (Number(existing[model]) || 0) + p.requests;
+      dateMap.set(p.date, existing);
+    }
+
+    return {
+      trafficData: Array.from(dateMap.values()),
+      modelKeys: Array.from(modelsSet),
+    };
   }, [usageData]);
 
   const activities: RecentActivity[] = useMemo(() => {
@@ -226,11 +243,13 @@ export default function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold">Real-Time Request Traffic</CardTitle>
-              <span className="font-mono text-xs text-muted-foreground">Requests / Hour</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {dateRange === '24h' ? 'Requests / Hour' : 'Requests / Day'}
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <LazyTrafficChart data={trafficData} height={260} />
+            <LazyTrafficChart data={trafficData} modelKeys={modelKeys} height={260} />
           </CardContent>
         </Card>
 
