@@ -305,8 +305,7 @@ func (r *RequestLogRepository) GetStats(ctx context.Context, userID string, days
 
 	err = r.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM credentials c
-		 INNER JOIN providers p ON c.provider_id = p.id
-		 WHERE p.user_id = $1 AND c.enabled = true AND c.status = 'active'`, userID,
+		 WHERE (c.user_id = $1 OR c.org_id = $1) AND c.enabled = true AND c.status = 'active'`, userID,
 	).Scan(&s.ActiveCredentials)
 	if err != nil {
 		return nil, err
@@ -388,13 +387,25 @@ type ProviderHealth struct {
 }
 
 func (r *RequestLogRepository) GetProviderHealth(ctx context.Context, userID string) ([]ProviderHealth, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT p.id, p.name, p.type, p.enabled,
-		        (SELECT COUNT(*) FROM credentials c WHERE c.provider_id = p.id AND c.enabled = true AND c.status = 'active') as cred_count
+	var query string
+	var args []interface{}
+
+	if userID != "" && userID != "user_admin" {
+		query = `SELECT p.id, p.name, p.type, p.enabled,
+		        (SELECT COUNT(*) FROM credentials c WHERE c.provider_id = p.id AND c.enabled = true AND c.status = 'active' AND (c.user_id = $1 OR c.org_id = $1)) as cred_count
 		 FROM providers p
 		 WHERE p.user_id = $1 OR p.user_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' OR p.user_id = 'user_admin' OR p.user_id IS NULL OR p.user_id = ''
-		 ORDER BY p.name`, userID,
-	)
+		 ORDER BY p.name`
+		args = []interface{}{userID}
+	} else {
+		query = `SELECT p.id, p.name, p.type, p.enabled,
+		        (SELECT COUNT(*) FROM credentials c WHERE c.provider_id = p.id AND c.enabled = true AND c.status = 'active') as cred_count
+		 FROM providers p
+		 WHERE p.user_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' OR p.user_id = 'user_admin' OR p.user_id IS NULL OR p.user_id = ''
+		 ORDER BY p.name`
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

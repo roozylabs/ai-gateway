@@ -35,6 +35,8 @@ type CredentialQuota struct {
 type Credential struct {
 	ID                string           `json:"id" db:"id"`
 	ProviderID        string           `json:"providerId" db:"provider_id"`
+	UserID            *string          `json:"userId,omitempty" db:"user_id"`
+	OrgID             *string          `json:"orgId,omitempty" db:"org_id"`
 	Name              string           `json:"name" db:"name"`
 	EncryptedKey      string           `json:"-" db:"encrypted_key"`
 	KeyPrefix         string           `json:"keyPrefix" db:"key_prefix"`
