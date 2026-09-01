@@ -1,0 +1,126 @@
+---
+// Dynamic Theme-Adaptive Geometric & Refractive Background Animation
+// Follows AuthLayout.tsx & Firecrawl architectural aesthetics
+---
+
+<div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
+	<!-- 1. Radial Falloff Vignette / Darkening Mask -->
+	<div class="absolute inset-0 bg-[radial-gradient(ellipse_85%_65%_at_50%_15%,transparent_35%,hsl(var(--background))_100%)]"></div>
+
+	<!-- 2. Soft Ambient Refraction & Moving Grid Beam Canvas -->
+	<canvas id="bg-canvas" class="absolute inset-0 w-full h-full"></canvas>
+</div>
+
+<script>
+	function initBackground() {
+		const canvas = document.getElementById('bg-canvas') as HTMLCanvasElement | null;
+		if (!canvas) return;
+
+		const ctx = canvas.getContext('2d', { alpha: true });
+		if (!ctx) return;
+
+		let animationFrameId: number;
+		let width = (canvas.width = window.innerWidth);
+		let height = (canvas.height = window.innerHeight);
+
+		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		let phase = 0;
+		// Moving light beam coordinates along grid
+		let beamY = -100;
+		let beamSpeed = 1.2;
+
+		const handleResize = () => {
+			if (!canvas) return;
+			width = canvas.width = window.innerWidth;
+			height = canvas.height = window.innerHeight;
+		};
+
+		window.addEventListener('resize', handleResize);
+
+		const render = () => {
+			const isDark = document.documentElement.classList.contains('dark');
+			ctx.clearRect(0, 0, width, height);
+
+			if (!prefersReducedMotion) {
+				phase += 0.006;
+				beamY += beamSpeed;
+				if (beamY > height + 200) {
+					beamY = -150;
+				}
+			}
+
+			// 1. Subtle top-center ambient prism refraction
+			const centerX = width / 2;
+			const topY = height * 0.12;
+			const radius = Math.max(width, height) * 0.55;
+
+			const radialGrad = ctx.createRadialGradient(
+				centerX + Math.sin(phase) * 50,
+				topY + Math.cos(phase * 0.7) * 25,
+				0,
+				centerX,
+				topY,
+				radius
+			);
+
+			if (isDark) {
+				radialGrad.addColorStop(0, 'rgba(139, 92, 246, 0.14)'); // Prism Violet
+				radialGrad.addColorStop(0.35, 'rgba(6, 182, 212, 0.04)'); // Subtle Cyan
+				radialGrad.addColorStop(0.7, 'rgba(124, 58, 237, 0.015)');
+				radialGrad.addColorStop(1, 'rgba(8, 9, 10, 0)');
+			} else {
+				radialGrad.addColorStop(0, 'rgba(124, 58, 237, 0.08)');
+				radialGrad.addColorStop(0.35, 'rgba(2, 132, 199, 0.03)');
+				radialGrad.addColorStop(0.7, 'rgba(139, 92, 246, 0.01)');
+				radialGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+			}
+
+			ctx.fillStyle = radialGrad;
+			ctx.fillRect(0, 0, width, height);
+
+			// 2. Fine geometric grid lines
+			const gridSize = 56;
+			ctx.lineWidth = 1;
+			ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.028)' : 'rgba(0, 0, 0, 0.04)';
+
+			const startX = (width % gridSize) / 2;
+			const startY = (height % gridSize) / 2;
+
+			ctx.beginPath();
+			for (let x = startX; x <= width; x += gridSize) {
+				ctx.moveTo(x, 0);
+				ctx.lineTo(x, height);
+			}
+			for (let y = startY; y <= height; y += gridSize) {
+				ctx.moveTo(0, y);
+				ctx.lineTo(width, y);
+			}
+			ctx.stroke();
+
+			// 3. Firecrawl-inspired subtle horizontal glowing scanning beam
+			if (!prefersReducedMotion) {
+				const beamGrad = ctx.createLinearGradient(0, beamY - 60, 0, beamY + 60);
+				if (isDark) {
+					beamGrad.addColorStop(0, 'rgba(139, 92, 246, 0)');
+					beamGrad.addColorStop(0.5, 'rgba(139, 92, 246, 0.06)');
+					beamGrad.addColorStop(1, 'rgba(139, 92, 246, 0)');
+				} else {
+					beamGrad.addColorStop(0, 'rgba(124, 58, 237, 0)');
+					beamGrad.addColorStop(0.5, 'rgba(124, 58, 237, 0.04)');
+					beamGrad.addColorStop(1, 'rgba(124, 58, 237, 0)');
+				}
+				ctx.fillStyle = beamGrad;
+				ctx.fillRect(0, beamY - 60, width, 120);
+			}
+
+			animationFrameId = requestAnimationFrame(render);
+		};
+
+		render();
+	}
+
+	// Initialize on page load and astro page swaps
+	initBackground();
+	document.addEventListener('astro:page-load', initBackground);
+</script>

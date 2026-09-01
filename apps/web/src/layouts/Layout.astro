@@ -1,5 +1,6 @@
 ---
 import '../styles/globals.css';
+import BackgroundAnimation from '../components/BackgroundAnimation.astro';
 
 export interface Props {
 	title: string;
@@ -13,7 +14,7 @@ const {
 ---
 
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
@@ -22,12 +23,28 @@ const {
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 		
+		<!-- Anti-FOUC Theme Script -->
+		<script is:inline>
+			(function() {
+				const storedTheme = localStorage.getItem('theme');
+				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+				if (storedTheme === 'dark' || (!storedTheme && prefersDark) || !storedTheme) {
+					document.documentElement.classList.add('dark');
+				} else {
+					document.documentElement.classList.remove('dark');
+				}
+			})();
+		</script>
+
 		<!-- Google Fonts (Inter & JetBrains Mono) -->
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 	</head>
-	<body class="bg-background font-['Inter',sans-serif] text-foreground antialiased selection:bg-primary selection:text-white min-h-screen flex flex-col">
+	<body class="bg-background font-['Inter',sans-serif] text-foreground antialiased selection:bg-primary selection:text-white min-h-screen flex flex-col relative overflow-x-hidden">
+		<!-- Dynamic AI & Data Theme-Adaptive Animated Background -->
+		<BackgroundAnimation />
+
 		<slot />
 	</body>
 </html>
