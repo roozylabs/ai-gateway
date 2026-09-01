@@ -9,6 +9,14 @@ docs/
 .vscode/
 .idea/
 
+# Dependencies & Build Outputs
+node_modules
+dist
+.next
+.astro
+out
+build
+
 # Binaries & Compiled Executables
 bin/
 server
@@ -23,6 +31,7 @@ server.exe
 # Environment & Secrets
 .env
 .env.local
+.env.*
 *.log
 
 # OS & Temporary

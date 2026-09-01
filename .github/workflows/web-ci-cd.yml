@@ -161,10 +161,20 @@ jobs:
             if [ -d "/etc/nginx/conf.d" ]; then
               echo "upstream prism_web_backend { server 127.0.0.1:$TARGET_PORT; }" | sudo tee /etc/nginx/conf.d/upstream_web.conf > /dev/null || true
             fi
+
+            # Automatically ensure sites-available / sites-enabled use prism_web_backend upstream
+            for site in /etc/nginx/sites-available/* /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*; do
+              if [ -f "$site" ] && grep -q "prism\.roozylabs\.com" "$site" 2>/dev/null; then
+                echo "Syncing upstream for $site..."
+                sudo sed -i -E 's|proxy_pass http://(127\.0\.0\.1\|localhost):300[0-9];|proxy_pass http://prism_web_backend;|g' "$site" || true
+              fi
+            done
+
+            # Test Nginx syntax and reload
             if docker ps --format '{{.Names}}' | grep -q 'nginx'; then
-              docker exec $(docker ps --format '{{.Names}}' | grep 'nginx' | head -n 1) nginx -s reload || true
+              docker exec $(docker ps --format '{{.Names}}' | grep 'nginx' | head -n 1) nginx -t && docker exec $(docker ps --format '{{.Names}}' | grep 'nginx' | head -n 1) nginx -s reload || true
             elif command -v nginx >/dev/null 2>&1; then
-              sudo nginx -s reload || nginx -s reload || true
+              sudo nginx -t && (sudo nginx -s reload || sudo systemctl reload nginx || true) || true
             fi
 
             echo "Stopping old container $OLD_CONTAINER..."
