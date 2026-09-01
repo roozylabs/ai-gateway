@@ -494,15 +494,37 @@ export default function SandboxPage() {
       if (values.enableStream && res.body) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
-        let accumulatedText = "";
+        let accumulatedContent = "";
+        let accumulatedReasoning = "";
+        const toolCallsMap: Record<number, { name: string; args: string }> = {};
+        let buffer = "";
         let doneReading = false;
+
+        const updateDisplay = () => {
+          let output = "";
+          if (accumulatedReasoning) {
+            output += `> **Thinking:**\n> ${accumulatedReasoning.replace(/\n/g, "\n> ")}\n\n`;
+          }
+          if (accumulatedContent) {
+            output += accumulatedContent;
+          }
+          const toolCallEntries = Object.values(toolCallsMap);
+          if (toolCallEntries.length > 0) {
+            output += (output ? "\n\n" : "") + "### 🔧 Tool Invocations\n";
+            for (const tc of toolCallEntries) {
+              output += `\`\`\`json\n// Invoking ${tc.name || "Tool"}\n${tc.args || "{}"}\n\`\`\`\n`;
+            }
+          }
+          setExecutionOutput(output);
+        };
 
         while (!doneReading) {
           const { value, done } = await reader.read();
           if (done) break;
 
-          const chunkStr = decoder.decode(value, { stream: true });
-          const lines = chunkStr.split("\n");
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
           for (const line of lines) {
             const trimmed = line.trim();
@@ -518,10 +540,32 @@ export default function SandboxPage() {
               if (parsed.model) {
                 setRoutedModel(parsed.model);
               }
-              const delta = parsed.choices?.[0]?.delta?.content;
+              const delta = parsed.choices?.[0]?.delta;
               if (delta) {
-                accumulatedText += delta;
-                setExecutionOutput(accumulatedText);
+                if (typeof delta.content === "string") {
+                  accumulatedContent += delta.content;
+                }
+                if (typeof delta.reasoning_content === "string") {
+                  accumulatedReasoning += delta.reasoning_content;
+                }
+                if (typeof delta.thinking === "string") {
+                  accumulatedReasoning += delta.thinking;
+                }
+                if (Array.isArray(delta.tool_calls)) {
+                  for (const tc of delta.tool_calls) {
+                    const idx = tc.index ?? 0;
+                    if (!toolCallsMap[idx]) {
+                      toolCallsMap[idx] = { name: "", args: "" };
+                    }
+                    if (tc.function?.name) {
+                      toolCallsMap[idx].name += tc.function.name;
+                    }
+                    if (tc.function?.arguments) {
+                      toolCallsMap[idx].args += tc.function.arguments;
+                    }
+                  }
+                }
+                updateDisplay();
               }
               if (parsed.usage) {
                 setTokenStats({
@@ -535,6 +579,26 @@ export default function SandboxPage() {
           }
         }
 
+        // Final flush if anything left in buffer
+        if (buffer.trim().startsWith("data: ")) {
+          const dataStr = buffer.trim().replace(/^data:\s*/, "");
+          if (dataStr !== "[DONE]") {
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.model) setRoutedModel(parsed.model);
+              const delta = parsed.choices?.[0]?.delta;
+              if (delta?.content) accumulatedContent += delta.content;
+              if (delta?.reasoning_content) accumulatedReasoning += delta.reasoning_content;
+              updateDisplay();
+            } catch {}
+          }
+        }
+
+        updateDisplay();
+        if (!accumulatedContent && !accumulatedReasoning && Object.keys(toolCallsMap).length === 0) {
+          setExecutionOutput("No output content returned by model stream.");
+        }
+
         setLatencyMs(Date.now() - startTime);
         form.setValue("userPrompt", "");
         toast.success("Stream execution completed");
@@ -543,8 +607,16 @@ export default function SandboxPage() {
         if (data.model) {
           setRoutedModel(data.model);
         }
-        const choice =
-          data.choices?.[0]?.message?.content ?? JSON.stringify(data, null, 2);
+        let choice = data.choices?.[0]?.message?.content;
+        const toolCalls = data.choices?.[0]?.message?.tool_calls;
+        if (!choice && toolCalls && Array.isArray(toolCalls)) {
+          choice = "### 🔧 Tool Invocations\n" + toolCalls.map((tc: { function?: { name?: string; arguments?: string } }) => 
+            `\`\`\`json\n// Invoking ${tc.function?.name || 'Tool'}\n${tc.function?.arguments || '{}'}\n\`\`\``
+          ).join("\n\n");
+        }
+        if (!choice) {
+          choice = JSON.stringify(data, null, 2);
+        }
         if (data.usage) {
           setTokenStats({
             input: data.usage.prompt_tokens || 0,
