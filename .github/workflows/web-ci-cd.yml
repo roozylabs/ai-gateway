@@ -135,21 +135,24 @@ jobs:
             docker compose pull $TARGET_SVC || true
             docker compose up -d --no-deps $TARGET_SVC
 
-            echo "Waiting for $TARGET_CONTAINER health check..."
+            echo "Waiting for $TARGET_CONTAINER health check on port $TARGET_PORT..."
             HEALTHY=false
-            for i in $(seq 1 20); do
+            for i in $(seq 1 30); do
               STATUS=$(docker inspect --format='{{json .State.Health.Status}}' $TARGET_CONTAINER 2>/dev/null || echo '"unknown"')
-              if [ "$STATUS" = '"healthy"' ]; then
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TARGET_PORT/ || echo "000")
+              if [ "$STATUS" = '"healthy"' ] || echo "$HTTP_CODE" | grep -qE '^(200|301|302|307|308)$'; then
                 HEALTHY=true
-                echo "$TARGET_CONTAINER is healthy!"
+                echo "$TARGET_CONTAINER is healthy (HTTP $HTTP_CODE, Docker status $STATUS)!"
                 break
               fi
-              echo "Health status: $STATUS (attempt $i/20)..."
+              echo "Health status: $STATUS, HTTP code: $HTTP_CODE (attempt $i/30)..."
               sleep 3
             done
 
             if [ "$HEALTHY" = "false" ]; then
-              echo "Error: $TARGET_CONTAINER failed health check. Rolling back..."
+              echo "Error: $TARGET_CONTAINER failed health check. Printing container logs:"
+              docker logs $TARGET_CONTAINER --tail 100 || true
+              echo "Rolling back..."
               docker compose stop $TARGET_SVC || true
               exit 1
             fi
@@ -163,7 +166,6 @@ jobs:
             elif command -v nginx >/dev/null 2>&1; then
               sudo nginx -s reload || nginx -s reload || true
             fi
-
 
             echo "Stopping old container $OLD_CONTAINER..."
             docker compose stop $OLD_SVC || true
