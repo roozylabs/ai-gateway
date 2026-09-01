@@ -44,6 +44,7 @@
 | 0.2.2 | 31 August 2026, 19:15 WIB | Added Turnstile Smart Token Waiter (getTokenOrWait) and removed CSS container throttling for seamless fast-autofill sign in |
 | 0.2.3 | 31 August 2026, 19:35 WIB | Restored visible Turnstile widget (size: normal) on Sign In for Cloudflare Managed key compatibility and error resilience |
 | 0.3.0 | 31 August 2026, 20:30 WIB | Added Automatic Primary Organization Fallback for authenticated user sessions (OrgPrimaryResolver + AccountRepository.GetPrimaryOrganization), tenant selection localStorage persistence in dashboard, settings route alignment to /settings, and middleware unit tests; formalized OpenCode as exclusive verification & release engine |
+| 0.4.0 | 1 September 2026, 12:50 WIB | Centralized API error responses via httputil shorthand helpers (RespondUnauthorized/Forbidden/NotFound/BadRequest/InternalError) with AbortWithStatusJSON halting semantics and tenant_security_error/authorization_error response types; hardened credential tenant isolation (migration 084 idempotent user_id/org_id columns, backfill, multi-tenant indexes, RLS policy); upgraded landing page with data-packet routing background and responsive/theme-consistent polish |
 
 ---
 

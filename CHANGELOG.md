@@ -5,7 +5,19 @@ All notable changes to the **RoozyLabs Prism** project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2026-08-31
+## [0.4.0] - 2026-09-01
+
+### Added
+- **Centralized API Error Response Handling**: New `httputil` shorthand helpers (`RespondUnauthorized`, `RespondForbidden`, `RespondNotFound`, `RespondBadRequest`, `RespondInternalError`) around a single `RespondError`; all error responses now use `AbortWithStatusJSON` so Gin handlers and middleware chains halt safely. Added dedicated `tenant_security_error` and `authorization_error` response types.
+- **Credential Tenant Isolation Hardening (migration 084)**: Idempotently ensures `credentials` `user_id`/`org_id` columns, backfills ownership from parent providers, adds multi-tenant indexes, and recreates a Row-Level Security policy for credentials.
+- **Landing page data-packet routing background**: Active data-packet streams with glowing heads and gradient tails plus occasional micro-glitch slices (`BackgroundAnimation.astro`), respecting `prefers-reduced-motion`.
+
+### Changed
+- Routed tenant, RBAC, scope, and authorization error paths across 30+ handlers and middleware through the centralized error responders.
+- Landing page: consistent dark console/failover/latency containers across both themes, responsive spacing and typography, theme-aware text colors.
+
+### Fixed
+- Restored errcheck-compliant `defer func() { _ = resp.Body.Close() }()` in `auth.go` Turnstile verification.
 
 ### Added
 - **Automatic Primary Organization Fallback for Authenticated Sessions**:

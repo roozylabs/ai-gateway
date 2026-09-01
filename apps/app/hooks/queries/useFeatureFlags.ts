@@ -13,7 +13,7 @@ export function useFeatureFlagsQuery() {
         return res.data;
       } catch {
         return {
-          version: '0.3.0',
+          version: '0.4.0',
           planTier: 'free',
           flags: DEFAULT_FEATURE_FLAGS,
         };
