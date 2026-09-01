@@ -57,7 +57,7 @@ export default function ResourcesPage() {
         }
       />
 
-      <div className="mb-6 p-3.5 rounded-lg border border-primary/20 bg-primary/5 flex items-start gap-3">
+      <div className="mb-6 p-3.5 rounded-none border border-primary/20 bg-primary/5 flex items-start gap-3">
         <Database className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <div className="text-xs space-y-0.5">
           <p className="font-semibold text-foreground">
