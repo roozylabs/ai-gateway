@@ -15,6 +15,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/security"
 	"github.com/roozylabs/prism/internal/utils"
 )
 
@@ -93,6 +94,9 @@ func (g *ResourceGateway) executeRestBackend(ctx context.Context, b *models.Reso
 	if b.EndpointURL != nil {
 		endpoint = *b.EndpointURL
 	}
+	if err := security.ValidateOutboundURL(endpoint); err != nil {
+		return nil, fmt.Errorf("ssrf validation failed for resource backend %q: %w", b.Name, err)
+	}
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
@@ -123,6 +127,9 @@ func (g *ResourceGateway) executeGraphQLBackend(ctx context.Context, b *models.R
 	endpoint := ""
 	if b.EndpointURL != nil {
 		endpoint = *b.EndpointURL
+	}
+	if err := security.ValidateOutboundURL(endpoint); err != nil {
+		return nil, fmt.Errorf("ssrf validation failed for resource backend %q: %w", b.Name, err)
 	}
 	query := ""
 	if b.QueryTemplate != nil {
@@ -315,7 +322,10 @@ func setAuthHeader(req *http.Request, encryptedToken *string, headerName, header
 }
 
 func doHTTP(ctx context.Context, req *http.Request, timeout time.Duration) ([]byte, int, error) {
-	client := &http.Client{Timeout: timeout}
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	client := security.NewSafeHTTPClient(timeout)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("http request: %w", err)

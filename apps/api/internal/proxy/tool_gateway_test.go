@@ -22,6 +22,7 @@ func (m *toolFinderMock) GetToolWithBackends(ctx context.Context, userID, toolNa
 }
 
 func TestToolGatewayExecuteSuccess(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -49,6 +50,7 @@ func TestToolGatewayExecuteSuccess(t *testing.T) {
 }
 
 func TestToolGatewayExecuteFailover(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	callCount := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
@@ -78,6 +80,7 @@ func TestToolGatewayExecuteFailover(t *testing.T) {
 }
 
 func TestToolGatewayExecuteAllFail(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 	}))
@@ -94,6 +97,19 @@ func TestToolGatewayExecuteAllFail(t *testing.T) {
 	_, err := gw.Execute(context.Background(), "u1", "search_web", map[string]interface{}{}, "")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "all backends failed")
+}
+
+func TestToolGatewaySSRFBlocked(t *testing.T) {
+	twb := &models.ToolWithBackends{
+		Tool: models.Tool{ID: "t1", UserID: "u1", Name: "probe_local", Enabled: true},
+		Backends: []models.ToolBackend{
+			{ID: "b1", ToolID: "t1", Name: "metadata", EndpointURL: "http://169.254.169.254/latest/meta-data/", TimeoutMs: 5000, Priority: 1, Enabled: true},
+		},
+	}
+	gw := NewToolGateway(&toolFinderMock{twb: twb})
+	_, err := gw.Execute(context.Background(), "u1", "probe_local", map[string]interface{}{}, "")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ssrf validation failed")
 }
 
 func TestToolGatewayNoBackends(t *testing.T) {

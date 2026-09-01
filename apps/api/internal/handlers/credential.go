@@ -19,6 +19,7 @@ import (
 	"github.com/roozylabs/prism/internal/proxy"
 	goredis "github.com/roozylabs/prism/internal/redis"
 	"github.com/roozylabs/prism/internal/repository"
+	"github.com/roozylabs/prism/internal/security"
 	"github.com/roozylabs/prism/internal/utils"
 )
 
@@ -604,11 +605,18 @@ func (h *CredentialHandler) Test(c *gin.Context) {
 }
 
 func (h *CredentialHandler) testOpenAI(baseURL, apiKey string) (int, string) {
+	if baseURL == "" {
+		baseURL = "https://api.openai.com"
+	}
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return 0, "invalid base URL"
 	}
 	u.Path = path.Join(u.Path, "v1", "models")
+
+	if err := security.ValidateOutboundURL(u.String()); err != nil {
+		return 0, "ssrf validation blocked target URL: " + err.Error()
+	}
 
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
@@ -616,7 +624,8 @@ func (h *CredentialHandler) testOpenAI(baseURL, apiKey string) (int, string) {
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := security.NewSafeHTTPClient(10 * time.Second)
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err.Error()
 	}
@@ -635,6 +644,10 @@ func (h *CredentialHandler) testAnthropic(baseURL, apiKey string) (int, string) 
 	}
 	u.Path = path.Join(u.Path, "v1", "messages")
 
+	if err := security.ValidateOutboundURL(u.String()); err != nil {
+		return 0, "ssrf validation blocked target URL: " + err.Error()
+	}
+
 	req, err := http.NewRequest("POST", u.String(), strings.NewReader(`{"model":"claude-3-haiku-20240307","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`))
 	if err != nil {
 		return 0, "failed to create request"
@@ -643,7 +656,8 @@ func (h *CredentialHandler) testAnthropic(baseURL, apiKey string) (int, string) 
 	req.Header.Set("anthropic-version", "2023-06-01")
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := security.NewSafeHTTPClient(10 * time.Second)
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err.Error()
 	}
@@ -671,6 +685,10 @@ func (h *CredentialHandler) testGoogle(baseURL, apiKey, authType string) (int, s
 		u.RawQuery = q.Encode()
 	}
 
+	if err := security.ValidateOutboundURL(u.String()); err != nil {
+		return 0, "ssrf validation blocked target URL: " + err.Error()
+	}
+
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return 0, "failed to create request"
@@ -678,11 +696,10 @@ func (h *CredentialHandler) testGoogle(baseURL, apiKey, authType string) (int, s
 
 	if authType == "gcp_user_oauth" {
 		req.Header.Set("Authorization", "Bearer "+apiKey)
-	} else {
-		req.Header.Set("x-goog-api-key", apiKey)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	client := security.NewSafeHTTPClient(10 * time.Second)
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err.Error()
 	}
@@ -699,6 +716,39 @@ func (h *CredentialHandler) testGoogle(baseURL, apiKey, authType string) (int, s
 	return resp.StatusCode, ""
 }
 
+func (h *CredentialHandler) testOpenRouter(baseURL, apiKey string) (int, string) {
+	if baseURL == "" {
+		baseURL = "https://openrouter.ai/api"
+	}
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return 0, "invalid base URL"
+	}
+	u.Path = path.Join(u.Path, "v1", "models")
+
+	if err := security.ValidateOutboundURL(u.String()); err != nil {
+		return 0, "ssrf validation blocked target URL: " + err.Error()
+	}
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return 0, "failed to create request"
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	client := security.NewSafeHTTPClient(10 * time.Second)
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err.Error()
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 {
+		return resp.StatusCode, "authentication failed"
+	}
+	return resp.StatusCode, ""
+}
+
 func (h *CredentialHandler) testOpenCode(baseURL, apiKey string) (int, string) {
 	if baseURL == "" {
 		baseURL = "https://opencode.ai/zen"
@@ -709,6 +759,10 @@ func (h *CredentialHandler) testOpenCode(baseURL, apiKey string) (int, string) {
 	}
 	u.Path = path.Join(u.Path, "v1", "models")
 
+	if err := security.ValidateOutboundURL(u.String()); err != nil {
+		return 0, "ssrf validation blocked target URL: " + err.Error()
+	}
+
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return 0, "failed to create request"
@@ -716,7 +770,8 @@ func (h *CredentialHandler) testOpenCode(baseURL, apiKey string) (int, string) {
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("x-api-key", apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := security.NewSafeHTTPClient(10 * time.Second)
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err.Error()
 	}

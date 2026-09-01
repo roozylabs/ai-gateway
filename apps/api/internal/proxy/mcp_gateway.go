@@ -12,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/security"
 	"github.com/roozylabs/prism/internal/utils"
 )
 
@@ -86,6 +87,10 @@ func resolveMCPHeaders(srv *models.MCPServer, encKey string) map[string]string {
 
 // newRemoteMCPClient builds an SSE or StreamableHTTP client for remote servers.
 func newRemoteMCPClient(ctx context.Context, srv *models.MCPServer, encKey string) (*client.Client, error) {
+	if err := security.ValidateOutboundURL(srv.EndpointURL); err != nil {
+		return nil, fmt.Errorf("ssrf validation failed for mcp server %q: %w", srv.Name, err)
+	}
+
 	headers := resolveMCPHeaders(srv, encKey)
 
 	var t transport.Interface
