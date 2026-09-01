@@ -176,7 +176,7 @@ export default function ModelsPage() {
       />
 
       {/* Info Banner */}
-      <div className="mb-6 p-4 rounded-lg border border-primary/20 bg-primary/5 flex items-start gap-3">
+      <div className="mb-6 p-4 rounded-none border border-primary/20 bg-primary/5 flex items-start gap-3">
         <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
         <div className="text-xs space-y-1">
           <p className="font-semibold text-foreground">

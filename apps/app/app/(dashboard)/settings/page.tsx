@@ -111,7 +111,7 @@ export default function SettingsPage() {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all text-left cursor-pointer ${
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-none text-xs font-medium transition-all text-left cursor-pointer ${
                     isActive
                       ? 'bg-primary/10 text-primary font-semibold shadow-xs border border-primary/20'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -124,7 +124,7 @@ export default function SettingsPage() {
             })}
           </nav>
 
-          <div className="mt-8 p-3.5 rounded-lg border border-border bg-card/60 space-y-2">
+          <div className="mt-8 p-3.5 rounded-none border border-border bg-card/60 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-foreground flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5 text-primary" /> Active Plan
@@ -167,7 +167,7 @@ export default function SettingsPage() {
 
                   <div className="space-y-4">
                     {/* Item 1: Weekly summary newsletter */}
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-border bg-muted/15">
+                    <div className="flex items-center justify-between gap-4 p-3 rounded-none border border-border bg-muted/15">
                       <div className="space-y-0.5 max-w-[80%]">
                         <Label htmlFor="weekly-newsletter" className="text-xs font-semibold text-foreground cursor-pointer">
                           Weekly token & latency digest
@@ -184,7 +184,7 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Item 2: Account summary / Spend limits */}
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-border bg-muted/15">
+                    <div className="flex items-center justify-between gap-4 p-3 rounded-none border border-border bg-muted/15">
                       <div className="space-y-0.5 max-w-[80%]">
                         <Label htmlFor="account-summary" className="text-xs font-semibold text-foreground cursor-pointer">
                           Monthly spend limit & invoice summary
@@ -201,7 +201,7 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Item 3: Real-time anomaly alerts */}
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-border bg-muted/15">
+                    <div className="flex items-center justify-between gap-4 p-3 rounded-none border border-border bg-muted/15">
                       <div className="space-y-0.5 max-w-[80%]">
                         <Label htmlFor="anomaly-alerts" className="text-xs font-semibold text-foreground cursor-pointer">
                           Real-time security & anomaly alerts
@@ -506,7 +506,7 @@ export default function SettingsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 rounded-lg border border-border bg-muted/20 flex items-center justify-between">
+                <div className="p-4 rounded-none border border-border bg-muted/20 flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="font-semibold text-xs text-foreground">
                       Authoritative Role-Based Access Control (RBAC)
@@ -518,7 +518,7 @@ export default function SettingsPage() {
                   <Badge variant="outline" className="text-xs">6 System Roles</Badge>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                <div className="flex items-center justify-between p-3 rounded-none border border-border bg-card">
                   <div className="flex items-center gap-3">
                     <Mail className="h-4 w-4 text-primary" />
                     <div>
@@ -557,7 +557,7 @@ export default function SettingsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 flex items-center justify-between">
+                <div className="p-4 rounded-none border border-primary/20 bg-primary/5 flex items-center justify-between">
                   <div className="space-y-1">
                     <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
                       Current Subscription
@@ -574,11 +574,11 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="p-3 rounded-lg border border-border bg-muted/20">
+                  <div className="p-3 rounded-none border border-border bg-muted/20">
                     <span className="text-muted-foreground">Monthly Token Quota</span>
                     <p className="text-base font-bold font-mono mt-1 text-foreground">500,000 / month</p>
                   </div>
-                  <div className="p-3 rounded-lg border border-border bg-muted/20">
+                  <div className="p-3 rounded-none border border-border bg-muted/20">
                     <span className="text-muted-foreground">Concurrent SSE Streams</span>
                     <p className="text-base font-bold font-mono mt-1 text-foreground">5 Parallel</p>
                   </div>
@@ -599,7 +599,7 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-border bg-muted/15">
+                <div className="flex items-center justify-between gap-4 p-3 rounded-none border border-border bg-muted/15">
                   <div className="space-y-0.5">
                     <Label htmlFor="merkle-proof" className="text-xs font-semibold text-foreground cursor-pointer">
                       Merkle Hash Chain Log Verification
@@ -615,7 +615,7 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-border bg-muted/15">
+                <div className="flex items-center justify-between gap-4 p-3 rounded-none border border-border bg-muted/15">
                   <div className="space-y-0.5">
                     <Label htmlFor="enforce-mfa" className="text-xs font-semibold text-foreground cursor-pointer">
                       Enforce Multi-Factor Authentication (MFA)

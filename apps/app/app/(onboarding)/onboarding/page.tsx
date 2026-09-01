@@ -218,7 +218,7 @@ export default function OnboardingPage() {
             <div className="space-y-4 text-center">
               <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
               
-              <div className="rounded-lg border border-border bg-card/80 p-3.5 font-mono text-xs text-left space-y-2">
+              <div className="rounded-none border border-border bg-card/80 p-3.5 font-mono text-xs text-left space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-[10px] uppercase font-semibold">Generated Gateway Secret Key</span>
                   <Button
