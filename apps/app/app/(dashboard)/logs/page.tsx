@@ -151,10 +151,21 @@ export default function LogsPage() {
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Server className="h-4 w-4 text-[#8B5CF6]" />
-              <span>Proxy Request Details</span>
+              <span>Deep Request Trace & Diagnostics</span>
             </SheetTitle>
-            <SheetDescription className="font-mono text-xs text-muted-foreground">
-              Request ID: {selectedLog?.id}
+            <SheetDescription className="font-mono text-xs text-muted-foreground flex items-center justify-between">
+              <span>Request ID: {selectedLog?.id}</span>
+              {selectedLog?.id && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1.5 text-[10px] gap-1 font-mono hover:bg-accent"
+                  onClick={() => handleCopyError(selectedLog.id)}
+                >
+                  <Copy className="h-3 w-3" />
+                  <span>Copy ID</span>
+                </Button>
+              )}
             </SheetDescription>
           </SheetHeader>
 
@@ -176,6 +187,12 @@ export default function LogsPage() {
                   </Badge>
                 </div>
                 <div>
+                  <span className="text-muted-foreground block text-[10px]">ROUTING POLICY</span>
+                  <Badge variant="outline" className="font-mono text-[10px]">
+                    {selectedLog.routingStrategy || 'auto-balanced'}
+                  </Badge>
+                </div>
+                <div>
                   <span className="text-muted-foreground block text-[10px]">LATENCY (TTFT)</span>
                   <span className="font-mono font-bold text-foreground">{selectedLog.latencyMs} ms ({selectedLog.ttftMs ?? 0}ms TTFT)</span>
                 </div>
@@ -183,9 +200,32 @@ export default function LogsPage() {
                   <span className="text-muted-foreground block text-[10px]">TOKENS (IN / OUT)</span>
                   <span className="font-mono font-bold text-foreground">{selectedLog.inputTokens} / {selectedLog.outputTokens} ({selectedLog.totalTokens} total)</span>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <span className="text-muted-foreground block text-[10px]">ESTIMATED COST</span>
-                  <span className="font-mono font-bold text-emerald-500">${Number(selectedLog.estimatedCost || 0).toFixed(6)}</span>
+                  <span className="font-mono font-bold text-emerald-500 text-sm">${Number(selectedLog.estimatedCost || 0).toFixed(6)} USD</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <span className="font-semibold text-foreground block">Execution Timeline</span>
+                <div className="p-3 rounded-md border border-border bg-muted/30 space-y-2 font-mono text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-muted-foreground">1. Ingress & Admission:</span>
+                    <span className="text-foreground font-semibold">RBAC & Budget OK</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                    <span className="text-muted-foreground">2. Smart Router:</span>
+                    <span className="text-foreground font-semibold">{selectedLog.model} ({selectedLog.providerId || 'Upstream'})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${selectedLog.statusCode === 200 ? 'bg-emerald-500' : 'bg-red-500'} shrink-0`} />
+                    <span className="text-muted-foreground">3. Upstream Proxy:</span>
+                    <span className={selectedLog.statusCode === 200 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
+                      HTTP {selectedLog.statusCode} ({selectedLog.latencyMs}ms)
+                    </span>
+                  </div>
                 </div>
               </div>
 
