@@ -165,6 +165,16 @@ func (o *ExecutionOrchestrator) ExecuteChatCompletions(
 			log.CostUSD = o.pricingRepo.CalculateCost(log.Model, log.ProviderType, log.InputTokens, log.OutputTokens)
 		}
 
+		if c != nil {
+			c.Header("X-Request-Id", requestID)
+			c.Header("X-Prism-Model", log.Model)
+			c.Header("X-Prism-Provider", log.ProviderType)
+			if req != nil && req.Model != "" {
+				c.Header("X-Prism-Routing-Policy", req.Model)
+			}
+			c.Header("X-Prism-Failovers", fmt.Sprintf("%d", log.RetryCount))
+		}
+
 		if o.postProcessor != nil {
 			o.postProcessor.Enqueue(&PostProcessTask{
 				Ctx:        ctx,

@@ -53,37 +53,43 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    title: 'OBSERVE',
+    items: [
+      { key: AppRoutes.LOGS, label: 'Request Logs', href: AppRoutes.LOGS, icon: <Activity className="h-4 w-4" /> },
+      { key: AppRoutes.AUDIT_TRAIL, label: 'Audit Trail', href: AppRoutes.AUDIT_TRAIL, icon: <ScrollText className="h-4 w-4" /> },
+    ],
+  },
+  {
     title: 'AI INFRASTRUCTURE',
     items: [
       { key: AppRoutes.PROVIDERS, label: 'Providers', href: AppRoutes.PROVIDERS, icon: <Server className="h-4 w-4" /> },
       { key: AppRoutes.CREDENTIALS, label: 'Credentials', href: AppRoutes.CREDENTIALS, icon: <Key className="h-4 w-4" /> },
       { key: AppRoutes.MODELS, label: 'Models', href: AppRoutes.MODELS, icon: <Layers className="h-4 w-4" /> },
       { key: AppRoutes.POLICIES, label: 'Routing Policies', href: AppRoutes.POLICIES, icon: <Workflow className="h-4 w-4" /> },
+      { key: AppRoutes.GATEWAY_KEYS, label: 'Gateway Keys', href: AppRoutes.GATEWAY_KEYS, icon: <KeyRound className="h-4 w-4" /> },
     ],
   },
   {
-    title: 'GATEWAYS',
+    title: 'AI RUNTIME',
     items: [
-      { key: AppRoutes.GATEWAY_KEYS, label: 'Gateway Keys', href: AppRoutes.GATEWAY_KEYS, icon: <KeyRound className="h-4 w-4" /> },
+      { key: AppRoutes.AGENTS, label: 'Agent Gateway', href: AppRoutes.AGENTS, icon: <Bot className="h-4 w-4" /> },
       { key: AppRoutes.TOOLS, label: 'Tool Gateway', href: AppRoutes.TOOLS, icon: <Wrench className="h-4 w-4" /> },
       { key: AppRoutes.RESOURCES, label: 'Resource Gateway', href: AppRoutes.RESOURCES, icon: <Database className="h-4 w-4" /> },
       { key: AppRoutes.MCP, label: 'MCP Gateway', href: AppRoutes.MCP, icon: <Globe className="h-4 w-4" /> },
-      { key: AppRoutes.AGENTS, label: 'Agent Gateway', href: AppRoutes.AGENTS, icon: <Bot className="h-4 w-4" /> },
+      { key: AppRoutes.PLAYGROUND, label: 'Routing Simulator', href: AppRoutes.PLAYGROUND, icon: <Play className="h-4 w-4" /> },
     ],
   },
   {
-    title: 'GOVERNANCE',
+    title: 'CONTROL',
     items: [
       { key: AppRoutes.GOVERNANCE, label: 'Governance & RBAC', href: AppRoutes.GOVERNANCE, icon: <Users className="h-4 w-4" /> },
-      { key: AppRoutes.AUDIT_TRAIL, label: 'Audit Trail', href: AppRoutes.AUDIT_TRAIL, icon: <ScrollText className="h-4 w-4" /> },
+      { key: AppRoutes.BUDGETS, label: 'Budgets & Quotas', href: AppRoutes.BUDGETS, icon: <Wallet className="h-4 w-4" /> },
     ],
   },
   {
-    title: 'OPERATIONS & SYSTEM',
+    title: 'ORGANIZATION',
     items: [
-      { key: AppRoutes.LOGS, label: 'Request Logs', href: AppRoutes.LOGS, icon: <Activity className="h-4 w-4" /> },
-      { key: AppRoutes.BUDGETS, label: 'Budgets & Quotas', href: AppRoutes.BUDGETS, icon: <Wallet className="h-4 w-4" /> },
-      { key: AppRoutes.PLAYGROUND, label: 'Playground', href: AppRoutes.PLAYGROUND, icon: <Play className="h-4 w-4" /> },
+      { key: AppRoutes.SETTINGS_MEMBERS, label: 'Team Members', href: AppRoutes.SETTINGS_MEMBERS, icon: <Users className="h-4 w-4" /> },
       { key: AppRoutes.BILLING, label: 'Billing & Plans', href: AppRoutes.BILLING, icon: <CreditCard className="h-4 w-4" /> },
       { key: AppRoutes.SETTINGS, label: 'Settings', href: AppRoutes.SETTINGS, icon: <Settings className="h-4 w-4" /> },
     ],

@@ -21,6 +21,7 @@ export interface ApiRequestLog {
   clientApp?: string;
   isStream?: boolean;
   ttftMs?: number;
+  routingStrategy?: string;
   createdAt: string;
 }
 
