@@ -43,12 +43,47 @@ type Engine struct {
 	policyRepo   *repository.RoutingPolicyRepository
 	decisionRepo *repository.RoutingDecisionRepository
 	payloads     *repository.PayloadRepository
-	toolCalls    *repository.ToolInvocationRepository
-	telemetry    *goredis.ModelTelemetryStore
-	encKey       string
-	maxRetries   int
-	cooldownSecs int
-	client       *http.Client
+	toolCalls      *repository.ToolInvocationRepository
+	mcpInvocations *repository.MCPInvocationRepository
+	mcpServers     *repository.MCPServerRepository
+	telemetry      *goredis.ModelTelemetryStore
+	encKey         string
+	maxRetries     int
+	cooldownSecs   int
+	client         *http.Client
+}
+
+func (e *Engine) SetMCPRepositories(invocations *repository.MCPInvocationRepository, servers *repository.MCPServerRepository) {
+	e.mcpInvocations = invocations
+	e.mcpServers = servers
+}
+
+func (e *Engine) recordMCPInvocationsIfAny(ctx context.Context, userID string, recs []ToolCallRecord) {
+	if e.mcpInvocations == nil || e.mcpServers == nil || len(recs) == 0 {
+		return
+	}
+	for _, rec := range recs {
+		if strings.Contains(rec.Name, "__") {
+			parts := strings.SplitN(rec.Name, "__", 2)
+			serverName := parts[0]
+			toolName := parts[1]
+			srv, err := e.mcpServers.FindByUserAndName(ctx, userID, serverName)
+			if err != nil || srv == nil {
+				srv, _ = e.mcpServers.FindByUserAndName(ctx, "", serverName)
+			}
+			if srv != nil {
+				inv := &models.MCPInvocation{
+					UserID:       srv.UserID,
+					MCPServerID:  srv.ID,
+					ToolName:     toolName,
+					StatusCode:   200,
+					IsError:      false,
+					LatencyMs:    0,
+				}
+				_ = e.mcpInvocations.SaveInvocation(ctx, inv)
+			}
+		}
+	}
 }
 
 func NewEngine(router *Router, creds *repository.CredentialRepository, cooldown *goredis.CooldownStore, telemetry *goredis.ModelTelemetryStore, publisher *goredis.EventPublisher, encKey string, maxRetries, cooldownSecs int, budgetMgr *BudgetManager, policyRepo *repository.RoutingPolicyRepository, decisionRepo *repository.RoutingDecisionRepository, payloads *repository.PayloadRepository, toolCalls *repository.ToolInvocationRepository) *Engine {
@@ -292,8 +327,16 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 	ctx := safeContext(c)
 
 	gwKeyID := ""
+	userID := ""
 	if gatewayKey != nil {
 		gwKeyID = gatewayKey.ID
+		userID = gatewayKey.UserID
+	}
+	if userID == "" && c != nil {
+		userID = safeGetString(c, "userID")
+		if userID == "" {
+			userID = safeGetString(c, "user_id")
+		}
 	}
 
 	reqID := safeGetString(c, "requestID")
@@ -619,13 +662,16 @@ func (e *Engine) Proxy(c *gin.Context, req *ProxyRequest, gatewayKey *models.Gat
 		}
 		telemetry.RecordRequestMetrics(ctx, log.Model, log.ProviderType, strconv.Itoa(log.StatusCode), orgIDMetric, float64(log.LatencyMs)/1000.0, log.InputTokens, log.OutputTokens, log.CostUSD)
 
-		if e.toolCalls != nil {
+		if e.toolCalls != nil || e.mcpInvocations != nil {
 			if recs := ExtractToolCallsFromResponse(resp); len(recs) > 0 {
 				go func(requestID string, recs []ToolCallRecord) {
 					defer func() { _ = recover() }()
-					if err := e.toolCalls.CreateBatch(context.Background(), requestID, recs); err != nil {
-						fmt.Printf("persist tool invocations: %v\n", err)
+					if e.toolCalls != nil {
+						if err := e.toolCalls.CreateBatch(context.Background(), requestID, recs); err != nil {
+							fmt.Printf("persist tool invocations: %v\n", err)
+						}
 					}
+					e.recordMCPInvocationsIfAny(context.Background(), userID, recs)
 				}(reqID, recs)
 			}
 		}
@@ -651,8 +697,16 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 	var ttftCaptured bool
 
 	gwKeyID := ""
+	userID := ""
 	if gatewayKey != nil {
 		gwKeyID = gatewayKey.ID
+		userID = gatewayKey.UserID
+	}
+	if userID == "" && c != nil {
+		userID = safeGetString(c, "userID")
+		if userID == "" {
+			userID = safeGetString(c, "user_id")
+		}
 	}
 
 	reqID := safeGetString(c, "requestID")
@@ -992,13 +1046,16 @@ func (e *Engine) ProxyStream(c *gin.Context, req *ProxyRequest, gatewayKey *mode
 		_, _ = c.Writer.Write([]byte("data: [DONE]\n\n"))
 		c.Writer.Flush()
 
-		if e.toolCalls != nil {
+		if e.toolCalls != nil || e.mcpInvocations != nil {
 			if recs := streamToolAcc.Finish(); len(recs) > 0 {
 				go func(requestID string, recs []ToolCallRecord) {
 					defer func() { _ = recover() }()
-					if err := e.toolCalls.CreateBatch(context.Background(), requestID, recs); err != nil {
-						fmt.Printf("persist tool invocations: %v\n", err)
+					if e.toolCalls != nil {
+						if err := e.toolCalls.CreateBatch(context.Background(), requestID, recs); err != nil {
+							fmt.Printf("persist tool invocations: %v\n", err)
+						}
 					}
+					e.recordMCPInvocationsIfAny(context.Background(), userID, recs)
 				}(reqID, recs)
 			}
 		}

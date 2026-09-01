@@ -154,6 +154,7 @@ func main() {
 	orchestrator := service.NewExecutionOrchestrator(engine, admissionCtrl, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, auditRecorder)
 	gatewayHandler := handlers.NewGatewayHandler(engine, gatewayKeyRepo, requestLogRepo, eventPublisher, pricingRepo, idemStore, agentGovernance, rbacEngine, auditRecorder, modelRepo, agentRepo, orchestrator)
 	gatewayHandler.SetMCPRepositories(mcpServerRepo, mcpToolRepo)
+	engine.SetMCPRepositories(mcpInvocationRepo, mcpServerRepo)
 
 	// Async Side-Effect Post Processor
 	postProcessor := service.NewAsyncPostProcessor(requestLogRepo, gatewayKeyRepo, eventPublisher, auditRecorder, 2000, 10)
