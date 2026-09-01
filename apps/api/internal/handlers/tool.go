@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	"github.com/roozylabs/prism/internal/repository"
@@ -45,7 +46,7 @@ func (h *ToolHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	tools, err := h.tools.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list tools: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to list tools", err, "TOOLS_LIST_FAILED")
 		return
 	}
 	if tools == nil {
@@ -58,7 +59,7 @@ func (h *ToolHandler) Get(c *gin.Context) {
 	userID := c.GetString("userId")
 	twb, err := h.tools.GetToolWithBackendsByID(c.Request.Context(), c.Param("id"), userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "tool not found"})
+		httputil.RespondNotFound(c, "Tool not found", err, "TOOL_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, twb)
@@ -68,7 +69,7 @@ func (h *ToolHandler) Create(c *gin.Context) {
 	userID := c.GetString("userId")
 	var req CreateToolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -90,13 +91,13 @@ func (h *ToolHandler) Create(c *gin.Context) {
 		Enabled:     enabled,
 	}
 	if err := h.tools.Create(c.Request.Context(), tool); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create tool"})
+		httputil.RespondInternalError(c, "Failed to create tool", err, "TOOL_CREATE_FAILED")
 		return
 	}
 
 	for _, br := range req.Backends {
 		if err := h.createBackend(c.Request.Context(), tool.ID, br); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "tool created but backend failed: " + br.Name})
+			httputil.RespondInternalError(c, "Tool created but backend failed: "+br.Name, err, "TOOL_BACKEND_FAILED")
 			return
 		}
 	}
@@ -111,13 +112,13 @@ func (h *ToolHandler) Update(c *gin.Context) {
 
 	existing, err := h.tools.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "tool not found"})
+		httputil.RespondNotFound(c, "Tool not found", err, "TOOL_NOT_FOUND")
 		return
 	}
 
 	var req CreateToolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -133,18 +134,18 @@ func (h *ToolHandler) Update(c *gin.Context) {
 		existing.Enabled = *req.Enabled
 	}
 	if err := h.tools.Update(c.Request.Context(), existing); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update tool"})
+		httputil.RespondInternalError(c, "Failed to update tool", err, "TOOL_UPDATE_FAILED")
 		return
 	}
 
 	if req.Backends != nil {
 		if err := h.backends.DeleteByToolID(c.Request.Context(), id); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to replace backends"})
+			httputil.RespondInternalError(c, "Failed to replace backends", err, "BACKENDS_REPLACE_FAILED")
 			return
 		}
 		for _, br := range req.Backends {
 			if err := h.createBackend(c.Request.Context(), id, br); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "backend failed: " + br.Name})
+				httputil.RespondInternalError(c, "Backend failed: "+br.Name, err, "TOOL_BACKEND_FAILED")
 				return
 			}
 		}
@@ -157,7 +158,7 @@ func (h *ToolHandler) Update(c *gin.Context) {
 func (h *ToolHandler) Delete(c *gin.Context) {
 	userID := c.GetString("userId")
 	if err := h.tools.Delete(c.Request.Context(), c.Param("id"), userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete tool"})
+		httputil.RespondInternalError(c, "Failed to delete tool", err, "TOOL_DELETE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "tool deleted"})
@@ -173,13 +174,13 @@ func (h *ToolHandler) TestTool(c *gin.Context) {
 
 	tool, err := h.tools.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "tool not found"})
+		httputil.RespondNotFound(c, "Tool not found", err, "TOOL_NOT_FOUND")
 		return
 	}
 
 	var req TestToolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -187,7 +188,7 @@ func (h *ToolHandler) TestTool(c *gin.Context) {
 	defer cancel()
 	result, err := h.gateway.Execute(ctx, userID, tool.Name, req.Args, h.encKey)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		httputil.RespondError(c, http.StatusBadGateway, "Tool execution failed: "+err.Error(), err, "TOOL_EXECUTION_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, result)

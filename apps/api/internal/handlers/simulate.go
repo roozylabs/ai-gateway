@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	goredis "github.com/roozylabs/prism/internal/redis"
@@ -75,7 +76,7 @@ func (h *SimulateHandler) Simulate(c *gin.Context) {
 
 	var req SimulateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -135,7 +136,7 @@ func (h *SimulateHandler) Simulate(c *gin.Context) {
 	// 3. Load all enabled models
 	allModels, err := h.models.ListEnabled(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load models"})
+		httputil.RespondInternalError(c, "Failed to load models", err, "MODELS_LOAD_FAILED")
 		return
 	}
 

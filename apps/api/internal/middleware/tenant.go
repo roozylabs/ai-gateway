@@ -4,9 +4,9 @@ package middleware
 import (
 	"context"
 	"errors"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 )
 
@@ -150,12 +150,7 @@ func TenantMiddleware(orgChecker ...OrgMemberChecker) gin.HandlerFunc {
 
 		tc, err := ResolveCanonicalTenantContext(c, gwKey, checker)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": gin.H{
-					"message": err.Error(),
-					"type":    "tenant_security_error",
-				},
-			})
+			httputil.RespondForbidden(c, err.Error(), err, "TENANT_SECURITY_ERROR")
 			return
 		}
 

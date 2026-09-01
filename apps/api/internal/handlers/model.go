@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	goredis "github.com/roozylabs/prism/internal/redis"
 	"github.com/roozylabs/prism/internal/repository"
@@ -67,7 +68,7 @@ func (h *ModelHandler) List(c *gin.Context) {
 
 	modelList, total, err := h.models.ListWithFilter(c.Request.Context(), providerID, search, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list models"})
+		httputil.RespondInternalError(c, "Failed to list models", err, "MODELS_LIST_FAILED")
 		return
 	}
 	if modelList == nil {
@@ -95,7 +96,7 @@ func (h *ModelHandler) Get(c *gin.Context) {
 	modelID := c.Param("modelId")
 	m, err := h.models.FindByID(c.Request.Context(), modelID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "model not found"})
+		httputil.RespondNotFound(c, "Model not found", err, "MODEL_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, m)
@@ -115,13 +116,13 @@ func (h *ModelHandler) Create(c *gin.Context) {
 	providerID := c.Param("id")
 	var m models.Model
 	if err := c.ShouldBindJSON(&m); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 	m.ProviderID = providerID
 
 	if err := h.models.Create(c.Request.Context(), &m); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create model"})
+		httputil.RespondInternalError(c, "Failed to create model", err, "MODEL_CREATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusCreated, m)
@@ -143,17 +144,17 @@ func (h *ModelHandler) Update(c *gin.Context) {
 	modelID := c.Param("modelId")
 	existing, err := h.models.FindByID(c.Request.Context(), modelID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "model not found"})
+		httputil.RespondNotFound(c, "Model not found", err, "MODEL_NOT_FOUND")
 		return
 	}
 
 	if err := c.ShouldBindJSON(existing); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
 	if err := h.models.Update(c.Request.Context(), existing); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update model"})
+		httputil.RespondInternalError(c, "Failed to update model", err, "MODEL_UPDATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, existing)
@@ -174,7 +175,7 @@ func (h *ModelHandler) Delete(c *gin.Context) {
 	modelID := c.Param("modelId")
 	m, err := h.models.FindByID(c.Request.Context(), modelID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "model not found"})
+		httputil.RespondNotFound(c, "Model not found", err, "MODEL_NOT_FOUND")
 		return
 	}
 
@@ -183,9 +184,7 @@ func (h *ModelHandler) Delete(c *gin.Context) {
 		if summary, err := h.cooldownStore.GetActiveStreams(c.Request.Context()); err == nil {
 			count := summary.ByModel[m.Slug] + summary.ByModel[m.Name]
 			if count > 0 {
-				c.JSON(http.StatusConflict, gin.H{
-					"error": fmt.Sprintf("Cannot delete model: it is currently processing %d active live streams", count),
-				})
+				httputil.RespondError(c, http.StatusConflict, fmt.Sprintf("Cannot delete model: it is currently processing %d active live streams", count), nil, "MODEL_IN_USE")
 				return
 			}
 		}
@@ -195,24 +194,20 @@ func (h *ModelHandler) Delete(c *gin.Context) {
 	if h.gatewayKeys != nil {
 		keyCount, err := h.gatewayKeys.CountByAllowedModel(c.Request.Context(), m.Slug)
 		if err == nil && keyCount > 0 {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": fmt.Sprintf("Cannot delete model: in use by %d active Gateway API Key(s)", keyCount),
-			})
+			httputil.RespondError(c, http.StatusConflict, fmt.Sprintf("Cannot delete model: in use by %d active Gateway API Key(s)", keyCount), nil, "MODEL_IN_USE_BY_KEYS")
 			return
 		}
 		if m.Name != m.Slug {
 			keyCount2, err := h.gatewayKeys.CountByAllowedModel(c.Request.Context(), m.Name)
 			if err == nil && keyCount2 > 0 {
-				c.JSON(http.StatusConflict, gin.H{
-					"error": fmt.Sprintf("Cannot delete model: in use by %d active Gateway API Key(s)", keyCount2),
-				})
+				httputil.RespondError(c, http.StatusConflict, fmt.Sprintf("Cannot delete model: in use by %d active Gateway API Key(s)", keyCount2), nil, "MODEL_IN_USE_BY_KEYS")
 				return
 			}
 		}
 	}
 
 	if err := h.models.Delete(c.Request.Context(), modelID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete model"})
+		httputil.RespondInternalError(c, "Failed to delete model", err, "MODEL_DELETE_FAILED")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -247,13 +242,13 @@ func (h *ModelHandler) UpdateCapabilities(c *gin.Context) {
 	modelID := c.Param("modelId")
 	m, err := h.models.FindByID(c.Request.Context(), modelID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "model not found"})
+		httputil.RespondNotFound(c, "Model not found", err, "MODEL_NOT_FOUND")
 		return
 	}
 
 	var req UpdateCapabilitiesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -289,7 +284,7 @@ func (h *ModelHandler) UpdateCapabilities(c *gin.Context) {
 	}
 
 	if err := h.models.Update(c.Request.Context(), m); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update capabilities"})
+		httputil.RespondInternalError(c, "Failed to update capabilities", err, "CAPABILITIES_UPDATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, m)

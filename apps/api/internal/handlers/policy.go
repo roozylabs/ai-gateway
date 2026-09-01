@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
@@ -21,7 +22,7 @@ func (h *RoutingPolicyHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	policies, err := h.policyRepo.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list policies"})
+		httputil.RespondInternalError(c, "Failed to list routing policies", err, "POLICIES_LIST_FAILED")
 		return
 	}
 	if policies == nil {
@@ -35,7 +36,7 @@ func (h *RoutingPolicyHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	policy, err := h.policyRepo.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "policy not found"})
+		httputil.RespondNotFound(c, "Policy not found", err, "POLICY_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, policy)
@@ -51,7 +52,7 @@ func (h *RoutingPolicyHandler) Create(c *gin.Context) {
 	userID := c.GetString("userId")
 	var req CreatePolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 	if req.Weights == nil {
@@ -68,7 +69,7 @@ func (h *RoutingPolicyHandler) Create(c *gin.Context) {
 		Enabled:     true,
 	}
 	if err := h.policyRepo.Create(c.Request.Context(), policy); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create policy"})
+		httputil.RespondInternalError(c, "Failed to create policy", err, "POLICY_CREATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusCreated, policy)
@@ -86,12 +87,12 @@ func (h *RoutingPolicyHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 	existing, err := h.policyRepo.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "policy not found"})
+		httputil.RespondNotFound(c, "Policy not found", err, "POLICY_NOT_FOUND")
 		return
 	}
 	var req UpdatePolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 	if req.Name != nil {
@@ -107,7 +108,7 @@ func (h *RoutingPolicyHandler) Update(c *gin.Context) {
 		existing.Enabled = *req.Enabled
 	}
 	if err := h.policyRepo.Update(c.Request.Context(), existing); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update policy"})
+		httputil.RespondInternalError(c, "Failed to update policy", err, "POLICY_UPDATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, existing)
@@ -117,7 +118,7 @@ func (h *RoutingPolicyHandler) Delete(c *gin.Context) {
 	userID := c.GetString("userId")
 	id := c.Param("id")
 	if err := h.policyRepo.Delete(c.Request.Context(), id, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete policy"})
+		httputil.RespondInternalError(c, "Failed to delete policy", err, "POLICY_DELETE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "policy deleted"})
@@ -127,7 +128,7 @@ func (h *RoutingPolicyHandler) SetDefault(c *gin.Context) {
 	userID := c.GetString("userId")
 	id := c.Param("id")
 	if err := h.policyRepo.SetDefault(c.Request.Context(), id, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to set policy as default"})
+		httputil.RespondInternalError(c, "Failed to set policy as default", err, "POLICY_SET_DEFAULT_FAILED")
 		return
 	}
 	policy, err := h.policyRepo.FindByID(c.Request.Context(), id, userID)
@@ -144,9 +145,9 @@ func (h *RoutingPolicyHandler) FindByName(c *gin.Context) {
 	policy, err := h.policyRepo.FindByName(c.Request.Context(), name, userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "policy not found"})
+			httputil.RespondNotFound(c, "Policy not found", err, "POLICY_NOT_FOUND")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to find policy"})
+			httputil.RespondInternalError(c, "Failed to find policy", err, "POLICY_FIND_FAILED")
 		}
 		return
 	}

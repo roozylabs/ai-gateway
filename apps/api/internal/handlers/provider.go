@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
@@ -33,7 +34,7 @@ func (h *ProviderHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	providers, err := h.providers.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list providers"})
+		httputil.RespondInternalError(c, "Failed to list providers", err, "PROVIDERS_LIST_FAILED")
 		return
 	}
 	if providers == nil {
@@ -56,7 +57,7 @@ func (h *ProviderHandler) Get(c *gin.Context) {
 	userID := c.GetString("userId")
 	provider, err := h.providers.FindByID(c.Request.Context(), id)
 	if err != nil || (userID != "" && provider.UserID != userID && provider.UserID != "user_admin" && provider.UserID != "") {
-		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
+		httputil.RespondNotFound(c, "Provider not found", err, "PROVIDER_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, provider)
@@ -74,13 +75,13 @@ func (h *ProviderHandler) Get(c *gin.Context) {
 func (h *ProviderHandler) Create(c *gin.Context) {
 	var p models.Provider
 	if err := c.ShouldBindJSON(&p); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 	p.UserID = c.GetString("userId")
 
 	if err := h.providers.Create(c.Request.Context(), &p); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create provider"})
+		httputil.RespondInternalError(c, "Failed to create provider", err, "PROVIDER_CREATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusCreated, p)
@@ -102,17 +103,17 @@ func (h *ProviderHandler) Update(c *gin.Context) {
 	userID := c.GetString("userId")
 	existing, err := h.providers.FindByID(c.Request.Context(), id)
 	if err != nil || (userID != "" && existing.UserID != userID && existing.UserID != "user_admin" && existing.UserID != "") {
-		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
+		httputil.RespondNotFound(c, "Provider not found", err, "PROVIDER_NOT_FOUND")
 		return
 	}
 
 	if err := c.ShouldBindJSON(existing); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
 	if err := h.providers.Update(c.Request.Context(), existing); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update provider"})
+		httputil.RespondInternalError(c, "Failed to update provider", err, "PROVIDER_UPDATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, existing)
@@ -133,7 +134,7 @@ func (h *ProviderHandler) Delete(c *gin.Context) {
 	userID := c.GetString("userId")
 	existing, err := h.providers.FindByID(c.Request.Context(), id)
 	if err != nil || (userID != "" && existing.UserID != userID && existing.UserID != "user_admin" && existing.UserID != "") {
-		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
+		httputil.RespondNotFound(c, "Provider not found", err, "PROVIDER_NOT_FOUND")
 		return
 	}
 
@@ -141,15 +142,13 @@ func (h *ProviderHandler) Delete(c *gin.Context) {
 	if h.gatewayKeys != nil {
 		count, err := h.gatewayKeys.CountByProviderID(c.Request.Context(), id)
 		if err == nil && count > 0 {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": fmt.Sprintf("Cannot delete provider: %d active Gateway API Key(s) are bound to it. Please revoke or reassign the keys first.", count),
-			})
+			httputil.RespondError(c, http.StatusConflict, fmt.Sprintf("Cannot delete provider: %d active Gateway API Key(s) are bound to it. Please revoke or reassign the keys first.", count), nil, "PROVIDER_IN_USE")
 			return
 		}
 	}
 
 	if err := h.providers.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
+		httputil.RespondInternalError(c, "Failed to delete provider", err, "PROVIDER_DELETE_FAILED")
 		return
 	}
 	c.Status(http.StatusNoContent)

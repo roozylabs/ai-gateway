@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/repository"
 )
 
@@ -18,7 +19,7 @@ func NewSettingsHandler(settings *repository.SettingRepository) *SettingsHandler
 func (h *SettingsHandler) List(c *gin.Context) {
 	settings, err := h.settings.List(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list settings"})
+		httputil.RespondInternalError(c, "Failed to list settings", err, "SETTINGS_LIST_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -29,7 +30,7 @@ func (h *SettingsHandler) List(c *gin.Context) {
 func (h *SettingsHandler) Update(c *gin.Context) {
 	userID := c.GetString("userId")
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		httputil.RespondUnauthorized(c, "Unauthorized", nil, "AUTH_REQUIRED")
 		return
 	}
 
@@ -37,12 +38,12 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 		Settings map[string]string `json:"settings" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
 	if err := h.settings.SetMultiple(c.Request.Context(), req.Settings); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update settings"})
+		httputil.RespondInternalError(c, "Failed to update settings", err, "SETTINGS_UPDATE_FAILED")
 		return
 	}
 

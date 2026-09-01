@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
@@ -20,7 +21,7 @@ func (h *RoutingRuleHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	rules, err := h.routingRepo.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"type": "server_error", "message": "Failed to fetch routing rules"}})
+		httputil.RespondInternalError(c, "Failed to fetch routing rules", err, "ROUTING_RULES_FETCH_FAILED")
 		return
 	}
 	if rules == nil {
@@ -35,7 +36,7 @@ func (h *RoutingRuleHandler) Get(c *gin.Context) {
 
 	rule, err := h.routingRepo.GetByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found", "message": "Routing rule not found"}})
+		httputil.RespondNotFound(c, "Routing rule not found", err, "ROUTING_RULE_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, rule)
@@ -53,7 +54,7 @@ func (h *RoutingRuleHandler) Create(c *gin.Context) {
 
 	var req CreateRoutingRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"type": "invalid_request", "message": "Invalid request body"}})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -71,7 +72,7 @@ func (h *RoutingRuleHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.routingRepo.Create(c.Request.Context(), rule); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"type": "server_error", "message": "Failed to create routing rule"}})
+		httputil.RespondInternalError(c, "Failed to create routing rule", err, "ROUTING_RULE_CREATE_FAILED")
 		return
 	}
 
@@ -91,13 +92,13 @@ func (h *RoutingRuleHandler) Update(c *gin.Context) {
 
 	existing, err := h.routingRepo.GetByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found", "message": "Routing rule not found"}})
+		httputil.RespondNotFound(c, "Routing rule not found", err, "ROUTING_RULE_NOT_FOUND")
 		return
 	}
 
 	var req UpdateRoutingRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"type": "invalid_request", "message": "Invalid request body"}})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -115,7 +116,7 @@ func (h *RoutingRuleHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.routingRepo.Update(c.Request.Context(), existing); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"type": "server_error", "message": "Failed to update routing rule"}})
+		httputil.RespondInternalError(c, "Failed to update routing rule", err, "ROUTING_RULE_UPDATE_FAILED")
 		return
 	}
 
@@ -127,7 +128,7 @@ func (h *RoutingRuleHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.routingRepo.Delete(c.Request.Context(), id, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"type": "server_error", "message": "Failed to delete routing rule"}})
+		httputil.RespondInternalError(c, "Failed to delete routing rule", err, "ROUTING_RULE_DELETE_FAILED")
 		return
 	}
 

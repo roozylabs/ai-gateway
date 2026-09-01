@@ -2,11 +2,11 @@ package middleware
 
 import (
 	"context"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 )
 
@@ -37,22 +37,12 @@ func AgentPolicyMiddleware(agents AgentFinder) gin.HandlerFunc {
 		}
 
 		if err != nil || agent == nil {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": gin.H{
-					"message": "Agent identity specified in X-Prism-Agent-ID was not found",
-					"type":    "permission_denied",
-				},
-			})
+			httputil.RespondForbidden(c, "Agent identity specified in X-Prism-Agent-ID was not found", err, "AGENT_NOT_FOUND")
 			return
 		}
 
 		if !agent.Enabled {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": gin.H{
-					"message": "Agent specified in X-Prism-Agent-ID is disabled",
-					"type":    "permission_denied",
-				},
-			})
+			httputil.RespondForbidden(c, "Agent specified in X-Prism-Agent-ID is disabled", nil, "AGENT_DISABLED")
 			return
 		}
 

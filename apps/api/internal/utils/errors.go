@@ -40,7 +40,7 @@ func RespondWithError(c *gin.Context, status int, errType string, message string
 		RequestID:  reqID,
 	}
 
-	c.JSON(status, gin.H{"error": payload})
+	c.AbortWithStatusJSON(status, gin.H{"error": payload})
 }
 
 // Standard User-Friendly Messages

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	"github.com/roozylabs/prism/internal/repository"
@@ -68,7 +69,7 @@ func (h *ResourceHandler) List(c *gin.Context) {
 	orgID, wsID, _ := getTenantContext(c)
 	resources, err := h.resources.ListByOrgID(c.Request.Context(), orgID, wsID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list resources: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to list resources", err, "RESOURCES_LIST_FAILED")
 		return
 	}
 	if resources == nil {
@@ -81,7 +82,7 @@ func (h *ResourceHandler) Get(c *gin.Context) {
 	orgID, _, _ := getTenantContext(c)
 	rwb, err := h.resources.GetResourceWithBackendsByID(c.Request.Context(), c.Param("id"), orgID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "resource not found"})
+		httputil.RespondNotFound(c, "Resource not found", err, "RESOURCE_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, rwb)
@@ -91,7 +92,7 @@ func (h *ResourceHandler) Create(c *gin.Context) {
 	orgID, wsID, userID := getTenantContext(c)
 	var req CreateResourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -115,13 +116,13 @@ func (h *ResourceHandler) Create(c *gin.Context) {
 		Enabled:          enabled,
 	}
 	if err := h.resources.Create(c.Request.Context(), res); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create resource"})
+		httputil.RespondInternalError(c, "Failed to create resource", err, "RESOURCE_CREATE_FAILED")
 		return
 	}
 
 	for _, br := range req.Backends {
 		if err := h.createBackend(c.Request.Context(), res.ID, br); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "resource created but backend failed: " + br.Name})
+			httputil.RespondInternalError(c, "Resource created but backend failed: "+br.Name, err, "RESOURCE_BACKEND_FAILED")
 			return
 		}
 	}
@@ -136,13 +137,13 @@ func (h *ResourceHandler) Update(c *gin.Context) {
 
 	existing, err := h.resources.FindByID(c.Request.Context(), id, orgID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "resource not found"})
+		httputil.RespondNotFound(c, "Resource not found", err, "RESOURCE_NOT_FOUND")
 		return
 	}
 
 	var req CreateResourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -156,18 +157,18 @@ func (h *ResourceHandler) Update(c *gin.Context) {
 		existing.Enabled = *req.Enabled
 	}
 	if err := h.resources.Update(c.Request.Context(), existing); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update resource"})
+		httputil.RespondInternalError(c, "Failed to update resource", err, "RESOURCE_UPDATE_FAILED")
 		return
 	}
 
 	if req.Backends != nil {
 		if err := h.backends.DeleteByResourceID(c.Request.Context(), id); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to replace backends"})
+			httputil.RespondInternalError(c, "Failed to replace backends", err, "BACKENDS_REPLACE_FAILED")
 			return
 		}
 		for _, br := range req.Backends {
 			if err := h.createBackend(c.Request.Context(), id, br); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "backend failed: " + br.Name})
+				httputil.RespondInternalError(c, "Backend failed: "+br.Name, err, "RESOURCE_BACKEND_FAILED")
 				return
 			}
 		}
@@ -180,7 +181,7 @@ func (h *ResourceHandler) Update(c *gin.Context) {
 func (h *ResourceHandler) Delete(c *gin.Context) {
 	orgID, _, _ := getTenantContext(c)
 	if err := h.resources.Delete(c.Request.Context(), c.Param("id"), orgID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete resource"})
+		httputil.RespondInternalError(c, "Failed to delete resource", err, "RESOURCE_DELETE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "resource deleted"})
@@ -196,12 +197,12 @@ func (h *ResourceHandler) TestResource(c *gin.Context) {
 
 	res, err := h.resources.FindByID(c.Request.Context(), id, orgID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "resource not found"})
+		httputil.RespondNotFound(c, "Resource not found", err, "RESOURCE_NOT_FOUND")
 		return
 	}
 	var req TestResourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -214,7 +215,7 @@ func (h *ResourceHandler) TestResource(c *gin.Context) {
 	defer cancel()
 	result, err := h.gateway.Execute(ctx, lookupKey, res.Name, req.Args, h.encKey)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		httputil.RespondError(c, http.StatusBadGateway, "Resource execution failed: "+err.Error(), err, "RESOURCE_EXECUTION_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, result)

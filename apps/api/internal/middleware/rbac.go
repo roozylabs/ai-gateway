@@ -1,10 +1,9 @@
 package middleware
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/roozylabs/prism/internal/authz"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 )
 
@@ -22,12 +21,7 @@ func RequirePermission(authzEngine *authz.AuthorizationEngine, action string) gi
 			userID = c.GetString("user_id")
 		}
 		if userID == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"message": "Authentication required",
-					"type":    "unauthorized_error",
-				},
-			})
+			httputil.RespondUnauthorized(c, "Authentication required", nil, "AUTH_REQUIRED")
 			return
 		}
 
@@ -45,12 +39,7 @@ func RequirePermission(authzEngine *authz.AuthorizationEngine, action string) gi
 				// Verify Gateway Key organization scope
 				if gwKey.OrgID != nil && *gwKey.OrgID != "" {
 					if orgID != "" && orgID != *gwKey.OrgID {
-						c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-							"error": gin.H{
-								"message": "API key not authorized for requested organization",
-								"type":    "scope_error",
-							},
-						})
+						httputil.RespondForbidden(c, "API key not authorized for requested organization", nil, "SCOPE_ORG_FORBIDDEN")
 						return
 					}
 					orgID = *gwKey.OrgID
@@ -58,12 +47,7 @@ func RequirePermission(authzEngine *authz.AuthorizationEngine, action string) gi
 				// Verify Gateway Key workspace scope
 				if gwKey.WorkspaceID != nil && *gwKey.WorkspaceID != "" {
 					if wsID != "" && wsID != *gwKey.WorkspaceID {
-						c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-							"error": gin.H{
-								"message": "API key not authorized for requested workspace",
-								"type":    "scope_error",
-							},
-						})
+						httputil.RespondForbidden(c, "API key not authorized for requested workspace", nil, "SCOPE_WORKSPACE_FORBIDDEN")
 						return
 					}
 					wsID = *gwKey.WorkspaceID
@@ -86,13 +70,7 @@ func RequirePermission(authzEngine *authz.AuthorizationEngine, action string) gi
 
 		allowed, err := authzEngine.Can(c.Request.Context(), principal, action, target)
 		if err != nil || !allowed {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": gin.H{
-					"message": "Forbidden: insufficient permissions for action " + action,
-					"action":  action,
-					"type":    "authorization_error",
-				},
-			})
+			httputil.RespondForbidden(c, "Forbidden: insufficient permissions for action "+action, err, "PERMISSION_DENIED")
 			return
 		}
 

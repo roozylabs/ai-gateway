@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/repository"
 	"github.com/roozylabs/prism/internal/utils"
 )
@@ -36,7 +36,7 @@ func AuthMiddleware(sessions *repository.SessionRepository, keys GatewayKeyFinde
 		}
 
 		if token == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization token"})
+			httputil.RespondUnauthorized(c, "Missing authorization token", nil, "AUTH_TOKEN_MISSING")
 			return
 		}
 
@@ -46,7 +46,7 @@ func AuthMiddleware(sessions *repository.SessionRepository, keys GatewayKeyFinde
 			gatewayKey, err := keys.FindByKeyHash(c.Request.Context(), keyHash)
 			if err == nil && gatewayKey != nil {
 				if gatewayKey.ExpiresAt != nil && gatewayKey.ExpiresAt.Before(time.Now()) {
-					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "API key has expired"})
+					httputil.RespondUnauthorized(c, "API key has expired", nil, "API_KEY_EXPIRED")
 					return
 				}
 				c.Set("token", token)
@@ -62,7 +62,7 @@ func AuthMiddleware(sessions *repository.SessionRepository, keys GatewayKeyFinde
 		// 5. Session auth fallback for Web Admin Dashboard
 		session, err := sessions.FindValidByToken(c.Request.Context(), token)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+			httputil.RespondUnauthorized(c, "Invalid or expired token", err, "AUTH_SESSION_INVALID")
 			return
 		}
 

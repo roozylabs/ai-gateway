@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	"github.com/roozylabs/prism/internal/repository"
@@ -45,7 +46,7 @@ func (h *AgentHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	agents, err := h.repo.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list agents: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to list agents", err, "AGENTS_LIST_FAILED")
 		return
 	}
 	if agents == nil {
@@ -59,7 +60,7 @@ func (h *AgentHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	agent, err := h.repo.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
+		httputil.RespondNotFound(c, "Agent not found", err, "AGENT_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, agent)
@@ -69,7 +70,7 @@ func (h *AgentHandler) Create(c *gin.Context) {
 	userID := c.GetString("userId")
 	var req CreateAgentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body: " + err.Error()})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -142,7 +143,7 @@ func (h *AgentHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.repo.Create(c.Request.Context(), agent); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create agent: " + err.Error()})
+		httputil.RespondInternalError(c, "Failed to create agent", err, "AGENT_CREATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusCreated, agent)
@@ -153,13 +154,13 @@ func (h *AgentHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 	existing, err := h.repo.FindByID(c.Request.Context(), id, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
+		httputil.RespondNotFound(c, "Agent not found", err, "AGENT_NOT_FOUND")
 		return
 	}
 
 	var req CreateAgentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body: " + err.Error()})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -217,7 +218,7 @@ func (h *AgentHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.repo.Update(c.Request.Context(), existing); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update agent"})
+		httputil.RespondInternalError(c, "Failed to update agent", err, "AGENT_UPDATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, existing)
@@ -227,7 +228,7 @@ func (h *AgentHandler) Delete(c *gin.Context) {
 	userID := c.GetString("userId")
 	id := c.Param("id")
 	if err := h.repo.Delete(c.Request.Context(), id, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete agent"})
+		httputil.RespondInternalError(c, "Failed to delete agent", err, "AGENT_DELETE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "agent deleted"})

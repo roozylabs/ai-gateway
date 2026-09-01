@@ -8,17 +8,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	goredis "github.com/roozylabs/prism/internal/redis"
-	"github.com/roozylabs/prism/internal/repository"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
+	goredis "github.com/roozylabs/prism/internal/redis"
+	"github.com/roozylabs/prism/internal/repository"
 )
 
 type ResourceGatewayHandler struct {
-	gateway   proxy.ResourceGatewayExecutor
-	toolInv   *repository.ToolInvocationRepository
-	eventPub  *goredis.EventPublisher
-	encKey    string
+	gateway  proxy.ResourceGatewayExecutor
+	toolInv  *repository.ToolInvocationRepository
+	eventPub *goredis.EventPublisher
+	encKey   string
 }
 
 func NewResourceGatewayHandler(gw proxy.ResourceGatewayExecutor, toolInv *repository.ToolInvocationRepository, eventPub *goredis.EventPublisher, encKey string) *ResourceGatewayHandler {
@@ -33,7 +34,7 @@ func (h *ResourceGatewayHandler) ExecuteQuery(c *gin.Context) {
 	resourceName := c.Param("resourceName")
 	gatewayKey, _ := c.MustGet("gatewayKey").(*models.GatewayAPIKey)
 	if gatewayKey == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "gateway key required"})
+		httputil.RespondUnauthorized(c, "Gateway key required", nil, "GATEWAY_KEY_REQUIRED")
 		return
 	}
 
@@ -47,12 +48,7 @@ func (h *ResourceGatewayHandler) ExecuteQuery(c *gin.Context) {
 				}
 			}
 			if !allowed {
-				c.JSON(http.StatusForbidden, gin.H{
-					"error": gin.H{
-						"message": "Agent is not authorized to access resource '" + resourceName + "'",
-						"type":    "permission_denied",
-					},
-				})
+				httputil.RespondForbidden(c, "Agent is not authorized to access resource '"+resourceName+"'", nil, "RESOURCE_PERMISSION_DENIED")
 				return
 			}
 		}
@@ -60,7 +56,7 @@ func (h *ResourceGatewayHandler) ExecuteQuery(c *gin.Context) {
 
 	var req QueryResourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -70,12 +66,7 @@ func (h *ResourceGatewayHandler) ExecuteQuery(c *gin.Context) {
 
 	result, err := h.gateway.Execute(ctx, gatewayKey.UserID, resourceName, req.Args, h.encKey)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"error": gin.H{
-				"message": err.Error(),
-				"type":    "resource_execution_error",
-			},
-		})
+		httputil.RespondError(c, http.StatusBadGateway, "Resource execution failed: "+err.Error(), err, "RESOURCE_EXECUTION_FAILED")
 		return
 	}
 
@@ -85,13 +76,13 @@ func (h *ResourceGatewayHandler) ExecuteQuery(c *gin.Context) {
 	})
 
 	_ = h.eventPub.Publish(c.Request.Context(), "RESOURCE_EXECUTED", map[string]interface{}{
-		"executionId":  executionID,
-		"resource":     resourceName,
-		"backend":      result.Backend,
-		"backendType":  result.BackendType,
-		"statusCode":   result.StatusCode,
-		"rowCount":     result.RowCount,
-		"latencyMs":    result.LatencyMs,
+		"executionId": executionID,
+		"resource":    resourceName,
+		"backend":     result.Backend,
+		"backendType": result.BackendType,
+		"statusCode":  result.StatusCode,
+		"rowCount":    result.RowCount,
+		"latencyMs":   result.LatencyMs,
 	})
 
 	c.JSON(http.StatusOK, result)

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/proxy"
 	goredis "github.com/roozylabs/prism/internal/redis"
@@ -98,7 +99,7 @@ func (h *CredentialHandler) List(c *gin.Context) {
 	userID := c.GetString("userId")
 	credentials, total, err := h.credentials.ListWithFilter(c.Request.Context(), providerID, search, limit, offset, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list credentials"})
+		httputil.RespondError(c, http.StatusInternalServerError, "Failed to list credentials", err, "CREDENTIALS_LIST_FAILED")
 		return
 	}
 	if credentials == nil {
@@ -133,7 +134,7 @@ func (h *CredentialHandler) Get(c *gin.Context) {
 	userID := c.GetString("userId")
 	cred, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
+		httputil.RespondNotFound(c, "Credential not found", err, "CREDENTIAL_NOT_FOUND")
 		return
 	}
 	h.enrichCredentialQuota(c.Request.Context(), cred)
@@ -161,14 +162,14 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 	if h.providers != nil && userID != "" && userID != "user_admin" {
 		prov, err := h.providers.FindByID(c.Request.Context(), providerID)
 		if err != nil || (!prov.Enabled || (prov.UserID != userID && prov.UserID != "user_admin" && prov.UserID != "" && prov.UserID != "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "cannot attach credentials to a provider you do not own or is disabled"})
+			httputil.RespondForbidden(c, "Cannot attach credentials to a provider you do not own or is disabled", err, "PROVIDER_ACCESS_DENIED")
 			return
 		}
 	}
 
 	var req CreateCredentialRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -184,7 +185,7 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 
 	if authType == "gcp_user_oauth" {
 		if req.Metadata == nil || req.Metadata.ClientID == "" || req.Metadata.ClientSecret == "" || req.Metadata.RefreshToken == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "OAuth credentials require clientId, clientSecret, and refreshToken"})
+			httputil.RespondBadRequest(c, "OAuth credentials require clientId, clientSecret, and refreshToken", nil, "OAUTH_METADATA_REQUIRED")
 			return
 		}
 		metaBytes, err := json.Marshal(map[string]string{
@@ -193,12 +194,12 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 			"refresh_token": req.Metadata.RefreshToken,
 		})
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode metadata"})
+			httputil.RespondInternalError(c, "Failed to encode OAuth metadata", err, "OAUTH_ENCODE_FAILED")
 			return
 		}
 		encryptedMeta, err := utils.EncryptAES256GCM(string(metaBytes), h.encKey)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt metadata"})
+			httputil.RespondInternalError(c, "Failed to encrypt OAuth metadata", err, "OAUTH_ENCRYPT_FAILED")
 			return
 		}
 		encMeta = sql.NullString{String: encryptedMeta, Valid: true}
@@ -217,13 +218,13 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 		}
 	} else {
 		if req.APIKey == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "apiKey is required for api_key auth type"})
+			httputil.RespondBadRequest(c, "apiKey is required for api_key auth type", nil, "API_KEY_REQUIRED")
 			return
 		}
 		var err error
 		encrypted, err = utils.EncryptAES256GCM(req.APIKey, h.encKey)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt key"})
+			httputil.RespondInternalError(c, "Failed to encrypt API key", err, "KEY_ENCRYPTION_FAILED")
 			return
 		}
 		maskedKey = utils.MaskAPIKey(req.APIKey)
@@ -259,7 +260,7 @@ func (h *CredentialHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.credentials.Create(c.Request.Context(), cred); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create credential"})
+		httputil.RespondInternalError(c, "Failed to create credential", err, "CREDENTIAL_CREATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusCreated, cred)
@@ -304,13 +305,13 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 	userID := c.GetString("userId")
 	existing, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
+		httputil.RespondNotFound(c, "Credential not found", err, "CREDENTIAL_NOT_FOUND")
 		return
 	}
 
 	var req UpdateCredentialRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -339,12 +340,12 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 			"refresh_token": req.Metadata.RefreshToken,
 		})
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode metadata"})
+			httputil.RespondInternalError(c, "Failed to encode OAuth metadata", err, "OAUTH_ENCODE_FAILED")
 			return
 		}
 		encryptedMeta, err := utils.EncryptAES256GCM(string(metaBytes), h.encKey)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt metadata"})
+			httputil.RespondInternalError(c, "Failed to encrypt OAuth metadata", err, "OAUTH_ENCRYPT_FAILED")
 			return
 		}
 		existing.EncryptedMetadata = sql.NullString{String: encryptedMeta, Valid: true}
@@ -364,7 +365,7 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 	if req.APIKey != "" {
 		encrypted, err := utils.EncryptAES256GCM(req.APIKey, h.encKey)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt key"})
+			httputil.RespondInternalError(c, "Failed to encrypt API key", err, "KEY_ENCRYPTION_FAILED")
 			return
 		}
 		existing.EncryptedKey = encrypted
@@ -383,7 +384,7 @@ func (h *CredentialHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.credentials.Update(c.Request.Context(), existing, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update credential"})
+		httputil.RespondInternalError(c, "Failed to update credential", err, "CREDENTIAL_UPDATE_FAILED")
 		return
 	}
 	c.JSON(http.StatusOK, existing)
@@ -405,7 +406,7 @@ func (h *CredentialHandler) Delete(c *gin.Context) {
 	userID := c.GetString("userId")
 	cred, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
+		httputil.RespondNotFound(c, "Credential not found", err, "CREDENTIAL_NOT_FOUND")
 		return
 	}
 
@@ -418,9 +419,7 @@ func (h *CredentialHandler) Delete(c *gin.Context) {
 				count = summary.ByCredential[cred.MaskedKey]
 			}
 			if count > 0 {
-				c.JSON(http.StatusConflict, gin.H{
-					"error": fmt.Sprintf("Cannot delete credential: it is currently processing %d active live streams", count),
-				})
+				httputil.RespondError(c, http.StatusConflict, fmt.Sprintf("Cannot delete credential: it is currently processing %d active live streams", count), nil, "CREDENTIAL_IN_USE")
 				return
 			}
 		}
@@ -432,16 +431,14 @@ func (h *CredentialHandler) Delete(c *gin.Context) {
 		if err == nil && activeCredsCount <= 1 {
 			gwKeyCount, err := h.gatewayKeys.CountByProviderID(c.Request.Context(), cred.ProviderID)
 			if err == nil && gwKeyCount > 0 {
-				c.JSON(http.StatusConflict, gin.H{
-					"error": fmt.Sprintf("Cannot delete the only active credential for provider with %d active Gateway API Key(s)", gwKeyCount),
-				})
+				httputil.RespondError(c, http.StatusConflict, fmt.Sprintf("Cannot delete the only active credential for provider with %d active Gateway API Key(s)", gwKeyCount), nil, "ACTIVE_KEYS_EXIST")
 				return
 			}
 		}
 	}
 
 	if err := h.credentials.Delete(c.Request.Context(), credID, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete credential"})
+		httputil.RespondInternalError(c, "Failed to delete credential", err, "CREDENTIAL_DELETE_FAILED")
 		return
 	}
 
@@ -468,7 +465,7 @@ func (h *CredentialHandler) ResetCooldown(c *gin.Context) {
 	credID := c.Param("credId")
 	userID := c.GetString("userId")
 	if _, err := h.credentials.FindByID(c.Request.Context(), credID, userID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
+		httputil.RespondNotFound(c, "Credential not found", err, "CREDENTIAL_NOT_FOUND")
 		return
 	}
 	if h.cooldownStore != nil {
@@ -505,7 +502,7 @@ func (h *CredentialHandler) Reveal(c *gin.Context) {
 	userID := c.GetString("userId")
 	cred, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
+		httputil.RespondNotFound(c, "Credential not found", err, "CREDENTIAL_NOT_FOUND")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -519,36 +516,36 @@ func (h *CredentialHandler) Test(c *gin.Context) {
 	userID := c.GetString("userId")
 	cred, err := h.credentials.FindByID(c.Request.Context(), credID, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "credential not found"})
+		httputil.RespondNotFound(c, "Credential not found", err, "CREDENTIAL_NOT_FOUND")
 		return
 	}
 
 	provider, err := h.providers.FindByID(c.Request.Context(), cred.ProviderID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "provider not found"})
+		httputil.RespondNotFound(c, "Provider not found", err, "PROVIDER_NOT_FOUND")
 		return
 	}
 
 	var apiKey string
 	if cred.AuthType == "gcp_user_oauth" {
 		if !cred.EncryptedMetadata.Valid || cred.EncryptedMetadata.String == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "missing encrypted oauth metadata"})
+			httputil.RespondBadRequest(c, "Missing encrypted OAuth metadata", nil, "OAUTH_METADATA_MISSING")
 			return
 		}
 		metaStr, err := utils.DecryptAES256GCM(cred.EncryptedMetadata.String, h.encKey)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to decrypt oauth metadata"})
+			httputil.RespondInternalError(c, "Failed to decrypt OAuth metadata", err, "OAUTH_DECRYPT_FAILED")
 			return
 		}
 		var meta map[string]string
 		if err := json.Unmarshal([]byte(metaStr), &meta); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse oauth metadata"})
+			httputil.RespondInternalError(c, "Failed to parse OAuth metadata", err, "OAUTH_PARSE_FAILED")
 			return
 		}
 		tokenMgr := proxy.NewOAuthTokenManager(h.cooldownStore)
 		token, err := tokenMgr.GetAccessToken(c.Request.Context(), cred.ID, meta)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "oauth token refresh failed: " + err.Error()})
+			httputil.RespondBadRequest(c, "OAuth token refresh failed: "+err.Error(), err, "OAUTH_REFRESH_FAILED")
 			return
 		}
 		apiKey = token
@@ -556,7 +553,7 @@ func (h *CredentialHandler) Test(c *gin.Context) {
 		var err error
 		apiKey, err = utils.DecryptAES256GCM(cred.EncryptedKey, h.encKey)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to decrypt key"})
+			httputil.RespondInternalError(c, "Failed to decrypt API key", err, "KEY_DECRYPTION_FAILED")
 			return
 		}
 	}

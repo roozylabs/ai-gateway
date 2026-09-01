@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/roozylabs/prism/internal/httputil"
 	"github.com/roozylabs/prism/internal/models"
 	"github.com/roozylabs/prism/internal/repository"
 )
@@ -43,9 +44,7 @@ func (h *AgentTemplateHandler) ListTemplates(c *gin.Context) {
 	userID := c.GetString("userId")
 	templates, err := h.tmplRepo.ListAll(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{"message": "Failed to list agent templates: " + err.Error(), "type": "internal_error"},
-		})
+		httputil.RespondInternalError(c, "Failed to list agent templates", err, "AGENT_TEMPLATES_LIST_FAILED")
 		return
 	}
 
@@ -59,9 +58,7 @@ func (h *AgentTemplateHandler) CreateTemplate(c *gin.Context) {
 	userID := c.GetString("userId")
 	var req CreateAgentTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": gin.H{"message": "Invalid request payload: " + err.Error(), "type": "invalid_request_error"},
-		})
+		httputil.RespondBadRequest(c, "Invalid request payload", err, "INVALID_REQUEST_BODY")
 		return
 	}
 
@@ -93,9 +90,7 @@ func (h *AgentTemplateHandler) CreateTemplate(c *gin.Context) {
 	}
 
 	if err := h.tmplRepo.Create(c.Request.Context(), tmpl); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{"message": "Failed to create agent template: " + err.Error(), "type": "internal_error"},
-		})
+		httputil.RespondInternalError(c, "Failed to create agent template", err, "AGENT_TEMPLATE_CREATE_FAILED")
 		return
 	}
 
@@ -108,9 +103,7 @@ func (h *AgentTemplateHandler) InstantiateTemplate(c *gin.Context) {
 
 	tmpl, err := h.tmplRepo.FindByID(c.Request.Context(), tmplID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{"message": "Agent template not found", "type": "not_found_error"},
-		})
+		httputil.RespondNotFound(c, "Agent template not found", err, "AGENT_TEMPLATE_NOT_FOUND")
 		return
 	}
 
@@ -150,9 +143,7 @@ func (h *AgentTemplateHandler) InstantiateTemplate(c *gin.Context) {
 	}
 
 	if err := h.agentRepo.Create(c.Request.Context(), agent); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{"message": "Failed to instantiate agent: " + err.Error(), "type": "internal_error"},
-		})
+		httputil.RespondInternalError(c, "Failed to instantiate agent", err, "AGENT_INSTANTIATE_FAILED")
 		return
 	}
 
