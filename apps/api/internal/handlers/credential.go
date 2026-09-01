@@ -570,6 +570,8 @@ func (h *CredentialHandler) Test(c *gin.Context) {
 		statusCode, errMsg = h.testGoogle(provider.BaseURL, apiKey, cred.AuthType)
 	case "opencode":
 		statusCode, errMsg = h.testOpenCode(provider.BaseURL, apiKey)
+	case "openrouter":
+		statusCode, errMsg = h.testOpenRouter(provider.BaseURL, apiKey)
 	default:
 		statusCode, errMsg = h.testOpenAI(provider.BaseURL, apiKey)
 	}
