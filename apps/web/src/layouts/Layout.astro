@@ -1,4 +1,6 @@
 ---
+import '../styles/globals.css';
+
 export interface Props {
 	title: string;
 	description?: string;
@@ -6,7 +8,7 @@ export interface Props {
 
 const { 
 	title, 
-	description = "Prism AI Gateway v2.8.0 - One Control Plane for Your Entire AI Stack. Unify models, tools, resources, and agents behind one resilient, sub-2ms infrastructure layer." 
+	description = "RoozyLabs Prism v0.3.0. Universal AI Control Plane and OpenAI-compatible proxy engine with multi-tenant row-level security and deterministic failure resilience." 
 }: Props = Astro.props;
 ---
 
@@ -20,56 +22,12 @@ const {
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 		
-		<!-- Google Fonts & Material Symbols -->
+		<!-- Google Fonts (Inter & JetBrains Mono) -->
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 	</head>
-	<body class="bg-[#08090A] font-['Inter',sans-serif] text-[#F8FAFC] antialiased selection:bg-[#8B5CF6] selection:text-white min-h-screen flex flex-col overflow-x-hidden">
+	<body class="bg-background font-['Inter',sans-serif] text-foreground antialiased selection:bg-primary selection:text-white min-h-screen flex flex-col overflow-x-hidden">
 		<slot />
 	</body>
 </html>
-
-<style is:global>
-	@tailwind base;
-	@tailwind components;
-	@tailwind utilities;
-
-	@layer base {
-		html, body {
-			margin: 0;
-			padding: 0;
-			background-color: #08090A;
-			color: #F8FAFC;
-		}
-		body {
-			overscroll-behavior: none;
-		}
-	}
-	
-	/* Custom Scrollbar styled for Prism theme (matching app globals.css) */
-	* {
-		scrollbar-width: thin;
-		scrollbar-color: rgba(139, 92, 246, 0.4) rgba(15, 17, 21, 0.6);
-	}
-
-	::-webkit-scrollbar {
-		width: 6px;
-		height: 6px;
-	}
-
-	::-webkit-scrollbar-track {
-		background: rgba(15, 17, 21, 0.6);
-		border-radius: 4px;
-	}
-
-	::-webkit-scrollbar-thumb {
-		background: rgba(139, 92, 246, 0.4);
-		border-radius: 4px;
-	}
-
-	::-webkit-scrollbar-thumb:hover {
-		background: rgba(139, 92, 246, 0.7);
-	}
-</style>

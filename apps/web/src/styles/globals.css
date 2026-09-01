@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 262 83% 58%; /* Prism Violet #8B5CF6 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 262 83% 58%;
+    --radius: 0rem;
+
+    --brand-violet: 262 83% 58%;   /* #8B5CF6 */
+    --brand-cyan: 188 95% 42%;     /* #06B6D4 */
+    --console-bg: 220 18% 5%;      /* #0A0C10 */
+    --console-card: 220 18% 8%;    /* #0D0F14 */
+    --console-header: 220 18% 10%; /* #141720 */
+
+    --scrollbar-track: rgba(0, 0, 0, 0.04);
+    --scrollbar-thumb: rgba(139, 92, 246, 0.35);
+    --scrollbar-thumb-hover: rgba(139, 92, 246, 0.65);
+  }
+
+  .dark {
+    --background: 220 13% 4%;     /* #08090A */
+    --foreground: 210 40% 98%;
+    --card: 220 17% 7%;           /* #0F1115 */
+    --card-foreground: 210 40% 98%;
+    --popover: 220 18% 10%;        /* #14171D */
+    --popover-foreground: 210 40% 98%;
+    --primary: 262 83% 58%;       /* Prism Violet #8B5CF6 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 19% 12%;      /* #181C23 */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 19% 12%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217 19% 12%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 54.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 18% 13%;        /* #1B1F27 */
+    --input: 220 18% 13%;
+    --ring: 262 83% 58%;
+
+    --brand-violet: 262 83% 58%;
+    --brand-cyan: 188 95% 42%;
+    --console-bg: 220 18% 5%;
+    --console-card: 220 18% 8%;
+    --console-header: 220 18% 10%;
+
+    --scrollbar-track: rgba(15, 17, 21, 0.6);
+    --scrollbar-thumb: rgba(139, 92, 246, 0.4);
+    --scrollbar-thumb-hover: rgba(139, 92, 246, 0.7);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+@layer utilities {
+  .bg-console {
+    background-color: hsl(var(--console-bg));
+  }
+  .bg-console-card {
+    background-color: hsl(var(--console-card));
+  }
+  .bg-console-header {
+    background-color: hsl(var(--console-header));
+  }
+}
+
+/* Global Custom Scrollbar styled for Prism theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
