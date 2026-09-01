@@ -1,5 +1,6 @@
 export interface ApiProvider {
   id: string;
+  userId?: string;
   name: string;
   slug?: string;
   type: string;
