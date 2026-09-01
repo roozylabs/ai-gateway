@@ -1,0 +1,2 @@
+-- Migration 082 Down
+-- Keep core system records intact

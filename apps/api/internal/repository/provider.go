@@ -20,7 +20,9 @@ func NewProviderRepository(db *sql.DB) *ProviderRepository {
 func (r *ProviderRepository) ListByUserID(ctx context.Context, userID string) ([]models.Provider, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, user_id, name, slug, base_url, type, enabled, routing_strategy, created_at, updated_at
-		 FROM providers WHERE user_id = $1 ORDER BY created_at DESC`, userID,
+		 FROM providers
+		 WHERE user_id = $1 OR user_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' OR user_id = 'user_admin' OR user_id IS NULL OR user_id = ''
+		 ORDER BY (CASE WHEN user_id = $1 THEN 0 ELSE 1 END), name ASC`, userID,
 	)
 	if err != nil {
 		return nil, err
@@ -96,6 +98,6 @@ func (r *ProviderRepository) Update(ctx context.Context, p *models.Provider) err
 }
 
 func (r *ProviderRepository) Delete(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM providers WHERE id = $1`, id)
+	_, err := r.db.ExecContext(ctx, `DELETE FROM providers WHERE id = $1 AND user_id NOT IN ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'user_admin')`, id)
 	return err
 }
