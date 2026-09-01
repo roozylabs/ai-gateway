@@ -334,8 +334,10 @@ func (h *MCPHandler) Sync(c *gin.Context) {
 }
 
 type TestMCPToolRequest struct {
-	Tool string                 `json:"tool" binding:"required"`
-	Args map[string]interface{} `json:"args"`
+	Tool      string                 `json:"tool"`
+	ToolName  string                 `json:"toolName"`
+	ToolNameS string                 `json:"tool_name"`
+	Args      map[string]interface{} `json:"args"`
 }
 
 func (h *MCPHandler) TestTool(c *gin.Context) {
@@ -353,9 +355,21 @@ func (h *MCPHandler) TestTool(c *gin.Context) {
 		return
 	}
 
+	targetTool := req.Tool
+	if targetTool == "" {
+		targetTool = req.ToolName
+	}
+	if targetTool == "" {
+		targetTool = req.ToolNameS
+	}
+	if targetTool == "" {
+		httputil.RespondBadRequest(c, "Tool name is required", nil, "INVALID_REQUEST_BODY")
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel()
-	res, err := h.gateway.ExecuteTool(ctx, userID, srv.Name, req.Tool, req.Args, h.encKey)
+	res, err := h.gateway.ExecuteTool(ctx, userID, srv.Name, targetTool, req.Args, h.encKey)
 	if err != nil {
 		httputil.RespondError(c, http.StatusBadGateway, "Tool execution failed: "+err.Error(), err, "MCP_TOOL_EXECUTION_FAILED")
 		return

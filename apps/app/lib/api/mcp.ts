@@ -42,6 +42,7 @@ export async function apiSyncMCPServer(id: string): Promise<{ message: string; t
 
 export async function apiTestMCPTool(serverId: string, toolName: string, args: Record<string, unknown>): Promise<ApiMCPToolExecutionResult> {
   const response = await api.post<ApiMCPToolExecutionResult>(`/mcp/servers/${serverId}/test`, {
+    tool: toolName,
     toolName,
     args,
   });
