@@ -3,7 +3,7 @@
 
 -- 1. Add user_id and org_id columns to credentials
 ALTER TABLE credentials 
-    ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+    ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES "user"(id) ON DELETE CASCADE,
     ADD COLUMN IF NOT EXISTS org_id VARCHAR(255);
 
 -- 2. Backfill existing credentials to inherit user_id from providers table if available
@@ -11,10 +11,9 @@ UPDATE credentials c
 SET user_id = p.user_id
 FROM providers p
 WHERE c.provider_id = p.id
-  AND c.user_id IS NULL
+  AND (c.user_id IS NULL OR c.user_id = '')
   AND p.user_id IS NOT NULL
-  AND p.user_id != ''
-  AND p.user_id ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
+  AND p.user_id != '';
 
 -- 3. Create high-performance multi-tenant indexes
 CREATE INDEX IF NOT EXISTS idx_credentials_user_id ON credentials(user_id);
@@ -30,6 +29,6 @@ CREATE POLICY credentials_tenant_policy ON credentials
         current_setting('app.current_user_id', true) IS NULL
         OR current_setting('app.current_user_id', true) = ''
         OR current_setting('app.current_user_id', true) = 'user_admin'
-        OR user_id::text = current_setting('app.current_user_id', true)
+        OR user_id = current_setting('app.current_user_id', true)
         OR org_id = current_setting('app.current_org_id', true)
     );
