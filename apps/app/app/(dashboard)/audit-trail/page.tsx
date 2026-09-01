@@ -237,6 +237,7 @@ export default function AuditTrailPage() {
                   loading={trailsLoading}
                   pageSize={10}
                   searchPlaceholder="Search by request ID, model, or user..."
+                  onRefresh={refetchTrails}
                 />
               )}
             </CardContent>
@@ -261,7 +262,7 @@ export default function AuditTrailPage() {
               ) : !logsLoading && auditLogsList.length === 0 ? (
                 <EmptyState
                   title="No Admin Audit Logs Found"
-                  description="There are no system administration action logs recorded yet."
+                  description="There are no system administration action logs recorded yet. Administrative events (credential changes, policy updates, API key management) will appear here in real-time."
                 />
               ) : (
                 <DataTable
@@ -271,6 +272,7 @@ export default function AuditTrailPage() {
                   loading={logsLoading}
                   pageSize={10}
                   searchPlaceholder="Search by actor, action, or resource..."
+                  onRefresh={refetchLogs}
                 />
               )}
             </CardContent>

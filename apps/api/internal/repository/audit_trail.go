@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/roozylabs/prism/internal/models"
 )
@@ -15,6 +17,34 @@ type AuditTrailRepository struct {
 
 func NewAuditTrailRepository(db *sql.DB) *AuditTrailRepository {
 	return &AuditTrailRepository{db: db}
+}
+
+func (r *AuditTrailRepository) CreateAuditLog(ctx context.Context, item *models.AuditLogItem) error {
+	if item.ID == "" {
+		item.ID = uuid.New().String()
+	}
+	if item.CreatedAt.IsZero() {
+		item.CreatedAt = time.Now()
+	}
+	if item.Status == "" {
+		item.Status = "success"
+	}
+	if item.OrganizationID == "" {
+		item.OrganizationID = "org_default"
+	}
+	query := `
+		INSERT INTO audit_logs (
+			id, organization_id, actor_id, actor_email, action,
+			resource, resource_id, status, details_json, actor_ip,
+			actor_user_agent, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		item.ID, item.OrganizationID, item.ActorID, item.ActorEmail, item.Action,
+		item.Resource, item.ResourceID, item.Status, item.DetailsJSON, item.ActorIP,
+		item.ActorUserAgent, item.CreatedAt,
+	)
+	return err
 }
 
 const auditColumns = `id, request_id, user_id, gateway_key_id, agent_id, agent_name, user_role, model_slug, failover_chain, tools_invoked, resources_accessed, mcp_servers_called, prompt_tokens, completion_tokens, total_tokens, total_cost_usd, status_code, latency_ms, ttft_ms, prompt_hash, response_hash, compliance_status, signature_hash, created_at`
