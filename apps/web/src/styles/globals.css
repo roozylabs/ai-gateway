@@ -73,16 +73,13 @@
   * {
     @apply border-border;
   }
-  html, body {
-    margin: 0;
-    padding: 0;
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    overflow-x: hidden;
-    width: 100%;
+  html {
+    scroll-behavior: smooth;
   }
   body {
-    overscroll-behavior: none;
+    min-height: 100vh;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -97,31 +94,6 @@
   }
   .bg-console-header {
     background-color: hsl(var(--console-header));
-  }
-  
-  /* Firecrawl-inspired CAD / Crosshair Grid Intersections */
-  .crosshair-corner {
-    position: relative;
-  }
-  .crosshair-corner::before {
-    content: '+';
-    position: absolute;
-    top: -8px;
-    left: -6px;
-    font-family: monospace;
-    font-size: 11px;
-    color: rgba(139, 92, 246, 0.4);
-    pointer-events: none;
-  }
-  .crosshair-corner::after {
-    content: '+';
-    position: absolute;
-    bottom: -8px;
-    right: -6px;
-    font-family: monospace;
-    font-size: 11px;
-    color: rgba(139, 92, 246, 0.4);
-    pointer-events: none;
   }
 }
 

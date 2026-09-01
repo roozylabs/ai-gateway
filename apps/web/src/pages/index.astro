@@ -1,11 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { 
-	Shield, Zap, Route, ShieldCheck, Lock, Activity, 
-	Wallet, RefreshCw, KeyRound, Plug, Wrench, FileCheck, 
-	Terminal, Code, Bot, Network, Globe, XCircle, CheckCircle, 
+	Shield, Route, ShieldCheck, Lock, Activity, Code,
 	Menu, X, Github, BookOpen, Copy, ExternalLink, ArrowRight,
-	Server
+	SlidersHorizontal, CheckCircle2
 } from 'lucide-react';
 
 interface NavLink {
@@ -15,168 +13,50 @@ interface NavLink {
 }
 
 const navLinks: NavLink[] = [
-	{ label: 'Architecture', href: '#pillars' },
-	{ label: 'Resilience', href: '#resilience' },
-	{ label: 'Quickstart', href: '#integration' },
+	{ label: 'Smart Routing', href: '#smart-routing' },
+	{ label: 'Failover', href: '#failover' },
+	{ label: 'Multi-Tenancy', href: '#governance' },
+	{ label: 'Quickstart', href: '#quickstart' },
 	{ label: 'Docs', href: 'https://docs.prism.roozylabs.com', external: true },
 	{ label: 'GitHub', href: 'https://github.com/roozylabs/prism', external: true },
 ];
 
 const benchmarkStats = [
-	{ value: '1.96 ms', label: 'p95 Latency Overhead', desc: 'Gateway processing overhead (sub-2ms)' },
-	{ value: '3,585.5', label: 'Req / Sec Throughput', desc: 'Empirical load test at 500 workers' },
-	{ value: '0 Races', label: 'Data Race Free', desc: 'Verified with go test -race ./...' },
-	{ value: '9 Tables', label: 'Row Level Security', desc: 'PostgreSQL RLS tenant isolation' },
+	{ value: '1.96 ms', label: 'p95 Gateway Overhead', desc: 'Measured proxy processing latency' },
+	{ value: '3,585 req/s', label: 'Single Node Throughput', desc: 'Tested at 500 concurrent workers' },
+	{ value: '0 Data Races', label: 'Thread Safety', desc: 'go test -race verified across codebase' },
+	{ value: '100% RLS', label: 'Tenant Isolation', desc: 'PostgreSQL Row-Level Security on all queries' },
 ];
 
-const clientEcosystem = [
-	{ name: 'OpenCode CLI', icon: Terminal, type: 'AI Coding Assistant' },
-	{ name: 'Claude Code', icon: Code, type: 'Anthropic CLI Agent' },
-	{ name: 'Antigravity IDE', icon: Bot, type: 'AI Pair Programmer' },
-	{ name: 'LangChain & LlamaIndex', icon: Network, type: 'Agent Frameworks' },
-	{ name: 'Vercel AI SDK & Custom Apps', icon: Globe, type: 'REST and SSE SDKs' },
-];
-
-interface Pillar {
-	id: number;
-	icon: any;
-	category: string;
-	title: string;
-	tagline: string;
-	description: string;
-	highlights: string[];
-}
-
-const primaryPillars: Pillar[] = [
-	{
-		id: 1,
-		icon: Zap,
-		category: 'Proxy Engine',
-		title: 'Universal Model Gateway',
-		tagline: 'Single OpenAI-Compatible Proxy Engine',
-		description: 'Unify OpenAI, Anthropic, Google Gemini, OpenRouter, and OpenCode through one API key with zero-latency streaming pass-through.',
-		highlights: ['/v1/chat/completions', '/v1/models', 'SSE Streaming Pass-Through'],
-	},
-	{
-		id: 2,
-		icon: Route,
-		category: 'Smart Routing',
-		title: 'Prism Auto Smart Router',
-		tagline: 'Prompt Classification Engine',
-		description: 'Deterministic task complexity and context window analysis with candidate scoring across balanced, cheap, or quality policies.',
-		highlights: ['Candidate Scoring', 'Credential Pre-Filtering', 'Policy Presets'],
-	},
-	{
-		id: 3,
-		icon: ShieldCheck,
-		category: 'Fault Tolerance',
-		title: 'Deterministic Failure Resilience',
-		tagline: 'Circuit Breaker & Cooldown Quarantine',
-		description: 'Automatic 3x 50x error detection, 60s cooldown quarantine, 401/403 non-retry classification, and $0.00 retry billing guarantee.',
-		highlights: ['3x 50x Threshold', '60s Cooldown Vault', '$0.00 Retry Billing'],
-	},
-];
-
-const corePillars: Pillar[] = [
-	{
-		id: 4,
-		icon: Lock,
-		category: 'Security & RLS',
-		title: 'Multi-Tenant Isolation & RLS',
-		tagline: 'PostgreSQL Row-Level Security',
-		description: 'Multi-tenancy enforcing OrgID ownership, user-scoped query isolation across 9 database tables, and authoritative key validation.',
-		highlights: ['PostgreSQL 070 RLS', 'OrgID Scoping', 'Tenant Isolation'],
-	},
-	{
-		id: 5,
-		icon: Activity,
-		category: 'Telemetry',
-		title: 'End-to-End Observability',
-		tagline: '5 Standardized Correlation Identifiers',
-		description: 'Trace every AI execution with request_id, execution_id, routing_decision_id, attempt_id, and audit_id. Secret-redacted structured JSON logging.',
-		highlights: ['X-Request-ID Propagation', 'Stable execution_id', 'Secret Redaction'],
-	},
-	{
-		id: 6,
-		icon: Wallet,
-		category: 'Governance',
-		title: 'FinOps & Multi-Tenant Quotas',
-		tagline: 'Real-Time Token Cost & Quota Manager',
-		description: '6-dimensional token cost tracking, daily/monthly spend limits, velocity alert thresholds, and gateway key quota limits.',
-		highlights: ['CostUSD Calculation', 'Velocity Alerts', 'Key Spend Quotas'],
-	},
-	{
-		id: 7,
-		icon: RefreshCw,
-		category: 'Operations',
-		title: 'Production Operations & Migrator',
-		tagline: 'Blue-Green & Auto Schema Recovery',
-		description: 'Standalone schema migration with auto-dirty state recovery, separate /health and /ready probes for Blue-Green zero-downtime deployment.',
-		highlights: ['Auto-Dirty Reset', 'Liveness & Readiness', 'Blue-Green Deployment'],
-	},
-	{
-		id: 8,
-		icon: KeyRound,
-		category: 'Key Vault',
-		title: 'AES-256-GCM Vault & OAuth Exchange',
-		tagline: 'Dynamic Credential Allocation Pool',
-		description: 'Encrypted key vault supporting Round Robin, LRU, and Fallback Cascade rotation strategies with Google OAuth token exchange.',
-		highlights: ['AES-256-GCM Vault', 'Google OAuth Refresh', 'LRU & Round Robin'],
-	},
-];
-
-const protocolPillars: Pillar[] = [
-	{
-		id: 9,
-		icon: Plug,
-		category: 'MCP Protocol',
-		title: 'MCP Protocol Gateway',
-		tagline: 'Model Context Protocol Integrator',
-		description: 'Connect HTTP and SSE Model Context Protocol servers (GitHub, Notion, Custom Agents) with automatic JSON-RPC 2.0 discovery.',
-		highlights: ['JSON-RPC 2.0 Discovery', 'GitHub & Notion MCP', 'SSE Pass-Through'],
-	},
-	{
-		id: 10,
-		icon: Wrench,
-		category: 'Function Calling',
-		title: 'Resource & Tool Gateway Control',
-		tagline: 'Centralized Function Calling & SQL Engine',
-		description: 'Register external REST API tools and parameterized PostgreSQL query templates with header injection, priority failover, and sandbox execution.',
-		highlights: ['REST API Tool Hub', 'Parameterized SQL', 'Sandbox Testing'],
-	},
-	{
-		id: 11,
-		icon: FileCheck,
-		category: 'Compliance',
-		title: 'Cryptographic AI Audit Trail',
-		tagline: 'SHA-256 Tamper-Proof Execution Log',
-		description: '6-dimensional audit trail capturing WHO, REQUEST, MODEL, TOOLS/RESOURCES, COST, and OUTCOME with SHA-256 signature verification.',
-		highlights: ['SHA-256 Signatures', '6D Telemetry Logging', 'Tamper-Proof Audit Vault'],
-	},
+const supportedProviders = [
+	{ name: 'OpenAI', models: 'GPT-4o, o3-mini, o1', badge: 'v1/chat/completions' },
+	{ name: 'Anthropic', models: 'Claude 3.7 Sonnet, 3.5 Haiku', badge: 'Messages API' },
+	{ name: 'Google Gemini', models: 'Gemini 2.5 Flash, 2.5 Pro', badge: 'Native Adapter' },
+	{ name: 'DeepSeek', models: 'DeepSeek R1, DeepSeek V3', badge: 'High-Throughput' },
+	{ name: 'OpenRouter & Custom', models: 'Any OpenAI-compatible server', badge: 'Universal Proxy' },
 ];
 ---
 
-<Layout title="RoozyLabs Prism - Universal AI Control Plane v0.3.0">
-	<!-- Ambient Background Light (Static Subtle Prism Refraction) -->
+<Layout title="RoozyLabs Prism - Universal AI Control Plane & Model Gateway">
+	<!-- Background Ambient Refraction -->
 	<div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
-		<div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[1200px] h-[500px] bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(139,92,246,0.12),transparent_70%)]"></div>
-		<div class="absolute top-[800px] right-0 w-[500px] h-[500px] bg-[radial-gradient(circle_at_100%_50%,rgba(6,182,212,0.04),transparent_60%)]"></div>
+		<div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[1100px] h-[500px] bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(139,92,246,0.12),transparent_70%)]"></div>
 	</div>
 
 	<!-- Header Navigation -->
-	<header class="sticky top-0 w-full z-50 bg-background/90 backdrop-blur-lg border-b border-border/80">
+	<header class="sticky top-0 w-full z-50 bg-background/90 backdrop-blur-md border-b border-border/80">
 		<div class="h-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
 			<!-- Brand Mark (Shield Mark) -->
 			<div class="flex items-center gap-3">
 				<a href="/" class="flex items-center gap-2.5 group">
-					<div class="flex h-8 w-8 items-center justify-center rounded-md bg-[#7C3AED] text-white border border-violet-400/30 shadow-sm group-hover:bg-[#6D28D9] transition-colors">
+					<div class="flex h-8 w-8 items-center justify-center rounded-none bg-[#7C3AED] text-white border border-violet-400/30 shadow-sm group-hover:bg-[#6D28D9] transition-colors">
 						<Shield className="h-4 w-4" />
 					</div>
-					<div class="flex items-center gap-1.5">
+					<div class="flex items-center gap-2">
 						<span class="font-mono text-sm font-bold tracking-tight text-foreground">
 							RoozyLabs <span class="text-primary">Prism</span>
 						</span>
-						<span class="hidden sm:inline-block font-mono text-[10px] text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded border border-border">
+						<span class="font-mono text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-none border border-border">
 							v0.3.0
 						</span>
 					</div>
@@ -201,10 +81,10 @@ const protocolPillars: Pillar[] = [
 			<!-- Action CTA & Mobile Nav Toggle -->
 			<div class="flex items-center gap-3">
 				<a 
-					href="https://app.prism.roozylabs.com/signin" 
-					class="hidden sm:inline-flex items-center justify-center h-8 px-3.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-md hover:bg-primary/90 transition-all shadow-sm"
+					href="https://app.prism.roozylabs.com/login" 
+					class="hidden sm:inline-flex items-center justify-center h-8 px-3.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-sm"
 				>
-					Open Console
+					Launch Console
 				</a>
 
 				<!-- Mobile Navigation Toggle -->
@@ -213,7 +93,7 @@ const protocolPillars: Pillar[] = [
 					type="button"
 					aria-label="Toggle Navigation Menu"
 					aria-expanded="false"
-					class="md:hidden h-8 px-2.5 rounded-md border border-border bg-card flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+					class="md:hidden h-8 px-2.5 rounded-none border border-border bg-card flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
 				>
 					<span id="menu-icon-open"><Menu className="h-4 w-4" /></span>
 					<span id="menu-icon-close" class="hidden"><X className="h-4 w-4" /></span>
@@ -237,508 +117,530 @@ const protocolPillars: Pillar[] = [
 					</a>
 				))}
 				<a 
-					href="https://app.prism.roozylabs.com/signin" 
-					class="mt-3 w-full py-2.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-md text-center shadow-sm"
+					href="https://app.prism.roozylabs.com/login" 
+					class="mt-3 w-full py-2.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none text-center shadow-sm"
 				>
-					Open Console
+					Launch Console
 				</a>
 			</div>
 		</div>
 	</header>
 
-	<!-- Main Content -->
-	<main class="w-full flex-1 overflow-x-clip">
-		<div class="flex flex-col w-full relative z-0">
-			
-			<!-- Hero Section -->
-			<section class="w-full pt-12 sm:pt-20 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center text-center">
-				<div class="max-w-5xl mx-auto flex flex-col items-center gap-5 sm:gap-6">
-					
-					<!-- System Status Pill -->
-					<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-card/90 text-xs font-mono shadow-sm">
-						<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-						<span class="text-muted-foreground text-[11px] font-medium">Control Plane v0.3.0 • Go 1.25 Engine</span>
-					</div>
+	<!-- Main Content Container -->
+	<main class="w-full flex-1">
+		
+		<!-- Hero Section -->
+		<section class="w-full pt-14 sm:pt-20 pb-14 sm:pb-16 px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
+			<div class="max-w-4xl mx-auto flex flex-col items-center gap-5 sm:gap-6">
+				
+				<!-- Status Badge -->
+				<div class="inline-flex items-center gap-2 px-3 py-1 rounded-none border border-border bg-card/90 text-xs font-mono shadow-sm">
+					<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+					<span class="text-muted-foreground text-[11px]">Sub-2ms AI Gateway Engine • Active</span>
+				</div>
 
-					<!-- Hero Headline -->
-					<h1 class="font-bold text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1.1] sm:leading-[1.08] tracking-tight text-foreground max-w-4xl">
-						One Control Plane for Your Entire <span class="text-primary underline decoration-primary/30 underline-offset-8">AI Stack</span>
-					</h1>
+				<!-- Hero Title -->
+				<h1 class="font-bold text-3xl xs:text-4xl sm:text-5xl md:text-6xl leading-[1.1] sm:leading-[1.08] tracking-tight text-foreground max-w-4xl">
+					One API endpoint for every LLM. <br class="hidden sm:inline" />
+					<span class="text-primary">Zero downtime, automatic failover.</span>
+				</h1>
 
-					<!-- Hero Subtitle -->
-					<p class="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed px-2">
-						Sub-2ms Gateway Engine, Multi-Tenant Row-Level Security, Deterministic Auto-Failover, and 5-Correlation Observability.
-					</p>
+				<!-- Hero Subtitle -->
+				<p class="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed px-2">
+					Route OpenAI, Anthropic, Gemini, and DeepSeek through a single drop-in proxy. Protect your application from rate limits, cut token costs automatically, and enforce organization budgets.
+				</p>
 
-					<!-- Action Buttons -->
-					<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-2 px-4 sm:px-0">
-						<a 
-							href="https://app.prism.roozylabs.com/signin" 
-							class="h-10 px-6 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-md hover:bg-primary/90 transition-all shadow-glow-primary flex items-center justify-center gap-2"
-						>
-							<span>Open Console</span>
-							<ArrowRight className="h-3.5 w-3.5" />
-						</a>
-						<a 
-							href="https://github.com/roozylabs/prism" 
-							target="_blank" 
-							rel="noopener noreferrer"
-							class="h-10 px-6 bg-card text-foreground font-mono text-xs font-semibold rounded-md border border-border hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2 shadow-sm"
-						>
-							<Github className="h-4 w-4" /> View Source on GitHub
-						</a>
-					</div>
+				<!-- Action Buttons -->
+				<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-2">
+					<a 
+						href="https://app.prism.roozylabs.com/login" 
+						class="h-10 px-6 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-[0_0_25px_rgba(139,92,246,0.3)] flex items-center justify-center gap-2"
+					>
+						<span>Launch Console</span>
+						<ArrowRight className="h-3.5 w-3.5" />
+					</a>
+					<a 
+						href="https://github.com/roozylabs/prism" 
+						target="_blank" 
+						rel="noopener noreferrer"
+						class="h-10 px-6 bg-card text-foreground font-mono text-xs font-semibold rounded-none border border-border hover:bg-secondary transition-colors flex items-center justify-center gap-2 shadow-sm"
+					>
+						<Github className="h-4 w-4" /> View Source on GitHub
+					</a>
+				</div>
 
-					<!-- Interactive Code & SDK Switcher (Firecrawl Inspired Tabbed Console) -->
-					<div id="quickstart-box" class="w-full max-w-3xl mt-8 rounded-xl border border-border/80 bg-console shadow-terminal-depth text-left font-mono text-xs overflow-hidden">
-						<!-- Terminal Top Bar & Language Tabs -->
-						<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border/70 bg-console-header/90 px-3 py-2 gap-2">
-							<!-- Tabs -->
-							<div class="flex items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none" id="code-tabs">
-								<button 
-									type="button" 
-									data-tab="opencode" 
-									class="code-tab-btn px-2.5 py-1 text-[11px] rounded bg-primary/20 text-primary border border-primary/30 font-semibold cursor-pointer transition-all"
-								>
-									OpenCode CLI
-								</button>
-								<button 
-									type="button" 
-									data-tab="claude" 
-									class="code-tab-btn px-2.5 py-1 text-[11px] rounded text-muted-foreground hover:text-foreground hover:bg-secondary/50 font-medium cursor-pointer transition-all"
-								>
-									Claude Code
-								</button>
-								<button 
-									type="button" 
-									data-tab="python" 
-									class="code-tab-btn px-2.5 py-1 text-[11px] rounded text-muted-foreground hover:text-foreground hover:bg-secondary/50 font-medium cursor-pointer transition-all"
-								>
-									Python
-								</button>
-								<button 
-									type="button" 
-									data-tab="node" 
-									class="code-tab-btn px-2.5 py-1 text-[11px] rounded text-muted-foreground hover:text-foreground hover:bg-secondary/50 font-medium cursor-pointer transition-all"
-								>
-									Node.js
-								</button>
-								<button 
-									type="button" 
-									data-tab="curl" 
-									class="code-tab-btn px-2.5 py-1 text-[11px] rounded text-muted-foreground hover:text-foreground hover:bg-secondary/50 font-medium cursor-pointer transition-all"
-								>
-									cURL
-								</button>
-							</div>
-
-							<!-- Live Endpoint Indicator & Copy Button -->
-							<div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-								<span class="text-[10px] text-emerald-400 font-mono flex items-center gap-1 shrink-0">
-									<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> api.prism.roozylabs.com
-								</span>
-								<button 
-									id="copy-code-btn" 
-									type="button"
-									class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border/80 bg-console-card hover:bg-secondary text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-								>
-									<Copy className="h-3 w-3" id="copy-icon" />
-									<span id="copy-label">Copy</span>
-								</button>
-							</div>
+				<!-- Interactive Quickstart Console (SDK Switcher) -->
+				<div id="quickstart" class="w-full max-w-3xl mt-8 rounded-none border border-border bg-console shadow-2xl text-left font-mono text-xs overflow-hidden">
+					<!-- Console Header Bar -->
+					<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border/80 bg-console-header px-3 py-2 gap-2">
+						<!-- Language Switcher Tabs -->
+						<div class="flex items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0" id="code-tabs">
+							<button 
+								type="button" 
+								data-tab="opencode" 
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none bg-primary/20 text-primary border border-primary/30 font-semibold cursor-pointer transition-all"
+							>
+								OpenCode CLI
+							</button>
+							<button 
+								type="button" 
+								data-tab="claude" 
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-muted-foreground hover:text-foreground hover:bg-secondary font-medium cursor-pointer transition-all"
+							>
+								Claude Code
+							</button>
+							<button 
+								type="button" 
+								data-tab="python" 
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-muted-foreground hover:text-foreground hover:bg-secondary font-medium cursor-pointer transition-all"
+							>
+								Python
+							</button>
+							<button 
+								type="button" 
+								data-tab="node" 
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-muted-foreground hover:text-foreground hover:bg-secondary font-medium cursor-pointer transition-all"
+							>
+								TypeScript / Node
+							</button>
+							<button 
+								type="button" 
+								data-tab="curl" 
+								class="code-tab-btn px-2.5 py-1 text-[11px] rounded-none text-muted-foreground hover:text-foreground hover:bg-secondary font-medium cursor-pointer transition-all"
+							>
+								cURL
+							</button>
 						</div>
 
-						<!-- Code Snippet Display -->
-						<div class="p-4 overflow-x-auto">
-							<!-- OpenCode CLI Snippet -->
-							<pre id="snippet-opencode" class="code-snippet block text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-slate-500">// ~/.config/opencode/opencode.jsonc</span>
+						<!-- Copy Snippet Button -->
+						<div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+							<span class="text-[10px] text-emerald-400 font-mono flex items-center gap-1 shrink-0">
+								<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> api.prism.roozylabs.com
+							</span>
+							<button 
+								id="copy-code-btn" 
+								type="button"
+								class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none border border-border bg-console-card hover:bg-secondary text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+							>
+								<Copy className="h-3 w-3" id="copy-icon" />
+								<span id="copy-label">Copy</span>
+							</button>
+						</div>
+					</div>
+
+					<!-- Code Snippet Area -->
+					<div class="p-4 overflow-x-auto">
+						<!-- OpenCode CLI -->
+						<pre id="snippet-opencode" class="code-snippet block text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-slate-500">// ~/.config/opencode/opencode.jsonc</span>
 <span class="text-purple-400">&#123;</span>
   <span class="text-cyan-400">"provider"</span>: <span class="text-emerald-400">"prism"</span>,
   <span class="text-cyan-400">"api_url"</span>: <span class="text-emerald-400">"https://api.prism.roozylabs.com"</span>,
   <span class="text-cyan-400">"api_key"</span>: <span class="text-emerald-400">"gw_sk_live_85061cbfc18e4ca58e0e..."</span>,
-  <span class="text-cyan-400">"model"</span>: <span class="text-purple-400">"prism-auto"</span>, <span class="text-slate-500">// Smart router auto-selects optimal model</span>
+  <span class="text-cyan-400">"model"</span>: <span class="text-purple-400">"prism-auto"</span>, <span class="text-slate-500">// Automatically routes prompt by complexity</span>
   <span class="text-cyan-400">"extra_headers"</span>: <span class="text-purple-400">&#123;</span>
     <span class="text-cyan-400">"X-Request-ID"</span>: <span class="text-emerald-400">"req_uuid_v4"</span>,
-    <span class="text-cyan-400">"X-Prism-Agent-ID"</span>: <span class="text-emerald-400">"opencode-agent-v2"</span>
+    <span class="text-cyan-400">"X-Prism-Agent-ID"</span>: <span class="text-emerald-400">"opencode-coding-agent"</span>
   <span class="text-purple-400">&#125;</span>
 <span class="text-purple-400">&#125;</span></code></pre>
 
-							<!-- Claude Code Snippet -->
-							<pre id="snippet-claude" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-slate-500"># Export environment variables for Claude Code CLI</span>
+						<!-- Claude Code CLI -->
+						<pre id="snippet-claude" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-slate-500"># Point Claude Code directly to your Prism AI Gateway</span>
 <span class="text-purple-400">export</span> <span class="text-cyan-400">ANTHROPIC_BASE_URL</span>=<span class="text-emerald-400">"https://api.prism.roozylabs.com"</span>
 <span class="text-purple-400">export</span> <span class="text-cyan-400">ANTHROPIC_API_KEY</span>=<span class="text-emerald-400">"gw_sk_live_85061cbfc18e4ca58e0e..."</span>
-<span class="text-purple-400">export</span> <span class="text-cyan-400">PRISM_ROUTING_POLICY</span>=<span class="text-emerald-400">"quality"</span>
 
-<span class="text-slate-500"># Run Claude with automatic failover & quota monitoring</span>
+<span class="text-slate-500"># Run Claude with automatic rate-limit protection and budget monitoring</span>
 claude</code></pre>
 
-							<!-- Python SDK Snippet -->
-							<pre id="snippet-python" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-purple-400">from</span> openai <span class="text-purple-400">import</span> OpenAI
+						<!-- Python SDK -->
+						<pre id="snippet-python" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-purple-400">from</span> openai <span class="text-purple-400">import</span> OpenAI
 
+<span class="text-slate-500"># Use standard OpenAI client pointing to Prism Gateway</span>
 client = OpenAI(
     base_url=<span class="text-emerald-400">"https://api.prism.roozylabs.com/v1"</span>,
     api_key=<span class="text-emerald-400">"gw_sk_live_85061cbfc18e4ca58e0e..."</span>,
-    default_headers=&#123;<span class="text-cyan-400">"X-Prism-Agent-ID"</span>: <span class="text-emerald-400">"data-pipeline"</span>&#125;
 )
 
 response = client.chat.completions.create(
-    model=<span class="text-emerald-400">"prism-auto"</span>,
-    messages=[&#123;<span class="text-cyan-400">"role"</span>: <span class="text-emerald-400">"user"</span>, <span class="text-cyan-400">"content"</span>: <span class="text-emerald-400">"Analyze quarterly metrics."</span>&#125;]
+    model=<span class="text-emerald-400">"prism-auto"</span>, <span class="text-slate-500"># or "claude-3-7-sonnet", "gpt-4o", "gemini-2.5-flash"</span>
+    messages=[&#123;<span class="text-cyan-400">"role"</span>: <span class="text-emerald-400">"user"</span>, <span class="text-cyan-400">"content"</span>: <span class="text-emerald-400">"Analyze customer feedback trends."</span>&#125;]
 )
 print(response.choices[0].message.content)</code></pre>
 
-							<!-- Node.js Snippet -->
-							<pre id="snippet-node" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-purple-400">import</span> OpenAI <span class="text-purple-400">from</span> <span class="text-emerald-400">'openai'</span>;
+						<!-- Node.js / TypeScript -->
+						<pre id="snippet-node" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code><span class="text-purple-400">import</span> OpenAI <span class="text-purple-400">from</span> <span class="text-emerald-400">'openai'</span>;
 
-<span class="text-purple-400">const</span> openai = <span class="text-purple-400">new</span> OpenAI(&#123;
+<span class="text-purple-400">const</span> prism = <span class="text-purple-400">new</span> OpenAI(&#123;
   baseURL: <span class="text-emerald-400">'https://api.prism.roozylabs.com/v1'</span>,
   apiKey: <span class="text-emerald-400">'gw_sk_live_85061cbfc18e4ca58e0e...'</span>,
 &#125;);
 
-<span class="text-purple-400">const</span> response = <span class="text-purple-400">await</span> openai.chat.completions.create(&#123;
+<span class="text-purple-400">const</span> completion = <span class="text-purple-400">await</span> prism.chat.completions.create(&#123;
   model: <span class="text-emerald-400">'prism-auto'</span>,
-  messages: [&#123; role: <span class="text-emerald-400">'user'</span>, content: <span class="text-emerald-400">'Generate deployment plan.'</span> &#125;],
+  messages: [&#123; role: <span class="text-emerald-400">'user'</span>, content: <span class="text-emerald-400">'Optimize database indexing strategy.'</span> &#125;],
 &#125;);
-console.log(response.choices[0].message.content);</code></pre>
+console.log(completion.choices[0].message.content);</code></pre>
 
-							<!-- cURL Snippet -->
-							<pre id="snippet-curl" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code>curl -X POST https://api.prism.roozylabs.com/v1/chat/completions \
+						<!-- cURL -->
+						<pre id="snippet-curl" class="code-snippet hidden text-slate-300 leading-relaxed min-w-[280px]"><code>curl -X POST https://api.prism.roozylabs.com/v1/chat/completions \
   -H <span class="text-emerald-400">"Authorization: Bearer gw_sk_live_85061cbfc18e4ca58e0e..."</span> \
   -H <span class="text-emerald-400">"Content-Type: application/json"</span> \
-  -H <span class="text-emerald-400">"X-Request-ID: $(uuidgen)"</span> \
   -d <span class="text-emerald-400">'&#123;
     "model": "prism-auto",
     "messages": [&#123;"role": "user", "content": "Hello from cURL"&#125;]
   &#125;'</span></code></pre>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Benchmark Stats Banner -->
+		<section class="w-full py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-card/60 border-y border-border">
+			<div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+				{benchmarkStats.map((stat) => (
+					<div class="p-5 bg-background border border-border rounded-none shadow-sm flex flex-col items-center text-center">
+						<span class="font-mono font-bold text-2xl sm:text-3xl text-primary">{stat.value}</span>
+						<span class="font-semibold text-xs sm:text-sm text-foreground mt-1">{stat.label}</span>
+						<span class="font-mono text-[11px] text-muted-foreground mt-1">{stat.desc}</span>
+					</div>
+				))}
+			</div>
+		</section>
+
+		<!-- Feature Section 1: Smart Routing -->
+		<section id="smart-routing" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-background">
+			<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+				<!-- Left Text -->
+				<div class="lg:col-span-5 flex flex-col gap-4">
+					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-primary/10 border border-primary/20 text-primary font-mono text-[11px] font-semibold w-fit">
+						<Route className="h-3.5 w-3.5" /> SMART MODEL ROUTING
+					</div>
+					<h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+						Cut token bills up to 70% without sacrificing quality.
+					</h2>
+					<p class="text-sm text-muted-foreground leading-relaxed">
+						Not every prompt needs a costly frontier model. When you specify <code class="text-primary font-mono bg-card px-1.5 py-0.5 rounded-none border border-border">model: "prism-auto"</code>, Prism dynamically scores candidate models based on task complexity, required context window, and your policy rules.
+					</p>
+					
+					<ul class="space-y-2.5 text-xs text-muted-foreground mt-2">
+						<li class="flex items-start gap-2">
+							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<span><strong>Simple queries</strong> route to lightweight models like GPT-4o-mini or Claude 3.5 Haiku ($0.15–$0.25/1M tokens).</span>
+						</li>
+						<li class="flex items-start gap-2">
+							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<span><strong>Deep reasoning & code</strong> route to flagship models like Claude 3.7 Sonnet or DeepSeek R1.</span>
+						</li>
+						<li class="flex items-start gap-2">
+							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<span><strong>Pre-filtering</strong> ensures requests only go to providers where you have active credentials and quota.</span>
+						</li>
+					</ul>
+				</div>
+
+				<!-- Right Interactive Policy Demo -->
+				<div class="lg:col-span-7 bg-card border border-border rounded-none p-5 sm:p-6 shadow-xl">
+					<div class="flex items-center justify-between border-b border-border pb-3 mb-4">
+						<span class="font-mono text-xs font-semibold text-foreground flex items-center gap-2">
+							<SlidersHorizontal className="h-4 w-4 text-primary" /> Routing Policy Simulator
+						</span>
+						<span class="text-[11px] font-mono text-emerald-400">Live Decision Engine</span>
+					</div>
+
+					<!-- Policy Selector Buttons -->
+					<div class="grid grid-cols-3 gap-2 mb-4" id="policy-buttons">
+						<button 
+							type="button" 
+							data-policy="balanced" 
+							class="policy-btn px-3 py-2 rounded-none bg-primary/20 text-primary border border-primary/40 font-mono text-xs font-semibold text-center cursor-pointer transition-all"
+						>
+							Balanced Policy
+						</button>
+						<button 
+							type="button" 
+							data-policy="cheap" 
+							class="policy-btn px-3 py-2 rounded-none bg-background text-muted-foreground border border-border font-mono text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all"
+						>
+							Lowest Cost
+						</button>
+						<button 
+							type="button" 
+							data-policy="quality" 
+							class="policy-btn px-3 py-2 rounded-none bg-background text-muted-foreground border border-border font-mono text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all"
+						>
+							Max Quality
+						</button>
+					</div>
+
+					<!-- Route Evaluation Box -->
+					<div class="p-4 rounded-none bg-console border border-border font-mono text-xs space-y-3">
+						<div class="flex justify-between items-center text-[11px] text-muted-foreground border-b border-border/70 pb-2">
+							<span>Prompt: <span class="text-slate-300">"Summarize this 10-line customer feedback."</span></span>
+							<span class="text-cyan-400">Context: 420 tokens</span>
+						</div>
+
+						<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+							<div class="p-2.5 rounded-none bg-card/80 border border-border">
+								<span class="text-[10px] text-muted-foreground block">Selected Target Model</span>
+								<span id="route-model" class="text-emerald-400 font-bold text-sm block mt-0.5">GPT-4o-mini</span>
+							</div>
+							<div class="p-2.5 rounded-none bg-card/80 border border-border">
+								<span class="text-[10px] text-muted-foreground block">Estimated Cost</span>
+								<span id="route-cost" class="text-primary font-bold text-sm block mt-0.5">$0.000063</span>
+							</div>
+							<div class="p-2.5 rounded-none bg-card/80 border border-border">
+								<span class="text-[10px] text-muted-foreground block">Expected Latency</span>
+								<span id="route-latency" class="text-slate-200 font-bold text-sm block mt-0.5">~195 ms</span>
+							</div>
+						</div>
+
+						<p id="route-explanation" class="text-[11px] text-slate-400 pt-1 leading-relaxed">
+							Task classified as low complexity summarization. Balanced policy selected GPT-4o-mini for maximum speed and 90% cost savings over flagship models.
+						</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Feature Section 2: Failure Resilience & Circuit Breakers -->
+		<section id="failover" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-card/40 border-t border-border">
+			<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+				<!-- Left Interactive Circuit Breaker Visual -->
+				<div class="lg:col-span-7 bg-console border border-border rounded-none p-5 sm:p-6 shadow-xl font-mono text-xs">
+					<div class="flex items-center justify-between border-b border-border/80 pb-3 mb-4">
+						<span class="text-xs text-foreground font-semibold flex items-center gap-2">
+							<ShieldCheck className="h-4 w-4 text-emerald-400" /> Automatic Failover & Circuit Quarantine
+						</span>
+						<span class="text-[10px] text-emerald-400">$0.00 Retry Billing</span>
+					</div>
+
+					<div class="space-y-3.5">
+						<!-- Step 1: Upstream error -->
+						<div class="p-3 rounded-none border border-red-500/30 bg-red-500/5 flex items-center justify-between">
+							<div class="flex items-center gap-2.5">
+								<span class="w-6 h-6 rounded-none bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-[11px]">1</span>
+								<div>
+									<span class="text-slate-200 font-semibold block">Primary Provider: OpenAI (GPT-4o)</span>
+									<span class="text-[11px] text-red-400">Returned HTTP 503 Overloaded (Attempt 1 Failed)</span>
+								</div>
+							</div>
+							<span class="text-[10px] px-2 py-0.5 rounded-none bg-red-500/10 text-red-400 border border-red-500/20">
+								Quarantined 60s
+							</span>
+						</div>
+
+						<!-- Step 2: Failover route -->
+						<div class="p-3 rounded-none border border-primary/30 bg-primary/5 flex items-center justify-between">
+							<div class="flex items-center gap-2.5">
+								<span class="w-6 h-6 rounded-none bg-primary/20 text-primary flex items-center justify-center font-bold text-[11px]">2</span>
+								<div>
+									<span class="text-slate-200 font-semibold block">Automatic Failover: Anthropic (Claude 3.7 Sonnet)</span>
+									<span class="text-[11px] text-emerald-400">Stream re-established in 1.96ms • 200 OK</span>
+								</div>
+							</div>
+							<span class="text-[10px] px-2 py-0.5 rounded-none bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+								Resolved
+							</span>
+						</div>
+
+						<div class="p-3 rounded-none bg-card/60 border border-border text-[11px] text-slate-400 leading-relaxed">
+							<strong>Guarantee:</strong> Failed attempts are logged with correlation ID <code class="text-primary">req_85061cb</code> and billed at exactly <span class="text-emerald-400 font-bold">$0.00</span>. The client app never receives a 50x drop.
 						</div>
 					</div>
 				</div>
-			</section>
 
-			<!-- Performance Benchmark & SLA Stats Ribbon -->
-			<section class="w-full py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-card/60 border-y border-border/80">
-				<div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-					{benchmarkStats.map((stat) => (
-						<div class="p-5 bg-background/90 border border-border/80 rounded-lg shadow-sm flex flex-col items-center text-center relative overflow-hidden group hover:border-primary/50 transition-colors">
-							<div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-							<span class="font-mono font-bold text-2xl sm:text-3xl text-primary">{stat.value}</span>
-							<span class="font-semibold text-xs sm:text-sm text-foreground mt-1.5">{stat.label}</span>
-							<span class="font-mono text-[11px] text-muted-foreground mt-1">{stat.desc}</span>
+				<!-- Right Text -->
+				<div class="lg:col-span-5 flex flex-col gap-4">
+					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px] font-semibold w-fit">
+						<ShieldCheck className="h-3.5 w-3.5" /> ZERO-DOWNTIME RESILIENCE
+					</div>
+					<h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+						Never let an upstream LLM outage crash your product.
+					</h2>
+					<p class="text-sm text-muted-foreground leading-relaxed">
+						Provider outages and 429 rate limit spikes are inevitable. Prism acts as an active circuit breaker: if an upstream provider fails 3 times, it enters a 60-second cooldown quarantine while traffic automatically reroutes to healthy fallbacks.
+					</p>
+
+					<ul class="space-y-2 text-xs text-muted-foreground mt-1">
+						<li class="flex items-start gap-2">
+							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<span><strong>Immediate Fallback:</strong> Instant switch to backup models without client reconnections.</span>
+						</li>
+						<li class="flex items-start gap-2">
+							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<span><strong>Non-Retry Filter:</strong> 401 and 403 invalid key errors are never retried, saving compute.</span>
+						</li>
+						<li class="flex items-start gap-2">
+							<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+							<span><strong>Zero-Cost Retries:</strong> Only successful completions are counted against tenant billing.</span>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+
+		<!-- Feature Section 3: Multi-Tenancy & Governance -->
+		<section id="governance" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-background border-t border-border">
+			<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+				<!-- Left Text -->
+				<div class="lg:col-span-5 flex flex-col gap-4">
+					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-mono text-[11px] font-semibold w-fit">
+						<Lock className="h-3.5 w-3.5" /> MULTI-TENANCY & FINOPS
+					</div>
+					<h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+						Control spending per team, user, and gateway key.
+					</h2>
+					<p class="text-sm text-muted-foreground leading-relaxed">
+						Prevent runaway AI bills before they happen. Set daily budget ceilings, enforce tokens-per-minute rate limits, and isolate data using native PostgreSQL Row-Level Security across 9 database tables.
+					</p>
+
+					<div class="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
+						<div class="p-3 rounded-none bg-card border border-border">
+							<span class="text-[10px] text-muted-foreground block">Key Encryption</span>
+							<span class="text-foreground font-bold mt-0.5 block">AES-256-GCM</span>
+						</div>
+						<div class="p-3 rounded-none bg-card border border-border">
+							<span class="text-[10px] text-muted-foreground block">Tenant Isolation</span>
+							<span class="text-emerald-400 font-bold mt-0.5 block">PostgreSQL RLS</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Right UI Dashboard Card Mockup -->
+				<div class="lg:col-span-7 bg-card border border-border rounded-none p-5 sm:p-6 shadow-xl font-mono text-xs">
+					<div class="flex items-center justify-between border-b border-border pb-3 mb-4">
+						<div class="flex items-center gap-2">
+							<div class="w-2.5 h-2.5 rounded-none bg-primary"></div>
+							<span class="font-semibold text-foreground">Production Workspace Budgets</span>
+						</div>
+						<span class="text-[10px] text-muted-foreground">Org: acme-corp</span>
+					</div>
+
+					<div class="space-y-4">
+						<!-- Budget 1 -->
+						<div>
+							<div class="flex justify-between text-xs mb-1.5">
+								<span class="text-slate-200 font-semibold">Production Gateway Key (Engineering)</span>
+								<span class="text-slate-300">$184.20 / $500.00 (36.8%)</span>
+							</div>
+							<div class="w-full h-2 rounded-none bg-background border border-border overflow-hidden">
+								<div class="h-full bg-primary rounded-none" style="width: 36.8%;"></div>
+							</div>
+						</div>
+
+						<!-- Budget 2 -->
+						<div>
+							<div class="flex justify-between text-xs mb-1.5">
+								<span class="text-slate-200 font-semibold">Autonomous Coding Agents (OpenCode CLI)</span>
+								<span class="text-emerald-400">$42.80 / $100.00 (42.8%)</span>
+							</div>
+							<div class="w-full h-2 rounded-none bg-background border border-border overflow-hidden">
+								<div class="h-full bg-emerald-500 rounded-none" style="width: 42.8%;"></div>
+							</div>
+						</div>
+
+						<!-- Velocity limit -->
+						<div class="p-3 rounded-none bg-console border border-border flex items-center justify-between text-[11px]">
+							<span class="text-muted-foreground flex items-center gap-1.5">
+								<Activity className="h-3.5 w-3.5 text-cyan-400" /> Velocity Spikeguard Limit
+							</span>
+							<span class="text-cyan-400 font-semibold">Max 120 req / min</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Supported Providers & Ecosystem Grid -->
+		<section class="w-full py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-card/30 border-t border-border">
+			<div class="max-w-7xl mx-auto flex flex-col items-center gap-8">
+				<div class="text-center">
+					<span class="font-mono text-xs text-primary uppercase tracking-wider font-semibold">Ecosystem</span>
+					<h2 class="text-2xl sm:text-3xl font-bold text-foreground mt-1 mb-2">Connect to any provider or framework</h2>
+					<p class="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto">
+						Prism exposes standard OpenAI-compatible REST and SSE endpoints, making it work seamlessly with any library.
+					</p>
+				</div>
+
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 w-full">
+					{supportedProviders.map((prov) => (
+						<div class="p-4 rounded-none bg-background border border-border hover:border-primary/40 transition-colors flex flex-col justify-between shadow-sm">
+							<div>
+								<div class="flex items-center justify-between mb-2">
+									<h3 class="font-bold text-sm text-foreground">{prov.name}</h3>
+									<span class="text-[10px] px-1.5 py-0.5 rounded-none bg-secondary font-mono text-muted-foreground">
+										{prov.badge}
+									</span>
+								</div>
+								<p class="text-xs text-muted-foreground font-mono">{prov.models}</p>
+							</div>
 						</div>
 					))}
 				</div>
-			</section>
+			</div>
+		</section>
 
-			<!-- Compatible AI Tool Ecosystem Ribbon -->
-			<section class="w-full py-12 px-4 sm:px-6 lg:px-8 bg-background border-b border-border/80">
-				<div class="max-w-7xl mx-auto flex flex-col items-center gap-6">
-					<div class="text-center">
-						<span class="font-mono text-xs text-primary uppercase tracking-wider font-semibold">Integrations</span>
-						<h2 class="text-xl sm:text-2xl font-bold text-foreground mt-1">Compatible AI Clients</h2>
-					</div>
-					
-					<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 w-full">
-						{clientEcosystem.map((client) => {
-							const IconComponent = client.icon;
-							return (
-								<div class="flex items-center gap-3 p-3.5 bg-card/70 border border-border/80 rounded-lg hover:border-primary/50 transition-colors shadow-sm">
-									<div class="w-8 h-8 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-										<IconComponent className="h-4 w-4" />
-									</div>
-									<div class="min-w-0">
-										<div class="font-semibold text-xs text-foreground truncate">{client.name}</div>
-										<div class="text-[11px] text-muted-foreground truncate">{client.type}</div>
-									</div>
-								</div>
-							);
-						})}
-					</div>
+		<!-- Final High-Impact CTA -->
+		<section class="w-full py-20 sm:py-28 px-4 sm:px-6 lg:px-8 bg-background border-t border-border">
+			<div class="max-w-3xl mx-auto text-center flex flex-col items-center">
+				<div class="flex h-12 w-12 items-center justify-center rounded-none bg-[#7C3AED] text-white border border-violet-400/30 shadow-[0_0_30px_rgba(139,92,246,0.35)] mb-5">
+					<Shield className="h-6 w-6" />
 				</div>
-			</section>
-
-			<!-- Latency Separation Visualizer (CAD / Micro-Depth Layer) -->
-			<section class="w-full py-12 sm:py-16 px-4 sm:px-6 lg:px-8 bg-card/30 border-b border-border/80">
-				<div class="max-w-4xl mx-auto flex flex-col gap-6">
-					<div class="text-center">
-						<span class="font-mono text-xs text-cyan-400 uppercase tracking-wider font-semibold">Latency Isolation</span>
-						<h2 class="text-xl sm:text-2xl font-bold text-foreground mt-1 mb-2">Zero Gateway Bottlenecks</h2>
-						<p class="text-muted-foreground text-xs sm:text-sm max-w-xl mx-auto">
-							Prism Gateway processing overhead (authentication, RBAC, smart routing, telemetry) is isolated and benchmarked at <strong>1.96ms p95</strong>.
-						</p>
-					</div>
-
-					<div class="p-4 sm:p-6 bg-console border border-border/80 rounded-xl shadow-card-depth font-mono text-xs">
-						<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border/70 pb-3 mb-4 gap-2">
-							<span class="text-muted-foreground text-[11px]">Request Execution Breakdown</span>
-							<span class="text-[11px] text-primary">Total End-to-End Latency ~ 240ms</span>
-						</div>
-
-						<div class="space-y-4">
-							<!-- Gateway Layer -->
-							<div>
-								<div class="flex justify-between text-[11px] mb-1">
-									<span class="text-emerald-400 font-semibold flex items-center gap-1.5">
-										<Zap className="h-3 w-3" /> Prism Gateway Overhead
-									</span>
-									<span class="text-emerald-400 font-bold">1.96 ms (0.8%)</span>
-								</div>
-								<div class="w-full h-2.5 bg-background rounded-full overflow-hidden border border-border">
-									<div class="h-full bg-emerald-500 rounded-full" style="width: 2%;"></div>
-								</div>
-							</div>
-
-							<!-- Upstream LLM Layer -->
-							<div>
-								<div class="flex justify-between text-[11px] mb-1">
-									<span class="text-muted-foreground flex items-center gap-1.5">
-										<Server className="h-3 w-3" /> Upstream Provider LLM Execution (OpenAI / Anthropic / Google)
-									</span>
-									<span class="text-muted-foreground">~ 238 ms (99.2%)</span>
-								</div>
-								<div class="w-full h-2.5 bg-background rounded-full overflow-hidden border border-border">
-									<div class="h-full bg-primary/70 rounded-full" style="width: 98%;"></div>
-								</div>
-							</div>
-						</div>
-					</div>
+				<h2 class="text-3xl sm:text-4xl font-bold text-foreground mb-3 tracking-tight">
+					Start routing AI requests in under 2 minutes.
+				</h2>
+				<p class="text-muted-foreground text-sm sm:text-base mb-8 max-w-xl leading-relaxed">
+					Deploy with Docker or connect immediately via our managed cloud control plane.
+				</p>
+				
+				<div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+					<a 
+						href="https://app.prism.roozylabs.com/login" 
+						class="h-11 px-7 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-[0_0_25px_rgba(139,92,246,0.35)] flex items-center justify-center gap-2"
+					>
+						<span>Launch Console Free</span>
+						<ArrowRight className="h-3.5 w-3.5" />
+					</a>
+					<a 
+						href="https://docs.prism.roozylabs.com" 
+						target="_blank" 
+						rel="noopener noreferrer"
+						class="h-11 px-7 bg-card text-foreground font-mono text-xs font-semibold rounded-none border border-border hover:bg-secondary transition-colors flex items-center justify-center gap-2 shadow-sm"
+					>
+						<BookOpen className="h-4 w-4" /> Read Documentation
+					</a>
 				</div>
-			</section>
+			</div>
+		</section>
 
-			<!-- Resilience Comparison Section -->
-			<section id="resilience" class="w-full py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-background">
-				<div class="max-w-7xl mx-auto flex flex-col gap-8 sm:gap-10">
-					<div class="text-center">
-						<span class="font-mono text-xs text-red-400 uppercase tracking-wider font-semibold">Resilience</span>
-						<h2 class="text-2xl sm:text-3xl font-bold text-foreground mt-1 mb-2">Direct Provider Access vs. Prism Resilience</h2>
-						<p class="text-muted-foreground max-w-2xl mx-auto text-xs sm:text-sm">
-							Connecting tools directly to upstream AI APIs exposes applications to rate limits, unexpected outages, and unmonitored costs.
-						</p>
-					</div>
-
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-						<!-- Without Prism -->
-						<div class="bg-card/70 border border-red-500/30 rounded-xl p-6 relative shadow-sm">
-							<div class="flex items-center justify-between mb-4 border-b border-border/70 pb-3">
-								<h3 class="text-red-400 font-semibold text-sm sm:text-base flex items-center gap-2">
-									<XCircle className="h-4 w-4" /> Without Prism
-								</h3>
-								<span class="px-2 py-0.5 bg-red-500/10 text-red-400 font-mono text-[10px] uppercase font-bold border border-red-500/20 rounded">
-									Direct Upstream
-								</span>
-							</div>
-							<ul class="space-y-3 text-muted-foreground text-xs sm:text-sm">
-								<li class="flex items-start gap-2.5">
-									<span class="text-red-400 font-bold shrink-0">✕</span> API keys scattered across multiple local configuration files and IDEs.
-								</li>
-								<li class="flex items-start gap-2.5">
-									<span class="text-red-400 font-bold shrink-0">✕</span> 429 Rate Limit errors interrupt workflows without automatic retry fallback.
-								</li>
-								<li class="flex items-start gap-2.5">
-									<span class="text-red-400 font-bold shrink-0">✕</span> 50x provider outages stall development with no automatic model failover.
-								</li>
-								<li class="flex items-start gap-2.5">
-									<span class="text-red-400 font-bold shrink-0">✕</span> Unmonitored token spend with no organization-level budget enforcement.
-								</li>
-							</ul>
-						</div>
-
-						<!-- With Prism -->
-						<div class="bg-card/70 border border-primary/40 rounded-xl p-6 relative shadow-sm">
-							<div class="flex items-center justify-between mb-4 border-b border-border/70 pb-3">
-								<h3 class="text-primary font-semibold text-sm sm:text-base flex items-center gap-2">
-									<CheckCircle className="h-4 w-4" /> With Prism v0.3.0
-								</h3>
-								<span class="px-2 py-0.5 bg-primary/10 text-primary font-mono text-[10px] uppercase font-bold border border-primary/30 rounded">
-									Control Plane
-								</span>
-							</div>
-							<ul class="space-y-3 text-muted-foreground text-xs sm:text-sm">
-								<li class="flex items-start gap-2.5">
-									<span class="text-primary font-bold shrink-0">✓</span> Single Gateway API Key backed by PostgreSQL Row-Level Security isolation.
-								</li>
-								<li class="flex items-start gap-2.5">
-									<span class="text-primary font-bold shrink-0">✓</span> Smart Router auto-routes prompts by complexity, model capability, and cost policy.
-								</li>
-								<li class="flex items-start gap-2.5">
-									<span class="text-primary font-bold shrink-0">✓</span> Circuit breaker quarantine with 60s cooldown and $0.00 retry billing guarantee.
-								</li>
-								<li class="flex items-start gap-2.5">
-									<span class="text-primary font-bold shrink-0">✓</span> 5 standardized correlation IDs (`execution_id`) and SHA-256 tamper-proof audit trail.
-								</li>
-							</ul>
-						</div>
-					</div>
-				</div>
-			</section>
-
-			<!-- 11 Pillars of Prism (Layered 3-Tier Architecture) -->
-			<section id="pillars" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-card/40 border-t border-border/80">
-				<div class="max-w-7xl mx-auto flex flex-col gap-10">
-					<div class="text-center">
-						<span class="font-mono text-xs text-primary uppercase tracking-wider font-semibold">System Architecture</span>
-						<h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mt-1 mb-2">The 11 Pillars of Prism</h2>
-						<p class="text-muted-foreground max-w-2xl mx-auto text-xs sm:text-sm">
-							Engineered control plane specifications for model routing, resilience, security, and governance.
-						</p>
-					</div>
-
-					<!-- Tier 1: Featured Primary Pillars (3 Prominent Cards) -->
-					<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-						{primaryPillars.map((pillar) => {
-							const IconComponent = pillar.icon;
-							return (
-								<div class="p-6 border border-border/80 rounded-xl bg-background/90 flex flex-col justify-between hover:border-primary/50 transition-all duration-200 shadow-sm group">
-									<div>
-										<div class="flex items-center justify-between mb-4">
-											<div class="w-10 h-10 rounded-lg bg-[#7C3AED] text-white flex items-center justify-center border border-violet-400/30 group-hover:scale-105 transition-transform">
-												<IconComponent className="h-5 w-5" />
-											</div>
-											<span class="font-mono text-[11px] text-muted-foreground font-bold px-2 py-0.5 rounded border border-border bg-card">
-												PILLAR 0{pillar.id}
-											</span>
-										</div>
-										<span class="font-mono text-[11px] text-primary font-semibold">{pillar.category}</span>
-										<h3 class="text-base font-bold text-foreground mt-0.5 mb-1">{pillar.title}</h3>
-										<p class="text-muted-foreground text-xs leading-relaxed mb-4">{pillar.description}</p>
-									</div>
-
-									<div class="pt-3 border-t border-border/60 flex flex-wrap gap-1.5">
-										{pillar.highlights.map((tag) => (
-											<span class="px-2 py-0.5 rounded bg-card border border-border/80 font-mono text-[10px] text-muted-foreground">
-												{tag}
-											</span>
-										))}
-									</div>
-								</div>
-							);
-						})}
-					</div>
-
-					<!-- Tier 2: Core System Pillars (2 to 3 Column Grid) -->
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-						{corePillars.map((pillar) => {
-							const IconComponent = pillar.icon;
-							return (
-								<div class="p-5 border border-border/80 rounded-xl bg-background/80 flex flex-col justify-between hover:border-primary/40 transition-colors shadow-sm">
-									<div>
-										<div class="flex items-center justify-between mb-3">
-											<div class="w-8 h-8 rounded-md bg-secondary text-primary flex items-center justify-center border border-border">
-												<IconComponent className="h-4 w-4" />
-											</div>
-											<span class="font-mono text-[11px] text-muted-foreground font-semibold">0{pillar.id}</span>
-										</div>
-										<span class="font-mono text-[10px] text-primary uppercase tracking-wider">{pillar.category}</span>
-										<h4 class="text-sm font-bold text-foreground mt-0.5 mb-1">{pillar.title}</h4>
-										<p class="text-muted-foreground text-xs leading-relaxed mb-3">{pillar.description}</p>
-									</div>
-
-									<div class="pt-2.5 border-t border-border/60 flex flex-wrap gap-1">
-										{pillar.highlights.map((tag) => (
-											<span class="px-1.5 py-0.5 rounded bg-card border border-border/80 font-mono text-[10px] text-muted-foreground">
-												{tag}
-											</span>
-										))}
-									</div>
-								</div>
-							);
-						})}
-					</div>
-
-					<!-- Tier 3: Protocol & Extensibility Pillars (3 Compact Cards) -->
-					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-						{protocolPillars.map((pillar) => {
-							const IconComponent = pillar.icon;
-							return (
-								<div class="p-4 border border-border/80 rounded-xl bg-background/80 flex flex-col justify-between hover:border-primary/40 transition-colors shadow-sm">
-									<div>
-										<div class="flex items-center justify-between mb-2.5">
-											<div class="w-7 h-7 rounded-md bg-secondary text-primary flex items-center justify-center border border-border">
-												<IconComponent className="h-3.5 w-3.5" />
-											</div>
-											<span class="font-mono text-[11px] text-muted-foreground font-semibold">
-												{pillar.id < 10 ? `0${pillar.id}` : pillar.id}
-											</span>
-										</div>
-										<span class="font-mono text-[10px] text-primary uppercase tracking-wider">{pillar.category}</span>
-										<h4 class="text-xs font-bold text-foreground mt-0.5 mb-1">{pillar.title}</h4>
-										<p class="text-muted-foreground text-[11px] leading-relaxed mb-3">{pillar.description}</p>
-									</div>
-
-									<div class="pt-2 border-t border-border/60 flex flex-wrap gap-1">
-										{pillar.highlights.map((tag) => (
-											<span class="px-1.5 py-0.5 rounded bg-card border border-border/80 font-mono text-[10px] text-muted-foreground">
-												{tag}
-											</span>
-										))}
-									</div>
-								</div>
-							);
-						})}
-					</div>
-				</div>
-			</section>
-
-			<!-- Final Call to Action -->
-			<section class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-background border-t border-border/80">
-				<div class="max-w-3xl mx-auto text-center flex flex-col items-center">
-					<div class="w-12 h-12 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center mb-5 border border-violet-400/30 shadow-glow-primary">
-						<Shield className="h-6 w-6" />
-					</div>
-					<h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3">Try Prism</h2>
-					<p class="text-muted-foreground text-xs sm:text-sm mb-6 max-w-xl leading-relaxed">
-						Unify AI provider adapters, deterministic smart routing, and multi-tenant security in one control plane.
-					</p>
-					
-					<div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-						<a 
-							href="https://app.prism.roozylabs.com/signin" 
-							class="h-10 px-6 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-md hover:bg-primary/90 transition-all shadow-glow-primary flex items-center justify-center gap-2"
-						>
-							<span>Open Console</span>
-							<ArrowRight className="h-3.5 w-3.5" />
-						</a>
-						<a 
-							href="https://docs.prism.roozylabs.com" 
-							target="_blank" 
-							rel="noopener noreferrer"
-							class="h-10 px-6 bg-card text-foreground font-mono text-xs font-semibold rounded-md border border-border hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2 shadow-sm"
-						>
-							<BookOpen className="h-4 w-4" /> Read the Docs
-						</a>
-					</div>
-				</div>
-			</section>
-		</div>
 	</main>
 
 	<!-- Footer -->
-	<footer class="w-full bg-background border-t border-border/80 py-10 sm:py-12">
+	<footer class="w-full bg-background border-t border-border py-12">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
 			<div class="sm:col-span-1">
-				<div class="flex items-center gap-2.5 mb-3">
-					<div class="w-6 h-6 rounded-md bg-[#7C3AED] text-white flex items-center justify-center">
+				<div class="flex items-center gap-2 mb-3">
+					<div class="flex h-6 w-6 items-center justify-center rounded-none bg-[#7C3AED] text-white border border-violet-400/30">
 						<Shield className="h-3.5 w-3.5" />
 					</div>
 					<span class="font-bold text-foreground text-sm font-mono">RoozyLabs Prism</span>
 				</div>
-				<p class="text-muted-foreground text-xs max-w-xs leading-relaxed mb-4">
-					Universal AI Control Plane and model gateway for engineering teams and autonomous agents.
+				<p class="text-muted-foreground text-xs leading-relaxed mb-4">
+					The open-source AI gateway control plane for engineering teams and coding agents.
 				</p>
 				<div class="flex flex-col gap-1 text-[11px] text-muted-foreground font-mono">
-					<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Status: Operational</span>
-					<span>Go 1.25 Engine • v0.3.0</span>
-					<span>AES-256-GCM Credential Encryption</span>
+					<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Status: All Systems Operational</span>
+					<span>Engine: Go 1.25 (Sub-2ms p95)</span>
+					<span>Encryption: AES-256-GCM Vault</span>
 				</div>
 			</div>
 
 			<div>
-				<h4 class="font-mono text-xs text-foreground mb-3 uppercase tracking-wider font-semibold">Architecture</h4>
+				<h4 class="font-mono text-xs text-foreground mb-3 uppercase tracking-wider font-semibold">Capabilities</h4>
 				<ul class="space-y-2 text-xs text-muted-foreground">
-					<li><a href="#pillars" class="hover:text-foreground transition-colors">Universal Gateway</a></li>
-					<li><a href="#pillars" class="hover:text-foreground transition-colors">Smart Router (prism-auto)</a></li>
-					<li><a href="#pillars" class="hover:text-foreground transition-colors">Failure Resilience</a></li>
-					<li><a href="#pillars" class="hover:text-foreground transition-colors">Multi-Tenant RLS</a></li>
-					<li><a href="#pillars" class="hover:text-foreground transition-colors">MCP Protocol Gateway</a></li>
+					<li><a href="#smart-routing" class="hover:text-foreground transition-colors">Smart Router (prism-auto)</a></li>
+					<li><a href="#failover" class="hover:text-foreground transition-colors">Failure Resilience & Quarantine</a></li>
+					<li><a href="#governance" class="hover:text-foreground transition-colors">Multi-Tenant Quotas & RLS</a></li>
+					<li><a href="#quickstart" class="hover:text-foreground transition-colors">Client SDK Integrations</a></li>
 				</ul>
 			</div>
 
@@ -748,22 +650,22 @@ console.log(response.choices[0].message.content);</code></pre>
 					<li><a href="https://docs.prism.roozylabs.com" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Documentation</a></li>
 					<li><a href="https://api.prism.roozylabs.com/health" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">API Liveness (/health)</a></li>
 					<li><a href="https://api.prism.roozylabs.com/ready" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">API Readiness (/ready)</a></li>
-					<li><a href="https://app.prism.roozylabs.com/signin" class="hover:text-foreground transition-colors">Admin Console</a></li>
+					<li><a href="https://app.prism.roozylabs.com/login" class="hover:text-foreground transition-colors">Admin Console</a></li>
 				</ul>
 			</div>
 
 			<div>
-				<h4 class="font-mono text-xs text-foreground mb-3 uppercase tracking-wider font-semibold">Community</h4>
+				<h4 class="font-mono text-xs text-foreground mb-3 uppercase tracking-wider font-semibold">Open Source</h4>
 				<ul class="space-y-2 text-xs text-muted-foreground">
 					<li><a href="https://github.com/roozylabs/prism" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">GitHub Repository</a></li>
-					<li><a href="https://github.com/roozylabs/prism/issues" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Report Issue</a></li>
-					<li><a href="https://github.com/roozylabs/prism/releases" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Release Notes</a></li>
+					<li><a href="https://github.com/roozylabs/prism/issues" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Issue Tracker</a></li>
+					<li><a href="https://github.com/roozylabs/prism/releases" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Changelog & Releases</a></li>
 				</ul>
 			</div>
 		</div>
 
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-6 border-t border-border/80 flex flex-col md:flex-row items-center justify-between text-center md:text-left text-muted-foreground font-mono text-[11px] gap-3">
-			<div>&copy; 2026 RoozyLabs Prism. All rights reserved.</div>
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between text-center md:text-left text-muted-foreground font-mono text-[11px] gap-3">
+			<div>&copy; 2026 RoozyLabs Prism. Licensed under Apache 2.0.</div>
 			<div class="flex flex-wrap justify-center items-center gap-4">
 				<a href="https://prism.roozylabs.com" class="hover:text-foreground transition-colors">prism.roozylabs.com</a>
 				<a href="https://app.prism.roozylabs.com" class="hover:text-foreground transition-colors">app.prism.roozylabs.com</a>
@@ -772,7 +674,7 @@ console.log(response.choices[0].message.content);</code></pre>
 		</div>
 	</footer>
 
-	<!-- Client-side Script for Interactive Tabs, Copy Button & Mobile Navigation -->
+	<!-- Client-side Interactive Scripts (No Framework Dependency) -->
 	<script>
 		// 1. Mobile Navigation Toggle
 		const menuBtn = document.getElementById('mobile-menu-btn');
@@ -815,15 +717,13 @@ console.log(response.choices[0].message.content);</code></pre>
 			button.addEventListener('click', () => {
 				const targetTab = button.getAttribute('data-tab');
 
-				// Update Tab Buttons Styling
 				tabButtons.forEach((btn) => {
-					btn.classList.remove('bg-primary/20', 'text-primary', 'border', 'border-primary/30', 'font-semibold');
+					btn.classList.remove('bg-primary/20', 'text-primary', 'border-primary/30', 'font-semibold');
 					btn.classList.add('text-muted-foreground', 'font-medium');
 				});
 				button.classList.remove('text-muted-foreground', 'font-medium');
-				button.classList.add('bg-primary/20', 'text-primary', 'border', 'border-primary/30', 'font-semibold');
+				button.classList.add('bg-primary/20', 'text-primary', 'border-primary/30', 'font-semibold');
 
-				// Switch Visible Snippet
 				snippets.forEach((snippet) => {
 					snippet.classList.add('hidden');
 					snippet.classList.remove('block');
@@ -839,7 +739,6 @@ console.log(response.choices[0].message.content);</code></pre>
 		// 3. Snippet Copy to Clipboard Button
 		const copyBtn = document.getElementById('copy-code-btn');
 		const copyLabel = document.getElementById('copy-label');
-		const copyIcon = document.getElementById('copy-icon');
 
 		if (copyBtn && copyLabel) {
 			copyBtn.addEventListener('click', async () => {
@@ -860,5 +759,54 @@ console.log(response.choices[0].message.content);</code></pre>
 				}
 			});
 		}
+
+		// 4. Interactive Policy Simulator
+		const policyButtons = document.querySelectorAll('.policy-btn');
+		const routeModel = document.getElementById('route-model');
+		const routeCost = document.getElementById('route-cost');
+		const routeLatency = document.getElementById('route-latency');
+		const routeExp = document.getElementById('route-explanation');
+
+		const policyData = {
+			balanced: {
+				model: 'GPT-4o-mini',
+				cost: '$0.000063',
+				latency: '~195 ms',
+				exp: 'Task classified as low complexity summarization. Balanced policy selected GPT-4o-mini for maximum speed and 90% cost savings over flagship models.'
+			},
+			cheap: {
+				model: 'Claude 3.5 Haiku',
+				cost: '$0.000042',
+				latency: '~165 ms',
+				exp: 'Lowest Cost policy selected Claude 3.5 Haiku ($0.25/1M input tokens). Saves $0.0012 per invocation while maintaining 100% summary accuracy.'
+			},
+			quality: {
+				model: 'Claude 3.7 Sonnet',
+				cost: '$0.001260',
+				latency: '~420 ms',
+				exp: 'Maximum Quality policy routes directly to Claude 3.7 Sonnet for maximum nuance and complex multi-step reasoning capabilities.'
+			}
+		};
+
+		policyButtons.forEach((btn) => {
+			btn.addEventListener('click', () => {
+				const policy = btn.getAttribute('data-policy') || 'balanced';
+
+				policyButtons.forEach((b) => {
+					b.classList.remove('bg-primary/20', 'text-primary', 'border-primary/40', 'font-semibold');
+					b.classList.add('bg-background', 'text-muted-foreground', 'border-border', 'font-medium');
+				});
+				btn.classList.remove('bg-background', 'text-muted-foreground', 'border-border', 'font-medium');
+				btn.classList.add('bg-primary/20', 'text-primary', 'border-primary/40', 'font-semibold');
+
+				if (routeModel && routeCost && routeLatency && routeExp && policyData[policy]) {
+					const data = policyData[policy];
+					routeModel.textContent = data.model;
+					routeCost.textContent = data.cost;
+					routeLatency.textContent = data.latency;
+					routeExp.textContent = data.exp;
+				}
+			});
+		});
 	</script>
 </Layout>

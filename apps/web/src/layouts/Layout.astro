@@ -8,7 +8,7 @@ export interface Props {
 
 const { 
 	title, 
-	description = "RoozyLabs Prism v0.3.0. Universal AI Control Plane and OpenAI-compatible proxy engine with multi-tenant row-level security and deterministic failure resilience." 
+	description = "RoozyLabs Prism v0.3.0. The open-source AI gateway with sub-2ms latency, deterministic failover, smart routing, and multi-tenant security." 
 }: Props = Astro.props;
 ---
 
@@ -27,7 +27,7 @@ const {
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 	</head>
-	<body class="bg-background font-['Inter',sans-serif] text-foreground antialiased selection:bg-primary selection:text-white min-h-screen flex flex-col overflow-x-hidden">
+	<body class="bg-background font-['Inter',sans-serif] text-foreground antialiased selection:bg-primary selection:text-white min-h-screen flex flex-col">
 		<slot />
 	</body>
 </html>
