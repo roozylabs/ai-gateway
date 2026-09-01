@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/roozylabs/prism/internal/models"
+	"github.com/roozylabs/prism/internal/security"
 	"github.com/roozylabs/prism/internal/utils"
 )
 
@@ -70,6 +71,10 @@ func (g *ToolGateway) Execute(ctx context.Context, userID, toolName string, args
 }
 
 func executeBackend(ctx context.Context, backend *models.ToolBackend, body []byte, encKey string) (*ToolExecutionResult, error) {
+	if err := security.ValidateOutboundURL(backend.EndpointURL); err != nil {
+		return nil, fmt.Errorf("ssrf validation failed for backend %q: %w", backend.Name, err)
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, backend.EndpointURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
@@ -86,7 +91,10 @@ func executeBackend(ctx context.Context, backend *models.ToolBackend, body []byt
 	}
 
 	timeout := time.Duration(backend.TimeoutMs) * time.Millisecond
-	client := &http.Client{Timeout: timeout}
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	client := security.NewSafeHTTPClient(timeout)
 
 	start := time.Now()
 	resp, err := client.Do(req)

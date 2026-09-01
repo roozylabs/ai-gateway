@@ -72,6 +72,7 @@ func newTestMCPServer() *server.MCPServer {
 }
 
 func TestMCPGatewaySyncServerTools(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	ts := server.NewTestStreamableHTTPServer(newTestMCPServer())
 	defer ts.Close()
 
@@ -97,6 +98,7 @@ func TestMCPGatewaySyncServerTools(t *testing.T) {
 }
 
 func TestMCPGatewayExecuteToolSuccess(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	ts := server.NewTestStreamableHTTPServer(newTestMCPServer())
 	defer ts.Close()
 
@@ -130,6 +132,7 @@ func TestMCPGatewayExecuteToolSuccess(t *testing.T) {
 }
 
 func TestMCPGatewayExecuteToolSuccess_SSE(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	ts := server.NewTestServer(newTestMCPServer())
 	defer ts.Close()
 
@@ -156,6 +159,7 @@ func TestMCPGatewayExecuteToolSuccess_SSE(t *testing.T) {
 }
 
 func TestMCPGatewayExecuteToolErrorRecordsInvocation(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	// A server exposing a tool that always returns an error payload.
 	errorServer := server.NewMCPServer("github-mcp", "1.0.0")
 	errorServer.AddTool(
@@ -187,6 +191,21 @@ func TestMCPGatewayExecuteToolErrorRecordsInvocation(t *testing.T) {
 	assert.Equal(t, 500, inv.StatusCode)
 	assert.Equal(t, "bad_tool", inv.ToolName)
 	assert.NotEmpty(t, inv.ErrorMessage)
+}
+
+func TestMCPGatewaySSRFBlocked(t *testing.T) {
+	mcpSrv := &models.MCPServer{
+		ID:            "s_ssrf",
+		UserID:        "u1",
+		Name:          "metadata-mcp",
+		EndpointURL:   "http://169.254.169.254/mcp",
+		TransportType: "http",
+		Enabled:       true,
+	}
+	gw := NewMCPGateway(&mcpServerFinderMock{srv: mcpSrv}, &mcpToolBatchSaverMock{})
+	_, err := gw.SyncServerTools(context.Background(), "s_ssrf", "u1", "")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ssrf validation failed")
 }
 
 func TestResolveMCPHeadersEncrypted(t *testing.T) {

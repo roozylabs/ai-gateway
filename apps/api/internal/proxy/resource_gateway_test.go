@@ -22,6 +22,7 @@ func (m *resourceFinderMock) GetResourceWithBackends(ctx context.Context, userID
 }
 
 func TestResourceGatewayRestSuccess(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		w.Header().Set("Content-Type", "application/json")
@@ -44,6 +45,7 @@ func TestResourceGatewayRestSuccess(t *testing.T) {
 }
 
 func TestResourceGatewayGraphqlSuccess(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := json.Marshal(r.Header.Get("Content-Type"))
 		_ = body
@@ -72,6 +74,7 @@ func TestResourceGatewayGraphqlSuccess(t *testing.T) {
 }
 
 func TestResourceGatewayFailover(t *testing.T) {
+	t.Setenv("ALLOW_INTERNAL_SSRF", "true")
 	callCount := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
@@ -98,6 +101,21 @@ func TestResourceGatewayFailover(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, result.StatusCode)
 	assert.Equal(t, "fallback", result.Backend)
+}
+
+func TestResourceGatewaySSRFBlocked(t *testing.T) {
+	ep := "http://127.0.0.1:8080/internal/metrics"
+	finder := &resourceFinderMock{rwb: &models.ResourceWithBackends{
+		Resource: models.Resource{ID: "r_ssrf", UserID: "u1", Name: "probe_local", Enabled: true},
+		Backends: []models.ResourceBackend{
+			{ID: "rb_ssrf", ResourceID: "r_ssrf", Name: "internal_ip", BackendType: "rest",
+				EndpointURL: &ep, HTTPMethod: "GET", TimeoutMs: 5000, Priority: 1, Enabled: true},
+		},
+	}}
+	gw := NewResourceGateway(finder)
+	_, err := gw.Execute(context.Background(), "u1", "probe_local", map[string]interface{}{}, "")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ssrf validation failed")
 }
 
 func TestBindParams(t *testing.T) {
