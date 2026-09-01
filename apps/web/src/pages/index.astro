@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import { 
 	Shield, Route, ShieldCheck, Lock, Activity, Code,
 	Menu, X, Github, BookOpen, Copy, ExternalLink, ArrowRight,
-	SlidersHorizontal, CheckCircle2
+	SlidersHorizontal, CheckCircle2, Sun, Moon
 } from 'lucide-react';
 
 interface NavLink {
@@ -16,9 +16,94 @@ const navLinks: NavLink[] = [
 	{ label: 'Smart Routing', href: '#smart-routing' },
 	{ label: 'Failover', href: '#failover' },
 	{ label: 'Multi-Tenancy', href: '#governance' },
+	{ label: 'Pricing', href: '#pricing' },
 	{ label: 'Quickstart', href: '#quickstart' },
 	{ label: 'Docs', href: 'https://docs.prism.roozylabs.com', external: true },
 	{ label: 'GitHub', href: 'https://github.com/roozylabs/prism', external: true },
+];
+
+interface PricingPlan {
+	name: string;
+	tagline: string;
+	price: string;
+	period: string;
+	highlighted?: boolean;
+	highlightBadge?: string;
+	features: string[];
+	buttonText: string;
+	buttonHref: string;
+}
+
+const pricingPlans: PricingPlan[] = [
+	{
+		name: 'Developer',
+		tagline: 'For individual developers and testing projects.',
+		price: '$0',
+		period: 'free forever',
+		features: [
+			'BYOK on OpenAI, Anthropic, Gemini, DeepSeek',
+			'Sub-2ms gateway proxy latency',
+			'10,000 requests / day limit',
+			'1 Workspace & 2 Projects',
+			'Max 5 concurrent worker streams',
+			'Community GitHub Support',
+		],
+		buttonText: 'Get Started Free',
+		buttonHref: 'https://app.prism.roozylabs.com/login',
+	},
+	{
+		name: 'Pro',
+		tagline: 'For production apps and autonomous coding agents.',
+		price: '$15',
+		period: 'per month',
+		highlighted: true,
+		highlightBadge: 'Recommended for Devs',
+		features: [
+			'Everything in Developer',
+			'Smart Routing (prism-auto semantic classifier)',
+			'Automatic Circuit Breaker failover & quarantine',
+			'50,000 requests / day limit',
+			'3 Workspaces & 5 Projects per workspace',
+			'Max 20 concurrent worker streams',
+			'Standard Email Support',
+		],
+		buttonText: 'Start Pro Plan',
+		buttonHref: 'https://app.prism.roozylabs.com/login',
+	},
+	{
+		name: 'Team',
+		tagline: 'For engineering squads managing shared AI infrastructure.',
+		price: '$49',
+		period: 'per month',
+		features: [
+			'Everything in Pro',
+			'Multi-tenant RBAC & Workspace governance',
+			'Daily & monthly spend caps per team key',
+			'250,000 requests / day limit',
+			'10 Workspaces & 10 Projects per workspace',
+			'Max 50 concurrent worker streams',
+			'Priority Engineering Support',
+		],
+		buttonText: 'Start Team Trial',
+		buttonHref: 'https://app.prism.roozylabs.com/login',
+	},
+	{
+		name: 'Enterprise',
+		tagline: 'For organizations needing custom SLAs and high scale.',
+		price: '$199',
+		period: 'per month',
+		features: [
+			'Everything in Team',
+			'1,000,000+ requests / day limit',
+			'SAML / OIDC Single Sign-On (SSO)',
+			'Dedicated proxy instance & custom uptime SLA',
+			'50 Workspaces & 50 Projects per workspace',
+			'Max 200 concurrent worker streams',
+			'24/7 Dedicated Support Channel',
+		],
+		buttonText: 'Contact Sales',
+		buttonHref: 'https://app.prism.roozylabs.com/login',
+	},
 ];
 
 const benchmarkStats = [
@@ -38,14 +123,9 @@ const supportedProviders = [
 ---
 
 <Layout title="RoozyLabs Prism - Universal AI Control Plane & Model Gateway">
-	<!-- Background Ambient Refraction -->
-	<div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
-		<div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[1100px] h-[500px] bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(139,92,246,0.12),transparent_70%)]"></div>
-	</div>
-
 	<!-- Header Navigation -->
 	<header class="sticky top-0 w-full z-50 bg-background/90 backdrop-blur-md border-b border-border/80">
-		<div class="h-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+		<div class="h-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
 			<!-- Brand Mark (Shield Mark) -->
 			<div class="flex items-center gap-3">
 				<a href="/" class="flex items-center gap-2.5 group">
@@ -78,8 +158,23 @@ const supportedProviders = [
 				))}
 			</nav>
 
-			<!-- Action CTA & Mobile Nav Toggle -->
-			<div class="flex items-center gap-3">
+			<!-- Action CTA & Controls -->
+			<div class="flex items-center gap-2 sm:gap-3">
+				<!-- Light/Dark Mode Theme Switcher Button -->
+				<button 
+					id="theme-toggle-btn"
+					type="button"
+					aria-label="Toggle Light and Dark Mode"
+					class="h-8 w-8 rounded-none border border-border bg-card/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shadow-sm"
+				>
+					<span class="theme-icon-sun hidden text-amber-400">
+						<Sun className="h-4 w-4" />
+					</span>
+					<span class="theme-icon-moon hidden text-slate-700 dark:text-slate-200">
+						<Moon className="h-4 w-4" />
+					</span>
+				</button>
+
 				<a 
 					href="https://app.prism.roozylabs.com/login" 
 					class="hidden sm:inline-flex items-center justify-center h-8 px-3.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none hover:bg-primary/90 transition-all shadow-sm"
@@ -103,19 +198,38 @@ const supportedProviders = [
 		</div>
 
 		<!-- Mobile Navigation Drawer -->
-		<div id="mobile-menu" class="hidden md:hidden border-b border-border bg-card/95 backdrop-blur-lg px-6 py-4 shadow-xl">
+		<div id="mobile-menu" class="hidden md:hidden border-b border-border bg-card/95 backdrop-blur-lg px-4 sm:px-6 py-4 shadow-xl">
 			<div class="flex flex-col gap-2 font-medium text-xs">
 				{navLinks.map((link) => (
 					<a 
 						href={link.href} 
 						target={link.external ? "_blank" : "_self"}
 						rel={link.external ? "noopener noreferrer" : undefined}
-						class="py-2 text-muted-foreground hover:text-foreground transition-colors border-b border-border/50 last:border-0 flex items-center justify-between"
+						class="py-2.5 text-muted-foreground hover:text-foreground transition-colors border-b border-border/50 last:border-0 flex items-center justify-between"
 					>
 						<span>{link.label}</span>
 						{link.external && <ExternalLink className="h-3.5 w-3.5 opacity-60" />}
 					</a>
 				))}
+
+				<!-- Mobile Theme Switcher Row -->
+				<div class="flex items-center justify-between py-2.5 border-b border-border/50 text-muted-foreground">
+					<span class="font-medium">Color Theme</span>
+					<button
+						id="mobile-theme-toggle-btn"
+						type="button"
+						class="h-8 px-3 rounded-none border border-border bg-secondary flex items-center gap-2 text-xs text-foreground cursor-pointer"
+					>
+						<span class="theme-icon-sun hidden text-amber-400">
+							<Sun className="h-3.5 w-3.5" />
+						</span>
+						<span class="theme-icon-moon hidden text-slate-700 dark:text-slate-200">
+							<Moon className="h-3.5 w-3.5" />
+						</span>
+						<span id="mobile-theme-text" class="font-mono text-[11px]">Toggle Mode</span>
+					</button>
+				</div>
+
 				<a 
 					href="https://app.prism.roozylabs.com/login" 
 					class="mt-3 w-full py-2.5 bg-primary text-primary-foreground font-mono text-xs font-semibold rounded-none text-center shadow-sm"
@@ -130,7 +244,7 @@ const supportedProviders = [
 	<main class="w-full flex-1">
 		
 		<!-- Hero Section -->
-		<section class="w-full pt-14 sm:pt-20 pb-14 sm:pb-16 px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
+		<section class="w-full pt-12 sm:pt-20 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
 			<div class="max-w-4xl mx-auto flex flex-col items-center gap-5 sm:gap-6">
 				
 				<!-- Status Badge -->
@@ -140,7 +254,7 @@ const supportedProviders = [
 				</div>
 
 				<!-- Hero Title -->
-				<h1 class="font-bold text-3xl xs:text-4xl sm:text-5xl md:text-6xl leading-[1.1] sm:leading-[1.08] tracking-tight text-foreground max-w-4xl">
+				<h1 class="font-bold text-3xl xs:text-4xl sm:text-5xl md:text-6xl leading-[1.12] sm:leading-[1.08] tracking-tight text-foreground max-w-4xl">
 					One API endpoint for every LLM. <br class="hidden sm:inline" />
 					<span class="text-primary">Zero downtime, automatic failover.</span>
 				</h1>
@@ -338,7 +452,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 				</div>
 
 				<!-- Right Interactive Policy Demo -->
-				<div class="lg:col-span-7 bg-card border border-border rounded-none p-5 sm:p-6 shadow-xl">
+				<div class="lg:col-span-7 bg-card border border-border rounded-none p-4 sm:p-6 shadow-xl">
 					<div class="flex items-center justify-between border-b border-border pb-3 mb-4">
 						<span class="font-mono text-xs font-semibold text-foreground flex items-center gap-2">
 							<SlidersHorizontal className="h-4 w-4 text-primary" /> Routing Policy Simulator
@@ -351,21 +465,21 @@ console.log(completion.choices[0].message.content);</code></pre>
 						<button 
 							type="button" 
 							data-policy="balanced" 
-							class="policy-btn px-3 py-2 rounded-none bg-primary/20 text-primary border border-primary/40 font-mono text-xs font-semibold text-center cursor-pointer transition-all"
+							class="policy-btn px-2 sm:px-3 py-2 rounded-none bg-primary/20 text-primary border border-primary/40 font-mono text-[11px] sm:text-xs font-semibold text-center cursor-pointer transition-all"
 						>
-							Balanced Policy
+							Balanced
 						</button>
 						<button 
 							type="button" 
 							data-policy="cheap" 
-							class="policy-btn px-3 py-2 rounded-none bg-background text-muted-foreground border border-border font-mono text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all"
+							class="policy-btn px-2 sm:px-3 py-2 rounded-none bg-background text-muted-foreground border border-border font-mono text-[11px] sm:text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all"
 						>
 							Lowest Cost
 						</button>
 						<button 
 							type="button" 
 							data-policy="quality" 
-							class="policy-btn px-3 py-2 rounded-none bg-background text-muted-foreground border border-border font-mono text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all"
+							class="policy-btn px-2 sm:px-3 py-2 rounded-none bg-background text-muted-foreground border border-border font-mono text-[11px] sm:text-xs font-medium text-center hover:text-foreground cursor-pointer transition-all"
 						>
 							Max Quality
 						</button>
@@ -373,7 +487,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 
 					<!-- Route Evaluation Box -->
 					<div class="p-4 rounded-none bg-console border border-border font-mono text-xs space-y-3">
-						<div class="flex justify-between items-center text-[11px] text-muted-foreground border-b border-border/70 pb-2">
+						<div class="flex flex-col sm:flex-row justify-between sm:items-center text-[11px] text-muted-foreground border-b border-border/70 pb-2 gap-1">
 							<span>Prompt: <span class="text-slate-300">"Summarize this 10-line customer feedback."</span></span>
 							<span class="text-cyan-400">Context: 420 tokens</span>
 						</div>
@@ -405,7 +519,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 		<section id="failover" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-card/40 border-t border-border">
 			<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 				<!-- Left Interactive Circuit Breaker Visual -->
-				<div class="lg:col-span-7 bg-console border border-border rounded-none p-5 sm:p-6 shadow-xl font-mono text-xs">
+				<div class="lg:col-span-7 bg-console border border-border rounded-none p-4 sm:p-6 shadow-xl font-mono text-xs">
 					<div class="flex items-center justify-between border-b border-border/80 pb-3 mb-4">
 						<span class="text-xs text-foreground font-semibold flex items-center gap-2">
 							<ShieldCheck className="h-4 w-4 text-emerald-400" /> Automatic Failover & Circuit Quarantine
@@ -415,29 +529,29 @@ console.log(completion.choices[0].message.content);</code></pre>
 
 					<div class="space-y-3.5">
 						<!-- Step 1: Upstream error -->
-						<div class="p-3 rounded-none border border-red-500/30 bg-red-500/5 flex items-center justify-between">
+						<div class="p-3 rounded-none border border-red-500/30 bg-red-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
 							<div class="flex items-center gap-2.5">
-								<span class="w-6 h-6 rounded-none bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-[11px]">1</span>
+								<span class="w-6 h-6 rounded-none bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-[11px] shrink-0">1</span>
 								<div>
 									<span class="text-slate-200 font-semibold block">Primary Provider: OpenAI (GPT-4o)</span>
 									<span class="text-[11px] text-red-400">Returned HTTP 503 Overloaded (Attempt 1 Failed)</span>
 								</div>
 							</div>
-							<span class="text-[10px] px-2 py-0.5 rounded-none bg-red-500/10 text-red-400 border border-red-500/20">
+							<span class="text-[10px] px-2 py-0.5 rounded-none bg-red-500/10 text-red-400 border border-red-500/20 shrink-0">
 								Quarantined 60s
 							</span>
 						</div>
 
 						<!-- Step 2: Failover route -->
-						<div class="p-3 rounded-none border border-primary/30 bg-primary/5 flex items-center justify-between">
+						<div class="p-3 rounded-none border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
 							<div class="flex items-center gap-2.5">
-								<span class="w-6 h-6 rounded-none bg-primary/20 text-primary flex items-center justify-center font-bold text-[11px]">2</span>
+								<span class="w-6 h-6 rounded-none bg-primary/20 text-primary flex items-center justify-center font-bold text-[11px] shrink-0">2</span>
 								<div>
 									<span class="text-slate-200 font-semibold block">Automatic Failover: Anthropic (Claude 3.7 Sonnet)</span>
 									<span class="text-[11px] text-emerald-400">Stream re-established in 1.96ms • 200 OK</span>
 								</div>
 							</div>
-							<span class="text-[10px] px-2 py-0.5 rounded-none bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+							<span class="text-[10px] px-2 py-0.5 rounded-none bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
 								Resolved
 							</span>
 						</div>
@@ -490,7 +604,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 						Control spending per team, user, and gateway key.
 					</h2>
 					<p class="text-sm text-muted-foreground leading-relaxed">
-						Prevent runaway AI bills before they happen. Set daily budget ceilings, enforce tokens-per-minute rate limits, and isolate data using native PostgreSQL Row-Level Security across 9 database tables.
+						Prevent runaway AI bills before they happen. Set daily budget ceilings, enforce tokens-per-minute rate limits, and isolate data using native PostgreSQL Row-Level Security across all database models.
 					</p>
 
 					<div class="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
@@ -506,7 +620,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 				</div>
 
 				<!-- Right UI Dashboard Card Mockup -->
-				<div class="lg:col-span-7 bg-card border border-border rounded-none p-5 sm:p-6 shadow-xl font-mono text-xs">
+				<div class="lg:col-span-7 bg-card border border-border rounded-none p-4 sm:p-6 shadow-xl font-mono text-xs">
 					<div class="flex items-center justify-between border-b border-border pb-3 mb-4">
 						<div class="flex items-center gap-2">
 							<div class="w-2.5 h-2.5 rounded-none bg-primary"></div>
@@ -550,6 +664,61 @@ console.log(completion.choices[0].message.content);</code></pre>
 			</div>
 		</section>
 
+		<!-- Pricing & Subscription Tiers -->
+		<section id="pricing" class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-card/40 border-t border-border">
+			<div class="max-w-7xl mx-auto flex flex-col items-center gap-10">
+				<div class="text-center max-w-2xl mx-auto">
+					<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-none bg-primary/10 border border-primary/20 text-primary font-mono text-[11px] font-semibold w-fit mb-3">
+						PRICING & TIERS
+					</div>
+					<h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+						Transparent plans for every scale.
+					</h2>
+					<p class="text-xs sm:text-sm text-muted-foreground mt-2 leading-relaxed">
+						Deploy self-hosted for free or connect immediately via our managed cloud control plane.
+					</p>
+				</div>
+
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
+					{pricingPlans.map((plan) => (
+						<div class={`p-5 sm:p-6 bg-card border rounded-none flex flex-col justify-between shadow-sm relative ${plan.highlighted ? 'border-primary/60 ring-1 ring-primary/40 bg-card/90 shadow-[0_0_25px_rgba(139,92,246,0.15)]' : 'border-border'}`}>
+							{plan.highlightBadge && (
+								<div class="absolute -top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-primary text-primary-foreground font-mono text-[10px] font-bold uppercase tracking-wider rounded-none shadow-sm">
+									{plan.highlightBadge}
+								</div>
+							)}
+							<div>
+								<div class="border-b border-border/80 pb-4 mb-4">
+									<h3 class="font-bold text-base text-foreground font-mono">{plan.name}</h3>
+									<p class="text-xs text-muted-foreground mt-1 min-h-[32px]">{plan.tagline}</p>
+									<div class="mt-4 flex items-baseline gap-1.5">
+										<span class="font-mono text-3xl sm:text-4xl font-bold text-foreground">{plan.price}</span>
+										<span class="font-mono text-[11px] text-muted-foreground">/ {plan.period}</span>
+									</div>
+								</div>
+
+								<ul class="space-y-2.5 text-xs text-muted-foreground mb-6">
+									{plan.features.map((feat) => (
+										<li class="flex items-start gap-2">
+											<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+											<span class="leading-tight">{feat}</span>
+										</li>
+									))}
+								</ul>
+							</div>
+
+							<a
+								href={plan.buttonHref}
+								class={`w-full py-2.5 text-center font-mono text-xs font-semibold rounded-none transition-all ${plan.highlighted ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm' : 'bg-secondary text-foreground hover:bg-secondary/80 border border-border'}`}
+							>
+								{plan.buttonText}
+							</a>
+						</div>
+					))}
+				</div>
+			</div>
+		</section>
+
 		<!-- Supported Providers & Ecosystem Grid -->
 		<section class="w-full py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-card/30 border-t border-border">
 			<div class="max-w-7xl mx-auto flex flex-col items-center gap-8">
@@ -580,15 +749,15 @@ console.log(completion.choices[0].message.content);</code></pre>
 		</section>
 
 		<!-- Final High-Impact CTA -->
-		<section class="w-full py-20 sm:py-28 px-4 sm:px-6 lg:px-8 bg-background border-t border-border">
+		<section class="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-background border-t border-border">
 			<div class="max-w-3xl mx-auto text-center flex flex-col items-center">
 				<div class="flex h-12 w-12 items-center justify-center rounded-none bg-[#7C3AED] text-white border border-violet-400/30 shadow-[0_0_30px_rgba(139,92,246,0.35)] mb-5">
 					<Shield className="h-6 w-6" />
 				</div>
-				<h2 class="text-3xl sm:text-4xl font-bold text-foreground mb-3 tracking-tight">
+				<h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 tracking-tight">
 					Start routing AI requests in under 2 minutes.
 				</h2>
-				<p class="text-muted-foreground text-sm sm:text-base mb-8 max-w-xl leading-relaxed">
+				<p class="text-muted-foreground text-xs sm:text-sm md:text-base mb-8 max-w-xl leading-relaxed">
 					Deploy with Docker or connect immediately via our managed cloud control plane.
 				</p>
 				
@@ -615,7 +784,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 	</main>
 
 	<!-- Footer -->
-	<footer class="w-full bg-background border-t border-border py-12">
+	<footer class="w-full bg-background border-t border-border py-10 sm:py-12">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
 			<div class="sm:col-span-1">
 				<div class="flex items-center gap-2 mb-3">
@@ -624,14 +793,9 @@ console.log(completion.choices[0].message.content);</code></pre>
 					</div>
 					<span class="font-bold text-foreground text-sm font-mono">RoozyLabs Prism</span>
 				</div>
-				<p class="text-muted-foreground text-xs leading-relaxed mb-4">
-					The open-source AI gateway control plane for engineering teams and coding agents.
+				<p class="text-muted-foreground text-xs leading-relaxed">
+					The open-source AI gateway control plane for engineering teams and autonomous coding agents.
 				</p>
-				<div class="flex flex-col gap-1 text-[11px] text-muted-foreground font-mono">
-					<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Status: All Systems Operational</span>
-					<span>Engine: Go 1.25 (Sub-2ms p95)</span>
-					<span>Encryption: AES-256-GCM Vault</span>
-				</div>
 			</div>
 
 			<div>
@@ -640,6 +804,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 					<li><a href="#smart-routing" class="hover:text-foreground transition-colors">Smart Router (prism-auto)</a></li>
 					<li><a href="#failover" class="hover:text-foreground transition-colors">Failure Resilience & Quarantine</a></li>
 					<li><a href="#governance" class="hover:text-foreground transition-colors">Multi-Tenant Quotas & RLS</a></li>
+					<li><a href="#pricing" class="hover:text-foreground transition-colors">Pricing & Plans</a></li>
 					<li><a href="#quickstart" class="hover:text-foreground transition-colors">Client SDK Integrations</a></li>
 				</ul>
 			</div>
@@ -665,7 +830,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 		</div>
 
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between text-center md:text-left text-muted-foreground font-mono text-[11px] gap-3">
-			<div>&copy; 2026 RoozyLabs Prism. Licensed under Apache 2.0.</div>
+			<div>&copy; 2026 RoozyLabs Prism.</div>
 			<div class="flex flex-wrap justify-center items-center gap-4">
 				<a href="https://prism.roozylabs.com" class="hover:text-foreground transition-colors">prism.roozylabs.com</a>
 				<a href="https://app.prism.roozylabs.com" class="hover:text-foreground transition-colors">app.prism.roozylabs.com</a>
@@ -674,9 +839,44 @@ console.log(completion.choices[0].message.content);</code></pre>
 		</div>
 	</footer>
 
-	<!-- Client-side Interactive Scripts (No Framework Dependency) -->
+	<!-- Client-side Interactive Scripts -->
 	<script>
-		// 1. Mobile Navigation Toggle
+		// 1. Theme Switcher (Light / Dark Mode)
+		function updateThemeIcons() {
+			const isDark = document.documentElement.classList.contains('dark');
+			document.querySelectorAll('.theme-icon-sun').forEach(el => {
+				if (isDark) el.classList.remove('hidden');
+				else el.classList.add('hidden');
+			});
+			document.querySelectorAll('.theme-icon-moon').forEach(el => {
+				if (isDark) el.classList.add('hidden');
+				else el.classList.remove('hidden');
+			});
+			const mobileText = document.getElementById('mobile-theme-text');
+			if (mobileText) {
+				mobileText.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+			}
+		}
+
+		function toggleTheme() {
+			const isDark = document.documentElement.classList.contains('dark');
+			if (isDark) {
+				document.documentElement.classList.remove('dark');
+				localStorage.setItem('theme', 'light');
+			} else {
+				document.documentElement.classList.add('dark');
+				localStorage.setItem('theme', 'dark');
+			}
+			updateThemeIcons();
+		}
+
+		const themeBtn = document.getElementById('theme-toggle-btn');
+		const mobileThemeBtn = document.getElementById('mobile-theme-toggle-btn');
+		if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+		if (mobileThemeBtn) mobileThemeBtn.addEventListener('click', toggleTheme);
+		updateThemeIcons();
+
+		// 2. Mobile Navigation Toggle
 		const menuBtn = document.getElementById('mobile-menu-btn');
 		const mobileMenu = document.getElementById('mobile-menu');
 		const menuIconOpen = document.getElementById('menu-icon-open');
@@ -709,7 +909,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 			});
 		}
 
-		// 2. Interactive Code Tabs Switcher
+		// 3. Interactive Code Tabs Switcher
 		const tabButtons = document.querySelectorAll('.code-tab-btn');
 		const snippets = document.querySelectorAll('.code-snippet');
 
@@ -736,7 +936,7 @@ console.log(completion.choices[0].message.content);</code></pre>
 			});
 		});
 
-		// 3. Snippet Copy to Clipboard Button
+		// 4. Snippet Copy to Clipboard Button
 		const copyBtn = document.getElementById('copy-code-btn');
 		const copyLabel = document.getElementById('copy-label');
 
@@ -760,14 +960,14 @@ console.log(completion.choices[0].message.content);</code></pre>
 			});
 		}
 
-		// 4. Interactive Policy Simulator
+		// 5. Interactive Policy Simulator
 		const policyButtons = document.querySelectorAll('.policy-btn');
 		const routeModel = document.getElementById('route-model');
 		const routeCost = document.getElementById('route-cost');
 		const routeLatency = document.getElementById('route-latency');
 		const routeExp = document.getElementById('route-explanation');
 
-		const policyData = {
+		const policyData: Record<string, { model: string; cost: string; latency: string; exp: string }> = {
 			balanced: {
 				model: 'GPT-4o-mini',
 				cost: '$0.000063',
