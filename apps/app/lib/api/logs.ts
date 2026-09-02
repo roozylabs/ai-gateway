@@ -9,6 +9,7 @@ export async function apiGetLogs(params?: {
   model?: string;
   status?: number;
   search?: string;
+  agentId?: string;
 }): Promise<PaginatedResult<ApiRequestLog>> {
   const response = await api.get<PaginatedResult<ApiRequestLog>>('/logs', { params });
   return response.data;

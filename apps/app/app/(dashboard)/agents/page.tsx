@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/molecules/Card";
@@ -13,11 +14,12 @@ import { useMCPServersQuery } from "@/hooks/queries/useMCPServersQuery";
 import { ApiAgent } from "@/lib/api";
 import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
 import { CardSkeletonGrid } from "@/components/molecules/CardSkeleton";
-import { Bot, Plus, Settings, Trash2 } from "lucide-react";
+import { Bot, Plus, Settings, Trash2, ArrowUpRight, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/types/ui";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { MultiSelectOption } from "@/components/molecules/MultiSelect";
+import { agentDetailRoute } from "@/constants/routes";
 import { AgentFormDialog } from "./_components/AgentFormDialog";
 
 function formatBudgetCents(cents: number): string {
@@ -99,12 +101,18 @@ export default function AgentsPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
           {agents.map((agent) => (
-            <Card key={agent.id} className="flex flex-col justify-between">
+            <Card key={agent.id} className="flex flex-col justify-between hover:border-[#8B5CF6]/50 transition-colors">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Bot className="h-5 w-5 text-[#8B5CF6]" />
-                    <span>{agent.displayName || agent.name}</span>
+                  <CardTitle className="text-base font-bold">
+                    <Link
+                      href={agentDetailRoute(agent.id)}
+                      className="flex items-center gap-2 hover:text-[#8B5CF6] transition-colors group"
+                    >
+                      <Bot className="h-5 w-5 text-[#8B5CF6]" />
+                      <span>{agent.displayName || agent.name}</span>
+                      <ArrowUpRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                    </Link>
                   </CardTitle>
                   <StatusDot status={agent.enabled ? "healthy" : "cooldown"} />
                 </div>
@@ -162,9 +170,19 @@ export default function AgentsPage() {
                   variant="outline"
                   size="sm"
                   className="flex-1 gap-1.5 text-xs"
+                  asChild
+                >
+                  <Link href={agentDetailRoute(agent.id)}>
+                    <Eye className="h-3.5 w-3.5" /> Inspect
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs"
                   onClick={() => openEditDrawer(agent)}
                 >
-                  <Settings className="h-3.5 w-3.5" /> Configure
+                  <Settings className="h-3.5 w-3.5" /> Edit
                 </Button>
                 <ConfirmDialog
                   title="Delete Agent"
@@ -175,10 +193,10 @@ export default function AgentsPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      className="flex-1 gap-1.5 text-xs"
+                      className="px-2.5 text-xs"
                       disabled={isPending}
                     >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   }
                 />
