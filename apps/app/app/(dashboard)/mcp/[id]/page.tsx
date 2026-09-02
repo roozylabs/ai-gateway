@@ -18,7 +18,6 @@ import { Progress } from "@/components/atoms/Progress";
 import { MetricCard } from "@/components/atoms/MetricCard";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ErrorState, EmptyState } from "@/components/molecules/StateAlerts";
-import { CardSkeletonGrid } from "@/components/molecules/CardSkeleton";
 import { useMCPServersQuery, useMCPServerStatsQuery, useMCPServerToolsQuery } from "@/hooks/queries/useMCPServersQuery";
 import { useDeleteMCPServerMutation, useSyncMCPServerMutation } from "@/hooks/mutations/useMCPMutations";
 import { ApiMCPServer } from "@/lib/api";import { AppRoutes } from "@/constants/routes";
@@ -69,6 +68,115 @@ function formatNumber(n: number): string {
   return Number.isFinite(n) ? n.toLocaleString() : "0";
 }
 
+function MCPServerDetailSkeleton() {
+  return (
+    <AppLayout>
+      {/* Page Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="space-y-2">
+          <div className="h-7 w-48 rounded bg-muted/60 animate-pulse" />
+          <div className="h-4 w-80 rounded bg-muted/40 animate-pulse" />
+        </div>
+        <div className="h-8 w-36 rounded border border-border bg-muted/30 animate-pulse self-start sm:self-auto" />
+      </div>
+
+      {/* Badges Bar Skeleton */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className="h-5 w-16 rounded border border-border bg-muted/40 animate-pulse" />
+        <div className="h-5 w-14 rounded border border-border bg-muted/40 animate-pulse" />
+        <div className="h-5 w-24 rounded border border-border bg-muted/40 animate-pulse" />
+        <div className="h-5 w-16 rounded border border-border bg-muted/40 animate-pulse" />
+      </div>
+
+      {/* Endpoint Banner Skeleton */}
+      <div className="mb-6">
+        <Card className="animate-pulse">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <div className="h-3.5 w-16 rounded bg-muted/50" />
+              <div className="h-3.5 w-72 rounded bg-muted/30" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 4 Metric Cards Skeleton */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard title="Total Requests" value="" subtitle="Last 30 days" loading={true} />
+        <MetricCard title="Success Rate" value="" loading={true} />
+        <MetricCard title="Avg Latency" value="" subtitle="per tool call" loading={true} />
+        <MetricCard title="Errors" value="" subtitle="failed invocations" loading={true} />
+      </div>
+
+      {/* Usage Analytics Header Skeleton */}
+      <div className="mt-8 mb-4 flex items-center justify-between">
+        <div className="h-5 w-32 rounded bg-muted/60 animate-pulse" />
+        <div className="flex items-center gap-1 rounded border border-border p-1 bg-muted/20">
+          <div className="h-6 w-14 rounded bg-muted/30 animate-pulse" />
+          <div className="h-6 w-14 rounded bg-muted/50 animate-pulse" />
+          <div className="h-6 w-14 rounded bg-muted/30 animate-pulse" />
+        </div>
+      </div>
+
+      {/* Analytics 2-Column Grid Skeleton */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="animate-pulse">
+          <CardHeader className="pb-3 space-y-1.5">
+            <div className="h-4 w-36 rounded bg-muted/60" />
+            <div className="h-3 w-56 rounded bg-muted/40" />
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            <div className="h-6 w-full rounded bg-muted/30" />
+            <div className="h-6 w-4/5 rounded bg-muted/30" />
+          </CardContent>
+        </Card>
+
+        <Card className="animate-pulse">
+          <CardHeader className="pb-3 space-y-1.5">
+            <div className="h-4 w-32 rounded bg-muted/60" />
+            <div className="h-3 w-64 rounded bg-muted/40" />
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            <div className="h-12 w-full rounded border border-border bg-muted/30" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tools Table Skeleton */}
+      <div className="mt-6">
+        <Card className="animate-pulse">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1.5">
+                <div className="h-4 w-16 rounded bg-muted/60" />
+                <div className="h-3 w-40 rounded bg-muted/40" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-16 rounded border border-border bg-muted/40" />
+                <div className="h-7 w-20 rounded border border-border bg-muted/40" />
+                <div className="h-7 w-16 rounded border border-border bg-muted/40" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              <div className="h-8 w-full rounded bg-muted/40" />
+              <div className="h-10 w-full rounded bg-muted/20" />
+              <div className="h-10 w-full rounded bg-muted/20" />
+              <div className="h-10 w-full rounded bg-muted/20" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Delete Button Skeleton */}
+      <div className="mt-6 flex justify-end">
+        <div className="h-8 w-28 rounded bg-destructive/20 animate-pulse" />
+      </div>
+    </AppLayout>
+  );
+}
+
 export default function MCPServerDetailPage() {
   const params = useParams<{ id: string }>();
   const serverId = params?.id || "";
@@ -99,12 +207,7 @@ export default function MCPServerDetailPage() {
   };
 
   if (serversQuery.isLoading) {
-    return (
-      <AppLayout>
-        <PageHeader title="MCP Server" description="Loading server details..." />
-        <CardSkeletonGrid count={1} />
-      </AppLayout>
-    );
+    return <MCPServerDetailSkeleton />;
   }
 
   if (!server) {
@@ -379,10 +482,14 @@ export default function MCPServerDetailPage() {
                   </thead>
                   <tbody>
                     {tools.map((t) => (
-                      <tr key={t.id} className="border-b border-border/60 last:border-0">
-                        <td className="py-2.5 pr-3 font-mono text-foreground">{t.name}</td>
-                        <td className="py-2.5 pr-3 text-muted-foreground line-clamp-1">{t.description || "No description"}</td>
-                        <td className="py-2.5">
+                      <tr key={t.id} className="border-b border-border/60 last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="py-3 pr-4 font-mono text-xs font-semibold text-foreground align-top whitespace-nowrap">{t.name}</td>
+                        <td className="py-3 pr-4 align-top">
+                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 max-w-3xl" title={t.description || ""}>
+                            {t.description || "No description provided."}
+                          </p>
+                        </td>
+                        <td className="py-3 align-top whitespace-nowrap">
                           <Badge variant={t.enabled ? "success" : "outline"} className="font-mono text-[10px] uppercase">
                             {t.enabled ? "Enabled" : "Disabled"}
                           </Badge>
