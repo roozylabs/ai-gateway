@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -13,12 +14,13 @@ import (
 )
 
 type AgentHandler struct {
-	repo       *repository.AgentRepository
-	governance *proxy.AgentGovernanceEngine
+	repo        *repository.AgentRepository
+	governance  *proxy.AgentGovernanceEngine
+	requestLogs *repository.RequestLogRepository
 }
 
-func NewAgentHandler(repo *repository.AgentRepository, governance *proxy.AgentGovernanceEngine) *AgentHandler {
-	return &AgentHandler{repo: repo, governance: governance}
+func NewAgentHandler(repo *repository.AgentRepository, governance *proxy.AgentGovernanceEngine, requestLogs *repository.RequestLogRepository) *AgentHandler {
+	return &AgentHandler{repo: repo, governance: governance, requestLogs: requestLogs}
 }
 
 type CreateAgentRequest struct {
@@ -232,4 +234,37 @@ func (h *AgentHandler) Delete(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "agent deleted"})
+}
+
+func (h *AgentHandler) Stats(c *gin.Context) {
+	userID := c.GetString("userId")
+	id := c.Param("id")
+
+	if _, err := h.repo.FindByID(c.Request.Context(), id, userID); err != nil {
+		httputil.RespondNotFound(c, "Agent not found", err, "AGENT_NOT_FOUND")
+		return
+	}
+
+	days := 30
+	if d := c.Query("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+	if days > 90 {
+		days = 90
+	}
+
+	if h.requestLogs == nil {
+		c.JSON(http.StatusOK, gin.H{"data": models.AgentStats{SuccessRate: 1.0}})
+		return
+	}
+
+	stats, err := h.requestLogs.GetAgentStats(c.Request.Context(), userID, id, days)
+	if err != nil {
+		httputil.RespondInternalError(c, "Failed to load agent statistics", err, "AGENT_STATS_LOAD_FAILED")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": stats})
 }

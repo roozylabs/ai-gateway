@@ -213,7 +213,7 @@ func main() {
 	resourceGatewayHandler := handlers.NewResourceGatewayHandler(resourceGateway, toolInvocationRepo, eventPublisher, cfg.EncryptionKey)
 	mcpHandler := handlers.NewMCPHandler(mcpServerRepo, mcpToolRepo, mcpGateway, mcpInvocationRepo, agentRepo, cfg.EncryptionKey)
 	mcpRegistryHandler := handlers.NewMCPRegistryHandler(mcpRegistryRepo)
-	agentHandler := handlers.NewAgentHandler(agentRepo, agentGovernance)
+	agentHandler := handlers.NewAgentHandler(agentRepo, agentGovernance, requestLogRepo)
 	agentTemplateHandler := handlers.NewAgentTemplateHandler(agentTemplateRepo, agentRepo)
 	governancePolicyHandler := handlers.NewGovernancePolicyHandler(governancePolicyRepo, rbacEngine)
 	auditTrailHandler := handlers.NewAuditTrailHandler(auditTrailRepo, auditRecorder)
@@ -439,6 +439,7 @@ func main() {
 			// Agent Gateway & Infrastructure
 			protected.GET("/agents", agentHandler.List)
 			protected.GET("/agents/:id", agentHandler.Get)
+			protected.GET("/agents/:id/stats", agentHandler.Stats)
 			protected.POST("/agents", agentHandler.Create)
 			protected.PUT("/agents/:id", agentHandler.Update)
 			protected.DELETE("/agents/:id", agentHandler.Delete)

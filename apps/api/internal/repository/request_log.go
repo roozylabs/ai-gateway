@@ -93,6 +93,7 @@ type LogFilter struct {
 	Model    string
 	Status   int
 	Search   string
+	AgentID  string
 	Limit    int
 	Offset   int
 }
@@ -124,6 +125,11 @@ func (r *RequestLogRepository) ListWithFilter(ctx context.Context, f LogFilter) 
 	if f.Status > 0 {
 		where = append(where, fmt.Sprintf("rl.status_code = $%d", argIdx))
 		args = append(args, f.Status)
+		argIdx++
+	}
+	if f.AgentID != "" {
+		where = append(where, fmt.Sprintf("rl.agent_id = $%d", argIdx))
+		args = append(args, f.AgentID)
 		argIdx++
 	}
 	if f.Search != "" {
@@ -533,5 +539,51 @@ func (r *RequestLogRepository) GetLogAnalytics(ctx context.Context, userID strin
 	}
 
 	return analytics, nil
+}
+
+func (r *RequestLogRepository) GetAgentStats(ctx context.Context, userID, agentID string, days int) (*models.AgentStats, error) {
+	if days <= 0 || days > 90 {
+		days = 30
+	}
+
+	stats := &models.AgentStats{
+		SuccessRate: 1.0,
+	}
+
+	query := `
+		SELECT COUNT(*),
+		       COALESCE(SUM(rl.total_tokens), 0),
+		       COALESCE(SUM(rl.cost_usd), 0),
+		       COALESCE(AVG(rl.latency_ms), 0),
+		       COALESCE(SUM(CASE WHEN rl.status_code >= 200 AND rl.status_code < 300 THEN 1 ELSE 0 END), 0)
+		FROM request_logs rl
+		WHERE rl.agent_id = $1
+		  AND rl.created_at >= NOW() - ($2 || ' days')::INTERVAL
+	`
+	var successCount int
+	err := r.db.QueryRowContext(ctx, query, agentID, days).Scan(
+		&stats.TotalRequests,
+		&stats.TotalTokens,
+		&stats.TotalCostUSD,
+		&stats.AvgLatencyMs,
+		&successCount,
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	if stats.TotalRequests > 0 {
+		stats.SuccessRate = float64(successCount) / float64(stats.TotalRequests)
+	}
+
+	// Tool invocations count if any
+	_ = r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM tool_invocations ti
+		 INNER JOIN request_logs rl ON ti.request_id = rl.request_id
+		 WHERE rl.agent_id = $1 AND rl.created_at >= NOW() - ($2 || ' days')::INTERVAL`,
+		agentID, days,
+	).Scan(&stats.ToolCallsCount)
+
+	return stats, nil
 }
 
