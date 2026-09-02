@@ -1,5 +1,5 @@
 import { HttpClient } from "./client.js";
-import { Agent, CreateAgentRequest, UpdateAgentRequest } from "./types.js";
+import { Agent, CreateAgentRequest, UpdateAgentRequest, AgentStats } from "./types.js";
 
 export class AgentsModule {
   constructor(private client: HttpClient) {}
@@ -30,6 +30,12 @@ export class AgentsModule {
     await this.client.request(`/api/agents/${id}`, {
       method: "DELETE",
     });
+  }
+
+  public async stats(id: string, days?: number): Promise<AgentStats> {
+    const params = days && days > 0 ? `?days=${days}` : "";
+    const res = await this.client.request<{ data: AgentStats }>(`/api/agents/${id}/stats${params}`);
+    return res.data;
   }
 }
 

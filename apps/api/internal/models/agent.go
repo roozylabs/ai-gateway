@@ -30,3 +30,12 @@ type AgentGovernanceCheckResult struct {
 	ResourceAllowed bool   `json:"resourceAllowed"`
 	Reason          string `json:"reason,omitempty"`
 }
+
+type AgentStats struct {
+	TotalRequests  int     `json:"totalRequests"`
+	TotalTokens    int     `json:"totalTokens"`
+	TotalCostUSD   float64 `json:"totalCostUSD"`
+	AvgLatencyMs   int     `json:"avgLatencyMs"`
+	SuccessRate    float64 `json:"successRate"`
+	ToolCallsCount int     `json:"toolCallsCount"`
+}

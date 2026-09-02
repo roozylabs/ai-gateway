@@ -77,5 +77,37 @@ export function registerAgentsCommand(program: Command) {
         process.exit(1);
       }
     });
+
+  agentCmd
+    .command("stats <id>")
+    .description("Show usage stats for an agent")
+    .option("-d, --days <days>", "Number of days to aggregate (max 90)", "30")
+    .action(async (id: string, options) => {
+      const config = loadConfig();
+      const prism = new Prism({
+        baseURL: config.baseURL,
+        apiKey: config.apiKey,
+      });
+
+      try {
+        const stats = await prism.agents.stats(id, parseInt(options.days, 10));
+        const table = new Table({
+          head: ["Metric", "Value"],
+          style: { head: ["cyan"] },
+        });
+        table.push(
+          ["Total Requests", stats.totalRequests],
+          ["Total Tokens", stats.totalTokens],
+          ["Total Cost (USD)", `$${stats.totalCostUSD.toFixed(4)}`],
+          ["Avg Latency (ms)", stats.avgLatencyMs],
+          ["Success Rate", `${(stats.successRate * 100).toFixed(2)}%`],
+          ["Tool Calls", stats.toolCallsCount]
+        );
+        console.log(table.toString());
+      } catch (err) {
+        console.error("Failed to load agent stats:", (err as Error).message);
+        process.exit(1);
+      }
+    });
 }
 

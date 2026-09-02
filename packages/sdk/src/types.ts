@@ -136,6 +136,15 @@ export interface AgentPolicy {
   rate_limit_rpm?: number;
 }
 
+export interface AgentStats {
+  totalRequests: number;
+  totalTokens: number;
+  totalCostUSD: number;
+  avgLatencyMs: number;
+  successRate: number;
+  toolCallsCount: number;
+}
+
 export interface CreateAgentRequest {
   name: string;
   description?: string;

@@ -24,6 +24,10 @@ func (h *LogsHandler) List(c *gin.Context) {
 	provider := c.Query("provider")
 	model := c.Query("model")
 	search := c.Query("search")
+	agentID := c.Query("agentId")
+	if agentID == "" {
+		agentID = c.Query("agent_id")
+	}
 
 	status := 0
 	if s := c.Query("status"); s != "" {
@@ -62,6 +66,7 @@ func (h *LogsHandler) List(c *gin.Context) {
 		Model:    model,
 		Status:   status,
 		Search:   search,
+		AgentID:  agentID,
 		Limit:    limit,
 		Offset:   offset,
 	})
