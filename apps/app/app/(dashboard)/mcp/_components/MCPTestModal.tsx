@@ -69,12 +69,15 @@ function schemaRequired(schema: JsonObject | undefined): string[] {
 
 function defaultForProp(prop: JsonObject): JsonValue {
   if (prop.default !== undefined) return prop.default as JsonValue;
+  if (prop.type === "number" || prop.type === "integer") {
+    if (prop.minimum !== undefined && typeof prop.minimum === "number" && prop.minimum > 0) {
+      return prop.minimum;
+    }
+    return "";
+  }
   switch (prop.type) {
     case "boolean":
       return false;
-    case "number":
-    case "integer":
-      return "";
     default:
       return "";
   }
@@ -83,6 +86,9 @@ function defaultForProp(prop: JsonObject): JsonValue {
 function coerceArg(prop: JsonObject, raw: JsonValue): JsonValue {
   const type = prop.type;
   if (type === "integer" || type === "number") {
+    if (raw === "" || raw === null || raw === undefined) {
+      return "";
+    }
     const parsed = Number(raw);
     return Number.isNaN(parsed) ? raw : parsed;
   }
@@ -112,8 +118,11 @@ function buildGuidedArgs(
   for (const [name, raw] of Object.entries(args)) {
     const prop = (props[name] as JsonObject) ?? {};
     const value = coerceArg(prop, raw);
-    if (value === "" && !required.includes(name)) continue;
-    if (value !== undefined) out[name] = value;
+    if ((value === "" || value === undefined) && !required.includes(name)) continue;
+    if (typeof value === "number" && value === 0 && !required.includes(name) && typeof prop.minimum === "number" && prop.minimum > 0) {
+      continue;
+    }
+    if (value !== undefined && value !== "") out[name] = value;
   }
   return out;
 }
@@ -132,13 +141,32 @@ function buildGuidedArgsSchema(
     if (type === "boolean") {
       fieldSchema = z.boolean();
     } else if (type === "integer" || type === "number") {
-      fieldSchema = isRequired
-        ? z
-            .string()
-            .trim()
-            .min(1, "Required")
-            .refine((v) => !Number.isNaN(Number(v)), "Must be a valid number")
-        : z.string().optional();
+      let numSchema = z.string().trim();
+      if (isRequired) {
+        numSchema = numSchema.min(1, "Required");
+      }
+      fieldSchema = numSchema
+        .optional()
+        .refine(
+          (v) => {
+            if (!v || v.trim() === "") return true;
+            const n = Number(v);
+            if (Number.isNaN(n)) return false;
+            if (typeof prop.minimum === "number" && n < prop.minimum) return false;
+            if (typeof prop.maximum === "number" && n > prop.maximum) return false;
+            return true;
+          },
+          (v) => {
+            if (v && Number.isNaN(Number(v))) return { message: "Must be a valid number" };
+            if (typeof prop.minimum === "number" && Number(v) < prop.minimum) {
+              return { message: `Must be >= ${prop.minimum}` };
+            }
+            if (typeof prop.maximum === "number" && Number(v) > prop.maximum) {
+              return { message: `Must be <= ${prop.maximum}` };
+            }
+            return { message: "Invalid number" };
+          },
+        );
     } else if (type === "array" || type === "object") {
       fieldSchema = isRequired
         ? z
