@@ -272,6 +272,7 @@ export default function ModelsPage() {
               columns={columns}
               rowKey="id"
               loading={isLoading}
+              searchable={false}
               pageSize={12}
               onRefresh={refetch}
             />
