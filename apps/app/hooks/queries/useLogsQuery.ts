@@ -1,9 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiGetLogs } from '@/lib/api';
 
-export function useLogsQuery() {
+export function useLogsQuery(params?: {
+  page?: number;
+  limit?: number;
+  provider?: string;
+  model?: string;
+  status?: number;
+  search?: string;
+  agentId?: string;
+}) {
   return useQuery({
-    queryKey: ['request-logs'],
-    queryFn: () => apiGetLogs(),
+    queryKey: ['request-logs', params],
+    queryFn: () => apiGetLogs(params),
   });
 }

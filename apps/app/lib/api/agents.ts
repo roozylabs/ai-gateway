@@ -3,6 +3,7 @@ import {
   ApiAgentTemplate,
   ApiAgent,
   ApiCreateAgentRequest,
+  ApiAgentStats,
 } from './types/agent';
 
 export async function apiGetAgentTemplates(): Promise<ApiAgentTemplate[]> {
@@ -23,6 +24,16 @@ export async function apiGetAgents(): Promise<ApiAgent[]> {
 export async function apiGetAgent(id: string): Promise<ApiAgent> {
   const response = await api.get<ApiAgent>(`/agents/${id}`);
   return response.data;
+}
+
+export async function apiGetAgentStats(id: string, days = 30): Promise<ApiAgentStats> {
+  const response = await api.get<{ data: ApiAgentStats } | ApiAgentStats>(`/agents/${id}/stats`, {
+    params: { days },
+  });
+  if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+    return response.data.data;
+  }
+  return response.data as ApiAgentStats;
 }
 
 export async function apiCreateAgent(data: ApiCreateAgentRequest): Promise<ApiAgent> {

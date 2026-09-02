@@ -24,6 +24,7 @@ export interface ApiAgent {
   slug: string;
   description: string;
   systemPrompt: string;
+  systemPromptOverride?: string;
   model: string;
   agentType?: string;
   temperature: number;
@@ -60,4 +61,13 @@ export interface ApiCreateAgentRequest {
   mcpServerIds?: string[];
   routingPolicyId?: string;
   enabled?: boolean;
+}
+
+export interface ApiAgentStats {
+  totalRequests: number;
+  totalTokens: number;
+  totalCostUSD: number;
+  avgLatencyMs: number;
+  successRate: number;
+  toolCallsCount: number;
 }

@@ -38,3 +38,7 @@ export enum CookieKeys {
 export function mcpDetailRoute(id: string): string {
   return `${AppRoutes.MCP}/${id}`;
 }
+
+export function agentDetailRoute(id: string): string {
+  return `${AppRoutes.AGENTS}/${id}`;
+}
