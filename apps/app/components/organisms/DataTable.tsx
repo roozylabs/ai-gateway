@@ -21,6 +21,7 @@ export interface DataTableProps<T> {
   columns: Column<T>[];
   rowKey: keyof T | ((record: T) => string);
   loading?: boolean;
+  searchable?: boolean;
   searchPlaceholder?: string;
   pageSize?: number;
   emptyText?: string;
@@ -52,6 +53,7 @@ export function DataTable<T extends object>({
   columns,
   rowKey,
   loading = false,
+  searchable = true,
   searchPlaceholder = 'Search records...',
   pageSize = 10,
   emptyText = 'No data available',
@@ -141,7 +143,8 @@ export function DataTable<T extends object>({
     });
   };
 
-  const showTopBar = Boolean(searchPlaceholder) || Boolean(onRefresh);
+  const showSearch = searchable && Boolean(searchPlaceholder);
+  const showTopBar = showSearch || Boolean(onRefresh);
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -151,7 +154,7 @@ export function DataTable<T extends object>({
             Total: <strong className="font-mono text-foreground">{sortedData.length}</strong> items
           </span>
           <div className="flex items-center gap-2 max-w-xs flex-1 self-end sm:self-auto">
-            {searchPlaceholder && (
+            {showSearch && (
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
